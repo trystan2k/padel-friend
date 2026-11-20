@@ -3534,6 +3534,7 @@
     }
   },
   "publicHomepage": {
+    "brand": "Padel Friends",
     "hero": {
       "title": "Encontre sua próxima partida de padel.",
       "description": "O Padel Friends ajuda você a organizar partidas, convidar seus amigos e acompanhar resultados e avaliações."
@@ -3541,27 +3542,29 @@
     "actions": {
       "signIn": "Entrar",
       "createAccount": "Criar conta",
-      "dashboard": "Ir ao painel"
+      "dashboard": "Ir para o painel",
+      "signedInNote": "Você está conectado."
     },
     "features": {
+      "heading": "O que você pode fazer",
       "findMatches": {
-        "title": "Encontre partidas",
-        "description": "Veja partidas abertas ou crie a sua."
+        "title": "Encontre e crie partidas",
+        "description": "Descubra partidas abertas na sua comunidade ou crie a sua."
       },
       "inviteFriends": {
-        "title": "Convide amigos",
-        "description": "Compartilhe um link e complete a quadra."
+        "title": "Convide jogadores",
+        "description": "Envie convites e preencha as quatro vagas com amigos."
       },
       "trackResults": {
-        "title": "Acompanhe resultados",
-        "description": "Registre placares, avaliações e histórico, além de ligas."
+        "title": "Resultados e avaliação",
+        "description": "Registre placares, acompanhe sua avaliação e histórico, e jogue em ligas."
       }
     },
     "footer": {
       "contact": "Contato",
       "contactEmail": "{{email}}",
-      "operator": "Operado por Thiago Mendonça, operador individual, Espanha.",
-      "audience": "Para jogadores com 16 anos ou mais."
+      "operator": "O Padel Friends é operado por Thiago Mendonça, operador individual com sede na Espanha.",
+      "audience": "Para jogadores a partir de 16 anos."
     }
   }
 }

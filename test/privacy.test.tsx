@@ -117,6 +117,16 @@ describe('skip link target', () => {
     const target = targets[0];
     expect(target?.getAttribute('tabindex')).toBe('-1');
     expect(target?.querySelector('main')).not.toBeNull();
+    // D1: the legal sections and login footer remain; no homepage chrome spills into the policy.
+    expect(target?.querySelectorAll('main > section')).toHaveLength(PRIVACY_SECTIONS.length);
+    expect(target?.querySelector('main > footer a')?.getAttribute('href')).toBe('/login');
+    expect(target?.querySelector('[data-public-homepage], header img')).toBeNull();
+    expect(
+      screen.getByRole('combobox', { name: en.language }).closest('label')?.textContent
+    ).toContain('en');
+    expect(
+      screen.queryByRole('link', { name: en.publicHomepage.actions.createAccount })
+    ).toBeNull();
 
     const skip = await screen.findByRole('link', { name: en.accessibility.skipToContent });
     expect(skip.getAttribute('href')).toBe('#main-content');

@@ -3534,34 +3534,37 @@
     }
   },
   "publicHomepage": {
+    "brand": "Padel Friends",
     "hero": {
       "title": "Encuentra tu próximo partido de pádel.",
-      "description": "Padel Friends te ayuda a organizar partidos, invitar a tus amigos y llevar el control de resultados y valoraciones."
+      "description": "Padel Friends te ayuda a organizar partidos, invitar a tus amigos y llevar el registro de resultados y valoraciones."
     },
     "actions": {
       "signIn": "Iniciar sesión",
       "createAccount": "Crear cuenta",
-      "dashboard": "Ir al panel"
+      "dashboard": "Ir al panel",
+      "signedInNote": "Has iniciado sesión."
     },
     "features": {
+      "heading": "Qué puedes hacer",
       "findMatches": {
-        "title": "Encuentra partidos",
-        "description": "Explora partidos abiertos o crea el tuyo."
+        "title": "Encuentra y crea partidos",
+        "description": "Descubre partidos abiertos en tu comunidad o crea el tuyo."
       },
       "inviteFriends": {
-        "title": "Invita a tus amigos",
-        "description": "Comparte un enlace y completa la pista."
+        "title": "Invita a jugadores",
+        "description": "Envía invitaciones y completa las cuatro plazas con amigos."
       },
       "trackResults": {
-        "title": "Sigue tus resultados",
-        "description": "Registra marcadores, valoraciones e historial, y ligas."
+        "title": "Resultados y valoración",
+        "description": "Registra marcadores, sigue tu valoración e historial, y juega en ligas."
       }
     },
     "footer": {
       "contact": "Contacto",
       "contactEmail": "{{email}}",
-      "operator": "Gestionada por Thiago Mendonça, operador individual, España.",
-      "audience": "Para jugadores de 16 años o más."
+      "operator": "Padel Friends lo gestiona Thiago Mendonça, operador individual con sede en España.",
+      "audience": "Para jugadores a partir de 16 años."
     }
   }
 }

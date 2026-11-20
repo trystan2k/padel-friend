@@ -58,6 +58,39 @@ export function deriveCroppedTopPng(buffer: Buffer, top: number, bottom = 0): Bu
   });
 }
 
+// Add only flat raster rows to the approved artwork for the 47px → 52px CTA target.
+export function derivePaddedRowsPng(
+  buffer: Buffer,
+  inserts: readonly { y: number; count: number }[]
+): Buffer {
+  const image = PNG.sync.read(buffer);
+  const rowBytes = image.width * 4;
+  const rows: Buffer[] = [];
+  let cursor = 0;
+  let added = 0;
+  for (const { y, count } of inserts) {
+    if (
+      !Number.isInteger(y) ||
+      !Number.isInteger(count) ||
+      y < cursor ||
+      y >= image.height ||
+      count < 1
+    )
+      throw new Error('PNG row insertion must be ordered, positive and fit the reference');
+    const start = y * rowBytes;
+    rows.push(image.data.subarray(cursor * rowBytes, start));
+    for (let i = 0; i < count; i += 1) rows.push(image.data.subarray(start, start + rowBytes));
+    cursor = y;
+    added += count;
+  }
+  rows.push(image.data.subarray(cursor * rowBytes));
+  return PNG.sync.write({
+    width: image.width,
+    height: image.height + added,
+    data: Buffer.concat(rows)
+  });
+}
+
 export function comparePng(
   actual: Buffer,
   expected: Buffer,

@@ -1,7 +1,14 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { comparePng, deriveCroppedTopPng, deriveMaskedPng, type PngMask } from '../e2e/png-mask';
+import {
+  comparePng,
+  deriveCroppedTopPng,
+  deriveMaskedPng,
+  derivePaddedRowsPng,
+  type PngMask
+} from '../e2e/png-mask';
+import publicManifest from '../e2e/references/paf-202-public/manifest.json';
 
 type VisualManifest = {
   playerSampleDataMask: PngMask;
@@ -53,6 +60,49 @@ describe('deriveCroppedTopPng', () => {
       'Top crop must leave rows'
     );
     expect(() => deriveCroppedTopPng(reference, -1)).toThrow('Top crop must leave rows');
+  }, 15_000);
+});
+
+describe('derivePaddedRowsPng', () => {
+  it('keeps the six PAF-202 public visual allowances close to measured residuals', () => {
+    const { frames, calibration } = publicManifest;
+    const entries = Object.values(frames);
+    expect(entries.map(({ frameId }) => frameId).sort()).toEqual(
+      ['xhsTX', 'K5DgRu', 'QtxDQ', 'DHZoj', 'HkMpo', 'UuaXy'].sort()
+    );
+    for (const frame of entries) {
+      const measurement = Object.entries(calibration.measured).find(
+        ([frameId]) => frameId === frame.frameId
+      )?.[1];
+      if (!measurement) throw new Error(`Missing visual measurement for ${frame.frameId}`);
+      expect(measurement.total).toBe(frame.width * (frame.height + frame.ctaTops.length * 5));
+      expect(measurement.ratio).toBeCloseTo(measurement.differing / measurement.total, 6);
+      expect(frame.maxDiffPixelRatio).toBeGreaterThan(measurement.ratio);
+      expect(frame.maxDiffPixelRatio - measurement.ratio).toBeLessThanOrEqual(0.003);
+    }
+  });
+
+  it('duplicates approved rows without changing width or existing pixels', () => {
+    const source = readFileSync(
+      new URL('../e2e/references/paf-202-public/xhsTX.png', import.meta.url)
+    );
+    const adapted = derivePaddedRowsPng(source, [
+      { y: 282, count: 2 },
+      { y: 303, count: 3 }
+    ]);
+    expect(adapted.readUInt32BE(16)).toBe(390);
+    expect(adapted.readUInt32BE(20)).toBe(1016);
+    expect(
+      comparePng(
+        deriveCroppedTopPng(adapted, 0, 1016 - 282),
+        deriveCroppedTopPng(source, 0, 1011 - 282),
+        0
+      )
+    ).toBeNull();
+    expect(
+      comparePng(deriveCroppedTopPng(adapted, 308), deriveCroppedTopPng(source, 303), 0)
+    ).toBeNull();
+    expect(() => derivePaddedRowsPng(source, [{ y: 1011, count: 1 }])).toThrow('PNG row insertion');
   }, 15_000);
 });
 

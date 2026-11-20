@@ -13,9 +13,13 @@ type TextLinkProps = {
   xstyle?: StyleXStyles;
 };
 
+export function textLinkProps(xstyle?: StyleXStyles) {
+  return stylex.props(styles.link, controlStyles.focusRing, xstyle);
+}
+
 export function TextLink({ children, xstyle, ...props }: TextLinkProps) {
   return (
-    <Link {...props} {...stylex.props(styles.link, controlStyles.focusRing, xstyle)}>
+    <Link {...props} {...textLinkProps(xstyle)}>
       {children}
     </Link>
   );

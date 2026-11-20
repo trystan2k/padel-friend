@@ -16,6 +16,21 @@ export const rootStyles = stylex.create({
     },
     gap: 'var(--space-8)'
   },
+  homeControls: {
+    top: 'calc(var(--space-16) + env(safe-area-inset-top, 0px))',
+    right:
+      'max(calc(var(--space-12) * 2), calc((100% - var(--space-40) * 12) / 2 + var(--space-12) * 2), env(safe-area-inset-right, 0px))'
+  },
+  homeChip: {
+    boxSizing: 'border-box',
+    borderRadius: 'var(--radius-14)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)'
+  },
+  homeIcon: { display: 'block', width: 'var(--space-20)', height: 'var(--space-20)' },
   chip: {
     position: 'relative',
     display: 'grid',

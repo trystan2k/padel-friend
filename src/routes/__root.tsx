@@ -36,13 +36,44 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: 'manifest', href: '/manifest.webmanifest' },
+      { rel: 'icon', href: '/icons/favicon.png', sizes: '64x64', type: 'image/png' },
       { rel: 'apple-touch-icon', href: '/icons/apple-touch-icon.png' }
     ]
   })
 });
 
+function PublicControlIcon({ icon }: { icon: 'globe' | 'moon' | 'sun' }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...stylex.props(rootStyles.homeIcon)}
+    >
+      {icon === 'globe' ? (
+        <>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M2 12h20M12 2a15 15 0 0 1 0 20 15 15 0 0 1 0-20Z" />
+        </>
+      ) : icon === 'moon' ? (
+        <path d="M20.9 13.35a9 9 0 1 1-10.25-10.25 7 7 0 0 0 10.25 10.25Z" />
+      ) : (
+        <>
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2m0 16v2M2 12h2m16 0h2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42m0-14.14-1.42 1.42m-11.3 11.3-1.42 1.42" />
+        </>
+      )}
+    </svg>
+  );
+}
+
 function Root() {
   const { locale: initialLocale, theme: initialTheme } = Route.useRouteContext();
+  const isPublicHomepage = useRouterState({ select: (state) => state.location.pathname === '/' });
   const isAuthJourney = useRouterState({
     select: (state) =>
       [
@@ -76,13 +107,21 @@ function Root() {
           <SkipLink />
           <RefreshStatusProvider>
             {!isAuthJourney && (
-              <div {...stylex.props(rootStyles.controls)}>
-                <label {...stylex.props(rootStyles.chip, rootStyles.focusChip)}>
+              <div
+                {...stylex.props(rootStyles.controls, isPublicHomepage && rootStyles.homeControls)}
+              >
+                <label
+                  {...stylex.props(
+                    rootStyles.chip,
+                    rootStyles.focusChip,
+                    isPublicHomepage && rootStyles.homeChip
+                  )}
+                >
                   <span
                     aria-hidden="true"
                     {...stylex.props(rootStyles.chipText, rootStyles.localeText)}
                   >
-                    {locale.slice(0, 2)}
+                    {isPublicHomepage ? <PublicControlIcon icon="globe" /> : locale.slice(0, 2)}
                   </span>
                   <select
                     id="locale"
@@ -132,9 +171,19 @@ function Root() {
                     <option value="es">{i18n.t('languageNames.es')}</option>
                   </select>
                 </label>
-                <label {...stylex.props(rootStyles.chip, rootStyles.focusChip)}>
+                <label
+                  {...stylex.props(
+                    rootStyles.chip,
+                    rootStyles.focusChip,
+                    isPublicHomepage && rootStyles.homeChip
+                  )}
+                >
                   <span aria-hidden="true" {...stylex.props(rootStyles.chipText)}>
-                    {i18n.t(theme)}
+                    {isPublicHomepage ? (
+                      <PublicControlIcon icon={theme === 'dark' ? 'sun' : 'moon'} />
+                    ) : (
+                      i18n.t(theme)
+                    )}
                   </span>
                   <select
                     id="theme"

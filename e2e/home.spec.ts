@@ -159,6 +159,29 @@ test.describe('public homepage at root', () => {
   });
 });
 
+test('privacy keeps the existing policy layout and public preferences at 320px', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.context().addCookies([
+    { name: 'locale', value: 'en', url: BASE_URL },
+    { name: 'theme', value: 'light', url: BASE_URL }
+  ]);
+  await page.goto('/privacy');
+  await waitForHydratedPage(page);
+  await expect(page.locator('[data-public-homepage], header img')).toHaveCount(0);
+  await expect(page.getByRole('main').locator('section[aria-labelledby]').first()).toBeVisible();
+  await expect(page.getByRole('main').locator('footer a')).toHaveAttribute('href', '/login');
+  await page.locator('#locale').selectOption('es');
+  await page.locator('#theme').selectOption('dark');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    homepageCopy('es').privacy.title
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+});
+
 test('login keeps its localized Welcome screen when loaded directly', async ({ page }) => {
   for (const locale of homepageLocales) {
     const copy = homepageCopy(locale);
