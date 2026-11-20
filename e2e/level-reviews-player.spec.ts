@@ -81,7 +81,12 @@ test('profile entry opens the request form with a read-only current level', asyn
   await expect(page).toHaveURL(/\/level-reviews\/new$/);
   await waitForHydratedPage(page);
   await expect(page.getByRole('heading', { level: 1, name: lr.request.title })).toBeVisible();
-  await expect(page.getByText('Your current level is 3.20')).toBeVisible();
+  await expect(page.getByText(lr.request.intro, { exact: true })).toBeVisible();
+  await expect(page.getByText(/^3\.20 · /)).toBeVisible();
+  await expect(page.getByRole('link', { name: lr.request.backLabel })).toHaveAttribute(
+    'href',
+    '/me'
+  );
   await expect(page.getByText(lr.request.currentHelper)).toBeVisible();
   // The current level is text, never a field.
   await expect(page.locator('input[value="3.20"], textarea:has-text("3.20")')).toHaveCount(0);

@@ -65,7 +65,7 @@ export function PlayerLevelReviewHistory({
       <header {...stylex.props(s.header)}>
         <div {...stylex.props(s.headingRow)}>
           <Link
-            to="/dashboard"
+            to="/me"
             aria-label={t('levelReview.request.backLabel')}
             {...stylex.props(s.backLink)}
           >

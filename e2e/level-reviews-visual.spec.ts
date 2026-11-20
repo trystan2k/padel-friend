@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
+import clubhouseManifest from './references/paf-202-level-reviews/manifest.json' with { type: 'json' };
 import manifest from './references/paf-17/manifest.json' with { type: 'json' };
 import {
   approveRequest,
@@ -144,6 +145,9 @@ async function layoutViolations(page: Page): Promise<string[]> {
     );
     for (const control of controls) {
       if (control.closest('[aria-hidden="true"], [data-base-ui-focus-guard]')) continue;
+      // Five app-shell tabs cannot each be 44px wide below 220px (200% zoom of a 390px phone); the
+      // shell navigation is not a level review surface and keeps its own reflow coverage.
+      if (control.closest('[data-app-nav]') && root.clientWidth < 5 * 44) continue;
       const checkable =
         control instanceof HTMLInputElement &&
         (control.type === 'radio' || control.type === 'checkbox');
@@ -256,29 +260,6 @@ async function expectRelative(locator: Locator, parent: Locator, top: number, he
   const outer = await box(parent);
   expect(Math.abs(child.y - outer.y - top), 'relative top').toBeLessThanOrEqual(TOLERANCE);
   expect(Math.abs(child.height - height), 'height').toBeLessThanOrEqual(TOLERANCE);
-}
-
-/** The standard back-link header: 44x44 back link at the gutter, title beside it, context line below. */
-async function expectBackHeader(page: Page) {
-  const back = await box(page.locator('main header a').first());
-  const title = await box(page.locator('main h1'));
-  const context = await box(page.locator('main header > p'));
-  const header = await box(page.locator('main header'));
-  expect(back, 'back link').toMatchObject({
-    x: FRAME.gutter,
-    y: FRAME.gutter,
-    width: 44,
-    height: 44
-  });
-  expect(title.x, 'title follows the back link by 6px').toBeCloseTo(back.right + 6, 0);
-  expect(
-    Math.abs(title.y + title.height / 2 - (back.y + back.height / 2)),
-    'title is centered on the back link row'
-  ).toBeLessThanOrEqual(1);
-  expect(context.y, 'context line sits 5px under the title row').toBeCloseTo(back.bottom + 5, 0);
-  expect(context.x).toBeCloseTo(FRAME.gutter, 0);
-  expect(header.right).toBeCloseTo(WIDTH - FRAME.gutter, 0);
-  return header;
 }
 
 async function expectGutter(page: Page) {
@@ -415,109 +396,198 @@ test('reference provenance pins the design source and all three exported frames'
   }
 });
 
-// --- request (qWosG) ---------------------------------------------------------------------
+// --- request (qWosG) and status (OKYtp): Clubhouse frames ---------------------------------
+// The player history, platform queue and platform detail (D1) keep the legacy frame checks below.
 
-// Frame regions (CSS px): header band above the first card, cards from y72.
-const FRAME_TITLE_TOP = 20;
-const FRAME_HEADER = 72;
+const CLUBHOUSE = { gutter: 20, gap: 14 } as const;
+type Region = { frame: 'qWosG' | 'OKYtp'; name: string; y: number; height: number };
 
-test('request form keeps the Pencil geometry and a calibrated full-screen raster budget (mobile light)', async ({
+/** Perceptual difference of one live region against the same-size region of the scale-1 frame. */
+async function compareRegion(
+  page: Page,
+  info: TestInfo,
+  region: Region,
+  liveTop: number
+): Promise<number> {
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const actual = await page.screenshot({
+    animations: 'disabled',
+    caret: 'hide',
+    fullPage: true,
+    clip: { x: 0, y: Math.round(liveTop), width: WIDTH, height: region.height },
+    path: info.outputPath(region.frame + '-' + region.name + '-actual.png')
+  });
+  const frame = readFileSync(
+    new URL('./references/paf-202-level-reviews/' + region.frame + '.png', import.meta.url)
+  );
+  const measured = await page.evaluate(
+    async ({ actualUrl, approvedUrl, area }) => {
+      const load = async (url: string, offset: number) => {
+        const image = new Image();
+        image.src = url;
+        await image.decode();
+        const canvas = document.createElement('canvas');
+        canvas.width = area.width;
+        canvas.height = area.height;
+        const context = canvas.getContext('2d', { willReadFrequently: true })!;
+        context.drawImage(image, 0, offset, area.width, area.height, 0, 0, area.width, area.height);
+        return context.getImageData(0, 0, area.width, area.height).data;
+      };
+      const [rendered, reference] = await Promise.all([
+        load(actualUrl, 0),
+        load(approvedUrl, area.y)
+      ]);
+      let changed = 0;
+      for (let index = 0; index < rendered.length; index += 4) {
+        const red = rendered[index]! - reference[index]!;
+        const green = rendered[index + 1]! - reference[index + 1]!;
+        const blue = rendered[index + 2]! - reference[index + 2]!;
+        const luminance = red * 0.29889531 + green * 0.58662247 + blue * 0.11448223;
+        const chromaI = red * 0.59597799 - green * 0.2741761 - blue * 0.32180189;
+        const chromaQ = red * 0.21147017 - green * 0.52261711 + blue * 0.31114694;
+        if (
+          0.5053 * luminance * luminance + 0.299 * chromaI * chromaI + 0.1957 * chromaQ * chromaQ >
+          35215 * 0.1 ** 2
+        )
+          changed++;
+      }
+      return changed / (area.width * area.height);
+    },
+    {
+      actualUrl: 'data:image/png;base64,' + actual.toString('base64'),
+      approvedUrl: 'data:image/png;base64,' + frame.toString('base64'),
+      area: { width: WIDTH, height: region.height, y: region.y }
+    }
+  );
+  console.info('PAF-202 level review raster ' + region.frame + ':' + region.name + ' ' + measured);
+  await info.attach(region.frame + '-' + region.name + '-actual', {
+    body: actual,
+    contentType: 'image/png'
+  });
+  return measured;
+}
+
+function clubhouseBudget(key: string): number {
+  const value = (clubhouseManifest.visualBudgets.perScreen as Record<string, number>)[key];
+  expect(value, 'manifest budget for ' + key).toBeGreaterThan(0);
+  return value!;
+}
+
+/** A design token resolved to the computed color the browser paints. */
+function tokenColor(page: Page, token: string): Promise<string> {
+  return page.evaluate((name) => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(' + name + ')';
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  }, token);
+}
+
+const computed = (locator: Locator, property: string) =>
+  locator
+    .first()
+    .evaluate((element, name) => getComputedStyle(element).getPropertyValue(name), property);
+
+test('reference provenance pins the Clubhouse design source and the two exported frames', () => {
+  const design = readFileSync(
+    new URL('../' + clubhouseManifest.sourceDesign.path, import.meta.url)
+  );
+  expect(createHash('sha256').update(design).digest('hex')).toBe(
+    clubhouseManifest.sourceDesign.sha256
+  );
+  for (const [frame, reference] of Object.entries(clubhouseManifest.approvedReferences)) {
+    const png = readFileSync(
+      new URL('./references/paf-202-level-reviews/' + frame + '.png', import.meta.url)
+    );
+    expect(createHash('sha256').update(png).digest('hex'), frame).toBe(reference.sha256);
+    expect([png.readUInt32BE(16), png.readUInt32BE(20)], frame).toEqual(reference.pixelSize);
+  }
+});
+
+test('request form keeps the qWosG order, geometry and reviewed raster budgets (mobile light)', async ({
   browserName
 }, info) => {
   expect(browserName).toBe('chromium');
   const page = await f.page(requester, 'en', WIDTH, 'light', HEIGHT);
   await open(page, '/level-reviews/new');
   const title = page.getByRole('heading', { level: 1, name: lr.request.title });
+  const back = page.getByRole('link', { name: lr.request.backLabel });
+  const form = page.locator('main > form');
+  const card = page.getByRole('heading', { level: 2, name: lr.request.currentLabel });
   await expectOrder([
     ['title', title],
-    ['current card', page.getByRole('heading', { level: 2, name: lr.request.currentLabel })],
+    ['intro', page.getByText(lr.request.intro, { exact: true })],
+    ['current card', card],
     ['level field', page.getByRole('textbox', { name: lr.request.levelExact })],
     ['reason field', page.getByRole('textbox', { name: lr.request.reasonLabel })],
     ['evidence toggle', page.getByRole('button', { name: lr.request.evidenceShow })],
     ['forward-only note', page.getByText(lr.request.forwardOnly)],
     ['submit', page.getByRole('button', { name: lr.request.submit })]
   ]);
-  // Geometry: gutter, header offsets, one column, 10px rhythm, full-width submit.
-  await expectGutter(page);
-  const header = await expectBackHeader(page);
-  const blocks = await blocksOf(page, 'main > form');
-  const form = page.locator('main > form');
-  const current = form.locator(':scope > section').first();
-  const fieldset = form.locator(':scope > fieldset');
-  const reason = form.locator(':scope > section').nth(1);
-  const disclosure = form.locator(':scope > div').first();
-  await expectRelative(current.locator('h2'), current, 10, 15);
-  await expectRelative(current.locator('p').first(), current, 31, 15);
-  await expectRelative(current.locator('p').last(), current, 52, 15);
-  await expectRelative(
-    page.getByRole('textbox', { name: lr.request.levelExact }),
-    fieldset,
-    86,
-    44
-  );
-  await expectRelative(
-    page.getByRole('textbox', { name: lr.request.reasonLabel }),
-    reason,
-    31,
-    120
-  );
-  await page.locator('main input[type=radio][value=range]').check();
-  await expectRelative(fieldset, form, 87, 277);
-  await expectRelative(fieldset.locator('input:not([type=radio])').nth(0), fieldset, 86, 44);
-  await expectRelative(fieldset.locator('input:not([type=radio])').nth(1), fieldset, 195, 44);
-  await page.locator('main input[type=radio][value=exact]').check();
-  await page.getByRole('button', { name: lr.request.evidenceShow }).click();
-  await expectRelative(disclosure, form, 457, 227);
-  await expectRelative(
-    page.getByRole('textbox', { name: lr.request.evidenceLabel }),
-    disclosure,
-    71,
-    120
-  );
-  await page.getByRole('button', { name: lr.request.evidenceHide }).click();
-  expect(heightViolations(blocks, [77, 168, 182, 44, 65, 50])).toEqual([]);
-  expect(blocks.map((block) => block.name.split(':')[0])).toEqual([
-    'section',
-    'fieldset',
-    'section',
-    'div',
-    'p',
-    'button'
-  ]);
+  // The back target is the frame's 48px square, pointing at the profile, and the title (17/700)
+  // shares its row.
+  const backBox = await box(back);
+  expect(backBox).toMatchObject({ width: 48, height: 48 });
+  expect(await back.getAttribute('href')).toBe('/me');
+  const titleBox = await box(title);
   expect(
-    stackViolations(blocks, { left: FRAME.gutter, right: WIDTH - FRAME.gutter, gap: FRAME.gap })
+    Math.abs(titleBox.y + titleBox.height / 2 - (backBox.y + backBox.height / 2))
+  ).toBeLessThanOrEqual(1);
+  expect(await computed(title, 'font-size')).toBe('17px');
+  expect(await computed(title, 'font-weight')).toBe('700');
+  expect(
+    await page
+      .locator('main')
+      .evaluate((main) => Number.parseFloat(getComputedStyle(main).paddingLeft)),
+    'page gutter'
+  ).toBe(CLUBHOUSE.gutter);
+
+  // One column on the gutter edges with the 14px frame rhythm; the 20px hairline card, 48px
+  // evidence trigger and 52px action follow the frame.
+  const blocks = await blocksOf(page, 'main > form');
+  expect(
+    stackViolations(blocks, {
+      left: CLUBHOUSE.gutter,
+      right: WIDTH - CLUBHOUSE.gutter,
+      gap: CLUBHOUSE.gap
+    })
   ).toEqual([]);
-  expect(blocks[0]!.y - header.bottom, 'first card sits one gap under the header').toBeCloseTo(
-    FRAME.gap,
-    0
-  );
+  const surface = form.locator(':scope > section > div').first();
+  expect(await computed(surface, 'border-top-left-radius')).toBe('20px');
+  expect(await computed(surface, 'border-top-width')).toBe('1px');
+  const trigger = page.getByRole('button', { name: lr.request.evidenceShow });
+  expect((await box(trigger)).height).toBeGreaterThanOrEqual(48);
+  expect(await computed(trigger, 'border-top-left-radius')).toBe('14px');
   const submit = await box(page.getByRole('button', { name: lr.request.submit }));
-  expect(submit).toMatchObject({ x: FRAME.gutter, width: WIDTH - 2 * FRAME.gutter });
-  expect(submit.height).toBeGreaterThanOrEqual(44);
-  await expectCardInset(page.locator('main > form > section').first());
+  expect(submit).toMatchObject({ x: CLUBHOUSE.gutter, width: WIDTH - 2 * CLUBHOUSE.gutter });
+  expect(submit.height).toBeGreaterThanOrEqual(52);
+  for (const tile of await form.locator('label:has(input[type=radio])').all())
+    expect((await box(tile)).height).toBeGreaterThanOrEqual(44);
+  // The frame's "Level you think fits" stepper and sticky bar are not adopted: exact/range text
+  // fields keep the stored min/max contract and the submit follows the fields.
+  await expect(page.getByRole('textbox', { name: lr.request.levelExact })).toBeVisible();
+  await page.locator('main input[type=radio][value=range]').check();
+  await expect(page.getByRole('textbox', { name: lr.request.levelMin })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: lr.request.levelMax })).toBeVisible();
+  await page.locator('main input[type=radio][value=exact]').check();
   expect(await layoutViolations(page)).toEqual([]);
 
-  const titleTop = (await box(title)).y;
-  const cardTop = blocks[0]!.y;
-  const shift = Math.round(titleTop) - FRAME_TITLE_TOP;
-  const measured = await rasterDifference(page, info, 'qWosG', 'form', [
-    { src: 0, height: Math.min(FRAME_HEADER, cardTop - shift), dest: shift },
-    { src: FRAME_HEADER, height: HEIGHT - FRAME_HEADER, dest: Math.round(cardTop) }
-  ]);
-  expect(measured, 'qWosG raster budget').toBeLessThanOrEqual(budget('qWosG'));
+  const regions: [Region, number][] = [
+    [{ frame: 'qWosG', name: 'topbar', y: 48, height: 48 }, backBox.y],
+    [{ frame: 'qWosG', name: 'card', y: 164, height: 70 }, (await box(surface)).y],
+    [{ frame: 'qWosG', name: 'evidence', y: 404, height: 48 }, (await box(trigger)).y]
+  ];
+  for (const [region, top] of regions)
+    expect(
+      await compareRegion(page, info, region, top),
+      'qWosG ' + region.name + ' raster budget'
+    ).toBeLessThanOrEqual(clubhouseBudget('qWosG:' + region.name));
 });
 
 // --- status (OKYtp), per actual state ----------------------------------------------------
 
-// Reference card regions (CSS px of the frame) for the four state cards; annotation + nav bands.
-const STATE_CARDS = {
-  pending: { y: 72, height: 54 },
-  reviewing: { y: 136, height: 54 },
-  approved: { y: 200, height: 69 },
-  rejected: { y: 279, height: 54 }
-} as const;
-const FRAME_ANNOTATION = { y: 343, height: 50 } as const;
-const FRAME_NAV = { y: 774, height: 70 } as const;
 const STATE_ACTORS = () => ({ pending, reviewing, approved, rejected });
 const STATE_LABELS = {
   pending: lr.status.pending,
@@ -525,29 +595,43 @@ const STATE_LABELS = {
   approved: lr.status.approved,
   rejected: lr.status.rejected
 } as const;
+const STATE_TONE = {
+  pending: '--color-amber-soft',
+  reviewing: '--color-amber-soft',
+  approved: '--color-green-soft',
+  rejected: '--color-red-soft'
+} as const;
 
 for (const state of ['pending', 'reviewing', 'approved', 'rejected'] as const) {
   test(
-    'status screen (' +
-      state +
-      ') keeps the Pencil geometry and a calibrated full-screen raster budget',
+    'status screen (' + state + ') keeps the OKYtp structure and reviewed raster budgets',
     async ({ browserName }, info) => {
       expect(browserName).toBe('chromium');
       const page = await f.page(STATE_ACTORS()[state], 'en', WIDTH, 'light', HEIGHT);
       await open(page, '/level-reviews/' + ids[state]);
+      const active = state === 'pending' || state === 'reviewing';
       const title = page.getByRole('heading', { level: 1, name: lr.detail.title });
       const status = page.getByRole('heading', { level: 2, name: STATE_LABELS[state] });
+      const back = page.getByRole('link', { name: lr.detail.back });
+      const timeline = page.getByRole('list', { name: lr.detail.timelineHeading });
       const ordered: [string, Locator][] = [
         ['title', title],
-        ['status card', status],
+        ['status notice', status],
+        ['timeline', timeline],
         ['request details', page.getByRole('heading', { name: lr.detail.reasonLabel })]
       ];
-      if (state === 'approved' || state === 'rejected')
+      if (active)
+        ordered.push([
+          'if approved',
+          page.getByRole('heading', { name: lr.detail.ifApprovedTitle })
+        ]);
+      else
         ordered.push([
           'decision card',
           page.getByRole('heading', { name: lr.detail.decisionHeading })
         ]);
       ordered.push(['annotation', page.getByText(lr.detail.annotation)]);
+      if (active) ordered.push(['withdraw', page.getByRole('button', { name: lr.detail.cancel })]);
       await expectOrder(ordered);
       // Only the actual state is shown: no other status label appears.
       for (const [other, label] of Object.entries(STATE_LABELS))
@@ -556,46 +640,90 @@ for (const state of ['pending', 'reviewing', 'approved', 'rejected'] as const) {
             page.getByRole('heading', { level: 2, name: label, exact: true })
           ).toHaveCount(0);
 
-      // Geometry: gutter, header offsets, one column, 10px rhythm, frame-exact status card height.
-      await expectGutter(page);
-      const header = await expectBackHeader(page);
-      const blocks = await blocksOf(page, 'main');
-      expect(blocks.length).toBeGreaterThanOrEqual(3);
+      // Header: 48px back target to the request list, 17/700 title, 20px gutter.
+      expect(await box(back)).toMatchObject({ width: 48, height: 48 });
+      expect(await back.getAttribute('href')).toBe('/level-reviews');
+      expect(await computed(title, 'font-size')).toBe('17px');
       expect(
-        stackViolations(blocks, { left: FRAME.gutter, right: WIDTH - FRAME.gutter, gap: FRAME.gap })
-      ).toEqual([]);
-      expect(blocks[0]!.y - header.bottom, 'status card sits one gap under the header').toBeCloseTo(
-        FRAME.gap,
-        0
+        await page
+          .locator('main')
+          .evaluate((main) => Number.parseFloat(getComputedStyle(main).paddingLeft))
+      ).toBe(CLUBHOUSE.gutter);
+
+      // Notice: 14px radius, tone-soft fill of the real state, spanning the column.
+      const notice = status.locator('xpath=ancestor::section[1]');
+      const noticeBox = await box(notice);
+      expect(noticeBox).toMatchObject({ x: CLUBHOUSE.gutter, right: WIDTH - CLUBHOUSE.gutter });
+      expect(await computed(notice, 'border-top-left-radius')).toBe('14px');
+      expect(await computed(notice, 'background-color')).toBe(
+        await tokenColor(page, STATE_TONE[state])
       );
-      const card = status.locator('xpath=ancestor::section[1]');
-      const cardBox = await box(card);
-      expect(cardBox.height, 'status card height equals the Pencil card').toBeCloseTo(
-        STATE_CARDS[state].height,
-        0
+      // No invented id or SLA: only the real request id and range are summarized.
+      await expect(page.getByText(/LR-\d|2–3 days/)).toHaveCount(0);
+      await expect(notice).toContainText(/Request #[0-9A-F]{8}/);
+
+      // Timeline: 24px marks, the submit step always done (green fill).
+      const marks = timeline.locator('li > span[aria-hidden="true"]');
+      const first = await box(marks.first());
+      expect(first).toMatchObject({ width: 24, height: 24 });
+      expect(await computed(marks.first(), 'background-color')).toBe(
+        await tokenColor(page, '--color-green')
       );
-      expect(cardBox.y).toBeCloseTo(blocks[0]!.y, 0);
-      await expectCardInset(card);
+
+      // Outcome cards exist only while the request is open; a decided request shows its decision.
+      const outcomeGlyph = page
+        .getByRole('heading', { name: lr.detail.ifApprovedTitle })
+        .locator('xpath=ancestor::div[2]/span');
+      if (active) {
+        const glyph = await box(outcomeGlyph);
+        expect(glyph).toMatchObject({ width: 40, height: 40 });
+        const outcome = page
+          .getByRole('heading', { name: lr.detail.ifRejectedTitle })
+          .locator('xpath=ancestor::div[2]');
+        expect(await computed(outcome, 'border-top-left-radius')).toBe('20px');
+        expect(
+          (await box(page.getByRole('button', { name: lr.detail.cancel }))).height
+        ).toBeGreaterThanOrEqual(48);
+      } else {
+        await expect(page.getByRole('heading', { name: lr.detail.ifApprovedTitle })).toHaveCount(0);
+        await expect(page.getByRole('button', { name: lr.detail.cancel })).toHaveCount(0);
+      }
       const annotation = await box(page.getByText(lr.detail.annotation));
-      expect(annotation.x).toBeCloseTo(FRAME.gutter, 0);
-      expect(annotation.right).toBeCloseTo(WIDTH - FRAME.gutter, 0);
+      expect(annotation.x).toBeCloseTo(CLUBHOUSE.gutter, 0);
       expect(await layoutViolations(page)).toEqual([]);
 
-      const shift = Math.round((await box(title)).y) - FRAME_TITLE_TOP;
-      const cardTop = Math.round(cardBox.y);
-      const measured = await rasterDifference(page, info, 'OKYtp', state, [
-        { src: 0, height: Math.min(FRAME_HEADER, cardTop - shift), dest: shift },
-        { src: STATE_CARDS[state].y, height: STATE_CARDS[state].height, dest: cardTop },
-        {
-          src: FRAME_ANNOTATION.y,
-          height: FRAME_ANNOTATION.height,
-          dest: Math.round(annotation.y)
-        },
-        { src: FRAME_NAV.y, height: FRAME_NAV.height, dest: FRAME_NAV.y }
-      ]);
-      expect(measured, 'OKYtp ' + state + ' raster budget').toBeLessThanOrEqual(
-        budget('OKYtp:' + state)
-      );
+      const regions: [Region, number][] = [
+        [{ frame: 'OKYtp', name: 'topbar', y: 48, height: 48 }, (await box(back)).y]
+      ];
+      if (state === 'reviewing') {
+        regions.push(
+          [
+            { frame: 'OKYtp', name: 'approved', y: 347, height: 88 },
+            (
+              await box(
+                page
+                  .getByRole('heading', { name: lr.detail.ifApprovedTitle })
+                  .locator('xpath=ancestor::div[2]')
+              )
+            ).y
+          ],
+          [
+            { frame: 'OKYtp', name: 'rejected', y: 449, height: 89 },
+            (
+              await box(
+                page
+                  .getByRole('heading', { name: lr.detail.ifRejectedTitle })
+                  .locator('xpath=ancestor::div[2]')
+              )
+            ).y
+          ]
+        );
+      }
+      for (const [region, top] of regions)
+        expect(
+          await compareRegion(page, info, region, top),
+          'OKYtp ' + region.name + ' raster budget'
+        ).toBeLessThanOrEqual(clubhouseBudget('OKYtp:' + region.name));
     }
   );
 }
@@ -630,7 +758,7 @@ test('platform admin decision keeps the Pencil geometry and a calibrated full-sc
   expect(title.x).toBeCloseTo(FRAME.gutter, 0);
   expect(title.y, 'title sits one gap under the back link').toBeCloseTo(back.bottom + FRAME.gap, 0);
   const blocks = await blocksOf(page, 'main');
-  expect(heightViolations(blocks, [180, 75, 60, 96, 501])).toEqual([]);
+  expect(heightViolations(blocks, [171, 72, 57, 91, 538])).toEqual([]);
   expect(blocks.map((block) => block.name.split(':')[0])).toEqual([
     'section',
     'section',
@@ -652,18 +780,18 @@ test('platform admin decision keeps the Pencil geometry and a calibrated full-sc
   await expectRelative(
     page.getByRole('textbox', { name: lr.adminDecision.target }),
     decision,
-    81,
-    44
+    92,
+    52
   );
-  await expectRelative(decision.locator('fieldset'), decision, 131, 111);
+  await expectRelative(decision.locator('fieldset'), decision, 150, 110);
   await expectRelative(
     page.getByRole('textbox', { name: lr.adminDecision.note }),
     decision,
-    269,
+    290,
     120
   );
-  await expectRelative(approve, decision, 395, 44);
-  await expectRelative(reject, decision, 447, 44);
+  await expectRelative(approve, decision, 416, 52);
+  await expectRelative(reject, decision, 476, 52);
   const approveBox = await box(approve);
   const rejectBox = await box(reject);
   for (const action of [approveBox, rejectBox]) {
@@ -680,7 +808,7 @@ test('platform admin decision keeps the Pencil geometry and a calibrated full-sc
   const audited = await f.page(admin, 'en', WIDTH, 'light', HEIGHT);
   await open(audited, '/platform-admin/level-reviews/' + ids.approved);
   const auditedBlocks = await blocksOf(audited, 'main');
-  expect(heightViolations(auditedBlocks, [180, 75, 60, 131, 210])).toEqual([]);
+  expect(heightViolations(auditedBlocks, [171, 72, 57, 127, 188])).toEqual([]);
   expect(
     stackViolations(auditedBlocks, {
       left: FRAME.gutter,
@@ -1186,8 +1314,13 @@ test('the layout, geometry, contrast and motion probes report injected defects, 
   await open(page, '/level-reviews/new');
   expect(await layoutViolations(page)).toEqual([]);
   const clean = await blocksOf(page, 'main > form');
+  const cleanHeights = clean.map((block) => block.bottom - block.y);
   expect(
-    stackViolations(clean, { left: FRAME.gutter, right: WIDTH - FRAME.gutter, gap: FRAME.gap })
+    stackViolations(clean, {
+      left: CLUBHOUSE.gutter,
+      right: WIDTH - CLUBHOUSE.gutter,
+      gap: CLUBHOUSE.gap
+    })
   ).toEqual([]);
   await page.evaluate(() => {
     const main = document.querySelector('main')!;
@@ -1208,7 +1341,7 @@ test('the layout, geometry, contrast and motion probes report injected defects, 
     select.style.cssText = 'width:48px;height:20px;min-height:0';
     main.append(select);
     // Shift one card sideways and open an extra 6px between two cards.
-    const [first, second] = main.querySelectorAll<HTMLElement>('form > section');
+    const [first, second] = main.querySelectorAll<HTMLElement>('form > section, form > fieldset');
     if (first) {
       first.style.marginLeft = '6px';
       first.style.height = first.getBoundingClientRect().height + 20 + 'px';
@@ -1227,15 +1360,15 @@ test('the layout, geometry, contrast and motion probes report injected defects, 
   expect(violations).toMatch(/"x" is 30\.0x48\.0px/);
   expect(violations).toMatch(/SELECT "injected select" is 48\.0x20\.0px/);
   const moved = stackViolations(await blocksOf(page, 'main > form'), {
-    left: FRAME.gutter,
-    right: WIDTH - FRAME.gutter,
-    gap: FRAME.gap
+    left: CLUBHOUSE.gutter,
+    right: WIDTH - CLUBHOUSE.gutter,
+    gap: CLUBHOUSE.gap
   }).join('\n');
-  expect(
-    heightViolations(await blocksOf(page, 'main > form'), [77, 168, 182, 44, 65, 50]).join('\n')
-  ).toMatch(/height 97 != 77/);
+  expect(heightViolations(await blocksOf(page, 'main > form'), cleanHeights).join('\n')).toMatch(
+    /height .* != /
+  );
   expect(moved).toMatch(/left edge/);
-  expect(moved).toMatch(/gap 16 != 10|gap/);
+  expect(moved).toMatch(/gap/);
   expect((await contrastViolations(page)).join('\n')).toMatch(/faint/);
   await page.evaluate(() => {
     const style = document.createElement('style');

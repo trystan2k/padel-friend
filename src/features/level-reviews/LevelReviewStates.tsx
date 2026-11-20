@@ -26,12 +26,12 @@ export function LevelReviewLoadError({
   code,
   onRetry,
   returnPath = '/level-reviews',
-  backTo = '/dashboard'
+  backTo = '/me'
 }: {
   code: LevelReviewErrorCode;
   onRetry?: () => void;
   returnPath?: string;
-  backTo?: '/dashboard' | '/level-reviews';
+  backTo?: '/me' | '/level-reviews';
 }) {
   const { t } = useTranslation();
   const kind = levelReviewErrorKind(code);
@@ -61,9 +61,7 @@ export function LevelReviewLoadError({
             </button>
           )}
           <Link to={backTo} {...stylex.props(s.actionLink)}>
-            {t(
-              backTo === '/dashboard' ? 'levelReview.request.backLabel' : 'levelReview.detail.back'
-            )}
+            {t(backTo === '/me' ? 'levelReview.request.backLabel' : 'levelReview.detail.back')}
           </Link>
         </div>
       </div>
