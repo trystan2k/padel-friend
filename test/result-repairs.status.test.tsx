@@ -13,6 +13,7 @@ vi.mock('../src/features/result-repairs/repair.functions', () => ({
   retryResultRepair: mocks.retry
 }));
 
+import { ResultRepairLoadError } from '../src/features/result-repairs/ResultRepairLoadError';
 import { ResultRepairStatus } from '../src/features/result-repairs/ResultRepairStatus';
 
 const job: ResultRepairJob = {
@@ -53,6 +54,40 @@ async function openRetryDialog(onChanged: () => void | Promise<void>) {
     confirm: () => user.click(screen.getAllByRole('button', { name: 'Retry update' }).at(-1)!)
   };
 }
+
+describe('diagnostics load error', () => {
+  it.each([
+    ['en', 'Repair diagnostics', 'Try again'],
+    ['pt-BR', 'Diagnóstico de reparos', 'Tentar novamente'],
+    ['es', 'Diagnóstico de reparaciones', 'Intentar de nuevo']
+  ] as const)(
+    'shows translated denial and recoverable errors in %s',
+    async (locale, title, retry) => {
+      const onRetry = vi.fn<() => void>();
+      const i18n = createI18n(locale);
+      const { rerender } = render(
+        <I18nextProvider i18n={i18n}>
+          <ResultRepairLoadError code="forbidden" onRetry={onRetry} />
+        </I18nextProvider>
+      );
+      expect(screen.getByRole('heading', { name: title })).toBeTruthy();
+      expect(screen.getByRole('alert').textContent?.trim()).toBe(
+        i18n.t('matches.corrections.diagnostics.denied')
+      );
+      expect(screen.queryByRole('button')).toBeNull();
+      rerender(
+        <I18nextProvider i18n={i18n}>
+          <ResultRepairLoadError code="unavailable" onRetry={onRetry} />
+        </I18nextProvider>
+      );
+      expect(screen.getByRole('alert').textContent?.trim()).toBe(
+        i18n.t('matches.corrections.diagnostics.unavailable')
+      );
+      await userEvent.click(screen.getByRole('button', { name: retry }));
+      expect(onRetry).toHaveBeenCalledOnce();
+    }
+  );
+});
 
 describe('result repair retry connectivity', () => {
   it('sends nothing offline and keeps the dialog open with an offline alert', async () => {

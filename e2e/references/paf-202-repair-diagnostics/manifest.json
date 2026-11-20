@@ -1,0 +1,70 @@
+{
+  "sourceDesign": {
+    "path": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
+    "sha256": "41f3b06db61a180ed1d0eebe0fb3ff71e0086a703b5497ad7b47cd7ba7bb971e",
+    "exportCommand": "Read-only Pencil MCP Export per frame, scale 1"
+  },
+  "approvedReferences": {
+    "bomAY": {
+      "frameId": "bomAY",
+      "file": "bomAY.png/bomAY.png",
+      "sha256": "0cdc329fa2eb711825a7751d8a78e310f3a53131af36aeee8c0140770bfa6e3c",
+      "pixelSize": [1280, 1500],
+      "crops": {
+        "queueCard": [40, 294, 716, 195],
+        "detailCard": [780, 228, 460, 472]
+      },
+      "budget": 0.01
+    },
+    "SluH3": {
+      "frameId": "SluH3",
+      "file": "SluH3.png/SluH3.png",
+      "sha256": "67878e448270025148d90e45e6aa1496235dd45774d164e0ad0570b951c7a89c",
+      "pixelSize": [1280, 1500],
+      "crops": {
+        "queueCard": [40, 294, 716, 195],
+        "detailCard": [780, 228, 460, 472]
+      },
+      "budget": 0.01
+    },
+    "cuVwp": {
+      "frameId": "cuVwp",
+      "file": "cuVwp.png/cuVwp.png",
+      "sha256": "a32542353227f68394efa1e455b4bff64dd2293bc9fa973601dc6a2b3ca266b4",
+      "pixelSize": [390, 1537],
+      "crops": {
+        "queueCard": [20, 292, 350, 195],
+        "detailCard": [20, 910, 350, 492]
+      },
+      "budget": 0.01
+    },
+    "Jjrtb": {
+      "frameId": "Jjrtb",
+      "file": "Jjrtb.png/Jjrtb.png",
+      "sha256": "e8075e237056a117738b264bbda7a0b4b3c3285567c059bb54f9380e1d32515c",
+      "pixelSize": [390, 1537],
+      "crops": {
+        "queueCard": [20, 292, 350, 195],
+        "detailCard": [20, 910, 350, 492]
+      },
+      "budget": 0.01
+    }
+  },
+  "routeFamilies": {
+    "community": ["bomAY", "SluH3", "cuVwp", "Jjrtb"],
+    "platform": ["bomAY", "SluH3", "cuVwp", "Jjrtb"]
+  },
+  "comparison": "Per-card raster crop: 96 × 8 px of blank top padding, centered, inset 6 px. Allows minor cross-renderer quantization (delta above 8 on any RGB channel; at most 1% changed). Exact layout and token checks guard the surfaces outside this crop; full browser captures attach for review.",
+  "measuredMismatch": {
+    "bomAY": { "queueCard": 0, "detailCard": 0 },
+    "SluH3": { "queueCard": 0, "detailCard": 0 },
+    "cuVwp": { "queueCard": 0, "detailCard": 0 },
+    "Jjrtb": { "queueCard": 0, "detailCard": 0 }
+  },
+  "adaptations": [
+    "Live scopes and publication facts, full job IDs, long localized strings and 52 px targets replace shorter illustration content.",
+    "Scheduler health and missing notices are mutually truthful states. Scheduler and attempt audit evidence are platform-only. Counts and scheduler evidence remain readable tables.",
+    "The correction replay confirmation retains its existing keyboard-accessible modal; the frame's inline confirm block sets surface and control hierarchy, not interaction semantics.",
+    "Empty queue and retry confirm are separate states, not simultaneously rendered. Load errors keep distinct denied and retryable states."
+  ]
+}

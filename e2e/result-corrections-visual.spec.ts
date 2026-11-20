@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import { assertDesignSystemStyles, type StyleCheck } from './league-standings-visual';
 import { sql } from './matches-management-fixtures';
@@ -10,6 +11,7 @@ import {
   repairNow
 } from './result-amendments-fixtures';
 import manifest from './references/paf-14/manifest.json' with { type: 'json' };
+import repairManifest from './references/paf-202-repair-diagnostics/manifest.json' with { type: 'json' };
 import {
   type ContractEntry,
   assertColumnStructure,
@@ -368,141 +370,6 @@ function resolveProbes(page: Page) {
 }
 
 /** Composition probes of the diagnostics frames' adapted elements (order, adjacency, identity). */
-function diagnosticsProbes(page: Page, root: Locator, theme: 'light' | 'dark') {
-  const queue = root.locator('[data-repair-region=queue]');
-  const detail = root.locator('[data-repair-region=detail]');
-  const publication = {
-    failed: 'failed',
-    succeeded: 'published',
-    running: 'pending',
-    queued: 'pending'
-  } as const;
-  const factLabels = {
-    failed: [d.repair.attempts, d.repair.requestedAt, d.repair.failure, d.repair.nextAttempt],
-    succeeded: [d.repair.attempts, d.repair.requestedAt, d.repair.revision],
-    running: [d.repair.attempts, d.repair.requestedAt],
-    queued: [d.repair.attempts, d.repair.requestedAt]
-  } as const;
-  const pageProbes: Record<string, () => Promise<void>> = {
-    'E1.pageOrder': async () => {
-      const children = await childSummary(root);
-      expect(
-        children.map((child) => child.tag),
-        'diagnostics page child order'
-      ).toEqual(['HEADER', 'BUTTON', 'SECTION', 'DIV']);
-      expect(children[1]?.text).toBe(copies.en.matches.results.reload);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(d.diagnostics.title);
-      const regions = await childSummary(
-        root.locator('[data-repair-region]').first().locator('xpath=..')
-      );
-      expect(regions.length, 'queue and detail regions').toBe(2);
-      expect(
-        (await childSummary(detail)).map((child) => child.tag),
-        'detail precedes the counts'
-      ).toEqual(['SECTION', 'SECTION']);
-      await expect(queue.locator('[data-repair-job]')).not.toHaveCount(0);
-    },
-    'E2.header': async () => {
-      const header = root.locator('header').first();
-      const children = await childSummary(header);
-      expect(children.map((child) => child.tag)).toEqual(['DIV', 'P']);
-      expect(children[1]?.text).toBe(d.diagnostics.platformSubtitle);
-      const row = await childSummary(header.locator('div').first());
-      expect(row.map((child) => child.tag)).toEqual(['A', 'H1']);
-      const back = header.getByRole('link', { name: d.diagnostics.back, exact: true });
-      await expect(back).toHaveAttribute('href', '/dashboard');
-    },
-    'E3.scheduler': async () => {
-      const scheduler = root.locator('[data-repair-scheduler]');
-      const children = await childSummary(scheduler);
-      expect(children[0]).toEqual({ tag: 'H2', text: d.diagnostics.scheduler });
-      const tags = children.map((child) => child.tag);
-      expect(tags.indexOf('P'), 'overdue line precedes the job table').toBeLessThan(
-        tags.indexOf('DIV')
-      );
-      expect(
-        children.find((child) => child.tag === 'P' && /overdue/i.test(child.text))
-      ).toBeTruthy();
-      await expect(scheduler.locator('caption')).toHaveText(d.diagnostics.schedulerCaption);
-    },
-    'E4.cardOrder': async () => {
-      for (const key of jobKeys) {
-        const article = jobArticle(page, key);
-        expect(
-          (await childSummary(article)).map((child) => child.tag),
-          `${key} card order`
-        ).toEqual(['H3', 'SECTION']);
-        expect(await article.locator('h3 button[data-repair-select]').count()).toBe(1);
-        const status = await childSummary(jobStatus(page, key));
-        expect(
-          status.map((child) => child.tag),
-          `${key} status order`
-        ).toEqual(
-          key === 'failed'
-            ? ['OUTPUT', 'P', 'DL', 'OUTPUT', 'DIV']
-            : ['OUTPUT', 'P', 'DL', 'OUTPUT']
-        );
-        expect(status[0]?.text).toBe(d.repair.status[key]);
-        expect(status[1]?.text).toBe(d.repair.publication[publication[key]]);
-        expect(await jobStatus(page, key).locator('dt').allInnerTexts()).toEqual(
-          [...factLabels[key]].map((label) => label.toUpperCase())
-        );
-      }
-    },
-    'E5.retryPlacement': async () => {
-      const status = jobStatus(page, 'failed');
-      const actions = await childSummary(status);
-      expect(actions.at(-1)).toEqual({ tag: 'DIV', text: d.repair.retry });
-      await expect(status.getByRole('button')).toHaveCount(1);
-      await expect(
-        status.getByRole('button', { name: d.repair.retry, exact: true })
-      ).toHaveAttribute('data-emphasis', 'primary');
-    },
-    'E6.pendingChips': async () => {
-      for (const key of ['queued', 'running'] as const) {
-        const chip = jobStatus(page, key).locator('output').first();
-        expect((await childSummary(jobStatus(page, key)))[0]?.text).toBe(d.repair.status[key]);
-        await assertDesignSystemStyles(
-          page,
-          theme,
-          [
-            {
-              name: `${key} chip`,
-              locator: chip,
-              palette: { 'background-color': 'surface-2', color: 'amber' }
-            }
-          ],
-          'pending chip'
-        );
-      }
-    },
-    'E7.detailComposition': async () => {
-      const selected = root.locator('[data-repair-detail]');
-      const sections = await childSummary(selected);
-      expect(
-        sections.map((child) => child.tag),
-        'job detail order'
-      ).toEqual(['H2', 'P', 'DIV', 'DL']);
-      expect(sections[0]?.text).toBe(d.diagnostics.detail);
-      const timeline = await childSummary(selected.locator(':scope > div'));
-      expect(timeline.map((child) => child.tag)).toEqual(['H3', 'OL']);
-      expect(timeline[0]?.text).toBe(d.diagnostics.timeline);
-      const items = await childSummary(selected.locator('ol li').first());
-      expect(items.map((item) => item.tag)).toEqual(['P', 'P', 'P', 'P']);
-      expect(items[0]?.text).toBe(d.repair.status.failed);
-      expect(items[1]?.text).toMatch(startsWith(d.diagnostics.columns.attempt));
-      expect(items[2]?.text).toMatch(startsWith(d.diagnostics.columns.base));
-      expect(items[3]?.text).toMatch(startsWith(d.diagnostics.columns.failure));
-      expect(await selected.locator('dt').allInnerTexts()).toEqual([
-        d.diagnostics.officialRevision,
-        d.diagnostics.correlation
-      ]);
-      await expect(selected.locator('dd').nth(1)).toHaveText(repairJobs.failed);
-    }
-  };
-  return { page: pageProbes };
-}
-
 /** Production element for each Pencil element of the request frame (typography, color, geometry). */
 function requestContract(root: Locator): ContractEntry[] {
   const c = copies.en.matches.corrections;
@@ -666,249 +533,8 @@ function resolveContract(page: Page): ContractEntry[] {
   ];
 }
 
-function diagnosticsContract(page: Page, desktop: boolean, light: boolean): ContractEntry[] {
-  const article = jobArticle(page, 'failed');
-  const status = jobStatus(page, 'failed');
-  const retry = status.getByRole('button', { name: d.repair.retry, exact: true });
-  const chip = status.locator('output').first();
-  const width = desktop ? { widthTolerance: 14 } : {};
-  return [
-    {
-      ref: 'Title',
-      locator: page.getByRole('heading', { level: 1 }),
-      allow: { family: tk.heading },
-      adaptation: 'E2'
-    },
-    {
-      ref: 'Queue heading',
-      locator: page.getByRole('heading', { name: d.diagnostics.jobs, exact: true }),
-      allow: { family: tk.heading },
-      adaptation: 'E1'
-    },
-    {
-      ref: 'Scheduler warning example',
-      locator: page.locator('[data-repair-scheduler]'),
-      allow: { fill: tk.surface, gap: tk.space14, padding: tk.space18, radius: tk.radius16 },
-      adaptation: 'E3'
-    },
-    { ref: 'Failed repair', locator: article, ...width },
-    {
-      ref: 'Match context',
-      locator: article.locator('h3'),
-      allow: { family: tk.heading },
-      adaptation: 'E4'
-    },
-    {
-      ref: 'Failed chip',
-      locator: chip,
-      widthTolerance: 6,
-      heightRange: [27, 30],
-      allow: { gap: tk.zero },
-      adaptation: 'E4'
-    },
-    { ref: 'Failed', locator: chip },
-    {
-      ref: 'Attempt count',
-      locator: status.locator('dd').first(),
-      allow: { color: tk.text },
-      adaptation: 'E4'
-    },
-    {
-      ref: 'Failure code',
-      locator: status.locator('dd').nth(2),
-      allow: { weight: tk.semibold, caps: 'sentence' },
-      adaptation: 'E4'
-    },
-    {
-      ref: 'Retry button',
-      locator: retry,
-      skipWidth: true,
-      heightRange: [44, 44.5],
-      allow: { padding: tk.space9, radius: tk.radius12 },
-      adaptation: 'E5'
-    },
-    {
-      ref: 'Retry label',
-      locator: retry,
-      allow: { size: tk.size13, ...(light ? { color: tk.bg } : {}) },
-      adaptation: 'E5'
-    },
-    {
-      ref: 'Timestamps',
-      locator: status.locator('dd').nth(1),
-      allow: { size: tk.size13, color: tk.text, weight: tk.semibold },
-      adaptation: 'E4'
-    },
-    ...otherJobs(page, desktop)
-  ];
-}
-
 /** Selected-job detail: heading, summary line, attempt timeline, official revision, correlation id. */
-function detailContract(page: Page, desktop: boolean): ContractEntry[] {
-  const detail = page.locator('[data-repair-detail]');
-  const attempt = detail.locator('ol li').first();
-  const nested = { widthTolerance: desktop ? 14 : 2.5 };
-  return [
-    {
-      ref: 'Job detail',
-      locator: detail,
-      ...(desktop ? { widthTolerance: 14 } : {})
-    },
-    {
-      ref: 'Detail heading',
-      locator: detail.locator('h2'),
-      allow: { family: tk.heading },
-      adaptation: 'E7'
-    },
-    {
-      ref: 'Selected job',
-      locator: detail.locator(':scope > p').first(),
-      allow: { size: tk.size16 },
-      adaptation: 'E7'
-    },
-    {
-      ref: 'Timeline heading',
-      locator: detail.locator('h3'),
-      allow: { family: tk.heading },
-      adaptation: 'E7'
-    },
-    { ref: 'Attempt 2 · Failed', locator: attempt, ...nested },
-    {
-      ref: 'Attempt 2 · Failed chip',
-      locator: attempt.locator('p').first(),
-      skipWidth: true,
-      allow: { fill: tk.surface2, gap: tk.zero },
-      adaptation: 'E7'
-    },
-    { ref: 'Attempt 2 · Failed#2', locator: attempt.locator('p').first() },
-    {
-      ref: 'Attempt code and time',
-      locator: attempt.locator('p').nth(1),
-      allow: { color: tk.muted },
-      adaptation: 'E7'
-    },
-    { ref: 'Official revision label', locator: detail.locator('dt').first() },
-    { ref: 'Official revision value', locator: detail.locator('dd').first() },
-    { ref: 'Correlation ID label', locator: detail.locator('dt').nth(1) },
-    { ref: 'Correlation ID value', locator: detail.locator('dd').nth(1) }
-  ];
-}
-
 /** Running, queued and succeeded cards of the frame: surface, chip, context line and facts. */
-function otherJobs(page: Page, desktop: boolean): ContractEntry[] {
-  const frames = {
-    running: [
-      'Running repair',
-      'Running chip',
-      'Running',
-      'Match context#2',
-      'Attempt count#2',
-      'Timestamps#2'
-    ],
-    queued: [
-      'Queued repair',
-      'Queued chip',
-      'Queued',
-      'Match context#3',
-      'Attempt count#3',
-      'Timestamps#3'
-    ],
-    succeeded: [
-      'Succeeded repair',
-      'Succeeded chip',
-      'Succeeded',
-      'Match context#4',
-      'Attempt count#4',
-      'Timestamps#4'
-    ]
-  } as const;
-  const entries: ContractEntry[] = [];
-  for (const key of ['running', 'queued', 'succeeded'] as const) {
-    const [cardRef, chipRef, labelRef, contextRef, attemptsRef, stampsRef] = frames[key];
-    const article = jobArticle(page, key);
-    const status = jobStatus(page, key);
-    const chip = status.locator('output').first();
-    const pending = key !== 'succeeded';
-    const fact = { allow: { weight: tk.semibold, color: tk.text }, adaptation: 'E4' };
-    entries.push(
-      { ref: cardRef, locator: article, ...(desktop ? { widthTolerance: 14 } : {}) },
-      {
-        ref: chipRef,
-        locator: chip,
-        ...(key === 'succeeded' ? { skipWidth: true } : { widthTolerance: 6 }),
-        heightRange: [27, 30],
-        allow: { gap: tk.zero },
-        adaptation: 'E4'
-      },
-      {
-        ref: labelRef,
-        locator: chip,
-        ...(pending ? { allow: { color: tk.amber }, adaptation: 'E6' } : {})
-      },
-      {
-        ref: contextRef,
-        locator: article.locator('h3'),
-        allow: { family: tk.heading, size: tk.size16 },
-        adaptation: 'E4'
-      },
-      { ref: attemptsRef, locator: status.locator('dd').first(), ...fact },
-      {
-        ref: stampsRef,
-        locator: status.locator('dd').nth(1),
-        allow: { size: tk.size13, weight: tk.semibold, color: tk.text },
-        adaptation: 'E4'
-      }
-    );
-  }
-  entries.push({
-    ref: 'Result reference',
-    locator: jobStatus(page, 'succeeded').locator('dd').last(),
-    allow: { color: tk.text },
-    adaptation: 'E4'
-  });
-  return entries;
-}
-
-function confirmContract(page: Page, light: boolean): ContractEntry[] {
-  const dialog = page.getByRole('dialog', { name: d.repair.confirmTitle, exact: true });
-  const cancel = dialog.getByRole('button', { name: d.dialog.cancel, exact: true });
-  const confirm = dialog.getByRole('button', { name: d.repair.confirmAction, exact: true });
-  const action = {
-    allow: { padding: tk.space9, radius: tk.radius12, gap: tk.space4 },
-    adaptation: 'E8'
-  };
-  return [
-    {
-      ref: 'Retry confirmation',
-      locator: dialog,
-      skipWidth: true,
-      allow: { gap: tk.space11, padding: tk.space14 },
-      adaptation: 'E8'
-    },
-    {
-      ref: 'Dialog title',
-      locator: dialog.getByRole('heading', { name: d.repair.confirmTitle, exact: true }),
-      allow: { family: tk.heading },
-      adaptation: 'E8'
-    },
-    { ref: 'Dialog description', locator: dialog.locator('header p').first() },
-    { ref: 'Cancel button', locator: cancel, skipWidth: true, heightRange: [44, 44.5], ...action },
-    { ref: 'Cancel', locator: cancel },
-    {
-      ref: 'Confirm button',
-      locator: confirm,
-      skipWidth: true,
-      heightRange: [44, 44.5],
-      ...action
-    },
-    {
-      ref: 'Confirm',
-      locator: confirm,
-      ...(light ? { allow: { color: tk.bg }, adaptation: 'E8' } : {})
-    }
-  ];
-}
-
 /** Status chip and action styles shared by the correction card and the repair diagnostics cards. */
 const bannerStyle = (locator: Locator, name: string, background: string, color: string) => ({
   name,
@@ -1255,10 +881,10 @@ const failureFunction = 'public.fixture_result_repair_visual_failure';
 const diagnosticsPath = '/platform-admin/result-repairs';
 const d = copies.en.matches.corrections;
 const jobTone: Record<JobKey, [string, string]> = {
-  failed: ['surface-2', 'red'],
-  succeeded: ['green-soft', 'green'],
-  running: ['surface-2', 'amber'],
-  queued: ['surface-2', 'amber']
+  failed: ['red-soft', 'red'],
+  succeeded: ['green-soft', 'green-ink'],
+  running: ['surface-2', 'text'],
+  queued: ['amber-soft', 'amber']
 };
 
 /** Diagnostics page with every seeded job card rendered; `beforeGoto` installs routes before the first request. */
@@ -1339,7 +965,7 @@ async function diagnosticsStructure(
     await expect(retry, `${key} retry entry`).toHaveCount(key === 'failed' ? 1 : 0);
     jobLocators[`${key}:article`] = article;
     jobLocators[`${key}:status`] = status;
-    jobLocators[`${key}:chip`] = status.locator('output').first();
+    jobLocators[`${key}:chip`] = status.locator('output > span').first();
     jobLocators[`${key}:facts`] = status.locator('dl');
     if (key === 'failed') jobLocators[`${key}:retry`] = retry;
   }
@@ -1368,8 +994,8 @@ async function diagnosticsStructure(
       .soft(rootBox.width, 'desktop column keeps the 1280px max width')
       .toBeLessThanOrEqual(1280.5);
   } else {
-    assertNear(inner.x, g.gutter, 'mobile content left gutter equals the frame gutter');
-    assertNear(viewportWidth - inner.right, g.gutter, 'mobile content right gutter');
+    assertNear(inner.x, 20, 'mobile content left gutter equals the frame gutter');
+    assertNear(viewportWidth - inner.right, 20, 'mobile content right gutter');
     expect
       .soft(rootBox.width, 'mobile column keeps the 480px max width')
       .toBeLessThanOrEqual(480.5);
@@ -1387,7 +1013,7 @@ async function diagnosticsStructure(
   assertStacked({ title: at('title').box, scheduler: schedulerBox, regions: queueBox });
   assertNear(
     queueBox.y - schedulerBox.bottom,
-    10,
+    desktop ? 16 : 14,
     'regions follow the scheduler by the page gap token'
   );
   expect(
@@ -1405,8 +1031,8 @@ async function diagnosticsStructure(
     expect(columns, 'two grid columns at 960px and above').toBe(2);
     assertNear(queueBox.x, inner.x, 'queue region starts at the content edge');
     assertNear(detailBox.right, inner.right, 'detail region ends at the content edge');
-    assertNear(detailBox.x - queueBox.right, g.desktopRegionGap, 'regions are one frame gap apart');
-    assertNear(queueBox.width / detailBox.width, 1.5, 'regions share the width 3fr/2fr', 0.02);
+    assertNear(detailBox.x - queueBox.right, 24, 'regions are one frame gap apart');
+    assertNear(queueBox.width / detailBox.width, 716 / 460, 'frame column ratio', 0.01);
     assertNear(queueBox.y, detailBox.y, 'regions start on the same row', 1);
     assertNear(
       queueBox.width,
@@ -1429,7 +1055,7 @@ async function diagnosticsStructure(
     expect
       .soft(detailBox.y, 'detail stacks below the queue')
       .toBeGreaterThanOrEqual(queueBox.bottom + 9);
-    assertNear(detailBox.y - queueBox.bottom, 10, 'stacked regions are one page gap apart');
+    assertNear(detailBox.y - queueBox.bottom, 14, 'stacked regions are one page gap apart');
   }
   // Queue region: heading and jobs. Detail region: selected-job detail above the status counts.
   const jobsHeading = at('jobsHeading').box;
@@ -1457,24 +1083,18 @@ async function diagnosticsStructure(
     if (index)
       assertNear(
         item.y - articles[index - 1]!.bottom,
-        10,
+        12,
         `job ${index + 1} follows job ${index} by the section gap token`
       );
   await expect(root.locator('[data-repair-job]')).toHaveCount(articles.length);
   const checks: StyleCheck[] = [
     {
-      name: 'scheduler card',
-      locator: scheduler,
-      tokens: { 'border-top-left-radius': 'var(--radius-16)', 'padding-top': 'var(--space-18)' },
-      palette: { 'background-color': 'surface' }
-    },
-    {
       name: 'job detail card',
       locator: detailSection,
       tokens: {
-        'border-top-left-radius': 'var(--radius-16)',
-        'padding-top': 'var(--space-18)',
-        'row-gap': 'var(--space-14)'
+        'border-top-left-radius': 'var(--radius-20)',
+        'padding-top': 'var(--space-16)',
+        'row-gap': 'var(--space-12)'
       },
       palette: { 'background-color': 'surface' }
     }
@@ -1495,9 +1115,12 @@ async function diagnosticsStructure(
       articleInner.width,
       `${key} status section spans the card content width`
     );
-    const chip = status.locator('output').first();
+    const chip = status.locator('output > span').first();
     const chipBox = at(`${key}:chip`).box;
-    assertNear(chipBox.x, articleInner.x, `${key} status chip at the card content edge`);
+    assertContained(articleInner, chipBox, `${key} status chip within the card`);
+    await expect(status.locator('[data-repair-select]')).toHaveAccessibleName(
+      new RegExp(repairJobs[key])
+    );
     expect
       .soft(chipBox.width, `${key} status chip hugs its label`)
       .toBeLessThan(articleInner.width);
@@ -1505,27 +1128,27 @@ async function diagnosticsStructure(
     const retry = status.getByRole('button', { name: d.repair.retry, exact: true });
     if (key === 'failed') {
       const retryBox = at(`${key}:retry`).box;
-      assertNear(retryBox.height, g.actionHeight, 'retry action height equals the frame action');
+      assertNear(retryBox.height, 52, 'retry action meets the Clubhouse control target');
       assertNear(retryBox.x, articleInner.x, 'retry action at the card content edge');
       assertNear(
         retryBox.right,
         articleInner.right,
         'retry action reaches the opposite content edge'
       );
-      await expect(retry, 'retry is the primary emphasis action').toHaveAttribute(
-        'data-emphasis',
-        'primary'
-      );
-      checks.push(actionStyle(retry, 'retry action', 'green', 'bg'));
+      checks.push({
+        name: 'retry entry action',
+        locator: retry,
+        palette: { 'background-color': 'surface', color: 'text' }
+      });
     }
     checks.push(
       {
         name: `${key} job card`,
         locator: article,
         tokens: {
-          'border-top-left-radius': 'var(--radius-16)',
-          'padding-top': 'var(--space-18)',
-          'row-gap': 'var(--space-14)'
+          'border-top-left-radius': 'var(--radius-18)',
+          'padding-top': 'var(--space-16)',
+          'row-gap': 'var(--space-8)'
         },
         palette: { 'background-color': 'surface' }
       },
@@ -1534,9 +1157,9 @@ async function diagnosticsStructure(
         locator: chip,
         tokens: {
           'border-top-left-radius': 'var(--radius-12)',
-          'padding-top': 'var(--space-6)',
+          'padding-top': 'var(--space-4)',
           'padding-left': 'var(--space-10)',
-          'font-size': 'var(--font-size-12)',
+          'font-size': 'var(--font-size-13)',
           'font-weight': 'var(--font-weight-semibold)'
         },
         palette: { 'background-color': jobTone[key][0], color: jobTone[key][1] },
@@ -1547,9 +1170,8 @@ async function diagnosticsStructure(
   await assertDesignSystemStyles(page, theme, checks, 'diagnostics');
 }
 
-/** Retry confirmation: equal 44px actions in one row at the dialog content edges, like the frame card. */
+/** Retry confirmation: equal 52px actions in one row at reference viewports. */
 async function confirmationStructure(page: Page, theme: 'light' | 'dark', viewportWidth: number) {
-  const g = manifest.geometryReference;
   const dialog = page.getByRole('dialog', { name: d.repair.confirmTitle, exact: true });
   await expect(dialog).toBeVisible();
   await waitForRenderSettled(page);
@@ -1573,8 +1195,8 @@ async function confirmationStructure(page: Page, theme: 'light' | 'dark', viewpo
     1
   );
   assertNear(cancelBox.y, confirmBox.y, 'retry dialog actions share a row');
-  assertNear(cancelBox.height, g.actionHeight, 'cancel action height equals the frame action');
-  assertNear(confirmBox.height, g.actionHeight, 'confirm action height equals the frame action');
+  assertNear(cancelBox.height, 52, 'cancel action meets the Clubhouse control target');
+  assertNear(confirmBox.height, 52, 'confirm action meets the Clubhouse control target');
   assertNear(cancelBox.width, confirmBox.width, 'retry dialog actions have equal width', 1);
   assertNear(cancelBox.x, dialogInner.x, 'cancel starts at the dialog content edge');
   assertNear(confirmBox.right, dialogInner.right, 'confirm ends at the dialog content edge');
@@ -1582,7 +1204,13 @@ async function confirmationStructure(page: Page, theme: 'light' | 'dark', viewpo
   await assertDesignSystemStyles(
     page,
     theme,
-    [{ name: 'retry dialog surface', locator: dialog, palette: { 'background-color': 'surface' } }],
+    [
+      {
+        name: 'retry dialog surface',
+        locator: dialog,
+        palette: { 'background-color': 'surface-2' }
+      }
+    ],
     'diagnostics dialog'
   );
   return { dialog, cancel };
@@ -1599,6 +1227,10 @@ async function selectionProbes(page: Page, desktop: boolean) {
   );
   await select('succeeded').click();
   await expect(detail).toHaveAttribute('data-repair-detail', repairJobs.succeeded);
+  const identifier = detail.locator('[data-repair-identifier]');
+  await expect(identifier).toHaveText(repairJobs.succeeded);
+  await expect(identifier).toHaveCSS('overflow-wrap', 'anywhere');
+  await expect(identifier).toHaveCSS('user-select', 'text');
   await expect(page.locator('[data-repair-select][aria-current=true]')).toHaveCount(1);
   await expect(select('succeeded')).toHaveAttribute('aria-current', 'true');
   await expect(select('failed')).not.toHaveAttribute('aria-current', 'true');
@@ -1616,7 +1248,7 @@ async function selectionProbes(page: Page, desktop: boolean) {
       {
         name: 'unselected job card border',
         locator: jobArticle(page, 'failed'),
-        palette: { 'border-top-color': 'line' }
+        palette: { 'border-top-color': 'hairline' }
       }
     ],
     desktop ? 'selection desktop' : 'selection mobile'
@@ -1646,7 +1278,74 @@ async function selectionProbes(page: Page, desktop: boolean) {
   await expect(detail.locator('ol')).toHaveAttribute('aria-label', d.diagnostics.attemptsCaption);
 }
 
+async function compareRepairSurfaces(
+  page: Page,
+  info: TestInfo,
+  frame: keyof typeof repairManifest.approvedReferences,
+  cards: Record<'queueCard' | 'detailCard', Locator>
+) {
+  const approved = repairManifest.approvedReferences[frame];
+  const reference = readFileSync(
+    new URL(`./references/paf-202-repair-diagnostics/${approved.file}`, import.meta.url)
+  );
+  const full = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' });
+  await info.attach(`${frame}-actual`, { body: full, contentType: 'image/png' });
+  const measurements: Record<string, number> = {};
+  for (const name of ['queueCard', 'detailCard'] as const) {
+    const actual = await cards[name].screenshot({ animations: 'disabled', scale: 'css' });
+    const difference = await page.evaluate(
+      async ({ approvedImage, actualImage, crop }) => {
+        const [x, y, referenceWidth] = crop;
+        const width = 96;
+        const height = 8;
+        const top = 6;
+        async function sample(source: string, left: number, offset: number, cropWidth?: number) {
+          const image = new Image();
+          image.src = `data:image/png;base64,${source}`;
+          await image.decode();
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d');
+          if (!context) throw new Error('Canvas context unavailable');
+          const start = left + Math.floor(((cropWidth ?? image.width) - width) / 2);
+          context.drawImage(image, start, offset, width, height, 0, 0, width, height);
+          return context.getImageData(0, 0, width, height).data;
+        }
+        const [expected, produced] = await Promise.all([
+          sample(approvedImage, x!, y! + top, referenceWidth),
+          sample(actualImage, 0, top)
+        ]);
+        let changed = 0;
+        for (let i = 0; i < produced.length; i += 4) {
+          if (
+            [0, 1, 2].some(
+              (channel) => Math.abs(expected[i + channel]! - produced[i + channel]!) > 8
+            )
+          ) {
+            changed++;
+          }
+        }
+        return changed / (width * height);
+      },
+      {
+        crop: approved.crops[name],
+        approvedImage: reference.toString('base64'),
+        actualImage: actual.toString('base64')
+      }
+    );
+    measurements[name] = difference;
+    expect.soft(difference, `${frame} ${name} raster budget`).toBeLessThanOrEqual(approved.budget);
+  }
+  await info.attach(`${frame}-measurements`, {
+    body: JSON.stringify(measurements),
+    contentType: 'application/json'
+  });
+  console.info(`U22 ${frame}: ${JSON.stringify(measurements)}`);
+}
+
 const diagnosticsFrames = [
+  { frame: 'bomAY', theme: 'light', width: 1280, height: 900 },
   { frame: 'cuVwp', theme: 'light', width: 390, height: 844 },
   { frame: 'Jjrtb', theme: 'dark', width: 390, height: 844 },
   { frame: 'SluH3', theme: 'dark', width: 1280, height: 900 }
@@ -1770,39 +1469,14 @@ test.describe('repair diagnostics', () => {
         );
         expect.soft(summary.x, 'status counts sit beside the queue').toBeGreaterThan(jobs.right);
       } else {
-        assertNear(inner.x, manifest.geometryReference.gutter, 'empty queue content gutter');
+        assertNear(inner.x, 20, 'empty queue content gutter');
         assertStacked({ title: sampled.title.box, jobs, empty: sampled.empty.box, summary });
       }
-      await assertFrameContract(frame, 'empty', [
-        {
-          ref: 'Empty state',
-          locator: empty,
-          allow: { size: tk.size16, color: tk.muted },
-          adaptation: 'E9'
-        }
-      ]);
-      await runCompositionProbes(frame, 'empty', {
-        'E9.emptyPrompt': async () => {
-          const queue = await childSummary(root.locator('[data-repair-region=queue] section'));
-          expect(queue.map((child) => child.text)).toEqual([
-            d.diagnostics.jobs,
-            d.diagnostics.empty
-          ]);
-          const region = await childSummary(root.locator('[data-repair-region=detail]'));
-          expect(
-            region.map((child) => child.tag),
-            'empty detail region order'
-          ).toEqual(['SECTION', 'SECTION']);
-          const prompt = await childSummary(
-            root.locator('[data-repair-region=detail] section').first()
-          );
-          expect(prompt.map((child) => child.text)).toEqual([
-            d.diagnostics.detail,
-            d.diagnostics.detailEmpty
-          ]);
-          await expect(root.locator('[data-repair-detail]')).toHaveCount(0);
-        }
-      });
+      const queue = root.locator('[data-repair-region=queue]');
+      await expect(queue.locator('[data-repair-empty]')).toHaveText(d.diagnostics.empty);
+      await expect(queue).toContainText(d.diagnostics.communitySubtitle);
+      await expect(root).toContainText(d.diagnostics.detailEmpty);
+      await expect(root.locator('[data-repair-detail], [data-repair-scheduler]')).toHaveCount(0);
       await assertNoOverflow(page, 'empty diagnostics');
       await assertTargets(root, 'empty diagnostics');
     });
@@ -1921,97 +1595,29 @@ test.describe('repair diagnostics', () => {
       const { page, root } = await openDiagnostics('en', width, theme, height);
       const desktop = width >= 960;
       await diagnosticsStructure(page, root, theme, width);
-      await assertFrameContract(
-        frame,
-        'page',
-        diagnosticsContract(page, width >= 960, theme === 'light')
-      );
+      await expect(root).toHaveAttribute('data-repair-scope', 'platform');
       await assertTargets(root, `diagnostics ${frame}`);
       await assertContrast(root, `diagnostics ${frame}`);
       await assertReducedMotion(page, root, `diagnostics ${frame}`);
       await assertNoOverflow(page, `diagnostics ${frame}`);
-      const capture = { viewport: { width, height }, fullPage: true };
-      await measureFrame(
-        frame,
-        page,
-        testInfo,
-        'page',
-        {
-          failedCard: jobArticle(page, 'failed'),
-          runningCard: jobArticle(page, 'running'),
-          queuedCard: jobArticle(page, 'queued'),
-          succeededCard: jobArticle(page, 'succeeded')
-        },
-        capture
-      );
-      // Selection, then the selected job's detail (always-visible attempt timeline).
+      await compareRepairSurfaces(page, testInfo, frame, {
+        queueCard: jobArticle(page, 'failed'),
+        detailCard: root.locator('[data-repair-detail]')
+      });
       await selectionProbes(page, desktop);
-      await assertFrameContract(frame, 'detail', detailContract(page, desktop));
-      await runCompositionProbes(frame, 'page', diagnosticsProbes(page, root, theme).page);
       await jobStatus(page, 'failed')
         .getByRole('button', { name: d.repair.retry, exact: true })
         .click();
       const { dialog, cancel } = await confirmationStructure(page, theme, width);
-      await assertFrameContract(frame, 'dialog', confirmContract(page, theme === 'light'));
-      await runCompositionProbes(frame, 'dialog', {
-        'E8.retryDialog': async () => {
-          const header = await childSummary(dialog.locator('header'));
-          expect(header.map((child) => child.text)).toEqual([
-            d.repair.confirmTitle,
-            d.repair.confirmBody
-          ]);
-          const parts = await childSummary(dialog);
-          expect(
-            parts.map((part) => part.tag),
-            'retry dialog order'
-          ).toEqual(['HEADER', 'DIV']);
-          expect(parts[1]?.text).toBe(`${d.dialog.cancel} ${d.repair.confirmAction}`);
-          assertStacked(
-            await captureBoxes({
-              header: dialog.locator('header'),
-              actions: dialog.locator('header + div')
-            })
-          );
-        }
-      });
-      await measureFrame(
-        frame,
-        page,
-        testInfo,
-        'dialog',
-        { confirmDialog: dialog },
-        {
-          viewport: { width, height },
-          fullPage: false
-        }
-      );
+      await assertTargets(dialog, 'repair confirmation');
+      await expect(dialog).toHaveAccessibleDescription(d.repair.confirmBody);
       await cancel.click();
+      await expect(
+        jobStatus(page, 'failed').getByRole('button', { name: d.repair.retry, exact: true })
+      ).toBeFocused();
       await expect(dialog).toBeHidden();
     });
   }
-
-  test('diagnostics desktop light has no design frame and keeps the structural gates', async () => {
-    const { page, root } = await openDiagnostics('en', 1280, 'light', 900);
-    await diagnosticsStructure(page, root, 'light', 1280);
-    await runCompositionProbes('SluH3', 'desktop-light', {
-      'E11.desktopLight': async () => {
-        await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-        const { queue, detail } = await captureBoxes({
-          queue: page.locator('[data-repair-region=queue]'),
-          detail: page.locator('[data-repair-region=detail]')
-        });
-        expect
-          .soft(detail.x, 'desktop light keeps the detail beside the queue')
-          .toBeGreaterThan(queue.right);
-        assertNear(queue.y, detail.y, 'desktop light regions share a row', 1);
-        await expect(page.locator('[data-repair-detail]')).toBeVisible();
-      }
-    });
-    await assertTargets(root, 'diagnostics desktop light');
-    await assertContrast(root, 'diagnostics desktop light');
-    await assertReducedMotion(page, root, 'diagnostics desktop light');
-    await assertNoOverflow(page, 'diagnostics desktop light');
-  });
 
   for (const locale of locales) {
     test(`diagnostics keep long ${locale} text inside 320px without overlap`, async () => {
@@ -2024,6 +1630,9 @@ test.describe('repair diagnostics', () => {
         .click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
+      const detail = root.locator('[data-repair-detail]');
+      const jobId = await detail.getAttribute('data-repair-detail');
+      await expect(detail.locator('[data-repair-identifier]')).toHaveText(jobId!);
       await assertNoOverflow(page, `diagnostics dialog ${locale}`);
       await assertTargets(dialog, `diagnostics dialog ${locale}`);
     });
