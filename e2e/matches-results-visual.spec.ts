@@ -220,6 +220,13 @@ test('Clubhouse result fragments retain approved structure and measured visual b
       path: info.outputPath(`${frame}-actual.png`)
     });
     await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
+    if (frame === 'alZmm') {
+      // The pending detail ends near the old band start: measure the bottom 70px of a taller capture.
+      await page.setViewportSize({ width: 390, height: 1042 + 120 });
+      const tall = await page.screenshot({ animations: 'disabled', caret: 'hide' });
+      await assertResultScreenshot(page, tall, frame, 'recording');
+      return;
+    }
     await assertResultScreenshot(page, actual, frame, 'recording');
   }
   const scoreId = await routeEvent();

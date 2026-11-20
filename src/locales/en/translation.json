@@ -1221,7 +1221,6 @@
       "autoConfirmDeadline": "Auto-confirm deadline: {{deadline}}.",
       "proposedWin": "Proposed score · {{winnerSets}}–{{loserSets}} sets to {{team}}",
       "proposedOther": "Proposed score · {{outcome}}",
-      "reviewProposal": "REVIEW PROPOSAL",
       "reviewUnavailable": "Proposal review is not available yet.",
       "matrixTeams": "Teams",
       "matrixSet": "S{{number}}",
@@ -1305,7 +1304,7 @@
       "reload": "Reload latest result and roster",
       "submit": "Submit result",
       "submitting": "Submitting result…",
-      "pending": "PENDING · NOT CONFIRMED",
+      "pending": "Pending · not confirmed",
       "pendingDescription": "No rating or League stats apply yet. Eligible players may approve or reject.",
       "lifecycleStatus": {
         "pending": "Pending review",
@@ -1321,7 +1320,7 @@
         "title": "Event result resolution",
         "progress": "{{confirmed}} of {{expected}} groups confirmed"
       },
-      "autoConfirmIn": "AUTO-CONFIRMS IN {{hours}}H",
+      "autoConfirmIn": "Auto-confirms in {{hours}}h",
       "autoConfirmCountdown": "Auto-confirms in {{time}}",
       "deadlineReached": "Deadline reached · checking current result",
       "awaitingResult": "Awaiting result",
@@ -1334,8 +1333,8 @@
       "confirmedAt": "Confirmed {{confirmedAt}}.",
       "timelineTitle": "Proposal timeline",
       "confirmation": {
-        "manual": "Confirmed · Manual",
-        "auto": "Confirmed · Auto 48H"
+        "manual": "Confirmed · manual",
+        "auto": "Confirmed · auto 48h"
       },
       "reject": {
         "title": "Dispute result",

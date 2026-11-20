@@ -1221,7 +1221,6 @@
       "autoConfirmDeadline": "Plazo de confirmación automática: {{deadline}}.",
       "proposedWin": "Marcador propuesto · {{winnerSets}}–{{loserSets}} sets para {{team}}",
       "proposedOther": "Marcador propuesto · {{outcome}}",
-      "reviewProposal": "REVISAR PROPUESTA",
       "reviewUnavailable": "La revisión de propuestas aún no está disponible.",
       "matrixTeams": "Equipos",
       "court": "Pista",
@@ -1305,7 +1304,7 @@
       "reload": "Recargar resultado y jugadores",
       "submit": "Enviar resultado",
       "submitting": "Enviando resultado…",
-      "pending": "PENDIENTE · SIN CONFIRMAR",
+      "pending": "Pendiente · sin confirmar",
       "pendingDescription": "Aún no afecta al nivel ni a las estadísticas de la Liga. Los jugadores elegibles pueden aprobar o rechazar.",
       "lifecycleStatus": {
         "pending": "Pendiente de revisión",
@@ -1321,7 +1320,7 @@
         "title": "Resolución de resultados",
         "progress": "{{confirmed}} de {{expected}} grupos confirmados"
       },
-      "autoConfirmIn": "CONFIRMACIÓN AUTOMÁTICA EN {{hours}}H",
+      "autoConfirmIn": "Confirmación automática en {{hours}}h",
       "autoConfirmCountdown": "Se confirma automáticamente en {{time}}",
       "deadlineReached": "Plazo vencido · comprobando el resultado actual",
       "awaitingResult": "Esperando resultado",
@@ -1334,8 +1333,8 @@
       "confirmedAt": "Confirmado {{confirmedAt}}.",
       "timelineTitle": "Historial de la propuesta",
       "confirmation": {
-        "manual": "Confirmado · Manual",
-        "auto": "Confirmado · Automático 48H"
+        "manual": "Confirmado · manual",
+        "auto": "Confirmado · automático 48h"
       },
       "reject": {
         "title": "Disputar resultado",

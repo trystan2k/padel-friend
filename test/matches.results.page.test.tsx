@@ -254,7 +254,7 @@ describe('record result page', () => {
         <MatchResultPending proposal={proposal} timezone="UTC" asOf={resultProposal.submitted_at} />
       </I18nextProvider>
     );
-    expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy();
+    expect(screen.getByText('Pending · not confirmed')).toBeTruthy();
     expect(
       screen.getByText('If nobody rejects by deadline, proposal confirms automatically.')
     ).toBeTruthy();
@@ -474,9 +474,9 @@ describe('record result page', () => {
         review_deadline_at: '2026-10-23T18:00:00Z'
       }
     });
-    await waitFor(() => expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Pending · not confirmed')).toBeTruthy());
     expect(document.activeElement).toBe(
-      screen.getByRole('heading', { name: 'PENDING · NOT CONFIRMED' })
+      screen.getByRole('heading', { name: 'Pending · not confirmed' })
     );
     expect(document.activeElement?.getAttribute('tabindex')).toBe('-1');
     expect(screen.queryByRole('button', { name: 'Submit result' })).toBeNull();
@@ -511,8 +511,8 @@ describe('record result page', () => {
         />
       </I18nextProvider>
     );
-    expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy();
-    expect(screen.getByText('AUTO-CONFIRMS IN 18H')).toBeTruthy();
+    expect(screen.getByText('Pending · not confirmed')).toBeTruthy();
+    expect(screen.getByText('Auto-confirms in 18h')).toBeTruthy();
     expect(screen.getByText(/Version 1/)).toBeTruthy();
     expect(screen.getByText(/Auto-confirm deadline:/)).toBeTruthy();
   });

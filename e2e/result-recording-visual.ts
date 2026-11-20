@@ -14,13 +14,14 @@ export async function assertResultScreenshot(
 ) {
   if (kind === 'recording' && frame === 'alZmm') {
     const band = await page.evaluate(
-      async ({ src, start, rgb }) => {
+      async ({ src, height, rgb }) => {
         const image = new Image();
         image.src = src;
         await image.decode();
+        const start = image.height - height;
         const canvas = document.createElement('canvas');
         canvas.width = image.width;
-        canvas.height = image.height - start;
+        canvas.height = height;
         const context = canvas.getContext('2d');
         if (!context) throw new Error('No comparison canvas');
         context.drawImage(image, 0, -start);
@@ -35,7 +36,7 @@ export async function assertResultScreenshot(
       },
       {
         src: `data:image/png;base64,${actual.toString('base64')}`,
-        start: evidence.navigationBottomStart,
+        height: evidence.navigationBandHeight,
         rgb: evidence.frames.alZmm.solidRgb
       }
     );
@@ -75,6 +76,11 @@ export async function assertResultScreenshot(
       rows: height
     }
   );
+  if (process.env.RESULT_BASELINE_CAPTURE) {
+    // Re-measure: prints the luma grid to paste into the manifest after an intended visual change.
+    console.info(`BASELINE ${kind}:${frame} ${Buffer.from(grid).toString('base64')}`);
+    return;
+  }
   const baseline = Buffer.from(reference.baseline, 'base64');
   expect(baseline.length, `${frame} baseline dimensions`).toBe(grid.length);
   const lastCell =
