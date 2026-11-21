@@ -489,7 +489,7 @@ describe('PlayerLevelReviewStatus', () => {
       'Current level corrected going forward. Past matches are unchanged.',
       false
     ],
-    ['rejected', 'Rejected', 'Request closed. A review note is available.', false],
+    ['rejected', 'Denied', 'Request closed. A review note is available.', false],
     ['canceled', 'Canceled', 'You canceled this request.', false]
   ] as const)('shows the %s lifecycle state', (status, label, detail, cancellable) => {
     setup(dto({ status }));
@@ -497,7 +497,7 @@ describe('PlayerLevelReviewStatus', () => {
     expect(screen.getByText(detail)).toBeTruthy();
     expect(!!screen.queryByRole('button', { name: 'Cancel request' })).toBe(cancellable);
     // Only the real state is shown, never the other example states of the frame.
-    const others = ['Pending', 'Under review', 'Approved', 'Rejected', 'Canceled'].filter(
+    const others = ['Pending', 'Under review', 'Approved', 'Denied', 'Canceled'].filter(
       (other) => other !== label
     );
     expect(

@@ -1,16 +1,13 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
-import { useId, useRef, useState, type FormEvent } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isOffline, isTransportFailure } from '../../lib/connectivity';
-import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { PlatformAdminEntry } from '../level-reviews/PlatformAdminEntry';
 import { cleanupPushDeviceForLogout } from '../notifications/push-browser';
-import { AvailabilityFields } from './AvailabilityFields';
-import { AvatarUpload } from './AvatarUpload';
-import { getMyPlayerProfile, updateMyPlayerProfile } from './player.functions';
+import type { updateMyPlayerProfile } from './player.functions';
+import { ProfileEditForm } from './ProfileEditForm';
 import { playerInitials } from './player-initials';
 import { formatDisplayLevel, MAX_LEVEL, MIN_LEVEL } from './rating-config';
 import type { RatingLoad } from './rating-view';
@@ -60,16 +57,7 @@ export function PlayerProfile({
   const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState(initialProfile);
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(profile.display_name);
-  const [side, setSide] = useState(profile.preferred_side);
-  const [hand, setHand] = useState(profile.dominant_hand ?? '');
-  const [bio, setBio] = useState(profile.bio ?? '');
-  const [days, setDays] = useState(profile.preferred_playing_days);
-  const [times, setTimes] = useState(profile.preferred_playing_times);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
   const [signOutError, setSignOutError] = useState(false);
-  const nameRef = useRef<HTMLInputElement>(null);
   const reviewId = useId();
   // Level figures come from the same committed projection as the chart and history; the
   // profile row is only the fallback when that read failed.
@@ -80,60 +68,6 @@ export function PlayerProfile({
     day: 'numeric',
     timeZone: 'UTC'
   }).format(new Date(profile.joined_at));
-
-  async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const normalizedName = stripEdgeWhitespace(name);
-    if (!normalizedName || Array.from(normalizedName).length > 80) {
-      setError('onboarding.validationName');
-      nameRef.current?.focus();
-      return;
-    }
-    if (isOffline()) {
-      setError('profile.saveOffline');
-      return;
-    }
-    setSaving(true);
-    setError('');
-    try {
-      const next = await updateMyPlayerProfile({
-        data: {
-          display_name: normalizedName,
-          preferred_side: side,
-          dominant_hand: hand || null,
-          bio: bio.trim() || null,
-          preferred_playing_days: days,
-          preferred_playing_times: times
-        }
-      });
-      setProfile(next);
-      setName(next.display_name);
-      setSide(next.preferred_side);
-      setHand(next.dominant_hand ?? '');
-      setBio(next.bio ?? '');
-      setDays(next.preferred_playing_days);
-      setTimes(next.preferred_playing_times);
-      setEditing(false);
-    } catch (cause) {
-      if (cause instanceof Error && cause.message === 'UNAUTHENTICATED') {
-        window.location.assign('/login?next=/dashboard');
-        return;
-      }
-      if (!isTransportFailure(cause)) {
-        setError('profile.saveFailed');
-        return;
-      }
-      // Outcome unknown: re-read the authoritative profile before any retry, keeping the draft.
-      setError('profile.saveUnconfirmed');
-      try {
-        setProfile(await getMyPlayerProfile());
-      } catch {
-        // Stay unconfirmed; the retry stays available.
-      }
-    } finally {
-      setSaving(false);
-    }
-  }
 
   const listFormat = new Intl.ListFormat(i18n.language, { style: 'long', type: 'conjunction' });
   const listChoices = (values: readonly string[] | null, prefix: string) =>
@@ -149,6 +83,18 @@ export function PlayerProfile({
         ? 'onboarding.sideRight'
         : 'onboarding.sideEither'
   );
+  if (editing)
+    return (
+      <ProfileEditForm
+        profile={profile}
+        onProfileChange={setProfile}
+        onSaved={(next) => {
+          setProfile(next);
+          setEditing(false);
+        }}
+        onCancel={() => setEditing(false)}
+      />
+    );
   return (
     <main {...stylex.props(s.page)}>
       <h1 {...stylex.props(s.srOnly)}>{t('profile.title')}</h1>
@@ -172,10 +118,9 @@ export function PlayerProfile({
         </div>
         <button
           type="button"
-          onClick={() => setEditing(!editing)}
+          onClick={() => setEditing(true)}
           aria-label={t('profile.edit')}
-          aria-pressed={editing}
-          {...stylex.props(s.editButton, editing && s.editButtonOn)}
+          {...stylex.props(s.editButton)}
         >
           <svg
             aria-hidden="true"
@@ -308,121 +253,28 @@ export function PlayerProfile({
           </li>
         </ul>
       </section>
-      {editing ? (
-        <form
-          onSubmit={(event) => void save(event)}
-          noValidate
-          {...stylex.props(ui.card, ui.profileCard)}
-        >
-          <label htmlFor="edit-name" {...stylex.props(ui.label)}>
-            {t('onboarding.name')}
-          </label>
-          <input
-            id="edit-name"
-            ref={nameRef}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            maxLength={80}
-            required
-            aria-invalid={Boolean(
-              error &&
-              (!stripEdgeWhitespace(name) || Array.from(stripEdgeWhitespace(name)).length > 80)
-            )}
-            {...stylex.props(ui.input)}
-          />
-          <fieldset {...stylex.props(ui.fieldset)}>
-            <legend {...stylex.props(ui.label)}>{t('onboarding.side')}</legend>
-            <div {...stylex.props(ui.choices)}>
-              {(['LEFT', 'RIGHT', 'EITHER'] as const).map((value) => (
-                <label key={value} {...stylex.props(ui.choice, side === value && ui.selected)}>
-                  <input
-                    type="radio"
-                    name="edit-side"
-                    checked={side === value}
-                    onChange={() => setSide(value)}
-                    {...stylex.props(ui.radio)}
-                  />
-                  {t(
-                    value === 'LEFT'
-                      ? 'onboarding.sideLeft'
-                      : value === 'RIGHT'
-                        ? 'onboarding.sideRight'
-                        : 'onboarding.sideEither'
-                  )}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          <label htmlFor="edit-hand" {...stylex.props(ui.label)}>
-            {t('profile.dominantHand')}
-          </label>
-          <select
-            id="edit-hand"
-            value={hand}
-            onChange={(event) => setHand(event.target.value)}
-            {...stylex.props(ui.input)}
-          >
-            <option value="">{t('profile.handNone')}</option>
-            <option value="LEFT">{t('profile.handLeft')}</option>
-            <option value="RIGHT">{t('profile.handRight')}</option>
-          </select>
-          <label htmlFor="edit-bio" {...stylex.props(ui.label)}>
-            {t('profile.bio')}
-          </label>
-          <textarea
-            id="edit-bio"
-            value={bio}
-            maxLength={280}
-            onChange={(event) => setBio(event.target.value)}
-            {...stylex.props(ui.input, ui.textarea)}
-          />
-          <AvailabilityFields
-            days={days}
-            times={times}
-            onDaysChange={setDays}
-            onTimesChange={setTimes}
-            disabled={saving}
-          />
-          {error && (
-            <p role="alert" {...stylex.props(ui.error)}>
-              {t(error)}
-            </p>
-          )}
-          <button type="submit" disabled={saving} {...stylex.props(ui.button)}>
-            {saving ? t('onboarding.saving') : t('profile.save')}
-          </button>
-        </form>
-      ) : (
-        <SurfaceCard>
-          <div {...stylex.props(s.fact)}>
-            <span>{t('profile.dominantHand')}</span>
-            <span>
-              {profile.dominant_hand
-                ? t(profile.dominant_hand === 'LEFT' ? 'profile.handLeft' : 'profile.handRight')
-                : t('profile.handNone')}
-            </span>
-          </div>
-          <div {...stylex.props(s.fact)}>
-            <span>{t('profile.availabilityDaysLegend')}</span>
-            <span {...stylex.props(ui.availabilitySummaryValue)}>
-              {listChoices(profile.preferred_playing_days, 'profile.availabilityDays')}
-            </span>
-          </div>
-          <div {...stylex.props(s.fact)}>
-            <span>{t('profile.availabilityTimesLegend')}</span>
-            <span {...stylex.props(ui.availabilitySummaryValue)}>
-              {listChoices(profile.preferred_playing_times, 'profile.availabilityTimes')}
-            </span>
-          </div>
-          {profile.bio && <p {...stylex.props(s.meta)}>{profile.bio}</p>}
-        </SurfaceCard>
-      )}
       <SurfaceCard>
-        <AvatarUpload
-          name={profile.display_name}
-          avatarUrl={profile.avatar_signed_url}
-          onUploaded={setProfile}
-        />
+        <div {...stylex.props(s.fact)}>
+          <span>{t('profile.dominantHand')}</span>
+          <span>
+            {profile.dominant_hand
+              ? t(profile.dominant_hand === 'LEFT' ? 'profile.handLeft' : 'profile.handRight')
+              : t('profile.handNone')}
+          </span>
+        </div>
+        <div {...stylex.props(s.fact)}>
+          <span>{t('profile.availabilityDaysLegend')}</span>
+          <span {...stylex.props(ui.availabilitySummaryValue)}>
+            {listChoices(profile.preferred_playing_days, 'profile.availabilityDays')}
+          </span>
+        </div>
+        <div {...stylex.props(s.fact)}>
+          <span>{t('profile.availabilityTimesLegend')}</span>
+          <span {...stylex.props(ui.availabilitySummaryValue)}>
+            {listChoices(profile.preferred_playing_times, 'profile.availabilityTimes')}
+          </span>
+        </div>
+        {profile.bio && <p {...stylex.props(s.meta)}>{profile.bio}</p>}
       </SurfaceCard>
       <RatingJourney load={initialRating} onReload={onRatingReload} />
       <PlatformAdminEntry allowed={platformAdmin} />

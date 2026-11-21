@@ -29,16 +29,28 @@ describe('notification Clubhouse references', () => {
     }
   });
 
-  it('keeps the D1 detail and level-review outcome off center-only styling', () => {
-    expect(manifest.surfaces.NotificationDetailPage).toEqual([]);
-    expect(manifest.surfaces.NotificationLevelReviewOutcome).toEqual([]);
-    expect(manifest.blockedDetail).toContain('D1');
+  it('maps the D1 detail and level-review outcome to their approved frames', () => {
+    expect(manifest.surfaces.NotificationDetailPage).toHaveLength(8);
+    expect(manifest.surfaces.NotificationLevelReviewOutcome).toEqual([
+      'd0Qcrm',
+      'PshW9',
+      'U3UJJj',
+      'ngrKi'
+    ]);
+    expect(manifest).not.toHaveProperty('blockedDetail');
+    expect(manifest.detailFrames).toContain('D1 implemented');
     for (const file of ['NotificationDetailPage', 'NotificationLevelReviewOutcome']) {
       const text = source(`features/notifications/${file}.tsx`);
-      expect(text).toContain("from './notifications.styles'");
       expect(text).not.toContain('notification-center.styles');
       expect(text).not.toContain('appearance="feed"');
     }
+    expect(source('features/notifications/NotificationLevelReviewOutcome.tsx')).toContain(
+      "from './notification-detail.styles'"
+    );
+    // The community invitation branch keeps its own approved styling.
+    expect(source('features/notifications/NotificationDetailPage.tsx')).toContain(
+      "from '../community/community-invitation.styles'"
+    );
   });
 });
 

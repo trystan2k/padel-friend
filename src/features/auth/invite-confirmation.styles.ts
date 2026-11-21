@@ -1,45 +1,53 @@
 import * as stylex from '@stylexjs/stylex';
 
+// Clubhouse invitation frames (b7ymtm default, syxBk invalid, wdEqM expired, KZhFq busy): a 56px
+// state tile above the 28px heading, an optional help card, and the shared sticky action bar.
+const tileSize = 'calc(var(--space-40) + var(--space-16))';
+
 export const styles = stylex.create({
-  page: {
-    backgroundColor: 'var(--color-bg)',
-    color: 'var(--color-text)',
-    fontFamily: 'var(--font-family-body)',
-    minHeight: '100dvh',
-    width: '100%',
+  tileRow: { display: 'flex', paddingBlockStart: 'var(--space-12)' },
+  tile: {
     boxSizing: 'border-box',
-    maxWidth: 'calc(var(--space-40) * 12)',
-    marginInline: 'auto',
-    padding: 'calc(var(--space-20) + var(--space-4)) var(--space-18) var(--space-20)',
     display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-20)'
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: tileSize,
+    height: tileSize,
+    borderRadius: 'var(--radius-12)'
   },
-  header: { display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' },
-  brand: {
-    color: 'var(--color-green)',
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)'
-  },
-  title: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'calc(var(--font-size-25) + var(--space-1))',
-    fontWeight: 'var(--font-weight-bold)'
-  },
-  subtitle: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-14)' },
-  form: { display: 'flex', flexDirection: 'column', gap: 'var(--space-14)' },
+  tileGreen: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green-ink)' },
+  tileRed: { backgroundColor: 'var(--color-red-soft)', color: 'var(--color-red)' },
+  tileAmber: { backgroundColor: 'var(--color-amber-soft)', color: 'var(--color-amber)' },
   warning: {
     margin: 0,
     padding: 'var(--space-16)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     border: 'var(--border-width-sm) solid var(--color-muted)',
-    borderRadius: 'var(--radius-12)',
+    borderRadius: 'var(--radius-20)',
     overflowWrap: 'anywhere',
-    fontSize: 'var(--font-size-14)'
+    fontSize: 'var(--font-size-15)',
+    lineHeight: 'var(--font-line-height-comfortable)'
   },
-  error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-12)' }
+  // Frame KZhFq: the pending button is a flat surface-2 control with muted text, not a dimmed CTA.
+  busyButton: {
+    backgroundColor: 'var(--color-surface-2)',
+    color: 'var(--color-muted)',
+    opacity: 1
+  },
+  helpCard: { gap: 'var(--space-6)' },
+  helpTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-18)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-snug)'
+  },
+  helpHint: {
+    margin: 0,
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-15)',
+    lineHeight: 'var(--font-line-height-comfortable)'
+  },
+  helpLink: { alignSelf: 'flex-start', gap: 'var(--space-6)' }
 });

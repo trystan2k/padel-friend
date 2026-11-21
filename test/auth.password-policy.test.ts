@@ -2,12 +2,31 @@ import { describe, expect, it } from 'vitest';
 import {
   PASSWORD_MIN_LENGTH,
   getPasswordIssues,
+  getPasswordStrength,
   isPasswordValid
 } from '../src/features/auth/password-policy';
 import en from '../src/locales/en/translation.json';
 import es from '../src/locales/es/translation.json';
 import ptBR from '../src/locales/pt-BR/translation.json';
 import { readFileSync } from 'node:fs';
+
+describe('password strength meter', () => {
+  it.each([
+    ['', 'empty'],
+    ['abc', 'weak'],
+    ['abcdefghijk', 'weak'],
+    ['Abcdefghijk', 'fair'],
+    ['Abcdefghij1', 'good'],
+    ['Abcdefghi1!', 'strong']
+  ] as const)('rates %j as %s', (password, strength) => {
+    expect(getPasswordStrength(password)).toBe(strength);
+  });
+
+  it('is strong exactly when the policy is met', () => {
+    for (const password of ['Abcdef1!x', 'Abcdef1!xy', 'abcdefghij1!', 'ABCDEFGHIJ1!'])
+      expect(getPasswordStrength(password) === 'strong').toBe(isPasswordValid(password));
+  });
+});
 
 describe('password policy', () => {
   it('requires at least 10 characters at the 9/10 boundary', () => {

@@ -141,7 +141,9 @@ describe('PlayerProfile rating journey', () => {
   it('does not fabricate a level trend the frame draws: no season delta on the level card', () => {
     renderProfile(rating);
     expect(screen.queryByText(/this season/i)).toBeNull();
-    expect(screen.queryByText(/[↑↓]\s*\d/)).toBeNull();
+    // The journey's own all-time change lives in the chart card, never on the level card.
+    const levelCard = screen.getByText(en.profile.globalLevel).closest('div[class]')?.parentElement;
+    expect(levelCard?.textContent).not.toMatch(/[↑↓]\s*\d/);
   });
 
   it('shows current, highest, initial, count and reliability from the committed projection', () => {
@@ -161,7 +163,7 @@ describe('PlayerProfile rating journey', () => {
     expect(screen.getAllByText('1.50', { selector: 'strong' })).toHaveLength(2);
     const region = screen.getByRole('region', { name: 'Rating journey' });
     expect(within(region).getByRole('alert')).toBeTruthy();
-    await userEvent.click(within(region).getByRole('button', { name: 'Try again' }));
+    await userEvent.click(within(region).getByRole('button', { name: 'Reload' }));
     expect(onReload).toHaveBeenCalledOnce();
   });
 

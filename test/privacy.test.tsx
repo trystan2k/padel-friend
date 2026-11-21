@@ -117,13 +117,14 @@ describe('skip link target', () => {
     const target = targets[0];
     expect(target?.getAttribute('tabindex')).toBe('-1');
     expect(target?.querySelector('main')).not.toBeNull();
-    // D1: the legal sections and login footer remain; no homepage chrome spills into the policy.
+    // Frames QqUGZ / pHgfV: the legal sections follow a brand header with a Back to home link; no
+    // homepage hero or footer spills into the policy.
     expect(target?.querySelectorAll('main > section')).toHaveLength(PRIVACY_SECTIONS.length);
-    expect(target?.querySelector('main > footer a')?.getAttribute('href')).toBe('/login');
-    expect(target?.querySelector('[data-public-homepage], header img')).toBeNull();
-    expect(
-      screen.getByRole('combobox', { name: en.language }).closest('label')?.textContent
-    ).toContain('en');
+    expect(target?.querySelector('main > header a')?.getAttribute('href')).toBe('/');
+    expect(target?.querySelector('main > footer, [data-public-homepage], header img')).toBeNull();
+    // Public chrome of the frames: icon chips (language, theme) instead of text pills.
+    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: en.language }).value).toBe('en');
+    expect(screen.getByRole('combobox', { name: en.theme })).toBeTruthy();
     expect(
       screen.queryByRole('link', { name: en.publicHomepage.actions.createAccount })
     ).toBeNull();
@@ -196,11 +197,11 @@ describe('PrivacyPolicy page', () => {
     expect(link.getAttribute('href')).toBe(`mailto:${PRIVACY_CONTACT_EMAIL}`);
   });
 
-  it('links back to sign-in', async () => {
-    await renderPolicy('es');
+  it.each(supportedLocales)('links back to the public homepage in %s', async (locale) => {
+    await renderPolicy(locale);
 
-    const link = screen.getByRole('link', { name: es.auth.backToSignIn });
-    expect(link.getAttribute('href')).toBe('/login');
+    const link = screen.getByRole('link', { name: catalogs[locale].privacy.backHome });
+    expect(link.getAttribute('href')).toBe('/');
   });
 });
 

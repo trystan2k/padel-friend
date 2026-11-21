@@ -136,7 +136,7 @@ describe('League list and entries', () => {
     const headings = screen
       .getAllByRole('heading', { level: 2 })
       .map((heading) => heading.textContent);
-    expect(headings).toEqual(['Active', 'Upcoming', 'Closed']);
+    expect(headings).toEqual(['Active leagues', 'Upcoming leagues', 'Closed leagues']);
     const upcoming = screen.getByRole('link', { name: /Autumn League/ });
     expect(upcoming.getAttribute('href')).toBe(
       `/community/${LEAGUE_COMMUNITY_ID}/leagues/b1111111-1111-4111-8111-111111111111`
@@ -150,7 +150,7 @@ describe('League list and entries', () => {
         'From Oct 01, 2030 · no end date'
       )
     ).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Create League' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: 'Create league' }).getAttribute('href')).toBe(
       `/community/${LEAGUE_COMMUNITY_ID}/leagues/create`
     );
   });
@@ -161,7 +161,7 @@ describe('League list and entries', () => {
         <LeagueListPage data={makeLeagueList([], { can_create: false, creation_enabled: false })} />
       )
     );
-    expect(screen.queryByRole('link', { name: 'Create League' })).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Create league' })).toBeNull();
     expect(screen.getByText(/League creation is turned off for members/)).toBeTruthy();
     expect(screen.getByText('No Leagues yet.')).toBeTruthy();
   });
@@ -422,7 +422,7 @@ describe('League list and entries', () => {
       const button = screen.getByRole('button', { name: 'Show more Leagues' });
       button.focus();
       await userEvent.keyboard('{Enter}');
-      const elsewhere = screen.getByRole('link', { name: 'Create League' });
+      const elsewhere = screen.getByRole('link', { name: 'Create league' });
       elsewhere.focus();
       expect(document.activeElement).toBe(elsewhere);
       finish(

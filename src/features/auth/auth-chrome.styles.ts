@@ -66,6 +66,12 @@ export const chromeStyles = stylex.create({
     gap: 'var(--space-16)',
     padding: 'var(--space-4) var(--space-20) var(--space-20)'
   },
+  // D1 frames (invitation, claim password, claim verify) stack their blocks 14px apart, not 16px.
+  contentTight: { gap: 'var(--space-14)' },
+  // The heading only takes programmatic focus (screen-reader announcement), it is not a control.
+  headingFocus: { outline: 'none' },
+  // Frame page heading: 6px between the 28px title and its 16px intro.
+  heading: { display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' },
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',

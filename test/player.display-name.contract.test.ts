@@ -12,7 +12,7 @@ const ONBOARDING_SOURCE = readFileSync(
   'utf8'
 );
 const PROFILE_SOURCE = readFileSync(
-  new URL('../src/features/player/PlayerProfile.tsx', import.meta.url),
+  new URL('../src/features/player/ProfileEditForm.tsx', import.meta.url),
   'utf8'
 );
 const MIGRATION = readFileSync(
@@ -30,7 +30,7 @@ const E2E_ONBOARDING_SOURCE = readFileSync(
 const DISPLAY_NAME_SOURCES = {
   'player.validators.ts': VALIDATORS_SOURCE,
   'PlayerOnboarding.tsx': ONBOARDING_SOURCE,
-  'PlayerProfile.tsx': PROFILE_SOURCE
+  'ProfileEditForm.tsx': PROFILE_SOURCE
 } as const;
 
 type SourceLanguage = 'ts' | 'tsx';
@@ -38,7 +38,7 @@ type SourceLanguage = 'ts' | 'tsx';
 const SOURCE_LANGUAGE: Record<keyof typeof DISPLAY_NAME_SOURCES, SourceLanguage> = {
   'player.validators.ts': 'ts',
   'PlayerOnboarding.tsx': 'tsx',
-  'PlayerProfile.tsx': 'tsx'
+  'ProfileEditForm.tsx': 'tsx'
 };
 
 // String.prototype.trim() strips the whole Unicode whitespace class, so applying it to a
@@ -50,7 +50,7 @@ const SOURCE_LANGUAGE: Record<keyof typeof DISPLAY_NAME_SOURCES, SourceLanguage>
 const ALLOWED_TRIM_RECEIVERS: Record<keyof typeof DISPLAY_NAME_SOURCES, readonly string[]> = {
   'player.validators.ts': ['value'],
   'PlayerOnboarding.tsx': ['bio'],
-  'PlayerProfile.tsx': ['bio']
+  'ProfileEditForm.tsx': ['bio']
 };
 
 // The trim scan is syntax-aware: each source is parsed into an AST and every member access
@@ -291,7 +291,7 @@ describe('display-name ASCII edge-whitespace rule single-source contract', () =>
     for (const name of [
       'player.validators.ts',
       'PlayerOnboarding.tsx',
-      'PlayerProfile.tsx'
+      'ProfileEditForm.tsx'
     ] as const) {
       const source = DISPLAY_NAME_SOURCES[name];
       const allowed = [...ALLOWED_TRIM_RECEIVERS[name]].sort();

@@ -24,6 +24,7 @@ import { SkipLink } from '../components/SkipLink';
 import { accessibilityStyles } from '../components/accessibility.styles';
 import { rootStyles } from '../root.styles';
 import { appShellStyles } from '../features/app-shell/app-shell.styles';
+import { AppPreferencesContext, type AppTheme } from '../features/preferences/app-preferences';
 
 export const Route = createRootRoute({
   beforeLoad: async () => ({ locale: await getInitialLocale(), theme: await getInitialTheme() }),
@@ -73,7 +74,10 @@ function PublicControlIcon({ icon }: { icon: 'globe' | 'moon' | 'sun' }) {
 
 function Root() {
   const { locale: initialLocale, theme: initialTheme } = Route.useRouteContext();
-  const isPublicHomepage = useRouterState({ select: (state) => state.location.pathname === '/' });
+  // The homepage and the privacy policy share the Clubhouse public chrome: icon chips, no pill text.
+  const isPublicChrome = useRouterState({
+    select: (state) => ['/', '/privacy'].includes(state.location.pathname)
+  });
   const isAuthJourney = useRouterState({
     select: (state) =>
       [
@@ -96,6 +100,49 @@ function Root() {
   useEffect(() => {
     document.documentElement.dataset.appHydrated = 'true';
   }, []);
+  const changeLocale = (value: string): Promise<void> => {
+    const next = resolveLocale(value);
+    const request = ++localeRequest.current;
+    localeQueue.current = localeQueue.current
+      .catch(() => undefined)
+      .then(async () => {
+        const previous = localeRef.current;
+        let saveSucceeded = false;
+        try {
+          await saveLocale({ data: next });
+          saveSucceeded = true;
+          persistedLocaleRef.current = next;
+          if (request !== localeRequest.current) return;
+          await i18n.changeLanguage(next);
+          if (request !== localeRequest.current) {
+            await i18n.changeLanguage(previous);
+            return;
+          }
+          localeRef.current = next;
+          setLocale(next);
+          document.documentElement.lang = next;
+        } catch {
+          if (!saveSucceeded) persistedLocaleRef.current = undefined;
+          if (localeRef.current === previous) {
+            try {
+              await i18n.changeLanguage(previous);
+              if (persistedLocaleRef.current !== previous) {
+                await saveLocale({ data: previous });
+                persistedLocaleRef.current = previous;
+              }
+            } catch {
+              // Keep the rendered locale unchanged if preference recovery also fails.
+            }
+          }
+        }
+      });
+    return localeQueue.current;
+  };
+  const changeTheme = (next: AppTheme) => {
+    setTheme(next);
+    document.documentElement.dataset.theme = next;
+    void saveTheme({ data: next });
+  };
   return (
     <html lang={locale} data-theme={theme} {...stylex.props(appShellStyles.documentInset)}>
       <head>
@@ -104,110 +151,80 @@ function Root() {
       </head>
       <body {...stylex.props(stylex.defaultMarker())}>
         <I18nextProvider i18n={i18n}>
-          <SkipLink />
-          <RefreshStatusProvider>
-            {!isAuthJourney && (
-              <div
-                {...stylex.props(rootStyles.controls, isPublicHomepage && rootStyles.homeControls)}
-              >
-                <label
-                  {...stylex.props(
-                    rootStyles.chip,
-                    rootStyles.focusChip,
-                    isPublicHomepage && rootStyles.homeChip
-                  )}
+          <AppPreferencesContext
+            value={{
+              locale,
+              theme: theme === 'dark' ? 'dark' : 'light',
+              changeLocale,
+              changeTheme
+            }}
+          >
+            <SkipLink />
+            <RefreshStatusProvider>
+              {!isAuthJourney && (
+                <div
+                  {...stylex.props(rootStyles.controls, isPublicChrome && rootStyles.homeControls)}
                 >
-                  <span
-                    aria-hidden="true"
-                    {...stylex.props(rootStyles.chipText, rootStyles.localeText)}
-                  >
-                    {isPublicHomepage ? <PublicControlIcon icon="globe" /> : locale.slice(0, 2)}
-                  </span>
-                  <select
-                    id="locale"
-                    aria-label={i18n.t('language')}
-                    {...stylex.props(rootStyles.locale)}
-                    value={locale}
-                    onChange={(event) => {
-                      const next = resolveLocale(event.target.value);
-                      const request = ++localeRequest.current;
-                      localeQueue.current = localeQueue.current
-                        .catch(() => undefined)
-                        .then(async () => {
-                          const previous = localeRef.current;
-                          let saveSucceeded = false;
-                          try {
-                            await saveLocale({ data: next });
-                            saveSucceeded = true;
-                            persistedLocaleRef.current = next;
-                            if (request !== localeRequest.current) return;
-                            await i18n.changeLanguage(next);
-                            if (request !== localeRequest.current) {
-                              await i18n.changeLanguage(previous);
-                              return;
-                            }
-                            localeRef.current = next;
-                            setLocale(next);
-                            document.documentElement.lang = next;
-                          } catch {
-                            if (!saveSucceeded) persistedLocaleRef.current = undefined;
-                            if (localeRef.current === previous) {
-                              try {
-                                await i18n.changeLanguage(previous);
-                                if (persistedLocaleRef.current !== previous) {
-                                  await saveLocale({ data: previous });
-                                  persistedLocaleRef.current = previous;
-                                }
-                              } catch {
-                                // Keep the rendered locale unchanged if preference recovery also fails.
-                              }
-                            }
-                          }
-                        });
-                    }}
-                  >
-                    <option value="en">{i18n.t('languageNames.en')}</option>
-                    <option value="pt-BR">{i18n.t('languageNames.pt-BR')}</option>
-                    <option value="es">{i18n.t('languageNames.es')}</option>
-                  </select>
-                </label>
-                <label
-                  {...stylex.props(
-                    rootStyles.chip,
-                    rootStyles.focusChip,
-                    isPublicHomepage && rootStyles.homeChip
-                  )}
-                >
-                  <span aria-hidden="true" {...stylex.props(rootStyles.chipText)}>
-                    {isPublicHomepage ? (
-                      <PublicControlIcon icon={theme === 'dark' ? 'sun' : 'moon'} />
-                    ) : (
-                      i18n.t(theme)
+                  <label
+                    {...stylex.props(
+                      rootStyles.chip,
+                      rootStyles.focusChip,
+                      isPublicChrome && rootStyles.homeChip
                     )}
-                  </span>
-                  <select
-                    id="theme"
-                    aria-label={i18n.t('theme')}
-                    {...stylex.props(rootStyles.locale)}
-                    value={theme}
-                    onChange={(event) => {
-                      const next = event.target.value === 'dark' ? 'dark' : 'light';
-                      setTheme(next);
-                      document.documentElement.dataset.theme = next;
-                      void saveTheme({ data: next });
-                    }}
                   >
-                    <option value="light">{i18n.t('light')}</option>
-                    <option value="dark">{i18n.t('dark')}</option>
-                  </select>
-                </label>
+                    <span
+                      aria-hidden="true"
+                      {...stylex.props(rootStyles.chipText, rootStyles.localeText)}
+                    >
+                      {isPublicChrome ? <PublicControlIcon icon="globe" /> : locale.slice(0, 2)}
+                    </span>
+                    <select
+                      id="locale"
+                      aria-label={i18n.t('language')}
+                      {...stylex.props(rootStyles.locale)}
+                      value={locale}
+                      onChange={(event) => void changeLocale(event.target.value)}
+                    >
+                      <option value="en">{i18n.t('languageNames.en')}</option>
+                      <option value="pt-BR">{i18n.t('languageNames.pt-BR')}</option>
+                      <option value="es">{i18n.t('languageNames.es')}</option>
+                    </select>
+                  </label>
+                  <label
+                    {...stylex.props(
+                      rootStyles.chip,
+                      rootStyles.focusChip,
+                      isPublicChrome && rootStyles.homeChip
+                    )}
+                  >
+                    <span aria-hidden="true" {...stylex.props(rootStyles.chipText)}>
+                      {isPublicChrome ? (
+                        <PublicControlIcon icon={theme === 'dark' ? 'sun' : 'moon'} />
+                      ) : (
+                        i18n.t(theme)
+                      )}
+                    </span>
+                    <select
+                      id="theme"
+                      aria-label={i18n.t('theme')}
+                      {...stylex.props(rootStyles.locale)}
+                      value={theme}
+                      onChange={(event) =>
+                        changeTheme(event.target.value === 'dark' ? 'dark' : 'light')
+                      }
+                    >
+                      <option value="light">{i18n.t('light')}</option>
+                      <option value="dark">{i18n.t('dark')}</option>
+                    </select>
+                  </label>
+                </div>
+              )}
+              <div id="main-content" tabIndex={-1} {...stylex.props(accessibilityStyles.content)}>
+                <Outlet />
               </div>
-            )}
-            <div id="main-content" tabIndex={-1} {...stylex.props(accessibilityStyles.content)}>
-              <Outlet />
-            </div>
-            <PwaRegistration />
-          </RefreshStatusProvider>
+              <PwaRegistration />
+            </RefreshStatusProvider>
+          </AppPreferencesContext>
         </I18nextProvider>
         <Scripts />
       </body>

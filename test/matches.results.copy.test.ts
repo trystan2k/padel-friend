@@ -68,7 +68,6 @@ describe('result copy', () => {
       'playedAt',
       'playedAtOffset',
       'courtLabel',
-      'preview',
       'submit',
       'submitting',
       'pending',

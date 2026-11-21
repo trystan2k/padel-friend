@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import clubhouseManifest from './references/paf-202-level-reviews/manifest.json' with { type: 'json' };
-import manifest from './references/paf-17/manifest.json' with { type: 'json' };
 import {
   approveRequest,
   cleanupLevelReviews,
@@ -15,8 +14,8 @@ import {
 } from './level-reviews-fixtures';
 import { copies, fixtures, type Actor } from './matches-management-fixtures';
 
-// Visual oracle for the three approved level review frames (Pencil qWosG request, OKYtp status,
-// gGNxk Platform Admin decision). Two independent gates:
+// Visual oracle for the approved level review frames (Pencil qWosG request, OKYtp status; the
+// history, queue and detail frames live in notifications-d1-visual.spec.ts). Two independent gates:
 //  1. exact structural GEOMETRY probes (alignment, column, spacing, header offsets, frame card
 //     heights, >=44x44 controls, no overflow/clipping): deterministic, never widened by a budget;
 //  2. a FULL-VIEWPORT (390x844) raster comparison against the whole frame. Its budget only
@@ -44,8 +43,6 @@ const WIDTH = 390;
 const HEIGHT = 844;
 const REASON =
   'I’ve consistently played at this level for years. My recent results have been against much stronger opponents.';
-// Exact Pencil frame geometry (CSS px = frame px / 2): page gutter and card stack gap.
-const FRAME = { gutter: 18, gap: 10 } as const;
 
 test.use({ serviceWorkers: 'block' });
 test.describe.configure({ mode: 'serial' });
@@ -255,147 +252,6 @@ function heightViolations(blocks: Block[], expected: number[]): string[] {
       : [block.name + ' height ' + actual + ' != ' + expected[index]];
   });
 }
-
-/** Child geometry relative to its containing card; unaffected by document scrolling. */
-async function expectRelative(locator: Locator, parent: Locator, top: number, height: number) {
-  const child = await box(locator);
-  const outer = await box(parent);
-  expect(Math.abs(child.y - outer.y - top), 'relative top').toBeLessThanOrEqual(TOLERANCE);
-  expect(Math.abs(child.height - height), 'height').toBeLessThanOrEqual(TOLERANCE);
-}
-
-async function expectGutter(page: Page) {
-  const gutter = await page
-    .locator('main')
-    .evaluate((main) => Number.parseFloat(getComputedStyle(main).paddingLeft));
-  expect(gutter, 'page gutter equals the Pencil frame gutter').toBeCloseTo(FRAME.gutter, 0);
-}
-
-/** Card inner inset: heading and body text keep the 10px card padding on both sides. */
-async function expectCardInset(card: Locator) {
-  const outer = await box(card);
-  const heading = await box(card.locator('h2, h3, p, label').first());
-  expect(heading.x - outer.x, 'card inset').toBeCloseTo(10, 0);
-  expect(outer.right - heading.right, 'card inset right').toBeCloseTo(10, 0);
-}
-
-type Tile = { src: number; height: number; dest: number };
-
-/**
- * Share of perceptibly different pixels (YIQ, threshold 0.1) between the FULL live 390x844
- * viewport and an expected image composed from the approved frame (one or more frame regions
- * placed at the position where the live screen renders the same region).
- */
-async function rasterDifference(
-  page: Page,
-  info: TestInfo,
-  frame: string,
-  label: string,
-  tiles: Tile[]
-): Promise<number> {
-  await page.evaluate(() => window.scrollTo(0, 0));
-  const actual = await page.screenshot({
-    animations: 'disabled',
-    caret: 'hide',
-    fullPage: false,
-    path: info.outputPath(frame + '-' + label + '-actual.png')
-  });
-  const referencePng = readFileSync(
-    new URL('./references/paf-17/' + frame + '.png', import.meta.url)
-  );
-  const result = await page.evaluate(
-    async ({ actualUrl, approvedUrl, area }) => {
-      const decode = async (url: string) => {
-        const image = new Image();
-        image.src = url;
-        await image.decode();
-        return image;
-      };
-      const [shot, reference] = await Promise.all([decode(actualUrl), decode(approvedUrl)]);
-      const draw = (paint: (context: CanvasRenderingContext2D) => void) => {
-        const canvas = document.createElement('canvas');
-        canvas.width = area.width;
-        canvas.height = area.height;
-        const context = canvas.getContext('2d', { willReadFrequently: true })!;
-        paint(context);
-        return canvas;
-      };
-      const rendered = draw((context) => context.drawImage(shot, 0, 0, area.width, area.height));
-      const expectedCanvas = draw((context) => {
-        // Page background sampled from an empty frame area, then each frame region at its live position.
-        const sample = document.createElement('canvas');
-        sample.width = 1;
-        sample.height = 1;
-        const sampleContext = sample.getContext('2d')!;
-        sampleContext.drawImage(reference, 8, 1300, 1, 1, 0, 0, 1, 1);
-        const [red, green, blue] = sampleContext.getImageData(0, 0, 1, 1).data;
-        context.fillStyle = 'rgb(' + red + ',' + green + ',' + blue + ')';
-        context.fillRect(0, 0, area.width, area.height);
-        for (const tile of area.tiles)
-          context.drawImage(
-            reference,
-            0,
-            tile.src * 2,
-            area.width * 2,
-            tile.height * 2,
-            0,
-            tile.dest,
-            area.width,
-            tile.height
-          );
-      });
-      const a = rendered.getContext('2d')!.getImageData(0, 0, area.width, area.height).data;
-      const b = expectedCanvas.getContext('2d')!.getImageData(0, 0, area.width, area.height).data;
-      let changed = 0;
-      for (let index = 0; index < a.length; index += 4) {
-        const red = a[index]! - b[index]!;
-        const green = a[index + 1]! - b[index + 1]!;
-        const blue = a[index + 2]! - b[index + 2]!;
-        const luminance = red * 0.29889531 + green * 0.58662247 + blue * 0.11448223;
-        const chromaI = red * 0.59597799 - green * 0.2741761 - blue * 0.32180189;
-        const chromaQ = red * 0.21147017 - green * 0.52261711 + blue * 0.31114694;
-        if (
-          0.5053 * luminance * luminance + 0.299 * chromaI * chromaI + 0.1957 * chromaQ * chromaQ >
-          35215 * 0.1 ** 2
-        )
-          changed++;
-      }
-      return {
-        share: changed / (area.width * area.height),
-        expected: expectedCanvas.toDataURL('image/png')
-      };
-    },
-    {
-      actualUrl: 'data:image/png;base64,' + actual.toString('base64'),
-      approvedUrl: 'data:image/png;base64,' + referencePng.toString('base64'),
-      area: { width: WIDTH, height: HEIGHT, tiles }
-    }
-  );
-  console.info('PAF-17 raster ' + frame + ' ' + label + ': ' + result.share);
-  await info.attach(frame + '-' + label + '-actual', { body: actual, contentType: 'image/png' });
-  await info.attach(frame + '-' + label + '-expected', {
-    body: Buffer.from(result.expected.split(',')[1]!, 'base64'),
-    contentType: 'image/png'
-  });
-  return result.share;
-}
-
-function budget(key: string): number {
-  const value = (manifest.visualBudgets.perScreen as Record<string, number>)[key];
-  expect(value, 'manifest budget for ' + key).toBeGreaterThan(0);
-  return value!;
-}
-
-// --- provenance --------------------------------------------------------------------------
-
-test('D1 current-truth provenance pins the blocked platform reference', () => {
-  const design = readFileSync(new URL(`../${manifest.sourceDesign.path}`, import.meta.url));
-  expect(createHash('sha256').update(design).digest('hex')).toBe(manifest.sourceDesign.sha256);
-  const reference = manifest.approvedReferences.gGNxk;
-  const png = readFileSync(new URL(`./references/paf-17/${reference.file}`, import.meta.url));
-  expect(createHash('sha256').update(png).digest('hex')).toBe(reference.sha256);
-  expect([png.readUInt32BE(16), png.readUInt32BE(20)]).toEqual(reference.pixelSize);
-});
 
 // --- request (qWosG) and status (OKYtp): Clubhouse frames ---------------------------------
 // The player history, platform queue and platform detail (D1) keep the legacy frame checks below.
@@ -729,117 +585,7 @@ for (const state of ['pending', 'reviewing', 'approved', 'rejected'] as const) {
   );
 }
 
-// --- Platform Admin decision (gGNxk) -----------------------------------------------------
-
-const FRAME_ADMIN_TITLE_TOP = 24;
-const FRAME_ADMIN_BODY = 79;
-
-test('platform admin decision keeps the Pencil geometry and a calibrated full-screen raster budget (mobile light)', async ({
-  browserName
-}, info) => {
-  expect(browserName).toBe('chromium');
-  const page = await f.page(admin, 'en', WIDTH, 'light', HEIGHT);
-  await open(page, '/platform-admin/level-reviews/' + ids.pending);
-  const approve = page.getByRole('button', { name: lr.adminDecision.approve, exact: true });
-  const reject = page.getByRole('button', { name: lr.adminDecision.reject, exact: true });
-  await expectOrder([
-    ['title', page.getByRole('heading', { level: 1 })],
-    ['player identity', page.getByText(pending.name).first()],
-    ['request reason', page.getByText(REASON)],
-    ['rating preview', page.getByRole('heading', { name: lr.adminDecision.preview })],
-    ['forward-only note', page.getByText(lr.adminDecision.forward)],
-    ['approve', approve]
-  ]);
-  // Geometry: back link row, title under it, one column of cards on the 10px rhythm.
-  await expectGutter(page);
-  const back = await box(page.locator('main > a').first());
-  const title = await box(page.getByRole('heading', { level: 1 }));
-  expect(back, 'back link').toMatchObject({ x: FRAME.gutter, y: FRAME.gutter, height: 44 });
-  expect(back.width).toBeGreaterThanOrEqual(44);
-  expect(title.x).toBeCloseTo(FRAME.gutter, 0);
-  expect(title.y, 'title sits one gap under the back link').toBeCloseTo(back.bottom + FRAME.gap, 0);
-  const blocks = await blocksOf(page, 'main');
-  expect(heightViolations(blocks, [171, 72, 57, 91, 538])).toEqual([]);
-  expect(blocks.map((block) => block.name.split(':')[0])).toEqual([
-    'section',
-    'section',
-    'section',
-    'section',
-    'section'
-  ]);
-  expect(
-    stackViolations(blocks, { left: FRAME.gutter, right: WIDTH - FRAME.gutter, gap: FRAME.gap })
-  ).toEqual([]);
-  expect(blocks[0]!.y - (title.y + title.height), 'identity card one gap under title').toBeCloseTo(
-    FRAME.gap,
-    0
-  );
-  await expectCardInset(page.locator('main > section').first());
-  // Approve and Reject are full-width, full-size actions inside the decision card's inset.
-  const decisionCard = await box(page.locator('main > section').last());
-  const decision = page.locator('main > section').last();
-  await expectRelative(
-    page.getByRole('textbox', { name: lr.adminDecision.target }),
-    decision,
-    92,
-    52
-  );
-  await expectRelative(decision.locator('fieldset'), decision, 150, 110);
-  await expectRelative(
-    page.getByRole('textbox', { name: lr.adminDecision.note }),
-    decision,
-    290,
-    120
-  );
-  await expectRelative(approve, decision, 416, 52);
-  await expectRelative(reject, decision, 476, 52);
-  const approveBox = await box(approve);
-  const rejectBox = await box(reject);
-  for (const action of [approveBox, rejectBox]) {
-    expect(action.height).toBeGreaterThanOrEqual(44);
-    expect(action.x).toBeCloseTo(decisionCard.x + 10, 0);
-    expect(action.right).toBeCloseTo(decisionCard.right - 10, 0);
-  }
-  expect(rejectBox.y - approveBox.bottom, 'Approve and Reject are one 8px step apart').toBeCloseTo(
-    8,
-    0
-  );
-  expect(await layoutViolations(page)).toEqual([]);
-
-  const audited = await f.page(admin, 'en', WIDTH, 'light', HEIGHT);
-  await open(audited, '/platform-admin/level-reviews/' + ids.approved);
-  const auditedBlocks = await blocksOf(audited, 'main');
-  expect(heightViolations(auditedBlocks, [171, 72, 57, 127, 188])).toEqual([]);
-  expect(
-    stackViolations(auditedBlocks, {
-      left: FRAME.gutter,
-      right: WIDTH - FRAME.gutter,
-      gap: FRAME.gap
-    })
-  ).toEqual([]);
-  const shift = Math.round(title.y) - FRAME_ADMIN_TITLE_TOP;
-  const bodyTop = Math.round(blocks[0]!.y);
-  const measured = await rasterDifference(page, info, 'gGNxk', 'detail', [
-    { src: 0, height: Math.min(FRAME_ADMIN_BODY, bodyTop - shift), dest: shift },
-    { src: FRAME_ADMIN_BODY, height: HEIGHT - FRAME_ADMIN_BODY, dest: bodyTop }
-  ]);
-  expect(measured, 'gGNxk raster budget').toBeLessThanOrEqual(budget('gGNxk'));
-});
-
-test('admin queue keeps one column, a full-width 44px filter and an 8px list rhythm', async () => {
-  const page = await f.page(admin, 'en', WIDTH, 'light', HEIGHT);
-  await open(page, '/platform-admin/level-reviews');
-  await expectGutter(page);
-  const filter = await box(page.getByRole('combobox', { name: lr.admin.filter }));
-  expect(filter).toMatchObject({ x: FRAME.gutter, width: WIDTH - 2 * FRAME.gutter });
-  expect(filter.height).toBeGreaterThanOrEqual(44);
-  const items = await blocksOf(page, 'main ul');
-  expect(items.length).toBeGreaterThanOrEqual(4);
-  expect(
-    stackViolations(items, { left: FRAME.gutter, right: WIDTH - FRAME.gutter, gap: 8 })
-  ).toEqual([]);
-  expect(await layoutViolations(page)).toEqual([]);
-});
+// The player history, platform queue and platform detail frames (D1) are probed by notifications-d1-visual.spec.ts.
 
 // --- supplemental structural matrix: viewport x theme x locale ---------------------------
 
@@ -1177,7 +923,7 @@ test('keyboard traversal follows the visual order and the confirmation dialog re
   await page.getByRole('textbox', { name: lr.adminDecision.note }).fill('Keyboard note.');
 
   // Tab from the page start: every stop is visible, after the page-level controls the order
-  // never moves upward, and Approve is reached before Reject.
+  // never moves upward, and Deny is reached before Approve (the sticky bar's frame order).
   await page.evaluate(() => {
     if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
   });
@@ -1186,12 +932,12 @@ test('keyboard traversal follows the visual order and the confirmation dialog re
     await page.keyboard.press('Tab');
     const stop = await focusedName(page);
     stops.push(stop);
-    if (stop.name === lr.adminDecision.reject) break;
+    if (stop.name === lr.adminDecision.approve) break;
   }
   const names = stops.map((stop) => stop.name);
-  expect(names).toContain(lr.adminDecision.approve);
-  expect(names.indexOf(lr.adminDecision.approve)).toBeLessThan(
-    names.indexOf(lr.adminDecision.reject)
+  expect(names).toContain(lr.adminDecision.reject);
+  expect(names.indexOf(lr.adminDecision.reject)).toBeLessThan(
+    names.indexOf(lr.adminDecision.approve)
   );
   const content = stops.slice(names.indexOf(lr.adminDecision.target) >= 0 ? 0 : 2);
   const ys = content.map((stop) => stop.y);
@@ -1260,7 +1006,11 @@ for (const theme of ['light', 'dark'] as const) {
           await expect(control).toBeFocused();
           expect.soft(await contrastViolations(page), action + ' dialog focus').toEqual([]);
         }
-        for (const name of [lr.adminDecision.cancel, lr.adminDecision.confirm]) {
+        const confirm =
+          action === lr.adminDecision.approve
+            ? lr.adminDecision.confirmApproval
+            : lr.adminDecision.confirmDenial;
+        for (const name of [lr.adminDecision.cancel, confirm]) {
           const control = await box(dialog.getByRole('button', { name }));
           expect(control.width, name + ' width').toBeGreaterThanOrEqual(44);
           expect(control.height, name + ' height').toBeGreaterThanOrEqual(44);

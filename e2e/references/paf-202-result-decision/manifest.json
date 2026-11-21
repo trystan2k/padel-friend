@@ -1,7 +1,7 @@
 {
   "sourceDesign": {
     "path": "docs/design/padel-friend-clubhouse.pen",
-    "sha256": "f6cf5a40f681001cd089948e38ed4e82d97fcfecd9303eb8d14f20bbfd3f4b5f"
+    "sha256": "69638a9da9bc47ab40165a1455b5e70c06c0fb11faacc8f51c7015457464d8d7"
   },
   "route": "/matches/$eventId",
   "precedence": "D7: route-specific result frames govern their own regions. CWJkF is record-only: no route renders Community Admin dispute resolution as a standalone screen, so it is not force-mapped; the resolve dialog in MatchResultCorrections follows its sheet structure inside match detail.",

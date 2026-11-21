@@ -64,9 +64,10 @@ test('admin approves from queue and player sees the adjustment', async () => {
   const page = await f.page(admin);
   await open(page, '/platform-admin/level-reviews');
   await expect(page.getByRole('heading', { name: lr.admin.title })).toBeVisible();
-  const item = page.getByRole('link').filter({ hasText: player.name });
+  // The card that links to the request just submitted (the player may own older, closed ones).
+  const item = page.getByRole('listitem').filter({ has: page.locator('a[href$="/' + id + '"]') });
   await expect(item).toContainText(lr.status.pending);
-  await item.click();
+  await item.getByRole('link', { name: lr.admin.review }).click();
   await expect(page).toHaveURL(new RegExp(id + '$'));
   await expect(page.getByRole('heading', { name: lr.adminDecision.preview })).toBeVisible();
   await expect(page.getByText(/Internal μ/)).toContainText('3.20');

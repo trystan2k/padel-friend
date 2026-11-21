@@ -32,3 +32,17 @@ export function getPasswordIssues(password: string): PasswordIssue[] {
 export function isPasswordValid(password: string): boolean {
   return getPasswordIssues(password).length === 0;
 }
+
+export type PasswordStrength = 'empty' | 'weak' | 'fair' | 'good' | 'strong';
+
+/**
+ * Presentation-only meter for the claim password step. It derives from the same rules as
+ * getPasswordIssues and never gates submission: 'strong' means the policy is fully met.
+ */
+export function getPasswordStrength(password: string): PasswordStrength {
+  if (password === '') return 'empty';
+  const issues = getPasswordIssues(password).length;
+  if (issues === 0) return 'strong';
+  if (issues === 1) return 'good';
+  return issues === 2 ? 'fair' : 'weak';
+}

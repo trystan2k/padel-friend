@@ -239,3 +239,54 @@ describe('level review notification detail', () => {
     expect(screen.queryByText(/Verified on court/)).toBeNull();
   });
 });
+
+describe('level review notification detail frame structure (D1)', () => {
+  it('shows the unread chip until the mark-read call is confirmed, then the read chip', async () => {
+    let release: (value: string) => void = () => undefined;
+    mocks.markRead.mockReturnValue(new Promise<string>((resolve) => (release = resolve)));
+    renderDetail(decodeNotificationTarget(approvedTarget));
+    const copy = en.notifications;
+    expect(screen.getByText(/Unread/)).toBeTruthy();
+    expect(screen.queryByText(copy.readRow)).toBeNull();
+    release('2026-11-04T12:00:01.000Z');
+    expect(await screen.findByText(copy.readRow)).toBeTruthy();
+    expect(screen.queryByText(/Unread/)).toBeNull();
+  });
+
+  it('keeps the unread chip when the mark-read call fails', async () => {
+    mocks.markRead.mockRejectedValue(new Error('offline'));
+    renderDetail(decodeNotificationTarget(approvedTarget));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(screen.getByText(/Unread/)).toBeTruthy();
+    expect(screen.queryByText(en.notifications.readRow)).toBeNull();
+  });
+
+  it('draws the outcome card from the real context only: range, updated level, date and note', () => {
+    renderDetail(decodeNotificationTarget(approvedTarget));
+    const copy = en.notifications.levelReview;
+    expect(screen.getByRole('heading', { level: 2, name: copy.cardTitle })).toBeTruthy();
+    expect(screen.getByText(copy.requestedLabel)).toBeTruthy();
+    expect(screen.getByText(copy.updatedLabel)).toBeTruthy();
+    expect(screen.getByText(copy.decidedLabel)).toBeTruthy();
+    expect(screen.getByText('4.75', { selector: 'span' })).toBeTruthy();
+    // The context has no previous level: the frame's Previous level row is never invented.
+    expect(screen.queryByText(/previous level/i)).toBeNull();
+  });
+
+  it('draws a denied chip and no updated level for a rejection', () => {
+    renderDetail(decodeNotificationTarget(rejectedTarget));
+    expect(screen.getByText(en.levelReview.status.rejected)).toBeTruthy();
+    expect(screen.queryByText(en.notifications.levelReview.updatedLabel)).toBeNull();
+  });
+
+  it.each([
+    ['en', en],
+    ['pt-BR', ptBR],
+    ['es', es]
+  ] as const)('translates the outcome card in %s', (locale, copy) => {
+    renderDetail(decodeNotificationTarget(approvedTarget), locale);
+    expect(
+      screen.getByRole('heading', { level: 2, name: copy.notifications.levelReview.cardTitle })
+    ).toBeTruthy();
+  });
+});

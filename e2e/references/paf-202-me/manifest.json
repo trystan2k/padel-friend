@@ -6,7 +6,7 @@
     "exportCommand": "Pencil MCP: Export([\"vARtQ\",\"x2GG9U\"], \"png\", \"<repo>/e2e/references/paf-202-me\", {scale:1})"
   },
   "route": "/me (D5) · /players/$playerId keeps its statistics role (U20)",
-  "precedence": "D7: route-specific frame vARtQ governs the Me composition. D1: profile EDIT form details and chart DETAIL views (explanation dialog, data table) have NO frame: BLOCKED, today's layout kept. The rating journey overview is styled from x2GG9U (empty states) and the shared card tokens.",
+  "precedence": "D7: route-specific frame vARtQ governs the Me composition. D1 group C (implemented): the profile edit screen and the rating journey chart, empty and error states are governed by the approved frames VpcMM, xlgw8, lNj83, PYxIz, DtbIE, tgXcg, JYWDi and d9rkmE (see paf-202-d1-group-c). Only the explanation dialog (a detail view without a frame) stays untouched.",
   "approvedReferences": {
     "vARtQ": {
       "frameId": "vARtQ",
@@ -31,20 +31,20 @@
       "note": "Moved from the Community surface into Me (D5, owner-approved). Same hairline list rows; visible only for server-reported platform admins."
     },
     "AvatarUpload": {
-      "frames": [],
-      "blocked": "Only the card shell changes; field/preview/retry layout untouched."
+      "frames": ["VpcMM", "xlgw8"],
+      "note": "D1 group C implemented: 56px initials disc beside a green Change photo link (camera icon); upload action, validation and errors kept."
     },
     "ProfileEditForm": {
-      "frames": [],
-      "blocked": "D1: no frame for the edit form. Layout and fields untouched (still the existing ui styles)."
+      "frames": ["VpcMM", "xlgw8"],
+      "note": "D1 group C implemented: own screen with top bar, 52px display name, availability pills, theme segmented control, language select and sticky Cancel / Save changes bar. Preferred side, dominant hand and bio (not drawn) are kept so the saved profile is unchanged."
     },
     "RatingJourney": {
-      "frames": ["x2GG9U"],
-      "note": "Heading 20/800, scope tag in sentence case, 14px muted body copy, history empty state as glyph + title + body."
+      "frames": ["lNj83", "PYxIz", "DtbIE", "tgXcg", "JYWDi", "d9rkmE"],
+      "note": "D1 group C implemented: 28/800 heading, chart card, Recent games card, single empty card and red-soft error banner with Reload."
     },
     "RatingProgressChart": {
-      "frames": [],
-      "blocked": "D1: chart detail has no frame; plot, text equivalent and data table kept."
+      "frames": ["lNj83", "PYxIz", "DtbIE", "tgXcg"],
+      "note": "D1 group C implemented: 40/800 level, all-time change, month bars plus latest bar; screen-reader summary and the full data table are kept behind the Show data table disclosure."
     },
     "RatingExplanation": {
       "frames": [],

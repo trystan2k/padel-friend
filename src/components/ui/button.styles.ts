@@ -20,6 +20,7 @@ export const styles = stylex.create({
     fontWeight: 'var(--font-weight-bold)',
     lineHeight: 'var(--font-line-height-snug)',
     textAlign: 'center',
+    textDecoration: 'none',
     cursor: 'pointer',
     ':disabled': { cursor: 'not-allowed', opacity: 0.6 },
     '[aria-busy="true"]': { cursor: 'progress' }

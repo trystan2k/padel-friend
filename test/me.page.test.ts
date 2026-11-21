@@ -65,14 +65,12 @@ describe('Me composition sources', () => {
     expect(read('src/features/community/CommunitySurface.tsx')).toContain('<CommunityAdminEntries');
   });
 
-  it('orders vARtQ sections: identity, level card, shortcuts, level review, edit, journey, sign-out', () => {
+  it('orders vARtQ sections: identity, level card, shortcuts, level review, journey, sign-out', () => {
     const order = [
       '<header {...stylex.props(s.identity)}',
       'profile.globalLevel',
       "t('profile.links.label')",
       "t('levelReview.entry.title')",
-      '{editing ? (',
-      '<AvatarUpload',
       '<RatingJourney',
       '<PlatformAdminEntry',
       "t('signOut')"
@@ -81,11 +79,17 @@ describe('Me composition sources', () => {
     expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
-  it('keeps the blocked profile-edit form on its existing styles (D1)', () => {
-    const form = profile.slice(profile.indexOf('{editing ? ('), profile.indexOf('<AvatarUpload'));
-    expect(form).toContain('ui.card');
+  it('opens the profile edit as its own screen on the Clubhouse form (frames VpcMM / xlgw8)', () => {
+    expect(profile).toContain('if (editing)');
+    expect(profile).toContain('<ProfileEditForm');
+    expect(profile).not.toContain('<AvatarUpload');
+    const form = read('src/features/player/ProfileEditForm.tsx');
+    expect(form).toContain('<TextField');
     expect(form).toContain('<AvailabilityFields');
-    expect(form).not.toContain('s.list');
+    expect(form).toContain('pills');
+    expect(form).toContain('<Button');
+    expect(form).not.toContain('ui.card');
+    expect(read('src/features/player/profile-edit.styles.ts')).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 
   it('does not fabricate level trends or statistics tiles the frame draws (D6)', () => {
@@ -109,7 +113,7 @@ describe('Me composition sources', () => {
       'profile.levelScale',
       'profile.dominantHand',
       'profile.bio',
-      'rating.journey.scope',
+      'rating.progress.scopeCaption',
       'rating.history.emptyTitle'
     ]) {
       const value = i18n.t(key);

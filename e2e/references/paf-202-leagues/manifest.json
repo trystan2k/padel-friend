@@ -1,11 +1,11 @@
 {
   "sourceDesign": {
     "path": "docs/design/padel-friend-clubhouse.pen",
-    "sha256": "f6cf5a40f681001cd089948e38ed4e82d97fcfecd9303eb8d14f20bbfd3f4b5f",
+    "sha256": "69638a9da9bc47ab40165a1455b5e70c06c0fb11faacc8f51c7015457464d8d7",
     "exportCommand": "Pencil MCP: Export([\"ywfn7\",\"ik5JC\",\"d6ANDN\",\"xbIxj\",\"MYsDp\",\"r9r34\"], \"png\", \"<repo>/e2e/references/paf-202-leagues/<id>.png\", {scale:1})"
   },
   "route": "/community/$communityId/leagues/create · /community/$communityId/leagues/$leagueId",
-  "precedence": "D7: route-specific frames govern their own regions. D1: the league index has no frame and stays BLOCKED (frame pending); it is only touched through shared primitives and tokens.",
+  "precedence": "D7: route-specific frames govern their own regions. D1 group C (implemented): the league index is governed by the approved frames Fj5bc and ssomJ (see paf-202-d1-group-c).",
   "surfaces": {
     "LeagueEntries": {
       "frames": [],
@@ -13,7 +13,7 @@
     },
     "LeagueListPage": {
       "frames": [],
-      "blocked": "D1: no approved frame for the league index. Layout and copy untouched; only shared tokens and primitives apply."
+      "implemented": "D1 group C: Fj5bc / ssomJ (paf-202-d1-group-c). Top bar, 52px Create league action, status chips and 20px cards follow the frames; the frame-only participation row is not drawn (no source data, D6)."
     },
     "CreateLeaguePage": {
       "frames": ["ik5JC", "MYsDp"],

@@ -6,12 +6,12 @@ import manifest from '../e2e/references/paf-202-level-reviews/manifest.json';
 const read = (path: string) => readFileSync(new URL(path, import.meta.url));
 const source = (name: string) => read(`../src/features/level-reviews/${name}`).toString('utf8');
 const sentenceCase = (copy: string) => copy === copy.charAt(0).toUpperCase() + copy.slice(1);
-const BLOCKED = [
+const D1_PAGES = [
   'PlayerLevelReviewHistory.tsx',
   'PlatformLevelReviewQueue.tsx',
-  'PlatformLevelReviewDetail.tsx',
-  'LevelReviewStates.tsx'
+  'PlatformLevelReviewDetail.tsx'
 ];
+const SHARED_STYLE_PAGES = ['LevelReviewStates.tsx'];
 
 describe('level review Clubhouse visual references', () => {
   it('pins the source design digest to the current Clubhouse design bytes', () => {
@@ -34,19 +34,29 @@ describe('level review Clubhouse visual references', () => {
     expect([bytes.readUInt32BE(16), bytes.readUInt32BE(20)]).toEqual(reference.pixelSize);
   });
 
-  it('maps the request and status pages to their frames and records the rest as blocked (D1)', () => {
+  it('maps every level review page to its approved frames (D1 implemented)', () => {
     const { surfaces } = manifest;
     expect(surfaces.PlayerLevelReviewRequest.frames).toEqual(['qWosG']);
     expect(surfaces.PlayerLevelReviewStatus.frames).toEqual(['OKYtp']);
-    for (const blocked of [
+    expect(surfaces.PlayerLevelReviewHistory.frames).toEqual(['A9f626', 'ftEUR']);
+    expect(surfaces.PlatformLevelReviewQueue.frames).toEqual(['SCPeI', 'SeklE']);
+    expect(surfaces.PlatformLevelReviewDetail.frames).toEqual([
+      'Y7NRH',
+      'zkFgA',
+      'e8Z3Rb',
+      'QWdyf',
+      'rBhs4',
+      'w34ZL'
+    ]);
+    for (const implemented of [
       surfaces.PlayerLevelReviewHistory,
       surfaces.PlatformLevelReviewQueue,
       surfaces.PlatformLevelReviewDetail
     ]) {
-      expect(blocked.frames).toEqual([]);
-      expect(blocked.blocked).toMatch(/D1/);
+      expect(implemented).not.toHaveProperty('blocked');
+      expect(implemented.manifest).toBe('e2e/references/paf-202-d1-notifications/manifest.json');
     }
-    expect(surfaces.PlatformLevelReviewQueue.blocked).toMatch(/D7/);
+    expect(manifest.precedence).not.toContain('gGNxk would serve');
   });
 
   it('records the drawn elements without a source instead of inventing them (D6)', () => {
@@ -69,27 +79,36 @@ describe('level review Clubhouse visual references', () => {
     }
   });
 
-  it('keeps the blocked pages off the Clubhouse-only styles and components', () => {
-    for (const file of BLOCKED) {
+  it('keeps the shared loading and error states off the Clubhouse-only styles', () => {
+    for (const file of SHARED_STYLE_PAGES) {
       const text = source(file);
       expect(text).not.toContain('level-review-clubhouse.styles');
-      expect(text).not.toContain('levelReviewClubhouse');
       expect(text).not.toContain('LevelReviewBackLink');
     }
   });
 
-  it('uses the Clubhouse styles on the request and status pages only', () => {
-    for (const file of ['PlayerLevelReviewRequest.tsx', 'PlayerLevelReviewStatus.tsx']) {
+  it('uses the Clubhouse styles and the 48px back link on every framed page', () => {
+    for (const file of [
+      'PlayerLevelReviewRequest.tsx',
+      'PlayerLevelReviewStatus.tsx',
+      ...D1_PAGES
+    ]) {
       const text = source(file);
       expect(text).toContain('level-review-clubhouse.styles');
       expect(text).not.toContain("from './level-review.styles'");
     }
+    for (const file of D1_PAGES) expect(source(file)).toContain('LevelReviewBackLink');
   });
 });
 
 describe('level review link destinations', () => {
   it('no level review surface links to the dashboard any more', () => {
-    for (const file of [...BLOCKED, 'PlayerLevelReviewRequest.tsx', 'PlayerLevelReviewStatus.tsx'])
+    for (const file of [
+      ...D1_PAGES,
+      ...SHARED_STYLE_PAGES,
+      'PlayerLevelReviewRequest.tsx',
+      'PlayerLevelReviewStatus.tsx'
+    ])
       expect(source(file)).not.toContain('/dashboard');
   });
 

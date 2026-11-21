@@ -47,14 +47,22 @@
     "NotificationsPage": ["cAqsQ", "Z0gRd", "qNVpA"],
     "NotificationBadge": ["cAqsQ"],
     "NotificationResultOutcome": ["cAqsQ"],
-    "NotificationLevelReviewOutcome": [],
-    "NotificationDetailPage": [],
+    "NotificationLevelReviewOutcome": ["d0Qcrm", "PshW9", "U3UJJj", "ngrKi"],
+    "NotificationDetailPage": [
+      "dkFFb",
+      "MAIv0",
+      "k2CxJR",
+      "D4aVvd",
+      "d0Qcrm",
+      "PshW9",
+      "U3UJJj",
+      "ngrKi"
+    ],
     "NotificationPreferencesPage": ["y8ErQ"],
     "PushDevicePanel": ["y8ErQ", "nRn4M", "tzBrY"],
     "PwaInstallPanel": ["tzBrY"],
     "PwaRegistration": ["tzBrY"]
   },
-  "blockedDetail": "D1: no approved detail frame. Legacy shell, invite, result and level-review presentation stay. Only the result outcome in the feed uses the badge treatment.",
   "intentionalDifferences": [
     "Keep the ranking filter, UTC times, true context fields, explicit mark-read action, and Today/Earlier order. Mock rows cannot replace real feed data.",
     "Settings retain the account master switch, all five existing categories and explicit persistence. No test-push action, new category or implicit permission prompt.",
@@ -84,5 +92,6 @@
       "notifications-center-empty-desktop.png": 0.02,
       "notifications-preferences-desktop.png": 0.02
     }
-  }
+  },
+  "detailFrames": "D1 implemented (2026-11-20): the generic, match result and level review outcome detail layouts are pinned in e2e/references/paf-202-d1-notifications/manifest.json. The community invitation branch keeps its U8 frames and is unchanged."
 }

@@ -410,7 +410,81 @@ describe('claim onboarding', () => {
   });
 });
 
+describe('claim password step (Clubhouse claim-password frames)', () => {
+  function mountPassword(canSkip = false) {
+    return render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <ClaimPasswordStep canSkip={canSkip} next="/matches/e1" />
+      </I18nextProvider>
+    );
+  }
+
+  it('draws the top bar title, the sticky action bar and the rules without hardcoded copy', () => {
+    mountPassword();
+    expect(screen.getByText(t.passwordBarTitle)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: en.auth.back })).toBeNull();
+    const rules = document.getElementById('claim-password-rules')!;
+    expect(rules.querySelectorAll('li')).toHaveLength(2);
+    expect(
+      screen.getByLabelText(en.auth.resetNewPasswordLabel).getAttribute('aria-describedby')
+    ).toBe('claim-password-rules');
+    expect(
+      screen.getByLabelText(en.auth.resetConfirmPasswordLabel).getAttribute('aria-describedby')
+    ).toBe('claim-password-rules');
+    expect(screen.getByRole('button', { name: en.auth.resetSubmit })).toBeTruthy();
+  });
+
+  it('reflects typed input in the strength meter and the rule marks, never gating submit', async () => {
+    mountPassword();
+    const value = document.querySelector('[data-strength]')!;
+    expect(value.getAttribute('data-strength')).toBe('empty');
+    expect(value.textContent).toBe(en.auth.passwordStrengthEmpty);
+    expect(screen.getByRole('button', { name: en.auth.resetSubmit }).hasAttribute('disabled')).toBe(
+      false
+    );
+    await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'Abcdefghij');
+    expect(value.getAttribute('data-strength')).toBe('fair');
+    await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), '1!');
+    expect(value.getAttribute('data-strength')).toBe('strong');
+    expect(value.textContent).toBe(en.auth.passwordStrengthStrong);
+    const rules = [...document.querySelectorAll('#claim-password-rules li')];
+    expect(rules[0]!.textContent).toContain(en.auth.ruleMet);
+    expect(rules[1]!.textContent).toContain(en.auth.ruleUnmet);
+    await userEvent.type(screen.getByLabelText(en.auth.resetConfirmPasswordLabel), 'Abcdefghij1!');
+    expect(rules[1]!.textContent).toContain(en.auth.ruleMet);
+  });
+
+  it('reports the mismatch inline and keeps the focus on the heading when it mounts', async () => {
+    mountPassword();
+    expect(document.activeElement).toBe(screen.getByRole('heading', { level: 1 }));
+    await userEvent.type(screen.getByLabelText(en.auth.resetNewPasswordLabel), 'Abcdefghi1!');
+    await userEvent.type(screen.getByLabelText(en.auth.resetConfirmPasswordLabel), 'Abcdefghi1?');
+    await userEvent.click(screen.getByRole('button', { name: en.auth.resetSubmit }));
+    expect(screen.getByText(en.auth.resetMismatch)).toBeTruthy();
+    expect(mocks.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('keeps the skip action and its help in the action bar for a provider identity', () => {
+    mountPassword(true);
+    expect(screen.getByText(t.passwordSkipHelp)).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.passwordSkip })).toBeTruthy();
+  });
+});
+
 describe('unverified claim step', () => {
+  it('draws the Clubhouse chrome: top bar, step chip, options card and sticky action', () => {
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <ProvisionalClaimVerify />
+      </I18nextProvider>
+    );
+    expect(screen.getByText(t.verifyBarTitle)).toBeTruthy();
+    expect(screen.getByText(t.step)).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: t.verifyOptionsTitle })).toBeTruthy();
+    expect(screen.getByText(t.verifyOptions)).toBeTruthy();
+    expect(screen.getByRole('button', { name: t.verifyAction })).toBeTruthy();
+  });
+
   it('signs out and hands over to the recovery flow', async () => {
     render(
       <I18nextProvider i18n={createI18n('en')}>

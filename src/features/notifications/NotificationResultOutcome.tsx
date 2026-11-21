@@ -1,5 +1,7 @@
+import * as stylex from '@stylexjs/stylex';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { useTranslation } from 'react-i18next';
+import { detailStyles as d } from './notification-detail.styles';
 import type { ResultNotificationContext } from './notification-target';
 
 export function NotificationResultOutcome({
@@ -23,5 +25,6 @@ export function NotificationResultOutcome({
         loserSets: loser_sets
       })
     : t(`matches.results.outcome.${classification}`);
-  return appearance === 'feed' ? <StatusBadge tone="neutral">{label}</StatusBadge> : <p>{label}</p>;
+  if (appearance === 'feed') return <StatusBadge tone="neutral">{label}</StatusBadge>;
+  return <span {...stylex.props(d.chip, hasWinner ? d.chipGreen : d.chipMuted)}>{label}</span>;
 }

@@ -9,8 +9,14 @@ const focusRing = {
   outlineOffset: 'var(--space-2)'
 };
 
+// Full-screen forms inside a tab destination (the profile edit screen draws its own sticky action
+// bar) mark their main with data-app-chrome="hidden"; the tab bar and its clearance step aside.
 export const appShellStyles = stylex.create({
   bar: {
+    display: {
+      default: null,
+      [stylex.when.ancestor(':has([data-app-chrome="hidden"])')]: 'none'
+    },
     position: 'fixed',
     insetInline: 0,
     insetBlockEnd: 0,
@@ -82,12 +88,18 @@ export const appShellStyles = stylex.create({
     width: 'calc(var(--space-20) + var(--space-6))',
     height: 'calc(var(--space-20) + var(--space-6))'
   },
-  clearance: { height: barHeight },
+  clearance: {
+    height: barHeight,
+    display: {
+      default: null,
+      [stylex.when.ancestor(':has([data-app-chrome="hidden"])')]: 'none'
+    }
+  },
   // Focused fields and anchors scroll clear of the fixed bar (WCAG 2.4.11).
   documentInset: {
     scrollPaddingBlockEnd: {
       default: null,
-      ':has([data-app-nav])': barHeight
+      ':has([data-app-nav]):not(:has([data-app-chrome="hidden"]))': barHeight
     }
   }
 });

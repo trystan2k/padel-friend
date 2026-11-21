@@ -29,11 +29,12 @@ describe('league Clubhouse visual references', () => {
     }
   });
 
-  it('maps every league surface to a frame, and records the league index as blocked (D1)', () => {
+  it('maps every league surface to a frame, and records the league index as implemented in D1 group C', () => {
     const mapped = Object.values(manifest.surfaces).flatMap((surface) => surface.frames);
     expect(new Set(mapped)).toEqual(new Set(Object.keys(manifest.frameFindings)));
     expect(manifest.surfaces.LeagueListPage.frames).toEqual([]);
-    expect(manifest.surfaces.LeagueListPage.blocked).toMatch(/D1/);
+    expect(manifest.surfaces.LeagueListPage.implemented).toMatch(/Fj5bc \/ ssomJ/);
+    expect('blocked' in manifest.surfaces.LeagueListPage).toBe(false);
   });
 
   it('documents nonzero raster budgets above the measured residual', () => {
@@ -54,21 +55,14 @@ describe('league Clubhouse visual references', () => {
       expect(fraction).toBeLessThan(1);
   });
 
-  it('keeps the blocked league index off the new Clubhouse-only styles', () => {
+  it('builds the league index from its own Clubhouse styles and the shared back chevron', () => {
     const source = readFileSync(
       new URL('../src/features/leagues/LeagueListPage.tsx', import.meta.url),
       'utf8'
     );
-    for (const added of [
-      'flatCard',
-      'secondaryLink',
-      'correctionNotice',
-      'conflictGlyph',
-      'destructiveSolid',
-      'dialogActions',
-      'LeagueBackIcon'
-    ])
-      expect(source).not.toContain(added);
+    expect(source).toContain("from './league-index.styles'");
+    expect(source).toContain('LeagueBackIcon');
+    expect(source).not.toContain('styles.itemLink');
   });
 
   it.each(['en', 'pt-BR', 'es'])('keeps frame-mapped league copy sentence-case in %s', (locale) => {

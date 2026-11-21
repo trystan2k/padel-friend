@@ -6,7 +6,7 @@
     "exportCommand": "Pencil MCP: Export([\"qWosG\",\"OKYtp\"], \"png\", \"<repo>/e2e/references/paf-202-level-reviews\", {scale:1})"
   },
   "route": "/level-reviews/new (qWosG) · /level-reviews/$requestId (OKYtp)",
-  "precedence": "D7: route-specific frames qWosG and OKYtp govern their own pages. D1: the player level-review HISTORY and the platform level-review QUEUE and DETAIL have NO approved frame: BLOCKED, today's layout kept (shared tokens and primitives only). D7: gGNxk would serve both platform queue and detail if unblocked later; no mapping is forced now.",
+  "precedence": "D7: route-specific frames qWosG and OKYtp govern their own pages. D1 (resolved 2026-11-20): the player level-review HISTORY, the platform level-review QUEUE and the platform DETAIL now have approved frames (A9f626, SCPeI, Y7NRH, e8Z3Rb, rBhs4 and dark twins) pinned in e2e/references/paf-202-d1-notifications/manifest.json; gGNxk is no longer used.",
   "approvedReferences": {
     "qWosG": {
       "frameId": "qWosG",
@@ -31,16 +31,19 @@
       "note": "Tone-soft notice from the REAL state (amber open, green approved, red rejected, surface-2 canceled) with the real snapshot level, requested level or range and the real short request id; timeline built from the real timestamps; 'If approved / If rejected' cards only while the request is open; decision card when decided; outlined cancel action. The request snapshot card, reason, evidence and decision note are kept (real data, behavior preserved)."
     },
     "PlayerLevelReviewHistory": {
-      "frames": [],
-      "blocked": "D1: no approved frame for the request history. Layout and copy untouched; only shared tokens and primitives apply. Back link now targets /me."
+      "frames": ["A9f626", "ftEUR"],
+      "manifest": "e2e/references/paf-202-d1-notifications/manifest.json",
+      "note": "D1 implemented: 28/800 title, hairline request cards with a pill status chip, decision line and View request link; the request link, load-more and empty states are kept."
     },
     "PlatformLevelReviewQueue": {
-      "frames": [],
-      "blocked": "D1 (D7): gGNxk is partial and serves queue AND detail; no approved queue frame. Layout untouched."
+      "frames": ["SCPeI", "SeklE"],
+      "manifest": "e2e/references/paf-202-d1-notifications/manifest.json",
+      "note": "D1 implemented: pending summary chip, hairline review cards with initials avatar, status chip, requested range, submitted date and review link; the status filter and paging are kept."
     },
     "PlatformLevelReviewDetail": {
-      "frames": [],
-      "blocked": "D1 (D7): no approved detail frame. Layout, decision constraints and mutation feedback untouched."
+      "frames": ["Y7NRH", "zkFgA", "e8Z3Rb", "QWdyf", "rBhs4", "w34ZL"],
+      "manifest": "e2e/references/paf-202-d1-notifications/manifest.json",
+      "note": "D1 implemented: player header card, request context, decision section, audit trail, sticky Deny / Approve bar and the approve / deny confirmation sheet; decision constraints and mutation feedback are unchanged."
     },
     "PlatformAdminEntry": {
       "frames": [],
@@ -48,7 +51,7 @@
     },
     "LevelReviewStates": {
       "frames": [],
-      "note": "Loading and error cards keep the shared level review styles; the default back destination is now /me."
+      "note": "Loading and error cards keep the shared level review styles; the default back destination is /me. Not covered by a frame."
     }
   },
   "omittedDrawnElements": {

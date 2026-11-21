@@ -1,7 +1,7 @@
 {
   "sourceDesign": {
     "path": "docs/design/padel-friend-clubhouse.pen",
-    "sourceSha256": "f6cf5a40f681001cd089948e38ed4e82d97fcfecd9303eb8d14f20bbfd3f4b5f",
+    "sourceSha256": "69638a9da9bc47ab40165a1455b5e70c06c0fb11faacc8f51c7015457464d8d7",
     "exportCommand": "Pencil MCP Export([...page and annotation IDs], \"png\", \"<repo>/e2e/references/paf-202-public\", {scale:1})"
   },
   "annotations": {
