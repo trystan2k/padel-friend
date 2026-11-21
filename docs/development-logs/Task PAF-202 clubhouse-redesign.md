@@ -40,6 +40,7 @@ permalink: docs/development-logs/task-PAF-202-clubhouse-redesign
   25. `196c5f7` — fix: align result corrections with clubhouse frames and migrate legacy pins (U24)
   26. `f842d6f` — fix: address clubhouse review findings (review-loop fix round)
 - Related: Linear epic PAF-202 (PadelFriend team/project), sub-issues PAF-206…PAF-229; design source of truth `docs/design/padel-friend-clubhouse.pen` (Pencil); one epic PR targeting `main`
+- D1 round: 2026-11-20 evening → 2026-11-21 morning, same branch; commit `62b4d23` (includes the owner-modified `docs/design/padel-friend-clubhouse.pen` with all 10 previously-D1-blocked frame sets) plus the three D1 implementation groups.
 
 ## Objective
 
@@ -79,6 +80,16 @@ Owner decisions D1–D9 recorded 2026-11-19 in `docs/design/clubhouse-approval-m
 
 Review loop (steps 6–7): 3 parallel reviews (code / architecture / UX-UI) produced 13 seeded findings + review findings; fix round addressed F5a, F2a, F15/F17, F18 (adjudicated with pen access; m7hh3 remapped; 5 accepted adaptations documented); F16 dismissed with evidence; F14 deferred (owner-approved partial scope). Ledger: `docs/plan/PAF-202-findings.md` (23 findings: 8 fixed, 3 dismissed, 1 deferred, 6 observed, rest context).
 
+## D1 Round (2026-11-20 evening → 2026-11-21 morning)
+
+The issue owner ran the supplied Pencil-agent prompt; all 10 previously-D1-blocked frame sets were verified present in `docs/design/padel-friend-clubhouse.pen` (light + dark + state variants; commit `62b4d23` includes the modified `.pen`). Three implementation groups landed on the same branch:
+
+- **Group A (auth)** — `invite-confirmation` (+invalid/expired/busy), `claim-password` (+strong/error; new derived-only `PasswordStrength` from `getPasswordIssues`), `claim-verify` (structure-only: the app verifies via the emailed recovery link — the frames' six-digit-code flow does not exist and was NOT invented; 4 frames documented frame-only in `e2e/references/paf-202-d1-auth/manifest.json`). Behavior untouched: invite one-use POST/PKCE, claim rules, `startRecovery`.
+- **Group B (notifications + level reviews)** — `notification-detail` generic + match-result/level-review outcome states (invitation branch from U8 untouched), `level-review-history`, `platform-review-queue`, `platform-review-detail` (+approve/deny-with-note as bottom-sheet AlertDialog preserving focus trap, stale-rating guard, offline rejection). Deny/Denied copy replaces Reject per frames. 18 exports, 56 region budgets.
+- **Group C (privacy + leagues + profile)** — `privacy-policy` (public route preserved), `league-index`, `profile-edit` as its own screen with sticky Cancel/Save (theme/language staged until save via the new `AppPreferencesContext`), rating journey expanded/empty/error from real history (new `rating-chart.ts`), `data-app-chrome="hidden"` shell rule for the edit screen. 12 exports, 46 region budgets.
+- **Certification closure** — `.pen` digest re-pinned in `paf-202-leagues`, `paf-202-result-decision`, `paf-202-public` manifests (owner's frames changed the file); 2 stale digest tests green; homepage lane 22/22.
+- **Findings ledger** — F14 (architecture blocker) moved deferred → fixed; F4 dead-key cleanup landed (only `matches.results.preview` removed — `outcome.*` verified LIVE via dynamic lookups).
+
 ## Files Changed
 
 - Design system: `design-tokens/` (clubhouse token set c1TsP light/dark, focus tokens, `--space-24` fix; built output under `design-tokens/dist/*.css` via `pnpm tokens:build`); Figtree typography; PWA icon/asset regeneration (U2, U23).
@@ -88,6 +99,10 @@ Review loop (steps 6–7): 3 parallel reviews (code / architecture / UX-UI) prod
 - Copy: `src/locales/` (en, pt-BR, es) for all adapted surfaces; truthful offline copy per D2; no hardcoded user-facing strings.
 - Docs/artifacts: `docs/design/clubhouse-approval-matrix.md` (U1); `docs/plan/PAF-202-findings.md` (findings ledger); `docs/plan/PAF-229-gate-environment.md` (gate environment failure record); unit manifests citing `docs/design/padel-friend-clubhouse.pen` frames.
 - Test infrastructure: frame-regions comparison infra (mask-free measurement, vacuous-pass prevention); per-unit scoped E2E specs; lane split for DB-backed statistics tests (U24, fix round).
+- **D1 round (Group A, auth)**: `invite-confirmation` (+invalid/expired/busy states), `claim-password` (+strong/error), new derived-only `PasswordStrength` helper (`getPasswordIssues`), `claim-verify` structure-only page; frame-only manifest `e2e/references/paf-202-d1-auth/manifest.json` (4 code-entry frames documented frame-only).
+- **D1 round (Group B, notifications + level reviews)**: `notification-detail` generic surface + match-result/level-review outcome states, `level-review-history`, `platform-review-queue`, `platform-review-detail` (approve/deny-with-note bottom-sheet AlertDialog; Deny/Denied copy). 18 exports, 56 region budgets.
+- **D1 round (Group C, privacy + leagues + profile)**: `privacy-policy` (public route preserved), `league-index`, `profile-edit` as its own screen with sticky Cancel/Save; new `AppPreferencesContext` (theme/language staged until save); new `rating-chart.ts`; `data-app-chrome="hidden"` shell rule. 12 exports, 46 region budgets.
+- **D1 round (certification + ledger)**: `.pen` digest re-pins in `paf-202-leagues`, `paf-202-result-decision`, `paf-202-public` manifests; `docs/plan/PAF-202-findings.md` (F14 deferred → fixed, F4 dead-key cleanup: `matches.results.preview` removed); design source `docs/design/padel-friend-clubhouse.pen` updated with owner frames (commit `62b4d23`).
 
 ## Key Decisions
 
@@ -115,6 +130,9 @@ Review loop (steps 6–7): 3 parallel reviews (code / architecture / UX-UI) prod
 - **Per-unit scoped E2E** (all green): 29/29 corrections, 47 level-reviews, 86 management, 90/90 frame-regions, 82/82 management final, 33/33 statistics, 72 homepage, 69/69 notifications, 25/25 home, 23/23 zoom probe.
 - **Reviews**: 3 parallel reviews (code / architecture / UX-UI); 13 seeded findings + review findings triaged in `docs/plan/PAF-202-findings.md`.
 - **Final-state gate**: CI on the epic PR + step-9 `pnpm complete-check` on the PR.
+- **D1 round scoped lanes (all green)**: Group A 58 E2E + 65 vitest; Group B 102 E2E + 4,982 unit; Group C lanes + unit; stale-digest tests 15/15; homepage lane 22/22.
+- **D1 frame verification**: all 10 previously-D1-blocked frame sets confirmed present in `docs/design/padel-friend-clubhouse.pen` (light + dark + state variants).
+- **D1 round final gate (pending)**: full `pnpm complete-check` re-run pending as the step-9 gate on commit `62b4d23`.
 
 ## Risks and Follow-ups
 
@@ -130,3 +148,9 @@ Review loop (steps 6–7): 3 parallel reviews (code / architecture / UX-UI) prod
 - **macOS-only baselines** — CI tolerance check pending.
 - **Statistics avatar photos** — need server/DTO change; currently D6-honest initials fallback; potential follow-up issue.
 - **Management frame divergences** — documented as annotated findings, not silently accepted.
+- **D1 round resolutions (2026-11-21)**: the 10 D1-blocked surfaces listed above are now implemented (Groups A/B/C — see D1 Round section); F14 moved deferred → fixed; F4 dead-key cleanup landed (`matches.results.preview` removed; `outcome.*` verified LIVE via dynamic lookups).
+- **claim-verify code-entry frames frame-only (open)** — six-digit code verification does not exist in the app (emailed recovery link instead); implementing it would be new backend scope — owner decision if ever wanted. 4 frames documented frame-only in `e2e/references/paf-202-d1-auth/manifest.json`.
+- **claim-password eye-toggle not adopted** — frames show a reveal toggle; submit-time validation kept instead.
+- **invite-confirmation default state** — confirmation form is the default (truthful: nothing is accepted before the one-use POST).
+- **profile-edit sticky bar 148px vs frame 88px** — documented adaptation (touch-target/safe-area sizing).
+- **D1 round full gate pending** — `pnpm complete-check` re-run pending on commit `62b4d23`.
