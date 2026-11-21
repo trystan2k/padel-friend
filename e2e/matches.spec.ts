@@ -917,7 +917,11 @@ test('invite_only stays invisible until an explicit invitation and never auto-re
     await expect(
       inviteePage.getByText(en.notifications.match.invitedBy.replace('{{name}}', host.displayName))
     ).toBeVisible();
-    await expect(inviteePage.getByText(`${en.notifications.match.venue}: ${venue}`)).toBeVisible();
+    // Detail rows render as a label/value pair (notification-detail frames), not "Venue: value".
+    await expect(
+      inviteePage.locator('main').getByText(en.notifications.match.venue, { exact: true })
+    ).toBeVisible();
+    await expect(inviteePage.locator('main').getByText(venue, { exact: true })).toBeVisible();
 
     const registrationsAfter = await host.client
       .from('match_event_registrations')

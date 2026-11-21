@@ -78,6 +78,9 @@ type LocaleCopy = {
     dominantHand: string;
     handNone: string;
     availabilityDaysLegend: string;
+    changePhoto: string;
+    preferredDays: string;
+    preferredTimes: string;
     availabilityTimesLegend: string;
     availabilityNotProvided: string;
     availabilityDays: Record<'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN', string>;
@@ -483,8 +486,11 @@ test('the dashboard allows profile edits but exposes no level control, and avata
   await page.getByRole('button', { name: en.profile.save }).click();
   await expect(page.getByRole('heading', { name: 'Mila Edited', exact: true })).toBeVisible();
 
+  // Profile edit is its own screen: the avatar widget (file input labelled "Change photo") lives there.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+
   // Invalid MIME type is rejected with the localized error before any upload.
-  const fileInput = page.getByLabel(en.profile.avatar);
+  const fileInput = page.getByLabel(en.profile.changePhoto);
   await fileInput.setInputFiles({
     name: 'note.txt',
     mimeType: 'text/plain',
@@ -1008,15 +1014,23 @@ function availabilityGroup(page: Page, legend: string) {
   return page.getByRole('group', { name: legend });
 }
 
-async function chooseAvailability(page: Page, days: string[], times: string[]): Promise<void> {
+// The profile-edit screen renders the same two groups as chips under the "Preferred days/times" legends.
+function editAvailabilityGroup(page: Page, legend: string) {
+  return page.getByRole('group', { name: legend });
+}
+
+async function chooseAvailability(
+  page: Page,
+  days: string[],
+  times: string[],
+  edit = false
+): Promise<void> {
+  const daysLegend = edit ? en.profile.preferredDays : en.profile.availabilityDaysLegend;
+  const timesLegend = edit ? en.profile.preferredTimes : en.profile.availabilityTimesLegend;
   for (const day of days)
-    await availabilityGroup(page, en.profile.availabilityDaysLegend)
-      .getByRole('checkbox', { name: day })
-      .check();
+    await availabilityGroup(page, daysLegend).getByRole('checkbox', { name: day }).check();
   for (const time of times)
-    await availabilityGroup(page, en.profile.availabilityTimesLegend)
-      .getByRole('checkbox', { name: time })
-      .check();
+    await availabilityGroup(page, timesLegend).getByRole('checkbox', { name: time }).check();
 }
 
 const days = en.profile.availabilityDays;
@@ -1069,17 +1083,17 @@ test('optional availability precedes the sticky action, persists, edits and clea
   // Edit: the stored selections are prefilled and individually changeable.
   await page.getByRole('button', { name: en.profile.edit }).click();
   await expect(
-    availabilityGroup(page, en.profile.availabilityDaysLegend).getByRole('checkbox', {
+    editAvailabilityGroup(page, en.profile.preferredDays).getByRole('checkbox', {
       name: days.MON
     })
   ).toBeChecked();
-  await availabilityGroup(page, en.profile.availabilityDaysLegend)
+  await editAvailabilityGroup(page, en.profile.preferredDays)
     .getByRole('checkbox', { name: days.MON })
     .uncheck();
-  await availabilityGroup(page, en.profile.availabilityDaysLegend)
+  await editAvailabilityGroup(page, en.profile.preferredDays)
     .getByRole('checkbox', { name: days.TUE })
     .check();
-  await availabilityGroup(page, en.profile.availabilityTimesLegend)
+  await editAvailabilityGroup(page, en.profile.preferredTimes)
     .getByRole('checkbox', { name: times.MORNING })
     .uncheck();
   await page.getByRole('button', { name: en.profile.save }).click();
@@ -1089,10 +1103,10 @@ test('optional availability precedes the sticky action, persists, edits and clea
   // Clear both groups: stored as NULL and shown as not provided after a reload.
   await page.getByRole('button', { name: en.profile.edit }).click();
   for (const day of [days.TUE, days.WED, days.SUN])
-    await availabilityGroup(page, en.profile.availabilityDaysLegend)
+    await editAvailabilityGroup(page, en.profile.preferredDays)
       .getByRole('checkbox', { name: day })
       .uncheck();
-  await availabilityGroup(page, en.profile.availabilityTimesLegend)
+  await editAvailabilityGroup(page, en.profile.preferredTimes)
     .getByRole('checkbox', { name: times.EVENING })
     .uncheck();
   await page.getByRole('button', { name: en.profile.save }).click();
@@ -1114,11 +1128,13 @@ test('availability groups are independent: days only, then times only, and omiss
   await expect(page.getByText(en.profile.availabilityNotProvided)).toHaveCount(1);
 
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await availabilityGroup(page, en.profile.availabilityDaysLegend)
+  await editAvailabilityGroup(page, en.profile.preferredDays)
     .getByRole('checkbox', { name: days.SAT })
     .uncheck();
-  await chooseAvailability(page, [], [times.AFTERNOON]);
+  await chooseAvailability(page, [], [times.AFTERNOON], true);
   await page.getByRole('button', { name: en.profile.save }).click();
+  // Wait for the edit screen to close: its chips repeat the time label and would trip strict mode.
+  await expect(page.getByRole('button', { name: en.profile.edit })).toBeVisible();
   await expect(page.getByText(times.AFTERNOON, { exact: true })).toBeVisible();
   await expect(page.getByText(en.profile.availabilityNotProvided)).toHaveCount(1);
 });

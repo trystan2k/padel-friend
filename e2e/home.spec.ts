@@ -14,7 +14,7 @@ const homepageLocales = ['en', 'es', 'pt-BR'] as const;
 
 function homepageCopy(locale: string): {
   auth: { welcomeTitle: string; or: string; accountPrompt: string; privacyLink: string };
-  privacy: { title: string };
+  privacy: { title: string; backHome: string };
   publicHomepage: {
     hero: { title: string };
     actions: { signIn: string; createAccount: string };
@@ -171,7 +171,10 @@ test('privacy keeps the existing policy layout and public preferences at 320px',
   await waitForHydratedPage(page);
   await expect(page.locator('[data-public-homepage], header img')).toHaveCount(0);
   await expect(page.getByRole('main').locator('section[aria-labelledby]').first()).toBeVisible();
-  await expect(page.getByRole('main').locator('footer a')).toHaveAttribute('href', '/login');
+  // Privacy frame (QqUGZ): the header "Back to home" link replaces the old sign-in footer link.
+  await expect(
+    page.getByRole('link', { name: homepageCopy('en').privacy.backHome })
+  ).toHaveAttribute('href', '/');
   await page.locator('#locale').selectOption('es');
   await page.locator('#theme').selectOption('dark');
   await expect(page.locator('html')).toHaveAttribute('lang', 'es');
