@@ -171,6 +171,11 @@ export const matchManagementStyles = stylex.create({
     color: 'var(--color-text)',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
-    borderColor: 'var(--color-line)'
+    borderColor: 'var(--color-line)',
+    // Tokenized ring: the UA default `outline: auto` colour is OS-specific (blue on macOS, near-black on Linux).
+    ':focus-visible': {
+      outline: 'var(--focus-width) solid var(--color-focus)',
+      outlineOffset: 'var(--focus-offset)'
+    }
   }
 });

@@ -1094,6 +1094,11 @@ async function assertMatchesFrame(page: Page, frame: string, mask: Locator[]): P
     locators: frameRegionLocators(page, frame),
     mask
   });
+  // Fixture instants move with the clock, so the masked <time> box width (and the zone label beside
+  // it) varied with the hour of the run. Pin the text after the region/structure probes ran.
+  await page.locator('main time').evaluateAll((times) => {
+    for (const time of times) time.textContent = '00:00 AM';
+  });
   await expect(page).toHaveScreenshot(`${frame}-light.png`, {
     animations: 'disabled',
     caret: 'hide',

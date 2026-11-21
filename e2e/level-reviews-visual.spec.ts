@@ -1068,7 +1068,8 @@ test('reduced motion: no level review screen or dialog registers motion', async 
 test('the layout, geometry, contrast and motion probes report injected defects, so they cannot pass vacuously', async () => {
   const page = await f.page(requester, 'en', WIDTH, 'light', HEIGHT);
   await open(page, '/level-reviews/new');
-  expect(await layoutViolations(page)).toEqual([]);
+  // Poll: control labels settle after hydration (a one-shot read flaked on cold CI pages).
+  await expect.poll(() => layoutViolations(page)).toEqual([]);
   const clean = await blocksOf(page, 'main > form');
   const cleanHeights = clean.map((block) => block.bottom - block.y);
   expect(
