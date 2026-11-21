@@ -39,6 +39,7 @@ vi.mock('react-i18next', async () => {
         if (mocks.useEnglishResource) {
           if (key === 'notifications.today') return resource.notifications.today;
           if (key === 'notifications.earlier') return resource.notifications.earlier;
+          if (key === 'notifications.unreadRow') return resource.notifications.unreadRow;
           if (key === 'notifications.mutationError') return resource.notifications.mutationError;
           if (key === 'notifications.kinds.match_registration_expired')
             return resource.notifications.kinds.match_registration_expired;
@@ -281,17 +282,16 @@ describe('notification center', () => {
     const { container } = render(<NotificationsPage initial={earlierPage} />);
 
     expect(screen.queryByRole('heading', { name: en.notifications.today })).toBeNull();
-    const earlierHeading = screen.getByRole('heading', { name: en.notifications.earlier });
-    const earlierHeader = earlierHeading.closest('header');
+    const earlier = screen.getByRole('region', { name: en.notifications.earlier });
     const unreadSummary = en.notifications.unread_other.replace('{{count}}', '3');
-    expect(earlierHeader?.textContent).toContain(unreadSummary);
     expect(screen.getAllByText(unreadSummary)).toHaveLength(1);
-    expect(earlierHeader?.nextElementSibling?.tagName).toBe('UL');
+    expect(earlier.querySelector('ul')?.children).toHaveLength(1);
+    expect(earlier.textContent).toContain(en.notifications.unreadRow);
     expect(container.querySelectorAll('header').length).toBeGreaterThan(0);
     expect(screen.getByRole('link', { name: 'notifications.view' })).toBeTruthy();
   });
 
-  it('renders Today and Earlier sections with the unread summary in the Today header', () => {
+  it('renders ordered Today and Earlier sections beneath one unread summary', () => {
     mocks.useEnglishResource = true;
     const mixedPage: NotificationPage = {
       ...initial,
@@ -307,14 +307,14 @@ describe('notification center', () => {
     mocks.list.mockResolvedValue(mixedPage);
     const { container } = render(<NotificationsPage initial={mixedPage} />);
 
-    const todayHeading = screen.getByRole('heading', { name: en.notifications.today });
-    const todayHeader = todayHeading.closest('header');
-    const earlierHeading = screen.getByRole('heading', { name: en.notifications.earlier });
+    const today = screen.getByRole('region', { name: en.notifications.today });
+    const earlier = screen.getByRole('region', { name: en.notifications.earlier });
     const unreadSummary = en.notifications.unread_other.replace('{{count}}', '3');
-    expect(todayHeader?.textContent).toContain(unreadSummary);
-    expect(screen.getAllByText(unreadSummary)).toHaveLength(1);
-    expect(todayHeader?.nextElementSibling?.tagName).toBe('UL');
-    expect(earlierHeading.closest('header')?.nextElementSibling?.tagName).toBe('UL');
+    const summary = screen.getByText(unreadSummary);
+    expect(summary.compareDocumentPosition(today) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(today.compareDocumentPosition(earlier) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(today.querySelector('ul')?.children).toHaveLength(1);
+    expect(earlier.querySelector('ul')?.children).toHaveLength(1);
     expect(container.querySelectorAll('ul')).toHaveLength(2);
   });
 
@@ -370,15 +370,17 @@ describe('notification center', () => {
     expect(screen.queryByRole('button', { name: 'notifications.markRead' })).toBeNull();
   });
 
-  it('places mark-all in the page header before category filters', () => {
+  it('places mark-all in the summary after category filters', () => {
     const { container } = render(<NotificationsPage initial={initial} />);
     const header = container.querySelector('section > header');
     const markAll = screen.getByRole('button', { name: 'notifications.markAllRead' });
     const filters = screen.getByRole('navigation', { name: 'notifications.filters.label' });
 
-    expect(header?.contains(markAll)).toBe(true);
-    const headerPosition = header?.compareDocumentPosition(filters) ?? 0;
-    expect(headerPosition & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(header?.contains(markAll)).toBe(false);
+    expect(
+      filters.compareDocumentPosition(markAll) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(markAll.parentElement?.textContent).toContain('notifications.unread_other:3');
   });
 
   it('renders the English locale resource when a read mutation fails', async () => {

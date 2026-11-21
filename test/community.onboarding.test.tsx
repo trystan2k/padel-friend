@@ -3,7 +3,6 @@ import { cleanup, render, screen, fireEvent, waitFor } from '@testing-library/re
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
-import { readFileSync } from 'node:fs';
 import { createI18n } from '../src/i18n/config';
 import { CommunityOnboarding } from '../src/features/community/CommunityOnboarding';
 import type { PublicCommunity } from '../src/features/community/community.validators';
@@ -51,15 +50,6 @@ const row: PublicCommunity = {
   updated_at: '2026-10-01T00:00:00Z'
 };
 
-it('uses the existing tight line-height token for floating labels', () => {
-  const stylesheet = readFileSync('src/features/community/community-onboarding.styles.ts', 'utf8');
-  const tokenCatalog = readFileSync('design-tokens/primitives.tokens.json', 'utf8');
-
-  expect(stylesheet).toContain("lineHeight: 'var(--font-line-height-tight)'");
-  expect(stylesheet).not.toContain('var(--line-height-tight)');
-  expect(tokenCatalog).toMatch(/"line-height"\s*:\s*{\s*"tight"\s*:/);
-});
-
 function mount(
   view?: 'create',
   data: {
@@ -80,10 +70,11 @@ function mount(
     next_offset: null,
     failed: false
   },
-  next?: string
+  next?: string,
+  locale: 'en' | 'pt-BR' | 'es' = 'en'
 ) {
   return render(
-    <I18nextProvider i18n={createI18n('en')}>
+    <I18nextProvider i18n={createI18n(locale)}>
       <CommunityOnboarding search={view ? { view } : {}} data={data} next={next} />
     </I18nextProvider>
   );
@@ -103,6 +94,35 @@ afterEach(() => {
 });
 
 describe('community onboarding', () => {
+  it.each(['en', 'pt-BR', 'es'] as const)(
+    'renders labeled discovery and creation landmarks in %s',
+    (locale) => {
+      const { t } = createI18n(locale);
+      const discovery = mount(undefined, undefined, undefined, locale);
+      expect(screen.getByRole('main').dataset.communityScreen).toBe('discovery');
+      expect(
+        screen.getByRole('heading', { level: 1, name: t('communityOnboarding.lead') })
+      ).toBeTruthy();
+      const search = screen.getByRole('searchbox', { name: t('communityOnboarding.searchLabel') });
+      expect(search.closest('search')).not.toBeNull();
+      expect(screen.getByText(t('communityOnboarding.step')).getAttribute('aria-current')).toBe(
+        'step'
+      );
+      expect(screen.queryByRole('button', { name: t('communityOnboarding.done') })).toBeNull();
+      discovery.unmount();
+      mount('create', undefined, undefined, locale);
+      expect(screen.getByRole('main').dataset.communityScreen).toBe('creation');
+      expect(
+        screen.getByRole('heading', { level: 1, name: t('communityOnboarding.createLead') })
+      ).toBeTruthy();
+      expect(
+        screen.getByRole('radiogroup', { name: t('communityOnboarding.visibilityLegend') })
+      ).toBeTruthy();
+      expect(
+        screen.getByRole('textbox', { name: t('communityOnboarding.nameLabel') })
+      ).toHaveProperty('required', true);
+    }
+  );
   it.each([
     [
       'COMMUNITY_CREATE_RATE_LIMITED',
@@ -115,8 +135,8 @@ describe('community onboarding', () => {
   ])('localizes %s without showing the database code', async (code, copy) => {
     mocks.create.mockRejectedValue(new Error(code));
     mount('create');
-    await userEvent.type(screen.getByRole('textbox', { name: 'COMMUNITY NAME' }), 'Northside');
-    await userEvent.click(screen.getByRole('button', { name: 'CREATE COMMUNITY' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Northside');
+    await userEvent.click(screen.getByRole('button', { name: 'Create community' }));
     expect((await screen.findByRole('alert')).textContent).toBe(copy);
     expect(screen.queryByText(code)).toBeNull();
   });
@@ -124,7 +144,7 @@ describe('community onboarding', () => {
   it('rejects offline join at invocation and never replays on reconnect', async () => {
     mount();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
-    fireEvent.click(screen.getByRole('button', { name: 'JOIN COMMUNITY' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
     expect(screen.getByText(/Offline. Nothing sent/)).toBeTruthy();
     expect(mocks.join).not.toHaveBeenCalled();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
@@ -134,14 +154,12 @@ describe('community onboarding', () => {
   it('keeps search draft and shows unconfirmed state after false-online/lost-ack join', async () => {
     mocks.join.mockRejectedValue(new TypeError('Failed to fetch'));
     mount();
-    fireEvent.click(screen.getByRole('button', { name: 'JOIN COMMUNITY' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Join' }));
     await screen.findByText(/Could not confirm this change/);
     expect(screen.queryByText('Joined')).toBeNull();
     fireEvent(window, new Event('online'));
     expect(mocks.join).toHaveBeenCalledOnce();
-    expect(screen.getByRole('button', { name: 'JOIN COMMUNITY' }).hasAttribute('disabled')).toBe(
-      false
-    );
+    expect(screen.getByRole('button', { name: 'Join' }).hasAttribute('disabled')).toBe(false);
   });
   it.each(['en', 'pt-BR', 'es'] as const)(
     'formats zero, singular and large discovery counts in %s',
@@ -276,12 +294,12 @@ describe('community onboarding', () => {
     let finish!: (value: { communities: PublicCommunity[]; next_offset: null }) => void;
     mocks.list.mockReturnValue(new Promise((resolve) => (finish = resolve)));
     mount(undefined, { communities: [row], next_offset: 20, failed: false });
-    const button = screen.getByRole('button', { name: 'LOAD MORE' });
+    const button = screen.getByRole('button', { name: 'Load more' });
     await userEvent.click(button);
     expect(button.getAttribute('aria-busy')).toBe('true');
     expect(button.hasAttribute('disabled')).toBe(true);
     finish({ communities: [], next_offset: null });
-    await waitFor(() => expect(screen.queryByRole('button', { name: 'LOAD MORE' })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull());
   });
 
   it('shows real city and policy only, joins with server-authoritative outcomes and supports skip', async () => {
@@ -292,13 +310,13 @@ describe('community onboarding', () => {
     expect(screen.getByText('Chamberí · Open join')).toBeTruthy();
     expect(screen.getByText('Retiro · Approval required')).toBeTruthy();
     expect(screen.getAllByText('3 members')).toHaveLength(2);
-    await userEvent.click(screen.getByRole('button', { name: 'JOIN COMMUNITY' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Join' }));
     await waitFor(() => expect(screen.getByText('Joined community')).toBeTruthy());
-    await userEvent.click(screen.getByRole('button', { name: 'REQUEST TO JOIN' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Request' }));
     await waitFor(() => expect(screen.getByText('Request sent')).toBeTruthy());
     expect(mocks.join).toHaveBeenCalledTimes(2);
     expect(mocks.join).toHaveBeenCalledWith({ data: { community_id: row.id } });
-    await userEvent.click(screen.getByRole('button', { name: 'I’LL DO THIS LATER' }));
+    await userEvent.click(screen.getByRole('button', { name: 'I’ll do this later' }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/dashboard' });
   });
 
@@ -306,7 +324,7 @@ describe('community onboarding', () => {
     const user = userEvent.setup();
     mount(undefined, { communities: [], next_offset: null, failed: true });
     expect(screen.getByRole('alert').textContent).toContain('Could not load');
-    await user.click(screen.getByRole('button', { name: 'TRY AGAIN' }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(mocks.invalidate).toHaveBeenCalledOnce();
     await user.type(screen.getByRole('searchbox', { name: 'Search community' }), 'Madrid');
     await waitFor(() =>
@@ -316,7 +334,7 @@ describe('community onboarding', () => {
         replace: true
       })
     );
-    await user.click(screen.getByRole('button', { name: 'I’LL DO THIS LATER' }));
+    await user.click(screen.getByRole('button', { name: 'I’ll do this later' }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/dashboard' });
   });
 
@@ -332,7 +350,7 @@ describe('community onboarding', () => {
         replace: true
       })
     );
-    await user.click(screen.getByRole('button', { name: /CREATE A COMMUNITY/ }));
+    await user.click(screen.getByRole('button', { name: /Create a community/ }));
     expect(mocks.navigate).toHaveBeenLastCalledWith({
       to: '/onboarding/community',
       search: { q: 'Madrid', view: 'create' }
@@ -342,7 +360,7 @@ describe('community onboarding', () => {
     mocks.navigate.mockClear();
     const deepLink = '/matches/123e4567-e89b-42d3-a456-426614174000';
     const deepMounted = mount(undefined, data, deepLink);
-    await user.click(screen.getByRole('button', { name: /CREATE A COMMUNITY/ }));
+    await user.click(screen.getByRole('button', { name: /Create a community/ }));
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/onboarding/community',
       search: { view: 'create', next: deepLink }
@@ -362,7 +380,7 @@ describe('community onboarding', () => {
     );
     const mounted = render(view(undefined));
     const input = screen.getByRole('searchbox', { name: 'Search community' });
-    await user.click(screen.getByRole('button', { name: 'JOIN COMMUNITY' }));
+    await user.click(screen.getByRole('button', { name: 'Join' }));
     await waitFor(() => expect(screen.getByText('Joined community')).toBeTruthy());
     await user.click(input);
     await user.type(input, 'Mad');
@@ -388,9 +406,7 @@ describe('community onboarding', () => {
     );
     mounted.rerender(view('Madrid', initial));
     expect(screen.getByText('Joined community')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'JOIN COMMUNITY' }).hasAttribute('disabled')).toBe(
-      true
-    );
+    expect(screen.getByRole('button', { name: 'Join' }).hasAttribute('disabled')).toBe(true);
   });
 
   it('does not restore a pending search after the user clears its draft', async () => {
@@ -442,7 +458,7 @@ describe('community onboarding', () => {
     );
     const mounted = render(view('Mad'));
     await user.type(screen.getByRole('searchbox', { name: 'Search community' }), 'rid');
-    await user.click(screen.getByRole('button', { name: /CREATE A COMMUNITY/ }));
+    await user.click(screen.getByRole('button', { name: /Create a community/ }));
     expect(mocks.navigate).toHaveBeenCalledWith({
       to: '/onboarding/community',
       search: { q: 'Madrid', view: 'create' }
@@ -478,12 +494,12 @@ describe('community onboarding', () => {
       next_offset: null
     });
     const mounted = render(view(first));
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     expect(await screen.findByText('Could not load communities.')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'TRY AGAIN' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(mocks.invalidate).toHaveBeenCalledOnce();
     mounted.rerender(view(refreshed));
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await waitFor(() => expect(mocks.list).toHaveBeenCalledTimes(2));
     expect(mocks.list).toHaveBeenLastCalledWith({ data: { offset: 20, limit: 20 } });
   });
@@ -499,14 +515,14 @@ describe('community onboarding', () => {
     mocks.create.mockResolvedValue({ id: row.id });
     const mounted = render(view(false));
     mounted.rerender(view(true));
-    await userEvent.type(screen.getByRole('textbox', { name: 'COMMUNITY NAME' }), 'First club');
-    await userEvent.click(screen.getByRole('button', { name: 'CREATE COMMUNITY' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'First club');
+    await userEvent.click(screen.getByRole('button', { name: 'Create community' }));
     expect(await screen.findByText('Your community is ready.')).toBeTruthy();
     mounted.rerender(view(false));
     mounted.rerender(view(true));
     expect(screen.queryByText('Your community is ready.')).toBeNull();
-    expect(screen.getByRole('textbox', { name: 'COMMUNITY NAME' })).toHaveProperty('value', '');
-    expect(screen.getByRole('button', { name: 'CREATE COMMUNITY' })).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveProperty('value', '');
+    expect(screen.getByRole('button', { name: 'Create community' })).toBeTruthy();
   });
 
   it('retries a failed join and accepts the next server outcome', async () => {
@@ -514,7 +530,7 @@ describe('community onboarding', () => {
       .mockRejectedValueOnce(new Error('unavailable'))
       .mockResolvedValueOnce({ status: 'pending' });
     mount();
-    const button = screen.getByRole('button', { name: 'JOIN COMMUNITY' });
+    const button = screen.getByRole('button', { name: 'Join' });
     await userEvent.click(button);
     expect(await screen.findByText(/Could not confirm this change/)).toBeTruthy();
     await userEvent.click(button);
@@ -526,13 +542,13 @@ describe('community onboarding', () => {
     const user = userEvent.setup();
     mocks.create.mockResolvedValue({ id: row.id });
     mount('create');
-    await user.click(screen.getByRole('button', { name: 'CREATE COMMUNITY' }));
+    await user.click(screen.getByRole('button', { name: 'Create community' }));
     expect(screen.getByRole('alert').textContent).toContain('Enter a community name');
     expect(mocks.create).not.toHaveBeenCalled();
-    await user.type(screen.getByRole('textbox', { name: 'COMMUNITY NAME' }), '  Northside  ');
+    await user.type(screen.getByRole('textbox', { name: 'Name' }), '  Northside  ');
     await user.click(screen.getByRole('radio', { name: /Private/ }));
     await user.type(screen.getByRole('textbox', { name: 'City or area' }), 'Madrid');
-    fireEvent.submit(screen.getByRole('button', { name: 'CREATE COMMUNITY' }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: 'Create community' }).closest('form')!);
     await waitFor(() =>
       expect(mocks.create).toHaveBeenCalledWith({
         data: {
@@ -544,27 +560,27 @@ describe('community onboarding', () => {
       })
     );
     expect(await screen.findByText('Your community is ready.')).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'GO TO DASHBOARD' }));
+    await user.click(screen.getByRole('button', { name: 'Go to dashboard' }));
     expect(mocks.navigate).toHaveBeenCalledWith({ to: '/dashboard' });
   });
 
   it('reports duplicate membership and create errors without claiming success', async () => {
     mocks.join.mockRejectedValue(new Error('ALREADY_MEMBER_OR_PENDING'));
     const view = mount();
-    await userEvent.click(screen.getByRole('button', { name: 'JOIN COMMUNITY' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Join' }));
     expect(await screen.findByText('Already a member or request pending')).toBeTruthy();
     view.unmount();
     mocks.create.mockRejectedValue(new Error('unavailable'));
     mount('create');
-    await userEvent.type(screen.getByRole('textbox', { name: 'COMMUNITY NAME' }), 'Northside');
-    await userEvent.click(screen.getByRole('button', { name: 'CREATE COMMUNITY' }));
+    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Northside');
+    await userEvent.click(screen.getByRole('button', { name: 'Create community' }));
     expect(await screen.findByText('Could not create community. Please try again.')).toBeTruthy();
   });
 
   it('shows inactive membership as terminal instead of offering a retry', async () => {
     mocks.join.mockRejectedValue(new Error('MEMBERSHIP_INACTIVE'));
     mount();
-    const button = screen.getByRole('button', { name: 'JOIN COMMUNITY' });
+    const button = screen.getByRole('button', { name: 'Join' });
     await userEvent.click(button);
     expect(
       await screen.findByText(

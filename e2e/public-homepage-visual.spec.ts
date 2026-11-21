@@ -6,15 +6,14 @@ import es from '../src/locales/es/translation.json' with { type: 'json' };
 import ptBR from '../src/locales/pt-BR/translation.json' with { type: 'json' };
 import { waitForHydratedPage } from './auth-helpers';
 import { fixtures } from './matches-management-fixtures';
-import { deriveMaskedPng, type PngMaskRectangle } from './png-mask';
+import {
+  comparePng,
+  deriveMaskedPng,
+  derivePaddedRowsPng,
+  type PngMaskRectangle
+} from './png-mask';
 
-// PAF-201 public homepage: structure first, then pixels. The six Pencil frames (FswwZ, JzVIa, eIW0i,
-// aebnS, Jt31N, R91tQr) are committed unchanged under references/paf-201 and pinned by SHA-256 in
-// the manifest. The app-wide locale/theme chips are not drawn in the frames, so ONLY their two
-// rectangles are painted #FF00FF on both the derived baseline and the actual capture. There is no
-// desktop frame: 481-1280px are covered by geometry probes only, never by an image baseline.
-// Baselines are derived from the exports (deriveMaskedPng), never regenerated from Chromium: never
-// run this spec with --update-snapshots. Per-frame allowances live in the manifest.
+// PAF-202: read-only Pencil exports, exact live structure, then per-frame image comparisons.
 
 type Locale = 'en' | 'es' | 'pt-BR';
 type Theme = 'light' | 'dark';
@@ -27,11 +26,16 @@ type Frame = {
   theme: Theme;
   source: string;
   sourceSha256: string;
-  baselineSha256: string;
   maskRectangles: PngMaskRectangle[];
+  ctaTops: number[];
   maxDiffPixelRatio: number;
 };
-type Manifest = { chipMask: { maskColor: string }; frames: Record<string, Frame> };
+type Manifest = {
+  sourceDesign: { path: string; sourceSha256: string };
+  annotations: Record<string, { source: string; sha256: string }>;
+  logoMask: { maskColor: string };
+  frames: Record<string, Frame>;
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -47,8 +51,9 @@ function isFrame(value: unknown): value is Frame {
     (value.theme === 'light' || value.theme === 'dark') &&
     typeof value.source === 'string' &&
     typeof value.sourceSha256 === 'string' &&
-    typeof value.baselineSha256 === 'string' &&
     typeof value.maxDiffPixelRatio === 'number' &&
+    Array.isArray(value.ctaTops) &&
+    value.ctaTops.every((top) => Number.isInteger(top)) &&
     Array.isArray(value.maskRectangles) &&
     value.maskRectangles.every(
       (rectangle) =>
@@ -65,22 +70,32 @@ function isFrame(value: unknown): value is Frame {
 function isManifest(value: unknown): value is Manifest {
   return (
     isRecord(value) &&
-    isRecord(value.chipMask) &&
-    typeof value.chipMask.maskColor === 'string' &&
+    isRecord(value.sourceDesign) &&
+    typeof value.sourceDesign.path === 'string' &&
+    typeof value.sourceDesign.sourceSha256 === 'string' &&
+    isRecord(value.annotations) &&
+    Object.values(value.annotations).every(
+      (annotation) =>
+        isRecord(annotation) &&
+        typeof annotation.source === 'string' &&
+        typeof annotation.sha256 === 'string'
+    ) &&
+    isRecord(value.logoMask) &&
+    typeof value.logoMask.maskColor === 'string' &&
     isRecord(value.frames) &&
     Object.values(value.frames).every(isFrame)
   );
 }
 
 const rawManifest: unknown = JSON.parse(
-  readFileSync(new URL('./references/paf-201/manifest.json', import.meta.url), 'utf8')
+  readFileSync(new URL('./references/paf-202-public/manifest.json', import.meta.url), 'utf8')
 );
-if (!isManifest(rawManifest)) throw new Error('Invalid PAF-201 visual provenance manifest');
+if (!isManifest(rawManifest)) throw new Error('Invalid PAF-202 visual provenance manifest');
 const manifest = rawManifest;
 
 function frameFor(name: string): Frame {
   const frame = manifest.frames[name];
-  if (!frame) throw new Error(`Missing PAF-201 frame ${name}`);
+  if (!frame) throw new Error(`Missing PAF-202 frame ${name}`);
   return frame;
 }
 
@@ -96,27 +111,37 @@ function digest(buffer: Buffer): string {
   return createHash('sha256').update(buffer).digest('hex');
 }
 
-function assertProvenance(name: string): void {
+function referenceFor(name: string): Buffer {
   const frame = frameFor(name);
-  const source = readFileSync(new URL(`./references/paf-201/${frame.source}`, import.meta.url));
+  const source = readFileSync(
+    new URL(`./references/paf-202-public/${frame.source}`, import.meta.url)
+  );
   expect(digest(source), `${name} Pencil export must match its pinned digest`).toBe(
     frame.sourceSha256
   );
-  const expected = deriveMaskedPng(source, {
-    maskColor: manifest.chipMask.maskColor,
+  expect([source.readUInt32BE(16), source.readUInt32BE(20)]).toEqual([frame.width, frame.height]);
+  const masked = deriveMaskedPng(source, {
+    maskColor: manifest.logoMask.maskColor,
     rectangles: frame.maskRectangles
   });
-  expect(digest(expected), `${name} baseline derivation must stay pinned`).toBe(
-    frame.baselineSha256
+  return derivePaddedRowsPng(
+    masked,
+    frame.ctaTops.flatMap((top) => [
+      { y: top + 13, count: 2 },
+      { y: top + 34, count: 3 }
+    ])
   );
-  const baseline = readFileSync(
-    new URL(`./public-homepage-visual.spec.ts-snapshots/${name}`, import.meta.url)
-  );
-  expect(baseline.equals(expected), `${name} baseline must be the masked Pencil export`).toBe(true);
 }
 
 test.beforeAll(() => {
-  for (const name of Object.keys(manifest.frames)) assertProvenance(name);
+  expect(digest(readFileSync(new URL(`../${manifest.sourceDesign.path}`, import.meta.url)))).toBe(
+    manifest.sourceDesign.sourceSha256
+  );
+  for (const { source, sha256 } of Object.values(manifest.annotations)) {
+    const bytes = readFileSync(new URL(`./references/paf-202-public/${source}`, import.meta.url));
+    expect(digest(bytes), source).toBe(sha256);
+  }
+  for (const name of Object.keys(manifest.frames)) referenceFor(name);
 });
 
 async function open(
@@ -138,11 +163,11 @@ async function open(
 async function ready(page: Page): Promise<void> {
   await waitForHydratedPage(page);
   await page.evaluate(async () => {
-    await Promise.all([
-      document.fonts.load('700 32px Manrope'),
-      document.fonts.load('400 15px Inter'),
-      document.fonts.load('700 14px Inter')
-    ]);
+    await Promise.all(
+      ['400', '500', '600', '700', '800'].map((weight) =>
+        document.fonts.load(`${weight} 16px Figtree`)
+      )
+    );
     await document.fonts.ready;
     await Promise.all(
       Array.from(document.images, async (image) => {
@@ -151,25 +176,23 @@ async function ready(page: Page): Promise<void> {
     );
   });
   const fonts = await page.evaluate(() => ({
-    inter: document.fonts.check('400 15px Inter') && document.fonts.check('700 14px Inter'),
-    manrope: document.fonts.check('700 32px Manrope')
+    figtree: ['400', '600', '700', '800'].every((weight) =>
+      document.fonts.check(`${weight} 16px Figtree`)
+    )
   }));
-  expect(fonts, 'Inter and Manrope must be loaded before any measurement').toEqual({
-    inter: true,
-    manrope: true
-  });
+  expect(fonts, 'Figtree must be loaded before any measurement').toEqual({ figtree: true });
 }
 
 type ProbeInput = {
   width: number;
   expectedHrefs: string[];
-  masks: PngMaskRectangle[];
+  authenticated: boolean;
   columnMax: number;
 };
 
 /** Every structural invariant of the homepage, measured on the live DOM. Empty list = pass. */
 async function structureFailures(tab: Page, input: ProbeInput): Promise<string[]> {
-  return tab.evaluate(({ width, expectedHrefs: orderedHrefs, masks, columnMax }) => {
+  return tab.evaluate(({ width, expectedHrefs: orderedHrefs, authenticated, columnMax }) => {
     const failures: string[] = [];
     const fail = (message: string) => failures.push(message);
     const near = (actual: number, expected: number, label: string, tolerance = 1) => {
@@ -184,7 +207,7 @@ async function structureFailures(tab: Page, input: ProbeInput): Promise<string[]
       fail(`horizontal overflow ${doc.scrollWidth - doc.clientWidth}px`);
 
     // Landmarks and headings.
-    const page = document.querySelector('#main-content > div');
+    const page = document.querySelector('[data-public-homepage]');
     if (!page) return [...failures, 'public homepage root not found'];
     for (const tag of ['header', 'main', 'footer'])
       if (document.querySelectorAll(tag).length !== 1) fail(`expected exactly one <${tag}>`);
@@ -198,11 +221,11 @@ async function structureFailures(tab: Page, input: ProbeInput): Promise<string[]
     if (!before(header, main) || !before(main, footer))
       fail('landmark order header → main → footer');
     const headings = [...document.querySelectorAll('h1, h2, h3')].map((heading) => heading.tagName);
-    if (headings.join(',') !== 'H1,H2,H2,H2') fail(`heading order ${headings.join(',')}`);
+    if (headings.join(',') !== 'H1,H2,H3,H3,H3') fail(`heading order ${headings.join(',')}`);
     const hrefs = [...page.querySelectorAll('a')].map((link) => link.getAttribute('href'));
     if (hrefs.join('|') !== orderedHrefs.join('|'))
       fail(`link order ${hrefs.join(' ')} ≠ ${orderedHrefs.join(' ')}`);
-    const cards = [...main.querySelectorAll(':scope > ul > li')];
+    const cards = [...main.querySelectorAll(':scope > section > ul > li > div')];
     if (cards.length !== 3) fail(`expected exactly three feature cards, found ${cards.length}`);
 
     // Rails, column and centering.
@@ -210,123 +233,76 @@ async function structureFailures(tab: Page, input: ProbeInput): Promise<string[]
     const columnWidth = Math.min(width, columnMax);
     near(root.width, columnWidth, 'column width');
     near(root.left, (width - columnWidth) / 2, 'column centering');
-    const rootStyle = style(page);
-    for (const side of ['Left', 'Right'] as const)
-      if (rootStyle[`padding${side}`] !== '18px')
-        fail(`rail padding${side} ${rootStyle[`padding${side}`]}`);
-    if (rootStyle.paddingTop !== '56px') fail(`top padding ${rootStyle.paddingTop}`);
-    if (rootStyle.paddingBottom !== '32px') fail(`bottom padding ${rootStyle.paddingBottom}`);
-    if (rootStyle.rowGap !== '32px') fail(`major gap ${rootStyle.rowGap}`);
-    if (style(main).rowGap !== '32px') fail(`main major gap ${style(main).rowGap}`);
-    const contentLeft = root.left + 18;
-    const contentWidth = columnWidth - 36;
-    for (const [name, element] of [
-      ['header', header],
-      ['main', main],
-      ['footer', footer]
-    ] as const) {
-      near(box(element).left, contentLeft, `${name} left rail`);
-      near(box(element).width, contentWidth, `${name} content width`);
-    }
-
-    // Wordmark and block rhythm.
-    const brand = header.querySelector('span');
-    if (!brand) return [...failures, 'wordmark missing'];
-    near(box(header).top, 56, 'wordmark/header y');
-    near(box(brand).left, contentLeft, 'wordmark x');
-    near(box(main).top - box(header).bottom, 32, 'header → main gap');
-
-    // Hero: 16px gap, then 8px inset + 16px gap before the CTAs.
+    const contentLeft = root.left + 24;
+    const contentWidth = columnWidth - 48;
+    const brand = header.querySelector('div');
+    const logo = brand?.querySelector('img');
     const hero = main.querySelector(':scope > div');
     const title = hero?.querySelector('h1');
     const description = hero?.querySelector(':scope > p');
     const actions = hero?.querySelector(':scope > div');
-    if (!hero || !title || !description || !actions) return [...failures, 'hero parts missing'];
-    if (style(hero).rowGap !== '16px') fail(`hero gap ${style(hero).rowGap}`);
-    near(box(description).top - box(title).bottom, 16, 'h1 → description gap');
-    near(
-      box(actions).top - box(description).bottom,
-      24,
-      'description → CTA inset (16 gap + 8 inset)'
-    );
-    if (style(actions).marginTop !== '8px') fail(`CTA inset ${style(actions).marginTop}`);
-    if (style(actions).rowGap !== '12px') fail(`CTA gap ${style(actions).rowGap}`);
-    const ctas = [...actions.querySelectorAll(':scope > a')];
-    ctas.forEach((cta, index) => {
-      const ctaBox = box(cta);
-      near(ctaBox.left, contentLeft, `CTA ${index} left`);
-      near(ctaBox.width, contentWidth, `CTA ${index} fill width`);
-      if (ctaBox.height < 48) fail(`CTA ${index} designed height ${ctaBox.height}px below 49px`);
-      if (index > 0) near(ctaBox.top - box(ctas[index - 1]!).bottom, 12, `CTA ${index} row gap`);
-    });
-    near(box(hero).bottom, box(actions).bottom, 'hero ends with the CTAs');
+    const features = main.querySelector('section');
+    const list = features?.querySelector('ul');
+    if (!brand || !logo || !hero || !title || !description || !actions || !features || !list)
+      return [...failures, 'missing brand, hero or features'];
+    for (const [label, element] of [
+      ['brand', brand],
+      ['hero', hero],
+      ['features', features]
+    ] as const) {
+      near(box(element).left, contentLeft, `${label} left rail`);
+    }
+    near(box(header).height, 76, 'header height');
+    near(box(logo).top, 18, 'logo top');
+    near(box(logo).width, 40, 'logo width');
+    near(box(logo).height, 40, 'logo height');
+    near(box(hero).top - box(header).bottom, 20, 'main top inset');
+    near(box(description).top - box(title).bottom, 14, 'hero text gap');
+    near(box(actions).top - box(description).bottom, 14, 'hero action gap');
 
-    // Feature cards.
-    const list = main.querySelector(':scope > ul');
-    if (!list) return [...failures, 'feature list missing'];
-    near(box(list).top - box(hero).bottom, 32, 'hero → features gap');
-    if (style(list).rowGap !== '12px') fail(`card gap ${style(list).rowGap}`);
+    const ctas = [...actions.querySelectorAll(':scope > a')];
+    if (ctas.length !== (authenticated ? 1 : 2)) fail('N6wce CTA swap');
+    ctas.forEach((cta, index) => {
+      near(box(cta).left, contentLeft, `CTA ${index} left`);
+      near(box(cta).width, contentWidth, `CTA ${index} width`);
+      if (box(cta).height < 52) fail(`CTA ${index} below 52px`);
+      near(
+        box(cta).top - (index ? box(ctas[index - 1]!).bottom : box(actions).top),
+        index ? 12 : 10,
+        `CTA ${index} gap`
+      );
+    });
+    if (Boolean(actions.querySelector('p')) !== authenticated) fail('QtxDQ signed-in note');
+    near(box(features).top - box(hero).bottom, 32, 'hero → features gap');
+    if (style(features).rowGap !== '14px') fail('features heading gap');
+    if (style(list).rowGap !== '12px') fail('feature card gap');
     cards.forEach((card, index) => {
-      const cardBox = box(card);
-      const cardStyle = style(card);
-      near(cardBox.left, contentLeft, `card ${index} left`);
-      near(cardBox.width, contentWidth, `card ${index} width`);
-      if (index > 0) near(cardBox.top - box(cards[index - 1]!).bottom, 12, `card ${index} gap`);
-      for (const side of ['Top', 'Right', 'Bottom', 'Left'] as const)
-        if (cardStyle[`padding${side}`] !== '14px') fail(`card ${index} padding${side}`);
-      if (cardStyle.borderTopLeftRadius !== '16px') fail(`card ${index} radius`);
-      if (cardStyle.rowGap !== '10px') fail(`card ${index} inner gap ${cardStyle.rowGap}`);
-      const [tile, cardTitle, cardText] = [...card.children];
-      if (
-        !tile ||
-        !cardTitle ||
-        !cardText ||
-        card.children.length !== 3 ||
-        cardTitle.tagName !== 'H2'
-      ) {
-        fail(`card ${index} must be tile, h2, p`);
+      const [tile, copy] = [...card.children];
+      if (!tile || !copy || !copy.querySelector('h3 + p')) {
+        fail(`feature card ${index} structure`);
         return;
       }
-      near(box(tile).width, 40, `card ${index} tile width`, 0.5);
-      near(box(tile).height, 40, `card ${index} tile height`, 0.5);
-      near(box(tile).left, cardBox.left + 14, `card ${index} tile x`);
-      near(box(tile).top, cardBox.top + 14, `card ${index} tile y`);
-      near(box(cardTitle).top - box(tile).bottom, 10, `card ${index} tile → title`);
-      near(box(cardText).top - box(cardTitle).bottom, 10, `card ${index} title → text`);
-      near(cardBox.bottom - box(cardText).bottom, 14, `card ${index} bottom padding`);
+      near(box(card).width, contentWidth, `card ${index} width`);
+      near(box(tile).left - box(card).left, 16, `card ${index} left inset`);
+      near(box(tile).top - box(card).top, 16, `card ${index} top inset`);
+      near(box(tile).width, 44, `card ${index} tile width`);
+      near(box(tile).height, 44, `card ${index} tile height`);
+      near(box(copy).left - box(tile).right, 14, `card ${index} tile → copy`);
+      if (style(card).borderTopLeftRadius !== '20px') fail(`card ${index} radius`);
     });
 
-    // Footer (Pencil): 24px above the divider, 8px below it, 8px between rows of real 44px link
-    // rows (contact label and email row are flush), 32px bottom inset.
-    const footerStyle = style(footer);
-    if (footerStyle.borderTopWidth !== '1px' || footerStyle.borderTopStyle !== 'solid')
-      fail(`footer divider ${footerStyle.borderTopWidth} ${footerStyle.borderTopStyle}`);
-    if (footerStyle.marginTop !== '24px') fail(`footer top inset ${footerStyle.marginTop}`);
-    if (footerStyle.paddingTop !== '8px') fail(`footer divider gap ${footerStyle.paddingTop}`);
-    if (footerStyle.rowGap !== '8px') fail(`footer row gap ${footerStyle.rowGap}`);
-    const [privacy, contact, operator, audience] = [...footer.children];
-    if (
-      footer.children.length !== 4 ||
-      privacy?.tagName !== 'A' ||
-      !contact ||
-      !operator ||
-      !audience
-    )
-      return [...failures, 'footer must be privacy link, contact group, operator, audience'];
-    const [contactLabel, contactMail] = [...contact.children];
-    if (!contactLabel || contactMail?.tagName !== 'A' || contact.children.length !== 2)
-      return [...failures, 'footer contact group must be label + email link'];
-    near(box(footer).top - box(main).bottom, 32 + 24, 'main → divider (32 gap + 24 inset)');
-    near(box(privacy).top, box(footer).top + 1 + 8, 'divider → privacy row');
-    near(box(privacy).height, 44, 'privacy row height');
-    near(box(contact).top, box(privacy).bottom + 8, 'privacy → contact group');
-    near(box(contactMail).top, box(contactLabel).bottom, 'contact label → email row');
-    near(box(contactMail).height, 44, 'email row height');
-    near(box(operator).top, box(contact).bottom + 8, 'contact → operator');
-    near(box(audience).top, box(operator).bottom + 8, 'operator → audience');
-    const naturalBottom = box(audience).bottom + 32;
-    if (box(page).bottom < naturalBottom - 1)
-      fail(`last footer line is cut: page ends ${box(page).bottom}, needs ${naturalBottom}`);
+    const [links, operator] = [...footer.children];
+    const privacy = links?.querySelector('a[href="/privacy"]');
+    const contact = links?.querySelector('div');
+    const email = contact?.querySelector('a');
+    if (!links || !operator || !privacy || !contact || !email)
+      return [...failures, 'footer privacy, contact or operator missing'];
+    near(box(footer).top - box(features).bottom, 32, 'features → footer gap');
+    near(box(privacy).top - box(footer).top, 24, 'footer top inset');
+    near(box(contact).top - box(privacy).bottom, 4, 'footer link row gap');
+    near(box(operator).top - box(contact).bottom, 16, 'footer operator gap');
+    near(box(footer).bottom - box(operator).bottom, 32, 'footer bottom inset');
+    near(box(privacy).left, contentLeft, 'footer links left rail');
 
     // 44px hit areas in both dimensions for every link.
     for (const link of page.querySelectorAll('a')) {
@@ -344,26 +320,16 @@ async function structureFailures(tab: Page, input: ProbeInput): Promise<string[]
     const [localeChip, themeChip] = chipRects;
     if (!localeChip || !themeChip)
       return [...failures, 'language and theme chips must both render'];
-    near(themeChip.right, doc.clientWidth - 18, 'theme chip right inset', 0.5);
-    near(themeChip.top, 26, 'theme chip top', 0.5);
-    near(localeChip.top, 26, 'locale chip top', 0.5);
+    near(themeChip.right, root.right - 24, 'theme chip right inset', 0.5);
+    near(themeChip.top, 16, 'theme chip top', 0.5);
+    near(localeChip.top, 16, 'locale chip top', 0.5);
     near(themeChip.left - localeChip.right, 8, 'chip gap', 0.5);
-    for (const [name, chip] of [
-      ['locale', localeChip],
-      ['theme', themeChip]
-    ] as const) {
-      near(chip.width, 44, `${name} chip width`, 0.5);
-      near(chip.height, 44, `${name} chip height`, 0.5);
+    for (const chip of chipRects) {
+      near(chip.width, 44, 'chip width', 0.5);
+      near(chip.height, 44, 'chip height', 0.5);
     }
-    for (const mask of masks) {
-      const chip = mask.name === 'locale' ? localeChip : themeChip;
-      near(chip.left, mask.x, `mask ${mask.name} x`, 0.5);
-      near(chip.top, mask.y, `mask ${mask.name} y`, 0.5);
-    }
-    const covered = [
-      ...chipRects,
-      ...masks.map((mask) => new DOMRect(mask.x, mask.y, mask.width, mask.height))
-    ];
+    if (box(brand).right > localeChip.left) fail('ju6S4 brand overlaps floating controls');
+    const covered = chipRects;
     const meets = (a: DOMRect, b: DOMRect) =>
       a.left < b.right - 0.5 &&
       b.left < a.right - 0.5 &&
@@ -388,7 +354,7 @@ async function structureFailures(tab: Page, input: ProbeInput): Promise<string[]
       if (rect.right > doc.clientWidth + 0.5 || rect.left < -0.5)
         fail(`text "${label}" off-screen`);
       for (const chip of covered) if (meets(rect, chip)) fail(`text "${label}" under a chip/mask`);
-      const block = owner.closest('a, p, h1, h2, span, li');
+      const block = owner.closest('a, p, h1, h2, h3, span, li');
       if (block && rect.right > box(block).right + 1) fail(`text "${label}" clipped by its box`);
       for (const other of texts)
         if (other.owner !== owner && other.label < label && meets(rect, other.rect))
@@ -416,7 +382,7 @@ function expectedHrefs(authenticated: boolean): string[] {
 
 async function checkStructure(
   page: Page,
-  options: { locale: Locale; width: number; authenticated?: boolean; masks?: PngMaskRectangle[] }
+  options: { locale: Locale; width: number; authenticated?: boolean }
 ): Promise<void> {
   const copy = copies[options.locale];
   await expect(page.locator('html')).toHaveAttribute('lang', options.locale);
@@ -426,7 +392,7 @@ async function checkStructure(
   const failures = await structureFailures(page, {
     width: options.width,
     expectedHrefs: expectedHrefs(options.authenticated ?? false),
-    masks: options.masks ?? [],
+    authenticated: options.authenticated ?? false,
     columnMax: COLUMN_MAX
   });
   expect.soft(failures, failures.join('\n')).toEqual([]);
@@ -434,51 +400,48 @@ async function checkStructure(
 
 async function compareFrame(page: Page, name: string): Promise<void> {
   const frame = frameFor(name);
-  assertProvenance(name);
-  const documentHeight = await page.evaluate(() => document.documentElement.scrollHeight);
-  expect
-    .soft(documentHeight, `${name}: whole composition must fit the ${frame.height}px frame`)
-    .toBeLessThanOrEqual(frame.height);
-  const naturalHeight = await page.evaluate(() => {
-    const last = document.querySelector('main + footer > p:last-child');
-    return last ? Math.round(last.getBoundingClientRect().bottom + 32) : -1;
-  });
-  expect
-    .soft(
-      Math.abs(naturalHeight - frame.height),
-      `${name}: content height ${naturalHeight}px vs Pencil frame ${frame.height}px`
+  const logo = page.locator('header img');
+  await expect(logo).toHaveAttribute('alt', '');
+  const logoUrl = await logo.getAttribute('src');
+  if (!logoUrl) throw new Error('Missing homepage logo URL');
+  const served = await page.request.get(logoUrl);
+  expect(served.ok()).toBe(true);
+  expect(
+    (await served.body()).equals(
+      readFileSync(new URL('../docs/design/padel-friends-app-icon.png', import.meta.url))
     )
-    .toBeLessThanOrEqual(2);
-  await page.evaluate((rectangles) => {
-    for (const { name: maskName, x, y, width, height } of rectangles) {
-      const mask = document.createElement('div');
-      mask.dataset.visualMask = maskName;
-      Object.assign(mask.style, {
-        position: 'fixed',
-        left: `${x}px`,
-        top: `${y}px`,
-        width: `${width}px`,
-        height: `${height}px`,
-        pointerEvents: 'none'
-      });
-      document.body.appendChild(mask);
-    }
-  }, frame.maskRectangles);
-  try {
-    await expect(page).toHaveScreenshot(name, {
-      animations: 'disabled',
-      caret: 'hide',
-      threshold: 0.1,
-      maxDiffPixelRatio: frame.maxDiffPixelRatio,
-      mask: frame.maskRectangles.map((rectangle) =>
-        page.locator(`[data-visual-mask="${rectangle.name}"]`)
-      ),
-      maskColor: manifest.chipMask.maskColor
-    });
-  } finally {
-    // Detect --update-snapshots overwriting a Pencil-derived baseline.
-    assertProvenance(name);
+  ).toBe(true);
+
+  const height = frame.height + frame.ctaTops.length * 5;
+  await page.setViewportSize({ width: frame.width, height });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const ctaTops = await page
+    .locator('main a')
+    .evaluateAll((links) => links.map((link) => link.getBoundingClientRect().top));
+  expect(ctaTops).toHaveLength(frame.ctaTops.length);
+  frame.ctaTops.forEach((y, index) => {
+    expect(Math.abs(ctaTops[index]! - (y + index * 5))).toBeLessThanOrEqual(1);
+  });
+  const footerBottom = await page
+    .locator('footer')
+    .evaluate((footer) => footer.getBoundingClientRect().bottom);
+  expect(
+    Math.abs(footerBottom - height),
+    'full legal footer must match the adapted frame'
+  ).toBeLessThanOrEqual(1);
+  const capture = await page.screenshot({ animations: 'disabled', caret: 'hide' });
+  const actual = deriveMaskedPng(capture, {
+    maskColor: manifest.logoMask.maskColor,
+    rectangles: frame.maskRectangles
+  });
+  const expected = referenceFor(name);
+  const result = comparePng(actual, expected, frame.maxDiffPixelRatio);
+  if (result?.diff) {
+    await test.info().attach('Chromium', { body: actual, contentType: 'image/png' });
+    await test.info().attach('Pencil', { body: expected, contentType: 'image/png' });
+    await test.info().attach('pixel difference', { body: result.diff, contentType: 'image/png' });
   }
+  expect(result?.errorMessage).toBeUndefined();
 }
 
 const imageCases = [
@@ -496,14 +459,13 @@ test.describe('public homepage matches the Pencil frames', { tag: '@visual' }, (
       await open(page, frame);
       await checkStructure(page, {
         locale: frame.locale,
-        width: frame.width,
-        masks: frame.maskRectangles
+        width: frame.width
       });
       await compareFrame(page, name);
     });
   }
 
-  test('eIW0i public-homepage-mobile-signed-in.png: a real signed-in session stays on / with one dashboard CTA', async ({
+  test('QtxDQ public-homepage-mobile-signed-in.png: a real signed-in session stays on / with one dashboard CTA', async ({
     browser
   }) => {
     test.setTimeout(240_000);
@@ -542,8 +504,7 @@ test.describe('public homepage matches the Pencil frames', { tag: '@visual' }, (
       await checkStructure(page, {
         locale: frame.locale,
         width: frame.width,
-        authenticated: true,
-        masks: frame.maskRectangles
+        authenticated: true
       });
       await compareFrame(page, name);
 
@@ -617,7 +578,7 @@ test.describe('public homepage keyboard order and focus rings', () => {
           if (!active) return null;
           const computed = getComputedStyle(active);
           const bounds = active.getBoundingClientRect();
-          const surface = document.querySelector('#main-content > div');
+          const surface = document.querySelector('[data-public-homepage]');
           return {
             label:
               active.getAttribute('href') ??

@@ -401,21 +401,30 @@ describe.skipIf(!environment.env)('Ranked event publication', { timeout: 300_000
     };
 
     it('lists only Active/Upcoming Leagues of this community covering the intended start', async () => {
-      await league({ name: 'Opt in-window', status: 'active' });
-      await league({
+      // Earlier publication cases can promote elapsed Leagues in the shared world.
+      const optionWorld = await leagueWorld(environment.env!, 'ranked-options');
+      await optionWorld.setTimezone('UTC');
+      const optionLeague = (overrides: Partial<Parameters<typeof insertLeague>[0]>) =>
+        league({
+          communityId: optionWorld.communityId,
+          ownerId: optionWorld.owner.id,
+          ...overrides
+        });
+      await optionLeague({ name: 'Opt in-window', status: 'active' });
+      await optionLeague({
         name: 'Opt upcoming',
         status: 'upcoming',
         startAt: day(2),
         endAt: day(30)
       });
-      await league({
+      await optionLeague({
         name: 'Opt too late',
         status: 'upcoming',
         startAt: day(20),
         endAt: day(30)
       });
-      await league({ name: 'Opt too early', startAt: day(-30), endAt: day(1) });
-      await league({
+      await optionLeague({ name: 'Opt too early', startAt: day(-30), endAt: day(1) });
+      await optionLeague({
         name: 'Opt closed',
         status: 'closed',
         startAt: day(-30),
@@ -431,7 +440,7 @@ describe.skipIf(!environment.env)('Ranked event publication', { timeout: 300_000
         startAt: day(-5),
         endAt: day(60)
       });
-      const result = await options(owner);
+      const result = await options(optionWorld.owner, isoDay(5), '10:00', optionWorld.communityId);
       expect(result.error).toBeNull();
       const listed = names(result.data).filter((name) => name.startsWith('Opt '));
       expect(listed.sort()).toEqual(['Opt in-window', 'Opt upcoming']);

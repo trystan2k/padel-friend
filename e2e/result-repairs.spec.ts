@@ -441,6 +441,20 @@ for (const theme of ['light', 'dark'] as const) {
     const root = page.locator('[data-result-route=repair-diagnostics]');
     await expect(root).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    await expect(root).toHaveAttribute('data-repair-scope', 'community');
+    await expect(root.locator('[data-repair-scheduler]')).toHaveCount(0);
+    const queue = root.locator('[data-repair-region=queue]');
+    const detail = root.locator('[data-repair-region=detail]');
+    const identifier = detail.locator('[data-repair-identifier]');
+    const selectedId = await root
+      .locator('[data-repair-detail]')
+      .getAttribute('data-repair-detail');
+    await expect(identifier).toHaveText(selectedId!);
+    await expect(identifier).toHaveCSS('overflow-wrap', 'anywhere');
+    await expect(identifier).toHaveCSS('user-select', 'text');
+    const narrow = await Promise.all([queue.boundingBox(), detail.boundingBox()]);
+    expect(narrow[0]!.x).toBe(narrow[1]!.x);
+    expect(narrow[1]!.y).toBeGreaterThan(narrow[0]!.y + narrow[0]!.height);
     await assertTargets(root, `diagnostics ${theme}`);
     await assertContrast(root, `diagnostics ${theme}`);
     await assertReducedMotion(page, root, `diagnostics ${theme}`);

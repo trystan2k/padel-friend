@@ -1,21 +1,27 @@
 {
   "palette": {
-    "bg": { "$type": "color", "$value": "#F4F6F1" },
-    "bg-dark": { "$type": "color", "$value": "#0C1714" },
+    "bg": { "$type": "color", "$value": "#F5F6F2" },
+    "bg-dark": { "$type": "color", "$value": "#0B1410" },
     "surface": { "$type": "color", "$value": "#FFFFFF" },
-    "surface-dark": { "$type": "color", "$value": "#15231E" },
-    "surface-2": { "$type": "color", "$value": "#E9EFE8" },
-    "surface-2-dark": { "$type": "color", "$value": "#20312A" },
-    "text": { "$type": "color", "$value": "#12251D" },
-    "text-dark": { "$type": "color", "$value": "#EFF5F0" },
-    "muted": { "$type": "color", "$value": "#5C6B62" },
-    "muted-dark": { "$type": "color", "$value": "#A2B5AA" },
-    "line": { "$type": "color", "$value": "#6F7F75" },
-    "line-dark": { "$type": "color", "$value": "#748178" },
-    "green": { "$type": "color", "$value": "#0E714D" },
-    "green-dark": { "$type": "color", "$value": "#77D99A" },
-    "green-soft": { "$type": "color", "$value": "#E0F3E8" },
-    "green-soft-dark": { "$type": "color", "$value": "#1D3A2E" },
+    "surface-dark": { "$type": "color", "$value": "#142019" },
+    "surface-2": { "$type": "color", "$value": "#EAEEE8" },
+    "surface-2-dark": { "$type": "color", "$value": "#1D2B23" },
+    "text": { "$type": "color", "$value": "#0F1B15" },
+    "text-dark": { "$type": "color", "$value": "#ECF2EE" },
+    "muted": { "$type": "color", "$value": "#4F5E55" },
+    "muted-dark": { "$type": "color", "$value": "#A6B5AC" },
+    "hairline": { "$type": "color", "$value": "#E3E8E3" },
+    "hairline-dark": { "$type": "color", "$value": "#26352D" },
+    "line": { "$type": "color", "$value": "#7C8A81" },
+    "line-dark": { "$type": "color", "$value": "#6F8277" },
+    "green": { "$type": "color", "$value": "#0F6B47" },
+    "green-dark": { "$type": "color", "$value": "#7EDDA6" },
+    "on-green": { "$type": "color", "$value": "#FFFFFF" },
+    "on-green-dark": { "$type": "color", "$value": "#06261A" },
+    "green-soft": { "$type": "color", "$value": "#DDF0E5" },
+    "green-soft-dark": { "$type": "color", "$value": "#173A2A" },
+    "green-ink": { "$type": "color", "$value": "#0A4F34" },
+    "green-ink-dark": { "$type": "color", "$value": "#A8EBC3" },
     "green-deep": { "$type": "color", "$value": "#123F2F" },
     "hero-copy": { "$type": "color", "$value": "#D8E8DD" },
     "hero-muted": { "$type": "color", "$value": "#A9CBB8" },
@@ -23,11 +29,16 @@
     "hero-accent": { "$type": "color", "$value": "#C7E9D3" },
     "hero-divider": { "$type": "color", "$value": "#DCE5DE" },
     "hero-avatar": { "$type": "color", "$value": "#D6F0DF" },
-    "lime": { "$type": "color", "$value": "#C8F169" },
-    "amber": { "$type": "color", "$value": "#805700" },
+    "lime": { "$type": "color", "$value": "#D4F25A" },
+    "amber": { "$type": "color", "$value": "#8A5A00" },
     "amber-dark": { "$type": "color", "$value": "#E8BB68" },
-    "red": { "$type": "color", "$value": "#A43F37" },
-    "red-dark": { "$type": "color", "$value": "#FA8175" }
+    "amber-soft": { "$type": "color", "$value": "#FBEFD5" },
+    "amber-soft-dark": { "$type": "color", "$value": "#3A2E14" },
+    "red": { "$type": "color", "$value": "#B3261E" },
+    "red-dark": { "$type": "color", "$value": "#FF8A7E" },
+    "red-soft": { "$type": "color", "$value": "#FBE3E0" },
+    "red-soft-dark": { "$type": "color", "$value": "#3D1A17" },
+    "focus": { "$type": "color", "$value": "#2F7BF6" }
   },
   "space": {
     "1": { "$type": "dimension", "$value": "1px" },
@@ -71,8 +82,8 @@
   },
   "font": {
     "family": {
-      "body": { "$type": "string", "$value": "Inter, system-ui, sans-serif" },
-      "heading": { "$type": "string", "$value": "Manrope, Inter, system-ui, sans-serif" }
+      "body": { "$type": "string", "$value": "Figtree, system-ui, sans-serif" },
+      "heading": { "$type": "string", "$value": "{font.family.body}" }
     },
     "size": {
       "10": { "$type": "dimension", "$value": "10px" },
@@ -102,7 +113,8 @@
       "regular": { "$type": "number", "$value": 400 },
       "medium": { "$type": "number", "$value": 500 },
       "semibold": { "$type": "number", "$value": 600 },
-      "bold": { "$type": "number", "$value": 700 }
+      "bold": { "$type": "number", "$value": 700 },
+      "extrabold": { "$type": "number", "$value": 800 }
     },
     "line-height": {
       "tight": { "$type": "number", "$value": 1.1 },

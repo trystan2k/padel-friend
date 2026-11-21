@@ -39,7 +39,8 @@ export function MatchManagementUnavailable({
       ? 'matches.management.errors.forbidden'
       : 'matches.management.errors.unavailable';
   return (
-    <section {...stylex.props(s.section)}>
+    <section {...stylex.props(s.section, s.locked)}>
+      <h2 {...stylex.props(s.cardTitle)}>{t('matches.management.unavailable.title')}</h2>
       <output
         {...stylex.props(s.section)}
         aria-live="polite"

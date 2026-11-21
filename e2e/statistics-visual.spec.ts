@@ -2,11 +2,11 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
-import manifest from './references/paf-13/manifest.json' with { type: 'json' };
+import manifest from './references/paf-202-statistics/manifest.json' with { type: 'json' };
 import { copies } from './matches-management-fixtures';
 import { statisticsWorld, type PlayerKey, type StatisticsWorld } from './statistics-fixtures';
 
-// PAF-13 U8 visual proof. Three layers, none of which can mask another:
+// PAF-202 U20 visual proof (Clubhouse frames). Three layers, none of which can mask another:
 //  1. exact structural probes (overflow, containment, >=44px targets, text clipping, contrast) over
 //     viewport x theme x locale x surface;
 //  2. measured raster residuals against the approved Pencil exports, asserted against the
@@ -54,10 +54,14 @@ const surfaces = () => {
 // --- provenance ----------------------------------------------------------------------------
 
 test('reference provenance pins the design source and every exported frame', () => {
-  const design = readFileSync(new URL('../docs/design/padel-friend.pen', import.meta.url));
+  const design = readFileSync(
+    new URL('../docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen', import.meta.url)
+  );
   expect(createHash('sha256').update(design).digest('hex')).toBe(manifest.sourceDesign.sha256);
   for (const reference of Object.values(manifest.approvedReferences)) {
-    const png = readFileSync(new URL(`./references/paf-13/${reference.file}`, import.meta.url));
+    const png = readFileSync(
+      new URL(`./references/paf-202-statistics/${reference.file}`, import.meta.url)
+    );
     expect(createHash('sha256').update(png).digest('hex')).toBe(reference.sha256);
     expect(png.readUInt32BE(16)).toBe(reference.pixelSize[0]);
     expect(png.readUInt32BE(20)).toBe(reference.pixelSize[1]);
@@ -284,6 +288,11 @@ async function compositionFailures(page: Page, regions: Region[]): Promise<strin
 }
 
 const FILTER_BADGES: Region = { name: 'filter context', selector: 'main > header ul[aria-label]' };
+/** GrkSH / khmeK keep the active-filter chips with the filter section, below the summary. */
+const RELATIONSHIP_FILTER_BADGES: Region = {
+  name: 'filter context',
+  selector: 'main > ul[aria-label]'
+};
 const SCOPE_NAME = (id: string): Region => ({
   name: id,
   selector: `section[aria-labelledby="${id}"]`
@@ -293,16 +302,16 @@ const SCOPE_NAME = (id: string): Region => ({
 const PLAYER_REGIONS: Region[] = [
   { name: 'title', selector: 'main > header h1', count: 1 },
   FILTER_BADGES,
+  { name: 'highlight tiles', selector: 'main > section[aria-label] > dl > div', count: 3 },
+  { name: 'W-L-D strip', selector: 'main > section[aria-label] > p strong', count: 1 },
+  SCOPE_NAME('player-stats-form'),
+  SCOPE_NAME('player-recent-matches'),
   SCOPE_NAME('player-stats-filters'),
   {
     name: 'community selector',
     selector: 'section[aria-labelledby="player-stats-filters"] select:not(form select)',
     count: 1
   },
-  { name: 'highlight tiles', selector: 'main > section[aria-label] > dl > div', count: 3 },
-  { name: 'W-L-D strip', selector: 'main > section[aria-label] > p strong', count: 1 },
-  SCOPE_NAME('player-stats-form'),
-  SCOPE_NAME('player-recent-matches'),
   SCOPE_NAME('player-stats-matches'),
   SCOPE_NAME('player-stats-scores'),
   SCOPE_NAME('player-stats-rating'),
@@ -311,35 +320,37 @@ const PLAYER_REGIONS: Region[] = [
   SCOPE_NAME('player-stats-records')
 ];
 
-/** GrkSH: breadcrumb, pair title, compact headline card, then record regions and recent matches. */
+/** GrkSH / khmeK lead: the two-player composition, then the three headline metric tiles. */
+const HEADLINE_REGIONS: Region[] = [
+  { name: 'player composition', selector: 'main > header + div' },
+  { name: 'headline tiles', selector: 'main > section[aria-label] > dl > div', count: 3 }
+];
+
+/** GrkSH: compact top bar, players, three tiles, recent meetings, then filters and record regions. */
 const PAIR_REGIONS: Region[] = [
-  { name: 'breadcrumb', selector: 'main > header nav' },
   { name: 'title', selector: 'main > header h1', count: 1 },
-  FILTER_BADGES,
+  ...HEADLINE_REGIONS,
+  SCOPE_NAME('relationship-recent'),
+  RELATIONSHIP_FILTER_BADGES,
   SCOPE_NAME('pair-stats-filters'),
   {
     name: 'community selector',
     selector: 'section[aria-labelledby="pair-stats-filters"] select:not(form select)',
     count: 1
   },
-  {
-    name: 'compact headline',
-    selector: 'main > section[aria-label] > * > p:first-child',
-    count: 1
-  },
   SCOPE_NAME('pair-stats-record'),
   SCOPE_NAME('pair-stats-scores'),
   SCOPE_NAME('pair-stats-streaks'),
   SCOPE_NAME('pair-stats-rating'),
-  SCOPE_NAME('pair-stats-leagues'),
-  SCOPE_NAME('relationship-recent')
+  SCOPE_NAME('pair-stats-leagues')
 ];
 
-/** khmeK: opponent record, head-to-head sections, recent meetings (no pair-only regions). */
+/** khmeK: players, three tiles, recent meetings, then head-to-head sections (no pair-only regions). */
 const OPPONENT_REGIONS: Region[] = [
-  { name: 'breadcrumb', selector: 'main > header nav' },
   { name: 'title', selector: 'main > header h1', count: 1 },
-  FILTER_BADGES,
+  ...HEADLINE_REGIONS,
+  SCOPE_NAME('relationship-recent'),
+  RELATIONSHIP_FILTER_BADGES,
   SCOPE_NAME('opponent-stats-filters'),
   {
     name: 'community selector',
@@ -349,16 +360,15 @@ const OPPONENT_REGIONS: Region[] = [
   SCOPE_NAME('opponent-stats-record'),
   SCOPE_NAME('opponent-stats-scores'),
   SCOPE_NAME('opponent-stats-streaks'),
-  SCOPE_NAME('opponent-stats-rating'),
-  SCOPE_NAME('relationship-recent')
+  SCOPE_NAME('opponent-stats-rating')
 ];
 
 /** o9iaC1: scope, volume, player leaders, team and matchup records, activity by month and week. */
 const COMMUNITY_REGIONS: Region[] = [
   { name: 'title', selector: 'main > header h1', count: 1 },
   FILTER_BADGES,
-  SCOPE_NAME('community-filters'),
   SCOPE_NAME('community-matches'),
+  SCOPE_NAME('community-filters'),
   SCOPE_NAME('community-leaders'),
   SCOPE_NAME('community-pairings'),
   SCOPE_NAME('community-frequency'),
@@ -372,7 +382,11 @@ const COMMUNITY_REGIONS: Region[] = [
 const detailRegions = (sets: number): Region[] => [
   { name: 'title', selector: 'main > header h1', count: 1 },
   SCOPE_NAME('statistics-detail-result'),
-  { name: 'hero score lines', selector: '#statistics-detail-result ~ div p > span', count: sets },
+  {
+    name: 'team rows in the scorecard',
+    selector: '#statistics-detail-result ~ table tbody > tr',
+    count: 2
+  },
   SCOPE_NAME('statistics-detail-players'),
   { name: 'team blocks', selector: '#statistics-detail-players ~ section h3', count: 2 },
   { name: 'player level blocks', selector: '#statistics-detail-players ~ section h4', count: 4 },
@@ -406,12 +420,35 @@ for (const [locale, width] of LOCALES.flatMap((language) =>
       for (const failure of await compositionFailures(page, regions))
         failures.push(`${surface.name}: ${failure}`);
     }
-    // Pair is the compact summary: it never draws the player highlight tiles; opponent has no
-    // pair-only league region.
-    await page.goto(surfaces().find((candidate) => candidate.name === 'pair')!.path);
-    await waitForHydratedPage(page);
-    if ((await page.locator('main > section[aria-label] > dl').count()) !== 0)
-      failures.push('pair: unexpected highlight tiles');
+    // GrkSH / khmeK: a compact top bar, not a stacked breadcrumb + title + link column. Back chevron
+    // and title share one row inside a bar of at most 64px, and the summary starts right under it.
+    for (const name of ['pair', 'opponent']) {
+      await page.goto(surfaces().find((candidate) => candidate.name === name)!.path);
+      await waitForHydratedPage(page);
+      const bar = await page.evaluate(() => {
+        const back = document.querySelector('main > header nav a')!.getBoundingClientRect();
+        const title = document.querySelector('main > header h1')!.getBoundingClientRect();
+        const identity = document.querySelector('main > header + div')!.getBoundingClientRect();
+        return { back, title, identity };
+      });
+      if (bar.back.width < 44 || bar.back.height < 44)
+        failures.push(name + ': back link under 44px');
+      if (Math.abs(bar.back.top + bar.back.height / 2 - (bar.title.top + bar.title.height / 2)) > 8)
+        failures.push(name + ': back link and title are not on one row');
+      if (bar.title.left < bar.back.right) failures.push(name + ': title overlaps the back link');
+      if ((await page.locator('main > header a[href^="#"]').count()) !== 1)
+        failures.push(name + ': filter access link missing');
+      const meetings = await page.locator('#relationship-recent').boundingBox();
+      const filters = await page.locator('#' + name + '-stats-filters').boundingBox();
+      if (!meetings || !filters || meetings.y > filters.y)
+        failures.push(name + ': meetings must come before the filter section');
+      // 56px bar plus the 44px filter access row (title may wrap at 320px); was ~300px stacked.
+      if (bar.identity.top > 150)
+        failures.push(
+          name + ': summary starts too far below the bar (' + Math.round(bar.identity.top) + 'px)'
+        );
+    }
+    // Opponent has no pair-only league region.
     await page.goto(surfaces().find((candidate) => candidate.name === 'opponent')!.path);
     await waitForHydratedPage(page);
     if ((await page.locator('#pair-stats-leagues').count()) !== 0)
@@ -495,96 +532,102 @@ test('community selectors and recent-match cards keep 44px targets without overl
 
 // --- Pencil-aligned raster residuals ------------------------------------------------------
 
-const PENCIL = [
-  { key: 'playerStatistics', frame: 'RN0yw', surface: 'player' },
-  { key: 'pairStatistics', frame: 'GrkSH', surface: 'pair' },
-  { key: 'opponentStatistics', frame: 'khmeK', surface: 'opponent' },
-  { key: 'communityStatistics', frame: 'o9iaC1', surface: 'community' },
-  { key: 'groupDetail', frame: 'BcpYH', surface: 'detail-friendly-draw' }
-] as const;
+type RasterRegion = { name: string; top: number; bottom: number };
+type RasterFrame = keyof typeof manifest.visualBudgets.rasterRegions;
 
-async function residual(
-  page: Page,
-  info: TestInfo,
-  frame: (typeof PENCIL)[number]['frame'],
-  key: string
-): Promise<number> {
+async function residual(page: Page, info: TestInfo, frame: RasterFrame): Promise<number> {
   const reference = manifest.approvedReferences[frame];
-  const width = reference.pixelSize[0]! / 2;
-  const height = Math.min(reference.pixelSize[1]! / 2, 844);
+  const evidence = manifest.visualBudgets.rasterRegions[frame];
   await page.evaluate(() => window.scrollTo(0, 0));
-  const actual = await page.screenshot({
+  const actual = await page.screenshot({ animations: 'disabled', caret: 'hide' });
+  const approved = readFileSync(
+    new URL(`./references/paf-202-statistics/${reference.file}`, import.meta.url)
+  );
+
+  const card = page.locator(evidence.cardSelector).first();
+  await expect(card).toHaveCSS('border-top-left-radius', '20px');
+  await expect(card).toHaveCSS('border-left-width', '1px');
+  await card.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  const box = await card.boundingBox();
+  if (!box) throw new Error(`Missing score or summary card for ${frame}`);
+  expect(box.x, `${frame}: left card gutter`).toBe(20);
+  const edge = await page.screenshot({
     animations: 'disabled',
     caret: 'hide',
-    clip: { x: 0, y: 0, width, height },
-    path: info.outputPath(`${key}-actual.png`)
+    clip: { x: 0, y: Math.round(box.y) + 22, width: 32, height: 20 }
   });
-  const approved = readFileSync(new URL(`./references/paf-13/${reference.file}`, import.meta.url));
+
+  const dataUrl = (image: Buffer) => `data:image/png;base64,${image.toString('base64')}`;
   const measured = await page.evaluate(
-    async ({ actualUrl, approvedUrl, area }) => {
-      const load = async (url: string, crop: number) => {
+    async ({ actualUrl, approvedUrl, edgeUrl, referenceTop, regions }) => {
+      const read = async (url: string, x: number, y: number, width: number, height: number) => {
         const image = new Image();
         image.src = url;
         await image.decode();
+        if (x + width > image.width || y + height > image.height)
+          throw new Error('Statistics raster region outside capture');
         const canvas = document.createElement('canvas');
-        canvas.width = area.width;
-        canvas.height = area.height;
-        const context = canvas.getContext('2d')!;
-        context.drawImage(
-          image,
-          0,
-          0,
-          area.width * crop,
-          area.height * crop,
-          0,
-          0,
-          area.width,
-          area.height
-        );
-        return context.getImageData(0, 0, area.width, area.height).data;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        ctx.drawImage(image, x, y, width, height, 0, 0, width, height);
+        return ctx.getImageData(0, 0, width, height).data;
       };
-      const [rendered, expected] = await Promise.all([load(actualUrl, 1), load(approvedUrl, 2)]);
-      let changed = 0;
-      for (let index = 0; index < rendered.length; index += 4) {
-        const red = rendered[index]! - expected[index]!;
-        const green = rendered[index + 1]! - expected[index + 1]!;
-        const blue = rendered[index + 2]! - expected[index + 2]!;
-        const luminance = red * 0.29889531 + green * 0.58662247 + blue * 0.11448223;
-        const chromaI = red * 0.59597799 - green * 0.2741761 - blue * 0.32180189;
-        const chromaQ = red * 0.21147017 - green * 0.52261711 + blue * 0.31114694;
-        if (
-          0.5053 * luminance * luminance + 0.299 * chromaI * chromaI + 0.1957 * chromaQ * chromaQ >
-          35215 * 0.1 ** 2
-        )
-          changed++;
-      }
-      return changed / (area.width * area.height);
+      const diff = (a: Uint8ClampedArray, b: Uint8ClampedArray) => {
+        let changed = 0;
+        for (let index = 0; index < a.length; index += 4) {
+          const red = a[index]! - b[index]!;
+          const green = a[index + 1]! - b[index + 1]!;
+          const blue = a[index + 2]! - b[index + 2]!;
+          const luma = red * 0.29889531 + green * 0.58662247 + blue * 0.11448223;
+          const i = red * 0.59597799 - green * 0.2741761 - blue * 0.32180189;
+          const q = red * 0.21147017 - green * 0.52261711 + blue * 0.31114694;
+          if (0.5053 * luma * luma + 0.299 * i * i + 0.1957 * q * q > 35215 * 0.1 ** 2) changed++;
+        }
+        return (changed * 4) / a.length;
+      };
+      const [actualEdge, expectedEdge] = await Promise.all([
+        read(edgeUrl, 0, 0, 32, 20),
+        read(approvedUrl, 0, referenceTop + 22, 32, 20)
+      ]);
+      const bands = await Promise.all(
+        regions.map(async ({ name, top, bottom }: RasterRegion) => {
+          const [a, b] = await Promise.all([
+            read(actualUrl, 0, top, 390, bottom - top),
+            read(approvedUrl, 0, top, 390, bottom - top)
+          ]);
+          return [name, diff(a, b)] as const;
+        })
+      );
+      return { edge: diff(actualEdge, expectedEdge), bands: Object.fromEntries(bands) };
     },
     {
-      actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
-      approvedUrl: `data:image/png;base64,${approved.toString('base64')}`,
-      area: { width, height }
+      actualUrl: dataUrl(actual),
+      approvedUrl: dataUrl(approved),
+      edgeUrl: dataUrl(edge),
+      referenceTop: evidence.referenceTop,
+      regions: evidence.bands
     }
   );
-  console.info(`PAF-13 residual ${key} (${frame}): ${measured}`);
-  await info.attach(`${key}-actual`, { body: actual, contentType: 'image/png' });
-  return measured;
+  console.info(`PAF-202 ${frame} edge and diagnostic bands: ${JSON.stringify(measured)}`);
+  await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
+  await info.attach(`${frame}-card-edge`, { body: edge, contentType: 'image/png' });
+  return measured.edge;
 }
 
-for (const entry of PENCIL) {
-  test(`Pencil residual ${entry.key} (${entry.frame}) stays within its measured budget`, async () => {
+const rasterFrames = ['RN0yw', 'GrkSH', 'khmeK', 'o9iaC1', 'BcpYH'] as const;
+
+for (const frame of rasterFrames) {
+  const evidence = manifest.visualBudgets.rasterRegions[frame];
+  test(`Pencil surface edge ${frame} stays within its measured budget`, async () => {
     const info = test.info();
     const page = await w.f.page(w.actors[A], 'en', 390, 'light', 844);
-    const surface = surfaces().find((candidate) => candidate.name === entry.surface)!;
+    const surface = surfaces().find((candidate) => candidate.name === evidence.surface)!;
     await page.goto(surface.path);
     await waitForHydratedPage(page);
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
-    const measured = await residual(page, info, entry.frame, entry.key);
-    const budgets = manifest.visualBudgets.perScreen as Record<string, number>;
-    expect(
-      measured,
-      `measured residual ${measured} vs budget ${budgets[entry.key]}`
-    ).toBeLessThanOrEqual(budgets[entry.key]!);
+    const measured = await residual(page, info, frame);
+    expect(measured).toBeLessThanOrEqual(evidence.budget);
   });
 }
 

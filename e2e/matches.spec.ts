@@ -45,7 +45,7 @@ type Copy = {
   matchCreate: {
     title: string;
     next: string;
-    review: string;
+    readyTitle: string;
     publish: string;
     steps: { players: string; teams: string };
     fields: {
@@ -362,7 +362,7 @@ async function publishMatchViaUi(
     .getByRole('radio', { name: en.matches.teamMode[options.teamMode ?? 'POST_MATCH_TEAMS'] })
     .check();
   await page.getByRole('button', { name: en.matchCreate.next }).click();
-  await expect(page.getByRole('heading', { name: en.matchCreate.review })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
   await page.getByRole('button', { name: en.matchCreate.publish }).click();
   await expect(page).toHaveURL(/\/matches$/);
   await waitForHydratedPage(page);
@@ -494,7 +494,7 @@ test.describe.serial('public community_open lifecycle', () => {
       })
     ).toBeVisible();
     await expect(creatorPage.getByText(en.matches.detail.creatorAccepted)).toBeVisible();
-    await expect(creatorPage.getByText(`${en.matches.card.pricePerPlayer}: €12.00`)).toBeVisible();
+    await expect(creatorPage.getByText('€12.00', { exact: true })).toBeVisible();
     await expect(creatorPage.getByText('Timezone: UTC')).toBeVisible();
     const mapsLink = creatorPage.getByRole('link', {
       name: en.matches.detail.viewCourtLocationFor.replace('{{venue}}', venue)
@@ -917,7 +917,11 @@ test('invite_only stays invisible until an explicit invitation and never auto-re
     await expect(
       inviteePage.getByText(en.notifications.match.invitedBy.replace('{{name}}', host.displayName))
     ).toBeVisible();
-    await expect(inviteePage.getByText(`${en.notifications.match.venue}: ${venue}`)).toBeVisible();
+    // Detail rows render as a label/value pair (notification-detail frames), not "Venue: value".
+    await expect(
+      inviteePage.locator('main').getByText(en.notifications.match.venue, { exact: true })
+    ).toBeVisible();
+    await expect(inviteePage.locator('main').getByText(venue, { exact: true })).toBeVisible();
 
     const registrationsAfter = await host.client
       .from('match_event_registrations')
@@ -1005,7 +1009,7 @@ test('invalid input cannot publish through the UI or the publication RPC', async
       });
       for (let step = 0; step < 3; step += 1)
         await page.getByRole('button', { name: en.matchCreate.next }).click();
-      await expect(page.getByRole('heading', { name: en.matchCreate.review })).toBeVisible();
+      await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
     };
     const publishExpectRejected = async (message: string) => {
       await page.getByRole('button', { name: en.matchCreate.publish }).click();

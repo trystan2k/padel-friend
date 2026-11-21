@@ -106,7 +106,12 @@ test('request, admin decision, player notification and corrected profile, then t
   const adminPage = await f.page(admin);
   await open(adminPage, '/platform-admin/level-reviews');
   await expect(adminPage.getByRole('heading', { name: lr.admin.title })).toBeVisible();
-  await adminPage.getByRole('link').filter({ hasText: flowOwner.name }).first().click();
+  await adminPage
+    .getByRole('listitem')
+    .filter({ hasText: flowOwner.name })
+    .first()
+    .getByRole('link', { name: lr.admin.review })
+    .click();
   await expect(adminPage).toHaveURL(new RegExp(request!.id + '$'));
   await expect(adminPage.getByRole('heading', { name: lr.adminDecision.preview })).toBeVisible();
   await expect(adminPage.getByText(/Internal μ/)).toContainText('3.20');
@@ -156,7 +161,7 @@ test('request, admin decision, player notification and corrected profile, then t
   ).toHaveCount(0);
 
   // Profile timeline carries the correction as a non-game item.
-  await open(ownerPage, '/dashboard');
+  await open(ownerPage, '/me');
   const adjustment = ownerPage
     .getByRole('listitem')
     .filter({ hasText: copies.en.rating.history.adjustmentTitle });

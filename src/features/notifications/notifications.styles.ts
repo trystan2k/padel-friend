@@ -37,7 +37,7 @@ export const styles = stylex.create({
     paddingInline: 'var(--space-3)',
     borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
+    color: 'var(--color-green-ink)',
     textDecoration: 'none'
   },
   unread: {

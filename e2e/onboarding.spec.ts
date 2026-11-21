@@ -8,7 +8,7 @@ type LocaleCopy = {
   language: string;
   signInWithGoogle: string;
   auth: {
-    welcomeBrand: string;
+    loginBrand: string;
     welcomeTitle: string;
     welcomeSubtitle: string;
     or: string;
@@ -31,6 +31,8 @@ type LocaleCopy = {
   onboarding: {
     title: string;
     name: string;
+    hand: string;
+    bio: string;
     avatarLabel: string;
     avatarInvalid: string;
     avatarSkip: string;
@@ -76,6 +78,9 @@ type LocaleCopy = {
     dominantHand: string;
     handNone: string;
     availabilityDaysLegend: string;
+    changePhoto: string;
+    preferredDays: string;
+    preferredTimes: string;
     availabilityTimesLegend: string;
     availabilityNotProvided: string;
     availabilityDays: Record<'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN', string>;
@@ -100,13 +105,10 @@ const ptBr: LocaleCopy = JSON.parse(
 const PASSWORD = 'Password123!';
 const BASE_URL = 'http://127.0.0.1:4173';
 
-// The profile identity card holds the display-name h2; the dashboard has other h2s (e.g. the
-// rating journey), so a bare level-2 heading query inside <main> is ambiguous.
+// The Me identity header holds the display-name h2; the page has other h2s (e.g. the rating
+// journey), so a bare level-2 heading query inside <main> is ambiguous.
 function profileNameHeading(page: Page) {
-  return page
-    .getByText(/^Member since/)
-    .locator('..')
-    .getByRole('heading', { level: 2 });
+  return page.locator('main > header').getByRole('heading', { level: 2 });
 }
 
 function uniqueEmail(): string {
@@ -197,6 +199,10 @@ async function skipCommunity(page: Page): Promise<void> {
   await waitForHydratedPage(page);
   await page.getByRole('button', { name: en.communityOnboarding.skip }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
+  // Home greeting heading marks the post-onboarding landing; the profile now lives on /me.
+  await expect(page.locator('#home-greeting')).toBeVisible();
+  await waitForHydratedPage(page);
+  await page.goto('/me');
   await expect(page.getByRole('heading', { name: en.profile.title })).toBeVisible();
   await waitForHydratedPage(page);
 }
@@ -229,7 +235,7 @@ test('dominant hand stays optional and fits all locales at mobile width', async 
     await waitForHydratedPage(page);
     await expect(page.locator('html')).toHaveAttribute('lang', locale);
 
-    const handGroup = page.getByRole('group', { name: copy.profile.dominantHand });
+    const handGroup = page.getByRole('group', { name: copy.onboarding.hand });
     const preferNotRadio = page.getByRole('radio', { name: copy.onboarding.handPreferNot });
     await expect(handGroup).toBeVisible();
     await expect(preferNotRadio).toBeChecked();
@@ -257,9 +263,9 @@ test('dominant hand stays optional and fits all locales at mobile width', async 
     expect(responsiveLayout.options).toHaveLength(3);
     expect(responsiveLayout.rowScrollWidth).toBe(responsiveLayout.rowWidth);
     expect(responsiveLayout.documentScrollWidth).toBe(responsiveLayout.documentWidth);
-    expect(
-      responsiveLayout.options.every(({ height, textFits }) => height === 44 && textFits)
-    ).toBe(true);
+    expect(responsiveLayout.options.every(({ height, textFits }) => height >= 48 && textFits)).toBe(
+      true
+    );
 
     if (locale === 'en') {
       await preferNotRadio.focus();
@@ -347,16 +353,16 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
 
   await scale.focus();
   await page.keyboard.press('Home');
-  await expect(page.locator('output[for=player-level]')).toHaveText('0.0');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('0.0');
   await page.keyboard.press('End');
-  await expect(page.locator('output[for=player-level]')).toHaveText('7.0');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('7.0');
   await levelInput.fill('1.0');
   await expect(scale).toHaveValue('1');
-  await expect(page.locator('output[for=player-level]')).toHaveText('1.0');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('1.0');
 
   // The numeric input remains the exact 0.1-step control.
   await levelInput.fill('6.4');
-  await expect(page.locator('output[for=player-level]')).toHaveText('6.4');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('6.4');
   await page.setViewportSize({ width: 1280, height: 720 });
 
   // Valid save: onboarding shows design's one-decimal level; profile shows two decimals.
@@ -368,10 +374,9 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   await sideRadio.check();
   // The form is hydrated once a controlled re-render keeps the radio checked.
   await expect(sideRadio).toBeChecked();
-  await expect(page.locator('output[for=player-level]')).toHaveText('3.0');
+  await expect(page.locator('output[for~=player-level]')).toHaveText('3.0');
   await page.getByRole('button', { name: en.onboarding.save }).click();
   await skipCommunity(page);
-  await expect(page.getByRole('heading', { name: en.profile.title })).toBeVisible();
 
   // The profile header action is a 44×44 icon-only button carrying its own accessible name
   // (round-2 header): no visible text label to target.
@@ -384,14 +389,9 @@ test('a new signup is blocked by onboarding, rejects invalid input, then lands o
   // The level card is labelled GLOBAL LEVEL (design vARtQ/aWm9C/CKgMi): the label+metric
   // stack and the reliability badge are SIBLINGS in the level row, above the 0.0 /
   // LEVEL SCALE / 7.0 progress track (14px tall).
-  await expect(
-    page.locator('#home-profile').getByText(en.profile.globalLevel, { exact: true })
-  ).toBeVisible();
+  await expect(page.getByText(en.profile.globalLevel, { exact: true })).toBeVisible();
   // Label/metric stack: the GLOBAL LEVEL caption with the two-decimal metric beside it.
-  const levelHeader = page
-    .locator('#home-profile')
-    .getByText(en.profile.globalLevel, { exact: true })
-    .locator('..');
+  const levelHeader = page.getByText(en.profile.globalLevel, { exact: true }).locator('..');
   await expect(levelHeader).toContainText('3.00');
   // Enclosing level row: the reliability badge rides beside the header stack.
   const levelRow = levelHeader.locator('..');
@@ -462,7 +462,8 @@ test('a fresh browser context keeps the onboarding state', async ({ browser, pag
   const secondContext = await browser.newContext({ storageState: state });
   const secondPage = await secondContext.newPage();
   await secondPage.goto('/dashboard');
-  await expect(secondPage.getByRole('heading', { name: en.profile.title })).toBeVisible();
+  await expect(secondPage.locator('#home-greeting')).toBeVisible();
+  await secondPage.goto('/me');
   await expect(secondPage.getByRole('heading', { name: 'Vera Fresh', exact: true })).toBeVisible();
   await expect(secondPage.locator('main')).toContainText('3.50');
   await secondContext.close();
@@ -485,8 +486,11 @@ test('the dashboard allows profile edits but exposes no level control, and avata
   await page.getByRole('button', { name: en.profile.save }).click();
   await expect(page.getByRole('heading', { name: 'Mila Edited', exact: true })).toBeVisible();
 
+  // Profile edit is its own screen: the avatar widget (file input labelled "Change photo") lives there.
+  await page.getByRole('button', { name: en.profile.edit }).click();
+
   // Invalid MIME type is rejected with the localized error before any upload.
-  const fileInput = page.getByLabel(en.profile.avatar);
+  const fileInput = page.getByLabel(en.profile.changePhoto);
   await fileInput.setInputFiles({
     name: 'note.txt',
     mimeType: 'text/plain',
@@ -544,9 +548,17 @@ test('an optional onboarding photo sits before the primary action and survives t
   const save = page.getByRole('button', { name: en.onboarding.save });
   const nameBox = await page.getByLabel(en.onboarding.name, { exact: true }).boundingBox();
   const pickerBox = await picker.boundingBox();
-  const saveBox = await save.boundingBox();
   expect(nameBox!.y).toBeLessThan(pickerBox!.y);
-  expect(pickerBox!.y).toBeLessThan(saveBox!.y);
+  expect(
+    await picker.evaluate((input) => {
+      const action = input.closest('form')?.querySelector('button[type="submit"]');
+      return Boolean(
+        action && input.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    })
+  ).toBe(true);
+  await picker.scrollIntoViewIfNeeded();
+  expect((await picker.boundingBox())!.y).toBeLessThan((await save.boundingBox())!.y);
   expect(pickerBox!.height).toBeGreaterThanOrEqual(44);
   const skipBox = await page.getByRole('button', { name: en.onboarding.avatarSkip }).boundingBox();
   expect(skipBox!.height).toBeGreaterThanOrEqual(44);
@@ -837,7 +849,7 @@ test('the onboarding slider stays operable in light and dark themes', async ({ p
     await slider.focus();
     await page.keyboard.press('ArrowRight');
     await expect(slider).toHaveValue('3.1');
-    await expect(page.locator('output[for=player-level]')).toHaveText('3.1');
+    await expect(page.locator('output[for~=player-level]')).toHaveText('3.1');
     await page.context().clearCookies();
   }
 });
@@ -863,14 +875,14 @@ test('signing out navigates directly to login and protected routes stay gated', 
   await expect(page.getByLabel(en.auth.loginEmailLabel)).toBeVisible();
 });
 
-test('the Welcome screen shows brand and Google-first sign-in and routes newcomers to the account page', async ({
+test('the Welcome screen shows brand, credentials-first sign-in with Google below and routes newcomers to the account page', async ({
   page
 }) => {
   await page.goto('/login');
   await waitForHydratedPage(page);
 
   // Welcome copy (design wzWLt): brand wordmark, title and subtitle.
-  await expect(page.getByText(en.auth.welcomeBrand, { exact: true })).toBeVisible();
+  await expect(page.getByText(en.auth.loginBrand, { exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: en.auth.welcomeTitle })).toBeVisible();
   await expect(page.getByText(en.auth.welcomeSubtitle)).toBeVisible();
 
@@ -895,14 +907,14 @@ test('the Welcome screen shows brand and Google-first sign-in and routes newcome
   await expect(google.locator('span[aria-hidden="true"]')).toHaveText('G');
   await expect(page.getByRole('button', { name: en.auth.loginSubmit })).toBeVisible();
 
-  // DOM order is Google-first (design wzWLt): Google button, OR divider, email, password,
-  // LOG IN — and NO register toggle or signup submit on the Welcome screen.
+  // DOM order follows the Clubhouse frame (wzWLt): email, password, Log in, "or" divider, Google
+  // button — and NO register toggle or signup submit on the Welcome screen.
   const order = [
-    google,
-    page.getByText(en.auth.or, { exact: true }),
     emailField,
     page.getByLabel(en.auth.loginPasswordLabel),
-    page.getByRole('button', { name: en.auth.loginSubmit })
+    page.getByRole('button', { name: en.auth.loginSubmit }),
+    page.getByText(en.auth.or, { exact: true }),
+    google
   ];
   for (let index = 0; index < order.length - 1; index += 1) {
     const first = await order[index]!.elementHandle();
@@ -1002,33 +1014,49 @@ function availabilityGroup(page: Page, legend: string) {
   return page.getByRole('group', { name: legend });
 }
 
-async function chooseAvailability(page: Page, days: string[], times: string[]): Promise<void> {
+// The profile-edit screen renders the same two groups as chips under the "Preferred days/times" legends.
+function editAvailabilityGroup(page: Page, legend: string) {
+  return page.getByRole('group', { name: legend });
+}
+
+async function chooseAvailability(
+  page: Page,
+  days: string[],
+  times: string[],
+  edit = false
+): Promise<void> {
+  const daysLegend = edit ? en.profile.preferredDays : en.profile.availabilityDaysLegend;
+  const timesLegend = edit ? en.profile.preferredTimes : en.profile.availabilityTimesLegend;
   for (const day of days)
-    await availabilityGroup(page, en.profile.availabilityDaysLegend)
-      .getByRole('checkbox', { name: day })
-      .check();
+    await availabilityGroup(page, daysLegend).getByRole('checkbox', { name: day }).check();
   for (const time of times)
-    await availabilityGroup(page, en.profile.availabilityTimesLegend)
-      .getByRole('checkbox', { name: time })
-      .check();
+    await availabilityGroup(page, timesLegend).getByRole('checkbox', { name: time }).check();
 }
 
 const days = en.profile.availabilityDays;
 const times = en.profile.availabilityTimes;
 
-test('optional availability sits after the primary action, persists, edits and clears', async ({
+test('optional availability precedes the sticky action, persists, edits and clears', async ({
   page
 }) => {
   await register(page, uniqueEmail());
   await fillOnboardingRequired(page, 'Ava Available');
 
-  // Trailing optional section: below the primary action, the precise-level input and the bio.
+  // Trailing optional section remains after the precise level and bio but precedes the action in DOM order.
   const daysGroup = availabilityGroup(page, en.profile.availabilityDaysLegend);
   const groupBox = await daysGroup.boundingBox();
-  const saveBox = await page.getByRole('button', { name: en.onboarding.save }).boundingBox();
+  const save = page.getByRole('button', { name: en.onboarding.save });
   const preciseBox = await page.getByLabel(en.onboarding.preciseLevel).boundingBox();
-  const bioBox = await page.getByLabel(en.profile.bio).boundingBox();
-  expect(groupBox!.y).toBeGreaterThan(saveBox!.y);
+  const bioBox = await page.getByLabel(en.onboarding.bio).boundingBox();
+  expect(
+    await daysGroup.evaluate((group) => {
+      const action = group.closest('form')?.querySelector('button[type="submit"]');
+      return Boolean(
+        action && group.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    })
+  ).toBe(true);
+  await expect(save).toBeVisible();
   expect(groupBox!.y).toBeGreaterThan(preciseBox!.y);
   expect(groupBox!.y).toBeGreaterThan(bioBox!.y);
   await expect(daysGroup.getByRole('checkbox')).toHaveCount(7);
@@ -1055,17 +1083,17 @@ test('optional availability sits after the primary action, persists, edits and c
   // Edit: the stored selections are prefilled and individually changeable.
   await page.getByRole('button', { name: en.profile.edit }).click();
   await expect(
-    availabilityGroup(page, en.profile.availabilityDaysLegend).getByRole('checkbox', {
+    editAvailabilityGroup(page, en.profile.preferredDays).getByRole('checkbox', {
       name: days.MON
     })
   ).toBeChecked();
-  await availabilityGroup(page, en.profile.availabilityDaysLegend)
+  await editAvailabilityGroup(page, en.profile.preferredDays)
     .getByRole('checkbox', { name: days.MON })
     .uncheck();
-  await availabilityGroup(page, en.profile.availabilityDaysLegend)
+  await editAvailabilityGroup(page, en.profile.preferredDays)
     .getByRole('checkbox', { name: days.TUE })
     .check();
-  await availabilityGroup(page, en.profile.availabilityTimesLegend)
+  await editAvailabilityGroup(page, en.profile.preferredTimes)
     .getByRole('checkbox', { name: times.MORNING })
     .uncheck();
   await page.getByRole('button', { name: en.profile.save }).click();
@@ -1075,10 +1103,10 @@ test('optional availability sits after the primary action, persists, edits and c
   // Clear both groups: stored as NULL and shown as not provided after a reload.
   await page.getByRole('button', { name: en.profile.edit }).click();
   for (const day of [days.TUE, days.WED, days.SUN])
-    await availabilityGroup(page, en.profile.availabilityDaysLegend)
+    await editAvailabilityGroup(page, en.profile.preferredDays)
       .getByRole('checkbox', { name: day })
       .uncheck();
-  await availabilityGroup(page, en.profile.availabilityTimesLegend)
+  await editAvailabilityGroup(page, en.profile.preferredTimes)
     .getByRole('checkbox', { name: times.EVENING })
     .uncheck();
   await page.getByRole('button', { name: en.profile.save }).click();
@@ -1100,11 +1128,13 @@ test('availability groups are independent: days only, then times only, and omiss
   await expect(page.getByText(en.profile.availabilityNotProvided)).toHaveCount(1);
 
   await page.getByRole('button', { name: en.profile.edit }).click();
-  await availabilityGroup(page, en.profile.availabilityDaysLegend)
+  await editAvailabilityGroup(page, en.profile.preferredDays)
     .getByRole('checkbox', { name: days.SAT })
     .uncheck();
-  await chooseAvailability(page, [], [times.AFTERNOON]);
+  await chooseAvailability(page, [], [times.AFTERNOON], true);
   await page.getByRole('button', { name: en.profile.save }).click();
+  // Wait for the edit screen to close: its chips repeat the time label and would trip strict mode.
+  await expect(page.getByRole('button', { name: en.profile.edit })).toBeVisible();
   await expect(page.getByText(times.AFTERNOON, { exact: true })).toBeVisible();
   await expect(page.getByText(en.profile.availabilityNotProvided)).toHaveCount(1);
 });

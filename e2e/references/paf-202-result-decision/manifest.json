@@ -1,0 +1,90 @@
+{
+  "sourceDesign": {
+    "path": "docs/design/padel-friend-clubhouse.pen",
+    "sha256": "69638a9da9bc47ab40165a1455b5e70c06c0fb11faacc8f51c7015457464d8d7"
+  },
+  "route": "/matches/$eventId",
+  "precedence": "D7: route-specific result frames govern their own regions. CWJkF is record-only: no route renders Community Admin dispute resolution as a standalone screen, so it is not force-mapped; the resolve dialog in MatchResultCorrections follows its sheet structure inside match detail.",
+  "frameFindings": {
+    "sLXK7": "Sentence case throughout. Amber-soft notice (r14, 12/14), score card r18, sticky actions: Approve 52 green above a 48 secondary.",
+    "JXjNs": "Amber-soft Pending notice, then a card with a 40px amber-soft glyph and 'Auto-confirms in 18h' (16/800) with muted explanation; no caps.",
+    "iXRPp": "Started-unavailable detail with a locked-management notice above a 52px green Record result action.",
+    "GMcbD": "Amber-soft partial-resolution notice; group cards with pill chips (Confirmed green, Pending amber, Disputed red), Dispute then Approve 48px actions inside the pending card.",
+    "H6VcqC": "Bottom sheet: grabber, radius 28 top corners, 52px reason rows without row backgrounds, note field, amber-soft notice, stacked 52px Submit dispute (red) above Cancel.",
+    "adujr": "Pill chip, 28/800 title, current-result card, reason field and a 52px green Request correction action.",
+    "s5TRC": "Two surface cards each led by a pill chip (Still valid green, Proposed amber), 22/800 score lines, amber-soft auto-confirm notice, Approve 52 above Reject 48.",
+    "CWJkF": "Record-only (D7)."
+  },
+  "surfaces": {
+    "MatchResultPending": {
+      "frames": ["sLXK7", "JXjNs"],
+      "note": "Pending is not confirmed; the countdown derives from the stored review deadline and the server as_of clock."
+    },
+    "MatchResultDetail": {
+      "frames": ["alZmm", "iXRPp", "GMcbD"],
+      "note": "alZmm navigation band was migrated with result recording (U15) and is reused."
+    },
+    "MatchResultRejectDialog": {
+      "frames": ["H6VcqC"],
+      "note": "Base UI dialog restyled as a bottom sheet; focus moves in, is contained, and restores to the Reject trigger."
+    },
+    "MatchResultCorrections": {
+      "frames": ["adujr", "s5TRC", "CWJkF"],
+      "note": "Pill chips, 18px cards, 52px actions."
+    },
+    "ResultCorrectionDialog": {
+      "frames": ["adujr", "CWJkF"],
+      "note": "Shared reason sheet for correction requests and dispute resolution."
+    },
+    "MatchResultRatingChanges": {
+      "frames": [],
+      "note": "Per-player changes are read from the stored calculation; no numbers are invented."
+    },
+    "MatchLeagueImpact": {
+      "frames": [],
+      "note": "No frame shows this panel; it keeps its semantic-token styling."
+    }
+  },
+  "recordOnly": {
+    "CWJkF": "No route (approval matrix D7). Structure reused by the resolve dialog; never mapped to a new route."
+  },
+  "exportSha256": {
+    "sLXK7": "49031727d811aa1e6fcc3e90d0d2f26462be295de88ca1e491e5b0acf405043a",
+    "JXjNs": "360bc6f898ca25fa0be9b898bdf21d4d52e6e16a5cd140433d77d467cf3dacea",
+    "iXRPp": "a95ebe8572149aad350009e9360919c7ae8d208e5e92b60f2107ee7a02cadd76",
+    "GMcbD": "6f580340c2877f0a689eaa9ecd6637a5fbd933b2e8040844f7caef1cb9c1e5b2",
+    "H6VcqC": "e9f4a80283e34f9470dc6182eb0e36c2fb9de6251a2ca634eaa9abccee8fa7a0",
+    "adujr": "cce12285e8b3ce0a689108c260823c83ba35b08420da2474023285be53064faf",
+    "s5TRC": "e4cf9f5f3695ee4273a26e6f986100858a898fa2da65bb5971d56ad93bd3e788",
+    "CWJkF": "7604872a25df871e70251cce4fd9d78bbe514d34f551ccba60d25d3d24236376"
+  },
+  "exportSize": {
+    "sLXK7": [390, 844],
+    "JXjNs": [430, 400],
+    "iXRPp": [390, 1465],
+    "GMcbD": [390, 844],
+    "H6VcqC": [390, 844],
+    "adujr": [390, 844],
+    "s5TRC": [390, 844],
+    "CWJkF": [390, 844]
+  },
+  "rasterBudgets": {
+    "H6VcqC": {
+      "maxPerceptualDiff": 0.21,
+      "measured": 0.2064,
+      "reason": "Real dark-theme sheet over the dimmed match detail with a validation error and the translated Required marker; probes pin eight 52px reasons, stacked 52px actions and bottom anchoring."
+    },
+    "GMcbD": {
+      "maxPerceptualDiff": 0.145,
+      "measured": 0.1407,
+      "reason": "Fixture names, dates and the match-detail header replace the standalone Event results header; probes pin banner, card order, chips and touch targets."
+    }
+  },
+  "pixelEvidence": {
+    "kind": "Chromium fixture regression luma baselines for sLXK7 and alZmm, re-measured after the Clubhouse restyle",
+    "reusedManifest": "e2e/references/paf-202-result-recording/manifest.json",
+    "frames": ["sLXK7", "alZmm"],
+    "reason": "Pencil frames use illustrative facts. The two lifecycle baselines were recaptured with RESULT_BASELINE_CAPTURE=1 after this unit's intended changes; self-diff is 0 and the budget stays at 0.5%. The remaining frames use exact structural probes.",
+    "maxDiffRatio": 0.005
+  }
+}

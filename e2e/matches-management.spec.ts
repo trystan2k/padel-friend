@@ -26,9 +26,10 @@ async function roster(id: string) {
 }
 async function edit(page: Page) {
   await page.getByRole('button', { name: m.edit.title, exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: m.edit.title, exact: true })).toBeVisible();
-  return dialog;
+  // The edit flow is a page: its scope is the page main.
+  const editPage = page.locator('main');
+  await expect(editPage.getByRole('heading', { name: m.edit.title, exact: true })).toBeVisible();
+  return editPage;
 }
 async function reconfirm(page: Page) {
   await page.getByRole('button', { name: r.reviewTerms, exact: true }).click();
@@ -187,10 +188,7 @@ test('major change requires consent and excludes unreconfirmed at cutoff', async
     .selectOption('competitive');
   await dialog.getByRole('button', { name: m.edit.save, exact: true }).click();
   await expect(dialog.getByRole('button', { name: m.edit.save, exact: true })).toBeDisabled();
-  await creatorPage
-    .getByRole('dialog')
-    .getByRole('button', { name: m.cancel, exact: true })
-    .click();
+  await dialog.getByRole('button', { name: m.cancel, exact: true }).click();
   await expect(creatorPage.getByRole('heading', { name: r.title })).toBeVisible();
   const required = await roster(id);
   expect(required.every((row) => row.participation_status === null)).toBe(true);

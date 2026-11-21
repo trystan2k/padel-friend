@@ -106,7 +106,7 @@ async function continueToReview(page: Page) {
   await expect(page.getByText(mc.steps.teams, { exact: true })).toBeVisible();
   await page.getByRole('radio', { name: m.teamMode.POST_MATCH_TEAMS }).check();
   await page.getByRole('button', { name: mc.next }).click();
-  await expect(page.getByRole('heading', { name: mc.review })).toBeVisible();
+  await expect(page.getByRole('heading', { name: mc.readyTitle })).toBeVisible();
 }
 
 async function continueToReviewAndPublish(page: Page) {
@@ -130,9 +130,10 @@ async function eventIdByVenue(name: string) {
 
 async function openEdit(page: Page) {
   await page.getByRole('button', { name: m.management.edit.title, exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: edit.title, exact: true })).toBeVisible();
-  return dialog;
+  // The edit flow is a page: its scope is the page main.
+  const editPage = page.locator('main');
+  await expect(editPage.getByRole('heading', { name: edit.title, exact: true })).toBeVisible();
+  return editPage;
 }
 
 const optionValue = (scope: ReturnType<Page['locator']>, text: string) =>
@@ -485,7 +486,10 @@ test('provisional player joins a Ranked event, is carried on League change and k
     await expect(player).toHaveURL(/\/onboarding\?next=/);
     await waitForHydratedPage(player);
     await player.getByLabel(en.onboarding.name).fill('Carla Reclamada');
-    await player.getByLabel(en.onboarding.sideLeftShort).first().check();
+    await player
+      .getByRole('group', { name: en.onboarding.side })
+      .getByRole('radio', { name: en.onboarding.sideLeftShort })
+      .check();
     await player.getByRole('button', { name: en.auth.claim.submit }).click();
     await expect(
       player.getByRole('heading', { level: 1, name: en.auth.claim.passwordTitle })

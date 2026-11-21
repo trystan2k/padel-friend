@@ -466,10 +466,10 @@ describe('refresh hook', () => {
 
 describe('closing and final standings', () => {
   const confirmClose = async () => {
-    await userEvent.click(screen.getByRole('button', { name: 'Close League' }));
+    await userEvent.click(screen.getByRole('button', { name: 'End league' }));
     const dialog = await screen.findByRole('alertdialog');
     expect(within(dialog).getByText(/Matches played after this moment never count/)).toBeTruthy();
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Close League' }));
+    await userEvent.click(within(dialog).getByRole('button', { name: 'End league' }));
   };
 
   it('never labels the stale live table final after a close: it waits for the final', async () => {
@@ -534,7 +534,7 @@ describe('closing and final standings', () => {
 
   it('offers no close action for a Fixed League and denies it to non-managers', () => {
     render(wrap(<Detail data={active()} standings={makeLiveStandings([ana])} />));
-    expect(screen.queryByRole('button', { name: 'Close League' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'End league' })).toBeNull();
     cleanup();
     render(
       wrap(
@@ -546,7 +546,7 @@ describe('closing and final standings', () => {
         />
       )
     );
-    expect(screen.queryByRole('button', { name: 'Close League' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'End league' })).toBeNull();
   });
 
   it('shows the final table, closed-empty and mismatched states distinctly', () => {

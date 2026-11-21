@@ -112,16 +112,15 @@ describe('PlayerLevelReviewRequest', () => {
   it('shows the current level as read-only server-owned text, never as an input', () => {
     setup();
     expect(screen.getByRole('heading', { name: 'Request level review', level: 1 })).toBeTruthy();
-    expect(screen.getByText('Your current level is 3.82')).toBeTruthy();
+    expect(screen.getByText('Only a Platform Admin reviews requests.')).toBeTruthy();
+    expect(screen.queryByText(/2–3 days|LR-/)).toBeNull();
     expect(screen.getByText('3.82 · 76% reliability')).toBeTruthy();
     expect(screen.getByText(/You can't change it here/)).toBeTruthy();
     expect(screen.queryByDisplayValue('3.82')).toBeNull();
     expect(screen.queryByRole('spinbutton')).toBeNull();
     expect(screen.queryByRole('textbox', { name: /Current level/ })).toBeNull();
     expect(screen.getByText(/Approval changes your current level going forward only/)).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Back to profile' }).getAttribute('href')).toBe(
-      '/dashboard'
-    );
+    expect(screen.getByRole('link', { name: 'Back to profile' }).getAttribute('href')).toBe('/me');
   });
 
   it('submits an exact level with a stable command id and opens the stored request', async () => {
@@ -490,7 +489,7 @@ describe('PlayerLevelReviewStatus', () => {
       'Current level corrected going forward. Past matches are unchanged.',
       false
     ],
-    ['rejected', 'Rejected', 'Request closed. A review note is available.', false],
+    ['rejected', 'Denied', 'Request closed. A review note is available.', false],
     ['canceled', 'Canceled', 'You canceled this request.', false]
   ] as const)('shows the %s lifecycle state', (status, label, detail, cancellable) => {
     setup(dto({ status }));
@@ -498,7 +497,7 @@ describe('PlayerLevelReviewStatus', () => {
     expect(screen.getByText(detail)).toBeTruthy();
     expect(!!screen.queryByRole('button', { name: 'Cancel request' })).toBe(cancellable);
     // Only the real state is shown, never the other example states of the frame.
-    const others = ['Pending', 'Under review', 'Approved', 'Rejected', 'Canceled'].filter(
+    const others = ['Pending', 'Under review', 'Approved', 'Denied', 'Canceled'].filter(
       (other) => other !== label
     );
     expect(
@@ -516,7 +515,8 @@ describe('PlayerLevelReviewStatus', () => {
       }),
       { current: { status: 'ok', current: { display_level: 4.05, reliability_percent: 80 } } }
     );
-    expect(screen.getByText('Request #11111111 · Submitted Sep 24, 2026')).toBeTruthy();
+    expect(screen.getByText('3.82 → 4.00 to 4.20 · Request #11111111')).toBeTruthy();
+    expect(screen.getByText('Submitted Sep 24, 2026')).toBeTruthy();
     const facts = screen.getByText('Level when submitted').closest('dl')!;
     const text = facts.textContent;
     expect(text).toContain('3.82');
@@ -532,7 +532,55 @@ describe('PlayerLevelReviewStatus', () => {
   it('shows an exact request as a single level', () => {
     setup(dto({ requested_min_level: 4, requested_max_level: 4 }));
     expect(screen.getByText('Requested level').nextElementSibling?.textContent).toBe('4.00');
+    expect(screen.getByText('3.82 → 4.00 · Request #11111111')).toBeTruthy();
   });
+
+  it('links the status back to the request list and never to the dashboard', () => {
+    setup(dto());
+    expect(screen.getByRole('link', { name: 'Back to requests' }).getAttribute('href')).toBe(
+      '/level-reviews'
+    );
+    expect(document.querySelector('a[href="/dashboard"]')).toBeNull();
+  });
+
+  it('explains both outcomes while the request is open and never invents an SLA', () => {
+    setup(dto({ status: 'pending' }));
+    expect(screen.getByRole('heading', { name: 'If approved', level: 3 })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'If rejected', level: 3 })).toBeTruthy();
+    expect(screen.getByText('Waiting for review')).toBeTruthy();
+    expect(screen.getByText("You'll get a notification when it's decided.")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/2–3 days|LR-\d/);
+    const steps = within(screen.getByRole('list', { name: 'Timeline' })).getAllByRole('listitem');
+    expect(steps).toHaveLength(3);
+  });
+
+  it('marks the review step as the current one while under review', () => {
+    setup(dto({ status: 'under_review', under_review_at: '2026-09-25T08:00:00.000000Z' }));
+    const steps = within(screen.getByRole('list', { name: 'Timeline' })).getAllByRole('listitem');
+    expect(steps.map((step) => step.textContent)).toEqual([
+      '✓Submitted Sep 24, 2026',
+      'Under review since Sep 25, 2026',
+      "DecisionYou'll get a notification when it's decided."
+    ]);
+    expect(screen.queryByText('Waiting for review')).toBeNull();
+  });
+
+  it.each(['approved', 'rejected', 'canceled'] as const)(
+    'drops the open-request explanations and the future decision step once %s',
+    (status) => {
+      setup(
+        dto({
+          status,
+          decided_at: '2026-09-27T12:00:00.000000Z',
+          canceled_at: '2026-09-26T09:00:00.000000Z'
+        })
+      );
+      expect(screen.queryByRole('heading', { name: 'If approved' })).toBeNull();
+      expect(screen.queryByRole('heading', { name: 'If rejected' })).toBeNull();
+      expect(screen.queryByText("You'll get a notification when it's decided.")).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Cancel request' })).toBeNull();
+    }
+  );
 
   it('shows the owner the approval note, approved level and applied correction link', () => {
     setup(
@@ -552,7 +600,7 @@ describe('PlayerLevelReviewStatus', () => {
       screen
         .getByRole('link', { name: 'See the correction in your rating history' })
         .getAttribute('href')
-    ).toBe('/dashboard');
+    ).toBe('/me');
   });
 
   it('shows the rejection note without a correction link or approved level', () => {

@@ -46,18 +46,22 @@ export const homeStyles = stylex.create({
   },
   levelValue: { fontSize: 'var(--font-size-34)', fontFamily: 'var(--font-family-heading)' },
   heroCopy: { margin: 0, color: 'var(--color-hero-copy)', fontSize: 'var(--font-size-13)' },
-  quickLinks: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)', alignItems: 'center' },
-  primaryLink: {
+  greeting: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-24)',
+    fontWeight: 'var(--font-weight-bold)',
+    overflowWrap: 'anywhere'
+  },
+  heroLabel: { margin: 0, color: 'var(--color-hero-copy)', fontSize: 'var(--font-size-13)' },
+  heroLink: {
     display: 'inline-flex',
     alignItems: 'center',
-    justifyContent: 'center',
+    alignSelf: 'flex-start',
     minHeight: target,
-    paddingInline: 'var(--space-16)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-green)',
-    color: 'var(--color-surface)',
+    minWidth: target,
+    color: 'var(--color-on-hero)',
     fontWeight: 'var(--font-weight-semibold)',
-    textDecoration: 'none',
     ':focus-visible': focusRing
   },
   link: {
@@ -203,41 +207,5 @@ export const homeStyles = stylex.create({
   rankSelf: {
     backgroundColor: 'var(--color-green-soft)',
     fontWeight: 'var(--font-weight-semibold)'
-  },
-  navigation: {
-    position: 'fixed',
-    insetBlockEnd: 'var(--space-8)',
-    insetInline: 'var(--space-18)',
-    marginInline: 'auto',
-    boxSizing: 'border-box',
-    maxWidth: 'calc(var(--space-40) * 12 - var(--space-18) * 2)',
-    display: 'flex',
-    alignItems: 'center',
-    minHeight: 'calc(var(--space-40) + var(--space-16))',
-    paddingBlock: 'var(--space-4)',
-    paddingInline: 'var(--space-1)',
-    borderRadius: 'var(--radius-16)',
-    backgroundColor: 'var(--color-surface)',
-    zIndex: 5
-  },
-  navItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 'var(--space-2)',
-    flex: 1,
-    minWidth: 0,
-    minHeight: target,
-    fontSize: 'var(--font-size-12)',
-    color: 'var(--color-muted)',
-    textDecoration: 'none',
-    borderRadius: 'var(--radius-12)',
-    ':focus-visible': focusRing
-  },
-  navClearance: {
-    height: 'calc(var(--space-40) + var(--space-16) + var(--space-8) + var(--space-18))'
-  },
-  navActive: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
-  navIcon: { width: 'var(--space-20)', height: 'var(--space-20)' }
+  }
 });

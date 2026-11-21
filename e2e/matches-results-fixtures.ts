@@ -117,8 +117,10 @@ export async function enterScore(
 
 export async function review(page: Page, locale: Locale = 'en') {
   const r = copies[locale].matches.results;
-  await page.getByRole('button', { name: r.submit, exact: true }).click();
-  await expect(page.getByRole('heading', { name: r.preview, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: r.record.reviewTitle, exact: true })
+  ).toBeVisible();
 }
 
 export async function officialSnapshot(community: string) {

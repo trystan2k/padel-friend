@@ -17,16 +17,8 @@ export const ui = stylex.create({
     marginInline: 'auto'
   },
   onboardingPage: { gap: 'var(--space-10)' },
-  profilePage: { gap: 'var(--space-8)' },
   topContent: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)' },
-  profileTop: { display: 'flex', flexDirection: 'column', gap: 'var(--space-13)' },
   header: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' },
-  headerRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 'var(--space-12)'
-  },
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
@@ -47,15 +39,6 @@ export const ui = stylex.create({
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-semibold)'
   },
-  hero: {
-    backgroundColor: 'var(--color-green-deep)',
-    borderRadius: 'var(--radius-18)',
-    padding: 'var(--space-17)',
-    color: 'var(--color-on-hero)',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-7)'
-  },
   heroTitle: {
     margin: 0,
     color: 'var(--color-on-hero)',
@@ -71,32 +54,6 @@ export const ui = stylex.create({
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--space-9)'
-  },
-  onboardingCard: { gap: 'var(--space-9)' },
-  onboardingLevelHeading: {
-    display: 'flex',
-    alignItems: 'flex-start',
-    gap: 'var(--space-9)'
-  },
-  onboardingLevelValue: { fontSize: 'var(--font-size-29)' },
-  onboardingExtras: { marginTop: 'calc(var(--space-40) * 3)' },
-  onboardingAvatar: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    gap: 'var(--space-12)'
-  },
-  onboardingAvatarBody: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-9)',
-    flex: 1,
-    minWidth: 'calc(var(--space-40) * 4)'
-  },
-  onboardingAvatarSkip: {
-    backgroundColor: 'var(--color-bg)',
-    color: 'var(--color-text)',
-    fontWeight: 'var(--font-weight-semibold)'
   },
   sliderGroup: {
     display: 'flex',
@@ -150,66 +107,7 @@ export const ui = stylex.create({
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)'
   },
-  sliderCurrent: {
-    position: 'absolute',
-    transform: 'translateX(-50%)',
-    color: 'var(--color-green)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
-  onboardingChoices: { marginTop: 0 },
-  onboardingChoiceStack: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-10)'
-  },
-  choiceSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-10)'
-  },
-  choiceLabel: { lineHeight: 'var(--space-14)' },
-  handSection: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-6)'
-  },
-  handChoices: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-7)',
-    width: '100%',
-    minWidth: 0
-  },
-  handChoice: {
-    display: 'flex',
-    flex: 1,
-    minWidth: 0,
-    height: 'calc(var(--space-40) + var(--space-4))',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    boxSizing: 'border-box',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 'var(--space-6)',
-    backgroundColor: 'var(--color-surface-2)',
-    borderRadius: 'var(--radius-10)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
-    cursor: 'pointer',
-    ':focus-within': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
-  },
-  handChoiceText: {
-    display: 'block',
-    width: '100%',
-    minWidth: 0,
-    overflowWrap: 'anywhere',
-    textAlign: 'center'
-  },
-  handChoiceTextCompact: { fontSize: 'var(--font-size-10)' },
   profileCard: { padding: 'var(--space-14)', borderRadius: 'var(--radius-16)' },
-  onboardingForm: { gap: 'var(--space-12)', marginTop: 'var(--space-2)' },
   label: {
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-12)',
@@ -252,24 +150,6 @@ export const ui = stylex.create({
     },
     ':disabled': { cursor: 'not-allowed', opacity: 0.6 }
   },
-  secondaryButton: {
-    backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-text)',
-    borderWidth: 0,
-    fontWeight: 'var(--font-weight-semibold)',
-    padding: 'var(--space-12)'
-  },
-  headerAction: {
-    width: 'calc(var(--space-40) + var(--space-4))',
-    height: 'calc(var(--space-40) + var(--space-4))',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    flexShrink: 0,
-    padding: 0,
-    borderRadius: 'var(--radius-20)',
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-text)'
-  },
-  headerActionIcon: { width: 'var(--space-16)', height: 'var(--space-16)' },
   fieldset: { borderWidth: 0, borderStyle: 'none', margin: 0, minWidth: 0 },
   bareFieldset: { padding: 0 },
   choices: { display: 'flex', gap: 'var(--space-7)', marginTop: 'var(--space-9)' },
@@ -293,49 +173,6 @@ export const ui = stylex.create({
   },
   selected: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
   radio: { position: 'absolute', opacity: 0, width: 'var(--space-1)', height: 'var(--space-1)' },
-  scaleCaption: {
-    display: 'flex',
-    width: '100%',
-    justifyContent: 'space-between',
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)'
-  },
-  onboardingScaleCaption: { width: 'calc(80% + var(--space-3))' },
-  scaleEndpoint: { fontWeight: 'var(--font-weight-medium)' },
-  identityHero: { padding: 'var(--space-15)', gap: 'var(--space-12)' },
-  heroSide: { color: 'var(--color-hero-accent)' },
-  heroJoined: { color: 'var(--color-hero-muted)' },
-  levelLabel: {
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--color-muted)'
-  },
-  levelMetric: {
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-32)',
-    fontWeight: 'var(--font-weight-bold)',
-    color: 'var(--color-text)'
-  },
-  levelHeader: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' },
-  levelTop: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 'var(--space-8)'
-  },
-  progressTrack: {
-    width: '100%',
-    height: 'var(--space-14)',
-    borderRadius: 'var(--radius-7)',
-    backgroundColor: 'var(--color-surface-2)',
-    overflow: 'hidden'
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: 'var(--color-green)',
-    borderRadius: 'var(--radius-7)'
-  },
   stateCard: {
     backgroundColor: 'var(--color-surface)',
     borderRadius: 'var(--radius-12)',
@@ -356,38 +193,8 @@ export const ui = stylex.create({
     margin: 0
   },
   stateDescription: { fontSize: 'var(--font-size-12)', color: 'var(--color-muted)', margin: 0 },
-  level: {
-    color: 'var(--color-green)',
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-29)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
-  row: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 'var(--space-8)'
-  },
   muted: { color: 'var(--color-muted)', fontSize: 'var(--font-size-12)', margin: 0 },
   error: { color: 'var(--color-red)', fontSize: 'var(--font-size-12)', margin: 0 },
-  // Pencil claim notice: icon + 12px regular text, padding 10, radius 9, gap 8. The design's
-  // 1.25 line-height has no token, so the text keeps the inherited line height.
-  claimNotice: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-8)',
-    padding: 'var(--space-10)',
-    borderRadius: 'var(--radius-9)',
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)'
-  },
-  claimNoticeIcon: { flexShrink: 0, width: 'var(--space-16)', height: 'var(--space-16)' },
-  claimNoticeText: {
-    margin: 0,
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-regular)'
-  },
-  identity: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)' },
   avatar: {
     width: 'calc(var(--space-40) + var(--space-16))',
     height: 'calc(var(--space-40) + var(--space-16))',
@@ -400,54 +207,7 @@ export const ui = stylex.create({
     flexShrink: 0,
     fontWeight: 'var(--font-weight-bold)'
   },
-  name: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-18)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
   stack: { display: 'flex', flexDirection: 'column', gap: 'var(--space-9)' },
-  levelReviewTitle: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
-  levelReviewActions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
-  levelReviewActionLink: {
-    boxSizing: 'border-box',
-    display: 'inline-flex',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
-    textDecoration: 'underline',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
-  },
-  levelReviewPrimaryLink: {
-    boxSizing: 'border-box',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    paddingInline: 'var(--space-14)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-green)',
-    color: 'var(--color-bg)',
-    fontSize: 'var(--font-size-13)',
-    fontWeight: 'var(--font-weight-bold)',
-    textAlign: 'center',
-    textDecoration: 'none',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
-  },
   availabilityGroups: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)' },
   availabilityChoices: {
     display: 'flex',
@@ -486,7 +246,6 @@ export const ui = stylex.create({
   availabilityChoiceDisabled: { cursor: 'default', opacity: 0.6 },
   availabilityChoiceMark: { display: 'inline-block', width: '1em', textAlign: 'center' },
   availabilityChoiceMarkHidden: { visibility: 'hidden' },
-  availabilitySummary: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' },
   availabilitySummaryValue: { overflowWrap: 'anywhere', textAlign: 'end' },
   srOnly: {
     position: 'absolute',

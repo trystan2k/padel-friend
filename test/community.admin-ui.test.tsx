@@ -225,7 +225,7 @@ async function openInviteeSearch(rows: { user_id: string; display_name: string }
   );
   await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
   const dialog = screen.getByRole('dialog');
-  const input = within(dialog).getByRole('textbox', {
+  const input = within(dialog).getByRole('searchbox', {
     name: 'Search opted-in display names'
   });
   await searchInvitees(input, 'applicants', rows);
@@ -403,17 +403,17 @@ describe('community admin UI', () => {
     mount('settings');
     mocks.updateSettings.mockResolvedValueOnce({});
     mocks.updateDefaults.mockResolvedValueOnce({});
-    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText('Community settings saved.')).toBeTruthy();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
-    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(screen.getByText(/Offline. Nothing sent/)).toBeTruthy();
     expect(screen.queryByText('Community settings saved.')).toBeNull();
     expect(mocks.updateSettings).toHaveBeenCalledTimes(1);
 
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
     mocks.updateSettings.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText(/Could not confirm this change/)).toBeTruthy();
   });
   it('sends no venue write offline and reports an unconfirmed lost response', async () => {
@@ -422,19 +422,19 @@ describe('community admin UI', () => {
     await user.click(screen.getByRole('button', { name: 'Add a venue' }));
     await user.type(document.querySelector<HTMLInputElement>('#venue-name')!, 'Court One');
     mocks.addVenue.mockResolvedValueOnce({});
-    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText('Venue added.')).toBeTruthy();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
     await user.click(screen.getByRole('button', { name: 'Add a venue' }));
     await user.type(document.querySelector<HTMLInputElement>('#venue-name')!, 'Court Two');
-    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(screen.getByText(/Offline. Nothing sent/)).toBeTruthy();
     expect(screen.queryByText('Venue added.')).toBeNull();
     expect(mocks.addVenue).toHaveBeenCalledTimes(1);
 
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
     mocks.addVenue.mockRejectedValueOnce(new TypeError('Failed to fetch'));
-    await user.click(screen.getByRole('button', { name: 'SAVE CHANGES' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText(/Could not confirm this change/)).toBeTruthy();
   });
   it('sends no applicant message offline and flags an unconfirmed lost response', async () => {
@@ -750,7 +750,7 @@ describe('community admin UI', () => {
       mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-a' });
       await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
       expect(await within(dialog).findByText('token-a')).toBeTruthy();
-      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Copy token' }));
       expect(await within(dialog).findByText('Copied')).toBeTruthy();
 
       await user.click(within(dialog).getByRole('radio', { name: /Applicant B/ }));
@@ -856,7 +856,7 @@ describe('community admin UI', () => {
       expect(await within(dialog).findByText('token-b')).toBeTruthy();
       expect(within(dialog).queryByText('Copied')).toBeNull();
 
-      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Copy token' }));
 
       expect(await within(dialog).findByText('Copied')).toBeTruthy();
       expect(clipboard.writeText).toHaveBeenCalledTimes(1);
@@ -877,7 +877,7 @@ describe('community admin UI', () => {
       mocks.issueInvitation.mockResolvedValueOnce({ token: 'token-a' });
       await user.click(within(dialog).getByRole('button', { name: 'Issue invitation' }));
       await within(dialog).findByText('token-a');
-      await user.click(within(dialog).getByRole('button', { name: 'Copy link' }));
+      await user.click(within(dialog).getByRole('button', { name: 'Copy token' }));
       expect(await within(dialog).findByText('Copied')).toBeTruthy();
 
       await searchInvitees(input, 'new applicants', [
@@ -905,7 +905,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
     await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
-    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    const search = screen.getByRole('searchbox', { name: 'Search opted-in display names' });
     await user.type(search, 'failure');
     expect(await screen.findByRole('alert')).toBeTruthy();
 
@@ -930,7 +930,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
     await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
-    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    const search = screen.getByRole('searchbox', { name: 'Search opted-in display names' });
     await user.type(search, 'failure');
     expect(await screen.findByRole('alert')).toBeTruthy();
 
@@ -964,7 +964,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
     await user.click(screen.getByRole('button', { name: 'Issue invitation' }));
-    const search = screen.getByRole('textbox', { name: 'Search opted-in display names' });
+    const search = screen.getByRole('searchbox', { name: 'Search opted-in display names' });
     vi.useFakeTimers();
     try {
       fireEvent.change(search, { target: { value: 'older query' } });
@@ -1008,6 +1008,11 @@ describe('community admin UI', () => {
     const approve = screen.getByRole('button', { name: 'Approve request' });
     await user.tab();
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Back to dashboard' }));
+    // Frame RgqPq order: message trigger, Decline, Approve.
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Send update' }));
+    await user.tab();
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Deny request' }));
     await user.tab();
     expect(document.activeElement).toBe(approve);
     await user.keyboard('{Enter}');
@@ -1063,7 +1068,7 @@ describe('community admin UI', () => {
     expect(
       within(dialog).getByText('Confirm Remove from community for Alicia Ramos?')
     ).toBeTruthy();
-    const cancel = within(dialog).getByRole('button', { name: 'CANCEL' });
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
     const dialogPortal = dialog.closest('[data-base-ui-portal]');
     expect(document.activeElement).toBe(cancel);
     await user.tab();
@@ -1072,7 +1077,7 @@ describe('community admin UI', () => {
     expect(dialogPortal?.contains(document.activeElement)).toBe(true);
     await user.tab({ shift: true });
     expect(document.activeElement).toBe(
-      within(dialog).getByRole('button', { name: 'CONFIRM CHANGE' })
+      within(dialog).getByRole('button', { name: 'Confirm change' })
     );
     await user.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
@@ -1080,14 +1085,14 @@ describe('community admin UI', () => {
     await user.keyboard('{Enter}');
     await screen.findByRole('alertdialog');
     await user.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'CANCEL' })
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' })
     );
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(document.activeElement).toBe(trigger);
     await user.keyboard('{Enter}');
     await screen.findByRole('alertdialog');
     await user.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'CONFIRM CHANGE' })
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Confirm change' })
     );
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
@@ -1111,16 +1116,16 @@ describe('community admin UI', () => {
     const trigger = screen.getByRole('button', { name: 'Remove from community' });
     await user.click(trigger);
     const dialog = await screen.findByRole('alertdialog');
-    const confirm = within(dialog).getByRole('button', { name: 'CONFIRM CHANGE' });
-    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'CANCEL' }));
+    const confirm = within(dialog).getByRole('button', { name: 'Confirm change' });
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Cancel' }));
     await user.click(confirm);
     const error = await within(dialog).findByRole('alert');
     expect(error.textContent).toContain('Could not confirm this change');
-    expect(within(dialog).getByRole('button', { name: 'TRY AGAIN' })).toBeTruthy();
+    expect(within(dialog).getByRole('button', { name: 'Try again' })).toBeTruthy();
     expect(screen.getByRole('alertdialog')).toBe(dialog);
     expect(mocks.remove).toHaveBeenCalledTimes(1);
     await user.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'CANCEL' })
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' })
     );
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(document.activeElement).toBe(trigger);
@@ -1216,7 +1221,7 @@ describe('community admin UI', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'Pending' }));
     await waitFor(() => expect(screen.getAllByTestId('community-member-card')).toHaveLength(50));
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await waitFor(() => expect(screen.getAllByTestId('community-member-card')).toHaveLength(51));
     expect(mocks.search).toHaveBeenNthCalledWith(1, {
       data: { community_id: community.id, query: '', status: 'pending', offset: 0, limit: 50 }
@@ -1247,7 +1252,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await screen.findByText('Active 51');
     expect(screen.getAllByTestId('community-member-card')).toHaveLength(51);
     expect(mocks.search).toHaveBeenCalledWith({
@@ -1280,9 +1285,11 @@ describe('community admin UI', () => {
         />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await screen.findByText('Page two request');
-    const requestCard = screen.getByText('Page two request').parentElement;
+    const requestCard = screen
+      .getByText('Page two request')
+      .closest<HTMLElement>('[data-testid="community-request-card"]');
     if (!requestCard) throw new Error('Page-two request card not rendered');
     await userEvent.click(within(requestCard).getByRole('button', { name: 'Approve request' }));
     await waitFor(() => expect(screen.queryByText('Page two request')).toBeNull());
@@ -1313,7 +1320,7 @@ describe('community admin UI', () => {
         <CommunityAdminScreen screen="venues" community={community} venues={firstVenues} />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await screen.findByText('Page two venue');
     const venueCard = screen
       .getByText('Page two venue')
@@ -1346,7 +1353,7 @@ describe('community admin UI', () => {
         />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await screen.findByText('End of list.');
     expect(mocks.search).toHaveBeenCalledWith({
       data: { community_id: community.id, query: '', status: 'pending', offset: 50, limit: 50 }
@@ -1377,7 +1384,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
 
-    await user.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await user.click(screen.getByRole('button', { name: 'Load more' }));
     const approve = screen.getAllByRole('button', { name: 'Approve request' })[0];
     const deny = screen.getAllByRole('button', { name: 'Deny request' })[0];
     if (!approve || !deny) throw new Error('Request actions not rendered');
@@ -1419,7 +1426,7 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
 
-    const more = screen.getByRole('button', { name: 'LOAD MORE CHANGES' });
+    const more = screen.getByRole('button', { name: 'Load more' });
     const approve = screen.getAllByRole('button', { name: 'Approve request' })[0];
     if (!approve) throw new Error('Approve action not rendered');
     act(() => {
@@ -1444,9 +1451,7 @@ describe('community admin UI', () => {
     expect(screen.queryByText('Stale page row')).toBeNull();
     expect(screen.getByText('Request approved.')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }).hasAttribute('disabled')).toBe(
-      false
-    );
+    expect(screen.getByRole('button', { name: 'Load more' }).hasAttribute('disabled')).toBe(false);
   });
 
   it('discards an obsolete request page when loader generation changes', async () => {
@@ -1473,7 +1478,7 @@ describe('community admin UI', () => {
         />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     expect(mocks.search).toHaveBeenCalledWith({
       data: { community_id: community.id, query: '', status: 'pending', offset: 50, limit: 50 }
     });
@@ -1522,7 +1527,7 @@ describe('community admin UI', () => {
         />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     view.rerender(
       <I18nextProvider i18n={i18n}>
         <CommunityAdminScreen
@@ -1534,12 +1539,10 @@ describe('community admin UI', () => {
         />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await act(async () => rejectOld(new Error('obsolete')));
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }).hasAttribute('disabled')).toBe(
-      true
-    );
+    expect(screen.getByRole('button', { name: 'Load more' }).hasAttribute('disabled')).toBe(true);
     await act(async () =>
       resolveCurrent([
         { ...member, membership_id: 'current-row', display_name: 'Current page row' }
@@ -1572,7 +1575,7 @@ describe('community admin UI', () => {
         />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     expect(await screen.findByText('Accumulated page')).toBeTruthy();
     view.rerender(
       <I18nextProvider i18n={i18n}>
@@ -1619,7 +1622,7 @@ describe('community admin UI', () => {
         <CommunityAdminScreen screen="venues" community={community} venues={firstPage} />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await screen.findByText('End of list.');
     expect(mocks.listVenues).toHaveBeenCalledWith({
       data: { community_id: community.id, offset: 50, limit: 50 }
@@ -1747,14 +1750,14 @@ describe('community admin UI', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'Pending' }));
     await screen.findByText('Pending source A 0');
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     view.rerender(
       <I18nextProvider i18n={createI18n('en')}>
         <CommunityAdminScreen screen="members" community={community} members={[freshLoader]} />
       </I18nextProvider>
     );
     await screen.findByText('Fresh Pending source A 0');
-    const loadMore = screen.getByRole('button', { name: 'LOAD MORE CHANGES' });
+    const loadMore = screen.getByRole('button', { name: 'Load more' });
     await waitFor(() => expect(loadMore.hasAttribute('disabled')).toBe(false));
     await userEvent.click(loadMore);
     await screen.findByText('Fresh next-page row');
@@ -1789,13 +1792,13 @@ describe('community admin UI', () => {
         <CommunityAdminScreen screen="audit" community={community} audit={initial} />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     view.rerender(
       <I18nextProvider i18n={createI18n('en')}>
         <CommunityAdminScreen screen="audit" community={community} audit={refreshed} />
       </I18nextProvider>
     );
-    const loadMore = screen.getByRole('button', { name: 'LOAD MORE CHANGES' });
+    const loadMore = screen.getByRole('button', { name: 'Load more' });
     await waitFor(() => expect(loadMore.hasAttribute('disabled')).toBe(false));
     const nextPage = [
       { ...auditEvent('audit-next-page'), details: { role: 'member', status: 'active' } }
@@ -1840,7 +1843,7 @@ describe('community admin UI', () => {
         <CommunityAdminScreen screen="venues" community={community} venues={firstPage} />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     const freshPage = Array.from({ length: 50 }, (_, index) =>
       venue(
         `00000000-0000-4000-8000-${String(index + 801).padStart(12, '0')}`,
@@ -1852,7 +1855,7 @@ describe('community admin UI', () => {
         <CommunityAdminScreen screen="venues" community={community} venues={freshPage} />
       </I18nextProvider>
     );
-    const loadMore = screen.getByRole('button', { name: 'LOAD MORE CHANGES' });
+    const loadMore = screen.getByRole('button', { name: 'Load more' });
     await waitFor(() => expect(loadMore.hasAttribute('disabled')).toBe(false));
     const next = venue('00000000-0000-4000-8000-000000000901', 'Fresh page venue');
     mocks.listVenues.mockResolvedValueOnce([next]);
@@ -1897,14 +1900,14 @@ describe('community admin UI', () => {
     await user.keyboard('{Enter}');
     await screen.findByRole('alertdialog');
     await user.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'CANCEL' })
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancel' })
     );
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(document.activeElement).toBe(demote);
     expect(remove.isConnected).toBe(true);
     await user.click(demote);
     await user.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'CONFIRM CHANGE' })
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Confirm change' })
     );
     await waitFor(() => expect(mocks.demote).toHaveBeenCalledOnce());
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
@@ -1926,7 +1929,7 @@ describe('community admin UI', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Demote to member' }));
     await user.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'CONFIRM CHANGE' })
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Confirm change' })
     );
     await waitFor(() => expect(mocks.demote).toHaveBeenCalledOnce());
     const demoted = { ...activeAdmin, role: 'member' as const };
@@ -1959,7 +1962,7 @@ describe('community admin UI', () => {
 
     await user.click(screen.getByRole('button', { name: 'Remove from community' }));
     await user.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'CONFIRM CHANGE' })
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Confirm change' })
     );
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledOnce());
     const inactive = { ...promoted, status: 'inactive' as const };
@@ -2008,11 +2011,11 @@ describe('community admin UI', () => {
     );
     await user.click(screen.getByRole('button', { name: 'Remove from community' }));
     await user.click(
-      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'CONFIRM CHANGE' })
+      within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Confirm change' })
     );
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
     expect(mocks.remove).toHaveBeenCalledOnce();
-    await user.click(screen.getByRole('button', { name: 'TRY AGAIN' }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
     await waitFor(() => expect(mocks.invalidate).toHaveBeenCalledTimes(2));
     expect(mocks.remove).toHaveBeenCalledOnce();
   });
@@ -2073,7 +2076,7 @@ describe('community admin UI', () => {
         <CommunityAdminScreen screen="audit" community={community} audit={firstEvents} />
       </I18nextProvider>
     );
-    await userEvent.click(screen.getByRole('button', { name: 'LOAD MORE CHANGES' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Load more' }));
     await screen.findByText('Venue added');
     const auditCalls = mocks.listAudit.mock.calls.length;
     view.rerender(
@@ -2138,5 +2141,38 @@ describe('community admin UI', () => {
     await userEvent.click(screen.getByRole('button'));
     expect(await screen.findByRole('alert')).toBeTruthy();
     expect(screen.getByRole('button')).toBeTruthy();
+  });
+
+  // Clubhouse frames RgqPq / wFqGR / A5Vio / E5CS5K structural probes.
+  it('request card follows RgqPq: avatar identity row, then Decline before Approve', () => {
+    mount('requests');
+    const card = screen.getByTestId('community-request-card');
+    expect(within(card).getByRole('heading', { level: 3, name: member.display_name })).toBeTruthy();
+    const buttons = within(card).getAllByRole('button');
+    expect(
+      buttons.map((button) => button.getAttribute('aria-label') ?? button.textContent)
+    ).toEqual(['Send update', 'Deny request', 'Approve request']);
+    expect(card.querySelectorAll('[aria-hidden="true"]').length).toBeGreaterThan(0);
+  });
+
+  it('member rows sit in one list surface and mark the selected filter', () => {
+    mount('members');
+    const row = screen.getByTestId('community-member-card');
+    expect(row.parentElement?.children).toHaveLength(1);
+    const active = screen.getByRole('button', { name: 'Active' });
+    expect(active.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: 'Inactive' }).getAttribute('aria-pressed')).toBe(
+      'false'
+    );
+  });
+
+  it('empty venues and audit render truthful empty states without a list surface', () => {
+    const { unmount } = mount('venues');
+    expect(screen.getByText('No saved venues yet.')).toBeTruthy();
+    expect(screen.queryByTestId('community-venue-card')).toBeNull();
+    unmount();
+    mount('audit');
+    expect(screen.getByText('No recorded community changes.')).toBeTruthy();
+    expect(screen.queryByTestId('community-audit-event')).toBeNull();
   });
 });

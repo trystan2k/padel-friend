@@ -1,0 +1,84 @@
+{
+  "sourceDesign": "docs/design/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export(['wFqGR','jQDkx','RgqPq','N18Mu4','A5Vio','E5CS5K'], 'png', '<repo>/e2e/references/paf-202-community-admin', {scale:1})",
+  "width": 390,
+  "height": 844,
+  "statusBarHeight": 44,
+  "barTreatment": "Frames draw a 56px back/title bar and no app bottom navigation or admin section tabs. Admin routes keep the app shell suppressed (app-shell.ts) and render the admin section navigation as the single bar; the probe asserts exactly one navigation bar.",
+  "frames": {
+    "RgqPq": {
+      "state": "Community admin — Access requests",
+      "route": "requests",
+      "sha256": "4c176932b525a659559c326bd997079df416b115fe41bc2bdf001cf8af733051",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/RgqPq-light.png",
+      "snapshotSha256": "5859030393d3a6eabd95dae950e0d6f374a7c10085ac06baabb4c14592e57e07"
+    },
+    "wFqGR": {
+      "state": "Community admin — Members",
+      "route": "members",
+      "sha256": "56dd69f5103303f01345062f9b6dfa9c5122c33a656a8f3eb946ecacfe8fcda6",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/wFqGR-light.png",
+      "snapshotSha256": "0d42884e7576afd879c934a99e0a55f705e3385b743d52e06aec932e6fde8233"
+    },
+    "jQDkx": {
+      "state": "Community admin — Member actions",
+      "route": "member detail",
+      "sha256": "f5a49a63bfeb7b3afdad48117627645a8ea87eaaaef1b1a62abaec9baaae1c84",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/jQDkx-light.png",
+      "snapshotSha256": "64081bfc41da5a8900c471bdc396bf5ce12e2a7dd41c2b69217c3c2be3935a22"
+    },
+    "N18Mu4": {
+      "state": "Community admin — Settings",
+      "route": "settings",
+      "sha256": "a18f8f6383d2c6bc29a0670073772250d151935d748c3637bcbc55d75466c0b2",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/N18Mu4-light.png",
+      "snapshotSha256": "5749d44317c142ee194ef41fd6aff94ada7513f08f5102451a4e6a4ed5830d7b"
+    },
+    "A5Vio": {
+      "state": "Community admin — Saved venues",
+      "route": "venues",
+      "sha256": "6025c007cd6e97071fbcbb2bc6ca777397959bd2640b584d76107d0ce00d2e1e",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/A5Vio-light.png",
+      "snapshotSha256": "e5adf1cdea607bff993e71773145f2a18a5917b8a35b6be5bd4f7abf47f49787"
+    },
+    "E5CS5K": {
+      "state": "Community admin — Audit log",
+      "route": "audit",
+      "sha256": "62459bcb662e4820d08cdbc104f40ccd741567ce6723630dfa16ffedb559c767",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/E5CS5K-light.png",
+      "snapshotSha256": "739364f70777b357f1827037c0cb6f945c659c948fc7ca7e97f700a429c8c4e6"
+    }
+  },
+  "toleranceEvidence": {
+    "RgqPq": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "Request cards carry fixture applicant, request date and a random community name; the date and community name are masked. Card identity row, Deny|Approve equal-width row, avatar size and ≥52px controls are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "wFqGR": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "Roster rows differ from the sample (fixture names, join dates, role badges, private/public invite control). Join-date lines and community name are masked; list surface, 68px+ rows, 36px avatar, search and filter targets are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "jQDkx": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "The frame draws a bottom-sheet; the route is a full page, so structure follows its action rows (identity card, role panel, full-width 52px actions) with the profile card masked. Destructive actions keep their confirmation dialogs (unit + e2e). The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "N18Mu4": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "Visibility and join policy stay native selects (two options each, existing behavior) instead of the frame switches; the frame sticky Save is inline because the admin section bar owns the bottom edge. Rows and controls are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "A5Vio": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "The frame has no photo-upload state; upload lives in the edit form (validation/retry unchanged). Venue cards (64×52 photo slot, 12px gap, 52px actions) are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "E5CS5K": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "Events are real audit rows with a generic actor fallback and fixture timestamps (masked). The frame category filter chips are not built (no filter behavior exists). Log surface, dot and divided rows are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    }
+  }
+}

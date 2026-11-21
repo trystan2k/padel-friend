@@ -161,6 +161,15 @@ describe('correction surfaces', () => {
     );
   });
 
+  it('keeps Approve before Reject with the original action names', () => {
+    mount({ amendments: [amendment({ can_approve: true, can_reject: true })] });
+    const card = screen.getByRole('article', { name: /correction/i });
+    const approve = within(card).getByRole('button', { name: 'Approve' });
+    const reject = within(card).getByRole('button', { name: 'Reject' });
+    expect(approve.nextElementSibling).toBe(reject);
+    expect(within(card).getByRole('heading', { name: 'Proposed result · version 2' })).toBeTruthy();
+  });
+
   it('separates approved-not-applied from applied and names both result revisions', async () => {
     const user = userEvent.setup();
     const applied = amendment({

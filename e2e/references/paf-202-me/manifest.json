@@ -1,0 +1,69 @@
+{
+  "status": "chromium-certified-with-scoped-route-adaptations",
+  "sourceDesign": {
+    "path": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
+    "sha256": "41f3b06db61a180ed1d0eebe0fb3ff71e0086a703b5497ad7b47cd7ba7bb971e",
+    "exportCommand": "Pencil MCP: Export([\"vARtQ\",\"x2GG9U\"], \"png\", \"<repo>/e2e/references/paf-202-me\", {scale:1})"
+  },
+  "route": "/me (D5) · /players/$playerId keeps its statistics role (U20)",
+  "precedence": "D7: route-specific frame vARtQ governs the Me composition. D1 group C (implemented): the profile edit screen and the rating journey chart, empty and error states are governed by the approved frames VpcMM, xlgw8, lNj83, PYxIz, DtbIE, tgXcg, JYWDi and d9rkmE (see paf-202-d1-group-c). Only the explanation dialog (a detail view without a frame) stays untouched.",
+  "approvedReferences": {
+    "vARtQ": {
+      "frameId": "vARtQ",
+      "certifies": "Me header (72px avatar, 25px/800 name, side · member-since meta), level card heading/value, hairline shortcut list, row anatomy",
+      "sha256": "40e3d5b2a6c9c84ae3a998711af6db3709680eb9301b4bdbf3d7b8a2d0a235d7",
+      "pixelSize": [390, 844]
+    },
+    "x2GG9U": {
+      "frameId": "x2GG9U",
+      "certifies": "Empty-state anatomy for the rating history card: 40px green-soft glyph, 16/800 title, 14px muted body",
+      "sha256": "e709ba7b1039be4e935ea1ddf3983c58e0496ce9dced2f3415558c79140afbce",
+      "pixelSize": [430, 480]
+    }
+  },
+  "surfaces": {
+    "PlayerProfile": {
+      "frames": ["vARtQ"],
+      "note": "Flat identity header on the page background (frame avatar is lime; production keeps the hero-avatar token), level card on the 20px hairline surface card, hairline 18px shortcut list (Statistics, Match history, Notifications) and level review rows (request with description, my requests). Sentence-case labels."
+    },
+    "PlatformAdminEntry": {
+      "frames": ["vARtQ"],
+      "note": "Moved from the Community surface into Me (D5, owner-approved). Same hairline list rows; visible only for server-reported platform admins."
+    },
+    "AvatarUpload": {
+      "frames": ["VpcMM", "xlgw8"],
+      "note": "D1 group C implemented: 56px initials disc beside a green Change photo link (camera icon); upload action, validation and errors kept."
+    },
+    "ProfileEditForm": {
+      "frames": ["VpcMM", "xlgw8"],
+      "note": "D1 group C implemented: own screen with top bar, 52px display name, availability pills, theme segmented control, language select and sticky Cancel / Save changes bar. Preferred side, dominant hand and bio (not drawn) are kept so the saved profile is unchanged."
+    },
+    "RatingJourney": {
+      "frames": ["lNj83", "PYxIz", "DtbIE", "tgXcg", "JYWDi", "d9rkmE"],
+      "note": "D1 group C implemented: 28/800 heading, chart card, Recent games card, single empty card and red-soft error banner with Reload."
+    },
+    "RatingProgressChart": {
+      "frames": ["lNj83", "PYxIz", "DtbIE", "tgXcg"],
+      "note": "D1 group C implemented: 40/800 level, all-time change, month bars plus latest bar; screen-reader summary and the full data table are kept behind the Show data table disclosure."
+    },
+    "RatingExplanation": {
+      "frames": [],
+      "blocked": "D1: explanation dialog is a detail view without a frame; untouched."
+    }
+  },
+  "omittedDrawnMetrics": {
+    "statsTiles": "vARtQ draws matches / W–L–D / win rate tiles: statistics belong to /players/$playerId (U20); the Me loader has no source for them, so they are omitted rather than invented (D6).",
+    "seasonTrend": "'↑ 0.31 this season' has no source (no season concept; D6 'no direct source'): omitted. Level and reliability come from the committed rating projection.",
+    "levelBars": "The frame's 10 level bars are a mock; the real per-game progression is the Rating journey chart below the shortcut list.",
+    "appearance": "Theme and language remain the global top-right controls shared by every protected page (same ids, persistence and tests); duplicating them on Me would create a second source of truth."
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-viewport-pixel-difference",
+    "measurementMethod": "Full-page capture at 390 CSS px (deviceScaleFactor 1) clipped per region and compared with the same CSS-px region of the scale-1 Pencil PNG, pinned perceptual threshold (35215 x 0.1^2). Regions: vARtQ:identity (frame y 48-120, aligned on the avatar top) and vARtQ:level (frame y 212-290, aligned on the level card top). Structural probes (order, avatar 72px, gutters, 1px hairline, >=60px rows, 44px targets, no overflow, journey vertical geometry) assert exactly.",
+    "perScreen": { "vARtQ:identity": 0.2, "vARtQ:level": 0.11 },
+    "perScreenRationale": {
+      "vARtQ:identity": "Observed residual 0.1770 on the avatar-aligned 390x72 region; 0.20 leaves 0.023 for cross-renderer variance. Intentional adaptation, not a layout defect: the frame's 'Right side · Madrid · since 2024' single-line meta versus the real side and the localized full member-since date (wraps to two lines at 390px), the 44px edit control the frame does not draw (Edit profile behavior is preserved), and initials versus the frame's sample initials. Avatar size/colour token, name weight and order are exact structural probes.",
+      "vARtQ:level": "Observed residual 0.0872 on the level-card-aligned 390x78 region; 0.11 leaves 0.023 for cross-renderer variance. Residual is the frame's sample figures (3.82, '76% reliable', green season delta) versus the real level, 'Reliability: N%' and no season delta (no source, D6). Card radius token, hairline and gutters are exact structural probes."
+    }
+  }
+}

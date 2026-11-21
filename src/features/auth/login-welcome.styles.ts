@@ -1,5 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 
+// Frames wzWLt / FZlHy: 28/24px insets, 14px rhythm, brand tile + wordmark above the title, then
+// email, password, forgot link, Log in, "or", Google, sign-up prompt.
 export const styles = stylex.create({
   page: {
     backgroundColor: 'var(--color-bg)',
@@ -10,51 +12,43 @@ export const styles = stylex.create({
     boxSizing: 'border-box',
     maxWidth: 'calc(var(--space-40) * 12)',
     marginInline: 'auto',
-    padding: 'calc(var(--space-20) + var(--space-4)) var(--space-18) var(--space-20)',
+    paddingBlockStart: 'calc(var(--space-20) + var(--space-8) + env(safe-area-inset-top))',
+    paddingInline: 'calc(var(--space-20) + var(--space-4))',
+    paddingBlockEnd: 'max(calc(var(--space-20) + var(--space-4)), env(safe-area-inset-bottom))',
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-20)'
+    gap: 'var(--space-14)'
   },
-  header: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-8)'
+  brandBlock: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)' },
+  logo: {
+    boxSizing: 'border-box',
+    display: 'block',
+    width: 'calc(var(--space-40) + var(--space-20) + var(--space-4))',
+    height: 'calc(var(--space-40) + var(--space-20) + var(--space-4))',
+    borderRadius: 'var(--radius-20)',
+    objectFit: 'contain'
   },
   brand: {
     color: 'var(--color-green)',
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)'
-  },
-  title: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-28)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-bold)'
-  },
-  subtitle: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-14)' },
-  actions: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-14)'
   },
   googleMark: {
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-16)',
-    fontWeight: 'var(--font-weight-bold)'
+    fontWeight: 'var(--font-weight-extrabold)'
   },
   form: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-14)',
-    marginTop: 'calc(-1 * var(--space-2))'
+    gap: 'var(--space-14)'
   },
-  // The 44px text-link targets overflow the 15px Pencil text rows; the negative block margin
-  // (15px row - 44px target) / 2 keeps the surrounding flow at the Pencil positions.
+  // The 44px text-link targets overflow the text-height rows of the frame; the negative block
+  // margin (text row - 44px target) / 2 keeps the surrounding flow at the frame positions.
   targetRow: {
-    marginBlock: 'calc((var(--space-15) - var(--space-40) - var(--space-4)) / 2)'
+    marginBlock: 'calc((var(--space-18) - var(--space-40) - var(--space-4)) / 2)'
   },
   forgotRow: {
     display: 'flex',
@@ -64,23 +58,23 @@ export const styles = stylex.create({
   forgotLink: { position: 'relative' },
   notice: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-4)',
-    padding: 'var(--space-12)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-green-soft)'
+    alignItems: 'center',
+    gap: 'var(--space-10)',
+    padding: 'var(--space-12) var(--space-14)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green-ink)'
   },
-  noticeTitle: {
-    margin: 0,
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-13)',
-    fontWeight: 'var(--font-weight-bold)'
+  noticeIcon: {
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-extrabold)'
   },
   noticeCopy: {
+    flex: 1,
     margin: 0,
-    color: 'var(--color-text)',
-    fontSize: 'var(--font-size-12)'
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-semibold)',
+    lineHeight: 'var(--font-line-height-comfortable)'
   },
-  promptText: { fontSize: 'var(--font-size-13)' },
-  error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-12)' }
+  promptText: { fontSize: 'var(--font-size-15)', fontWeight: 'var(--font-weight-regular)' }
 });

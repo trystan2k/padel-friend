@@ -1,4 +1,5 @@
 import { useUpdateGuard } from '../pwa/update-guard';
+import { Button } from '../../components/ui/Button';
 import * as stylex from '@stylexjs/stylex';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -10,7 +11,6 @@ import {
   type MatchInvitation
 } from './match-invitation-model';
 import { matchInvitationStyles as s } from './match-invitation.styles';
-import { matchRegistrationStyles as buttons } from './match-registration.styles';
 import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 import { MatchStatusBanner } from './MatchStatusBanner';
 
@@ -96,7 +96,7 @@ export function MatchInvitationPanel({
       {offline && <p role="alert">{t('pwa.offline.unsent')}</p>}
       {current === 'pending' && (
         <>
-          <p {...stylex.props(s.copy)}>
+          <p {...stylex.props(s.hint)}>
             {t('matches.invitations.expiresAt', {
               deadline: new Intl.DateTimeFormat(i18n.language, {
                 dateStyle: 'medium',
@@ -106,22 +106,12 @@ export function MatchInvitationPanel({
             })}
           </p>
           <div {...stylex.props(s.actions)}>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void respond('accept')}
-              {...stylex.props(buttons.primaryButton, busy && buttons.disabledButton)}
-            >
+            <Button disabled={busy} onClick={() => void respond('accept')}>
               {t('matches.invitations.accept')}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void respond('decline')}
-              {...stylex.props(buttons.secondaryButton, busy && buttons.disabledButton)}
-            >
+            </Button>
+            <Button variant="secondary" disabled={busy} onClick={() => void respond('decline')}>
               {t('matches.invitations.decline')}
-            </button>
+            </Button>
           </div>
         </>
       )}

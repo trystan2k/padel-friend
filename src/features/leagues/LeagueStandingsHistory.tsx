@@ -252,7 +252,10 @@ export function LeagueStandingsHistory({
           </p>
         )}
         {corrected && (
-          <p data-standings-correction={selected?.cause} {...stylex.props(leagueStyles.strongText)}>
+          <p
+            data-standings-correction={selected?.cause}
+            {...stylex.props(leagueStyles.correctionNotice)}
+          >
             {t('leagues.history.correctionBanner')}
           </p>
         )}
@@ -339,7 +342,7 @@ export function LeagueStandingsHistory({
                       : 'leagues.history.audit.byMember'
                   );
               return (
-                <li key={`${event.occurred_at}-${index}`}>
+                <li key={`${event.occurred_at}-${index}`} {...stylex.props(styles.auditItem)}>
                   {[
                     t(`leagues.history.audit.${event.action}`),
                     when(event.occurred_at),

@@ -25,6 +25,7 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({ children }: { children: import('react').ReactNode }) => <a href="/matches">{children}</a>
 }));
 import { RecordMatchResultPage } from '../src/features/matches/RecordMatchResultPage';
+import { MatchResultRankedBlocked } from '../src/features/matches/MatchResultRankedBlocked';
 import { MatchResultPending } from '../src/features/matches/MatchResultPending';
 import { MatchResultDetail } from '../src/features/matches/MatchResultDetail';
 import { MatchDetailPage } from '../src/features/matches/MatchDetailPage';
@@ -81,7 +82,7 @@ async function scoreStep() {
   await userEvent.click(screen.getByRole('button', { name: 'Confirm teams' }));
 }
 function score(number: number, a: number, b: number) {
-  const row = screen.getByRole('group', { name: `SET ${number}` });
+  const row = screen.getByRole('group', { name: `Set ${number}` });
   for (const [team, value] of [
     ['Team A', a],
     ['Team B', b]
@@ -108,6 +109,68 @@ afterEach(() => {
 });
 
 describe('record result page', () => {
+  it('keeps score buttons labelled and accepts bounded keyboard stepping', async () => {
+    mount();
+    await scoreStep();
+    const row = screen.getByRole('group', { name: 'Set 1' });
+    const input = within(row).getByRole<HTMLInputElement>('textbox', { name: 'Team A' });
+    expect(within(row).getByRole('button', { name: 'Decrease set 1, Team A' })).toBeTruthy();
+    expect(within(row).getByRole('button', { name: 'Increase set 1, Team A' })).toBeTruthy();
+    input.focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(input.value).toBe('0');
+    await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+    expect(input.value).toBe('2');
+    await userEvent.keyboard('{End}{ArrowUp}');
+    expect(input.value).toBe('7');
+  });
+
+  it('puts the score summary, truthful outcome and actual match facts before the sticky actions', async () => {
+    const { container } = mount();
+    await scoreStep();
+    score(1, 6, 4);
+    await complete(1);
+    await userEvent.click(screen.getByRole('button', { name: /Add set/ }));
+    score(2, 6, 3);
+    await complete(2);
+    played();
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    expect(screen.getByRole('heading', { name: 'Check and submit' })).toBeTruthy();
+    expect(
+      [...container.querySelectorAll('[data-result-section]')].map((node) =>
+        node.getAttribute('data-result-section')
+      )
+    ).toEqual(['score-summary', 'outcome', 'facts', 'actions']);
+    expect(screen.getByText('6–4 · 6–3')).toBeTruthy();
+    expect(
+      screen.getByText('Estimated rating change unavailable before confirmation.')
+    ).toBeTruthy();
+    expect(submit).not.toHaveBeenCalled();
+  });
+
+  it('renders a recording warning without granting unauthorized corrections', () => {
+    const proposal = parseResultProposals([resultProposal])?.[0];
+    if (!proposal) throw new Error('Invalid proposal fixture');
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchResultRankedBlocked
+          eventId={id}
+          recording
+          proposal={{
+            ...proposal,
+            can_correct: false,
+            ranked_blocked: {
+              reason: 'membership',
+              user_ids: [proposal.teams.team_a[0].user_id]
+            }
+          }}
+        />
+      </I18nextProvider>
+    );
+    const region = screen.getByRole('region', { name: "Can't count as Ranked yet" });
+    expect(region.getAttribute('data-result-section')).toBe('ranked-blocked');
+    expect(within(region).queryByRole('link')).toBeNull();
+  });
   it('includes each visible state verbatim in its accessible name and preserves pressed state', async () => {
     mount();
     await scoreStep();
@@ -115,7 +178,7 @@ describe('record result page', () => {
       for (const button of screen
         .getAllByRole('button')
         .filter((control) =>
-          ['COMPLETE', 'IN PROGRESS', 'INVALID', 'NOT PLAYED'].includes(control.textContent ?? '')
+          ['Complete', 'In progress', 'Invalid', 'Not played'].includes(control.textContent ?? '')
         )) {
         expect(button.getAttribute('aria-label')).toContain(button.textContent);
       }
@@ -129,7 +192,7 @@ describe('record result page', () => {
     ).toBe('true');
     score(1, 6, 5);
     assertNames();
-    expect(screen.getByRole('button', { name: /Set 1 completion/ }).textContent).toBe('INVALID');
+    expect(screen.getByRole('button', { name: /Set 1 completion/ }).textContent).toBe('Invalid');
   });
   it('never previews 3–0 after a completed straight-set pair', async () => {
     mount();
@@ -141,11 +204,11 @@ describe('record result page', () => {
     await complete(2);
     await userEvent.click(screen.getByRole('button', { name: /Add set/ }));
     score(3, 5, 3);
-    expect(screen.getByText('TEAM A WINS · 2–0')).toBeTruthy();
+    expect(screen.getByText('Team A wins · 2–0')).toBeTruthy();
     score(3, 6, 3);
     await complete(3);
-    expect(screen.queryByText('TEAM A WINS · 3–0')).toBeNull();
-    expect(within(screen.getByRole('group', { name: 'SET 3' })).getByRole('alert')).toBeTruthy();
+    expect(screen.queryByText('Team A wins · 3–0')).toBeNull();
+    expect(within(screen.getByRole('group', { name: 'Set 3' })).getByRole('alert')).toBeTruthy();
   });
   it('uses authoritative venue and address data in the pending hero map link', () => {
     render(
@@ -191,7 +254,7 @@ describe('record result page', () => {
         <MatchResultPending proposal={proposal} timezone="UTC" asOf={resultProposal.submitted_at} />
       </I18nextProvider>
     );
-    expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy();
+    expect(screen.getByText('Pending · not confirmed')).toBeTruthy();
     expect(
       screen.getByText('If nobody rejects by deadline, proposal confirms automatically.')
     ).toBeTruthy();
@@ -201,12 +264,12 @@ describe('record result page', () => {
   });
   it('renders three steps and explicitly confirms suggested teams', async () => {
     mount();
-    for (const step of ['PLAYERS', 'SCORE', 'REVIEW'])
+    for (const step of ['Players', 'Score', 'Review'])
       expect(screen.getByText(new RegExp(step))).toBeTruthy();
     expect(screen.getByText('Ana')).toBeTruthy();
     await scoreStep();
-    expect(screen.getByRole('group', { name: 'SET 1' })).toBeTruthy();
-    expect(screen.getByText('INCOMPLETE')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Set 1' })).toBeTruthy();
+    expect(screen.getByText('Incomplete')).toBeTruthy();
     expect(screen.getByText('Incomplete · no rating effect')).toBeTruthy();
   });
   it('swaps actual teams without duplicating a player', async () => {
@@ -228,15 +291,13 @@ describe('record result page', () => {
     score(1, 6, 5);
     await complete(1);
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
-    const row = screen.getByRole('group', { name: 'SET 1' });
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    const row = screen.getByRole('group', { name: 'Set 1' });
     expect(within(row).getByRole('alert').textContent).toContain(
       'Set 1 · Team B: 6–5 is not a completed set'
     );
     expect(within(row).getByLabelText('Team B').getAttribute('aria-invalid')).toBe('true');
-    expect(
-      screen.getByRole<HTMLButtonElement>('button', { name: 'Submit for review' }).disabled
-    ).toBe(true);
+    expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Review' }).disabled).toBe(true);
     expect(screen.getByText('Correct Set 1 before reviewing the result.')).toBeTruthy();
     expect(submit).not.toHaveBeenCalled();
   });
@@ -245,12 +306,12 @@ describe('record result page', () => {
     await scoreStep();
     score(1, 6, 4);
     await complete(1);
-    expect(screen.getByText('INCOMPLETE')).toBeTruthy();
+    expect(screen.getByText('Incomplete')).toBeTruthy();
     expect(screen.getByText('Friendly · no rating effect')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: /Add set/ }));
     score(2, 6, 4);
     await complete(2);
-    expect(screen.getByText('TEAM A WINS · 2–0')).toBeTruthy();
+    expect(screen.getByText('Team A wins · 2–0')).toBeTruthy();
     expect(screen.getByText('Friendly · no rating effect')).toBeTruthy();
   });
   it('previews a draw with an unfinished third set and recaps facts', async () => {
@@ -264,11 +325,13 @@ describe('record result page', () => {
     await userEvent.click(screen.getByRole('button', { name: /Add set/ }));
     score(3, 3, 2);
     played();
-    expect(screen.getByText('DRAW · third set unfinished')).toBeTruthy();
-    expect(screen.getByText('Competitive · rating will update')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
-    expect(screen.getByRole('region', { name: 'Set scores' }).textContent).toContain('SET 3');
-    expect(screen.getByRole('region', { name: 'Set scores' }).textContent).toContain('IN PROGRESS');
+    expect(screen.getByText('Draw · third set unfinished')).toBeTruthy();
+    expect(
+      screen.getByText('Estimated rating change unavailable before confirmation.')
+    ).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    expect(screen.getByRole('region', { name: 'Set scores' }).textContent).toContain('Set 3');
+    expect(screen.getByRole('region', { name: 'Set scores' }).textContent).toContain('In progress');
     expect(screen.getByText('20 Oct 2026 · 18:30')).toBeTruthy();
   });
   it('prompts explicit reload on conflict, never automatically retries', async () => {
@@ -281,11 +344,11 @@ describe('record result page', () => {
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit result' }));
     await waitFor(() => expect(screen.getByText(/Another result is already pending/)).toBeTruthy());
     expect(submit).toHaveBeenCalledTimes(1);
-    expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Submit result' })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Reload latest result and roster' }));
     expect(reload).toHaveBeenCalledTimes(1);
   });
@@ -298,11 +361,11 @@ describe('record result page', () => {
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit result' }));
     await waitFor(() =>
       expect(
-        within(screen.getByRole('group', { name: 'SET 1' })).getByRole('alert').textContent
+        within(screen.getByRole('group', { name: 'Set 1' })).getByRole('alert').textContent
       ).toContain('Set 1 · Team B')
     );
   });
@@ -315,8 +378,8 @@ describe('record result page', () => {
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit result' }));
     await waitFor(() =>
       expect(screen.getByText(/Team B: A player cannot appear twice/)).toBeTruthy()
     );
@@ -383,8 +446,8 @@ describe('record result page', () => {
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit result' }));
     expect(
       screen.getByRole<HTMLButtonElement>('button', { name: 'Submitting result…' }).disabled
     ).toBe(true);
@@ -411,22 +474,22 @@ describe('record result page', () => {
         review_deadline_at: '2026-10-23T18:00:00Z'
       }
     });
-    await waitFor(() => expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('Pending · not confirmed')).toBeTruthy());
     expect(document.activeElement).toBe(
-      screen.getByRole('heading', { name: 'PENDING · NOT CONFIRMED' })
+      screen.getByRole('heading', { name: 'Pending · not confirmed' })
     );
     expect(document.activeElement?.getAttribute('tabindex')).toBe('-1');
-    expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Submit result' })).toBeNull();
   });
   it('retains request identity for an explicit network retry of identical facts', async () => {
     submit.mockRejectedValue(new Error('offline'));
     mount();
     await scoreStep();
     played();
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit result' }));
     await waitFor(() => expect(screen.getByText(/Could not confirm this change/)).toBeTruthy());
-    await userEvent.click(screen.getByRole('button', { name: 'Submit for review' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Submit result' }));
     expect(submit).toHaveBeenCalledTimes(2);
     expect(submit.mock.calls[1]).toEqual(submit.mock.calls[0]);
   });
@@ -448,8 +511,8 @@ describe('record result page', () => {
         />
       </I18nextProvider>
     );
-    expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy();
-    expect(screen.getByText('AUTO-CONFIRMS IN 18H')).toBeTruthy();
+    expect(screen.getByText('Pending · not confirmed')).toBeTruthy();
+    expect(screen.getByText('Auto-confirms in 18h')).toBeTruthy();
     expect(screen.getByText(/Version 1/)).toBeTruthy();
     expect(screen.getByText(/Auto-confirm deadline:/)).toBeTruthy();
   });

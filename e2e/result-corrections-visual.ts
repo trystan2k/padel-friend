@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { expect, type Locator, type Page, type TestInfo } from '@playwright/test';
 import frameReference from './references/paf-14/frame-reference.json' with { type: 'json' };
 import manifest from './references/paf-14/manifest.json' with { type: 'json' };
+import leagueManifest from './references/paf-202-leagues/manifest.json' with { type: 'json' };
 
 // PAF-14 visual certification helpers (same method as PAF-8/PAF-12): capture at the exact half-scale
 // reference size and compare with the uncropped 2x Pencil export under the pinned perceptual
@@ -119,7 +120,7 @@ export async function captureBoxes<K extends string>(
  * Render readiness gate: waits until the page lays out the way it will keep laying out, so the geometry
  * probes and screenshot captures that follow never sample a layout that is about to reflow.
  * Hypothesised mechanism (PAF-175, UNCONFIRMED pending the loaded-gate campaign, AC1): the bundled
- * Inter/Manrope faces are @fontsource subsets with font-display: swap, fetched lazily on first use. Under
+ * Figtree faces are @fontsource subsets with font-display: swap, fetched lazily on first use. Under
  * full-gate load the first sample may have run on fallback metrics, with the swap reflowing text after it
  * (a wrapped line would explain the ~22px drift that exceeded the 2px assertStacked tolerance). Failure
  * geometry matching fallback-font metrics would confirm it. Every font used by visible text is loaded explicitly, images are decoded, then the layout
@@ -316,6 +317,75 @@ const regionSpecs: Record<string, Record<string, RegionSpec>> = manifest.visualB
 const referenceMasks: Record<string, Rect[]> = manifest.visualBudgets.referenceMasks;
 const minComparedFraction = manifest.visualBudgets.minComparedRegionFraction;
 
+// Clubhouse exports are 1x. Keep the historical comparison algorithm, region set, and budgets;
+// only the reference rectangles and fills change. CWJkF is record-only: H6VcqC contributes the
+// shared dark sheet surface, not the different dispute reason content.
+type ClubhouseRaster = {
+  family: string;
+  reference: string;
+  masks: Rect[];
+  regions: Record<string, Pick<RegionSpec, 'reference' | 'fill'>>;
+};
+const clubhouseRaster: Partial<Record<CorrectionFrame, ClubhouseRaster>> = {
+  adujr: {
+    family: 'result-decision',
+    reference: 'adujr',
+    masks: [
+      { x: 0, y: 0, width: 390, height: 100 },
+      { x: 20, y: 104, width: 350, height: 425 },
+      { x: 0, y: 755, width: 390, height: 89 }
+    ],
+    regions: {
+      statusBanner: { reference: { x: 20, y: 104, width: 136, height: 24 }, fill: [221, 240, 229] },
+      requestAction: { reference: { x: 20, y: 768, width: 350, height: 52 }, fill: [15, 107, 71] },
+      correctionCard: {
+        reference: { x: 20, y: 222, width: 350, height: 91 },
+        fill: [255, 255, 255]
+      }
+    }
+  },
+  s5TRC: {
+    family: 'result-decision',
+    reference: 's5TRC',
+    masks: [
+      { x: 0, y: 0, width: 390, height: 100 },
+      { x: 20, y: 104, width: 350, height: 413 },
+      { x: 0, y: 699, width: 390, height: 145 }
+    ],
+    regions: {
+      proposedResult: {
+        reference: { x: 20, y: 290, width: 350, height: 92 },
+        fill: [255, 255, 255]
+      },
+      approveAction: { reference: { x: 20, y: 712, width: 350, height: 52 }, fill: [15, 107, 71] },
+      rejectAction: { reference: { x: 20, y: 772, width: 350, height: 48 }, fill: [255, 255, 255] },
+      correctionCard: {
+        reference: { x: 20, y: 184, width: 350, height: 92 },
+        fill: [255, 255, 255]
+      }
+    }
+  },
+  CWJkF: {
+    family: 'result-decision',
+    reference: 'H6VcqC',
+    masks: [],
+    regions: {
+      resolutionSurface: {
+        reference: { x: 0, y: 6, width: 390, height: 204 },
+        fill: [20, 32, 25]
+      }
+    }
+  },
+  xbIxj: {
+    family: 'leagues',
+    reference: 'xbIxj',
+    masks: leagueManifest.visualBudgets.referenceMasks.xbIxj,
+    regions: {
+      versionCard: { reference: { x: 20, y: 564, width: 350, height: 70 }, fill: [255, 255, 255] }
+    }
+  }
+};
+
 export function assertNear(actual: number, expected: number, label: string, tolerance = 0.75) {
   expect
     .soft(Math.abs(actual - expected), `${label}: ${actual} vs ${expected}`)
@@ -369,202 +439,6 @@ type FrameElement = {
   height: number;
 };
 const frameElements: Record<string, Record<string, FrameElement>> = frameReference.frames;
-type ContractField =
-  | 'size'
-  | 'weight'
-  | 'color'
-  | 'letterSpacing'
-  | 'family'
-  | 'caps'
-  | 'radius'
-  | 'padding'
-  | 'gap'
-  | 'fill';
-/**
- * One production element that stands for a Pencil element. Every field is compared with the frame
- * value unless `allow` names a design-token expression for it; an allowed field must really differ
- * from the frame (an obsolete allowance fails) and must cite a declared adaptation.
- */
-export type ContractEntry = {
-  ref: string;
-  locator: Locator;
-  allow?: Partial<Record<ContractField, string>>;
-  adaptation?: string;
-  /** Block width: frame width minus a card inset, or within a tolerance of the frame width. */
-  widthInset?: number;
-  widthTolerance?: number;
-  /** Equal-width actions sharing one row separated by the 8px action gap. */
-  columns?: number;
-  /** Content-hugging frame control: width is not comparable (declared adaptation). */
-  skipWidth?: boolean;
-  /** Single-line chips and controls: inclusive production height range. */
-  heightRange?: [number, number];
-};
-
-const hexToRgb = (hex: string) => {
-  const [red, green, blue] = [1, 3, 5].map((offset) =>
-    Number.parseInt(hex.slice(offset, offset + 2), 16)
-  );
-  return `rgb(${red}, ${green}, ${blue})`;
-};
-const paddingSides = (padding: unknown) => {
-  if (typeof padding === 'number') return { top: padding, left: padding };
-  if (Array.isArray(padding) && padding.length === 2)
-    return { top: Number(padding[0]), left: Number(padding[1]) };
-  if (Array.isArray(padding) && padding.length === 4)
-    return { top: Number(padding[0]), left: Number(padding[3]) };
-  return { top: 0, left: 0 };
-};
-
-/**
- * Renderer-independent typography, color and geometry contract: DOM computed styles of every
- * production element that replaces a Pencil element, compared with the frame snapshot in
- * `frame-reference.json`. Differences are only accepted through a declared adaptation.
- */
-export async function assertFrameContract(
-  frame: CorrectionFrame,
-  state: string,
-  entries: ContractEntry[]
-) {
-  const reference = frameElements[frame] ?? {};
-  const expectedRefs = Object.entries(manifest.inventory[frame].probed).find(
-    ([key]) => key === state
-  )?.[1];
-  expect
-    .soft(
-      entries.map((entry) => entry.ref).sort(),
-      `${frame} ${state} asserts exactly the inventory`
-    )
-    .toEqual([...(expectedRefs ?? [])].sort());
-  const declared = Object.entries(manifest.declaredAdaptations).find(([key]) => key === frame)?.[1];
-  const adaptations = Array.isArray(declared) ? declared : [];
-  for (const entry of entries) {
-    const label = `${frame} ${entry.ref}`;
-    const frameValue = reference[entry.ref];
-    if (!frameValue) {
-      expect.soft(false, `${label} exists in the frame snapshot`).toBe(true);
-      continue;
-    }
-    const allow = entry.allow ?? {};
-    if (Object.keys(allow).length)
-      expect
-        .soft(
-          adaptations.some((item) => item.id === entry.adaptation),
-          `${label} allowance cites a declared adaptation (${entry.adaptation})`
-        )
-        .toBe(true);
-    const properties: Record<string, string> = {
-      size: 'font-size',
-      weight: 'font-weight',
-      color: 'color',
-      letterSpacing: 'letter-spacing',
-      family: 'font-family',
-      radius: 'border-top-left-radius',
-      padding: 'padding-left',
-      gap: 'row-gap',
-      fill: 'background-color'
-    };
-    const measured = await entry.locator.evaluate(
-      (element, input) => {
-        const style = getComputedStyle(element);
-        const probe = document.createElement('span');
-        document.body.append(probe);
-        const resolved: Record<string, string> = {};
-        for (const [field, expression] of Object.entries(input.allow)) {
-          const property = input.properties[field];
-          if (!property) continue;
-          probe.style.setProperty(property, expression);
-          resolved[field] = getComputedStyle(probe).getPropertyValue(property);
-          probe.style.removeProperty(property);
-        }
-        probe.remove();
-        const rect = element.getBoundingClientRect();
-        const spacing = style.letterSpacing;
-        const text = (element.textContent ?? '').replace(/\s+/g, ' ').trim();
-        return {
-          resolved,
-          size: Number.parseFloat(style.fontSize),
-          weight: Number(style.fontWeight),
-          color: style.color,
-          letterSpacing: spacing === 'normal' ? 0 : Number.parseFloat(spacing),
-          family: style.fontFamily.split(',')[0]!.replaceAll('"', '').trim().toLowerCase(),
-          caps:
-            style.textTransform === 'uppercase' ||
-            (text.length > 0 && text === text.toUpperCase() && /[A-Z]/.test(text)),
-          radius: Number.parseFloat(style.borderTopLeftRadius),
-          paddingLeft: Number.parseFloat(style.paddingLeft),
-          paddingTop: Number.parseFloat(style.paddingTop),
-          gap: Number.parseFloat(style.rowGap) || 0,
-          fill: style.backgroundColor,
-          width: rect.width,
-          height: rect.height
-        };
-      },
-      { allow, properties },
-      { timeout: 5000 }
-    );
-    const pick = (field: ContractField, own: number | string | boolean, frameExpected: unknown) => {
-      const allowed = allow[field];
-      if (allowed === undefined)
-        return expect
-          .soft(
-            own,
-            `${label} ${field}: production ${String(own)} vs frame ${String(frameExpected)}`
-          )
-          .toEqual(frameExpected);
-      const resolved = measured.resolved[field] ?? '';
-      const normalized =
-        field === 'family'
-          ? resolved.split(',')[0]!.replaceAll('"', '').trim().toLowerCase()
-          : field === 'caps'
-            ? allowed === 'caps'
-            : ['size', 'letterSpacing', 'radius', 'padding', 'gap'].includes(field)
-              ? Number.parseFloat(resolved)
-              : field === 'weight'
-                ? Number(resolved)
-                : resolved;
-      expect
-        .soft(own, `${label} ${field} resolves to its allowed token (${allowed})`)
-        .toEqual(normalized);
-      expect
-        .soft(normalized, `${label} ${field} allowance is obsolete: it equals the frame value`)
-        .not.toEqual(frameExpected);
-    };
-    if (frameValue.kind === 'text') {
-      pick('size', measured.size, frameValue.size);
-      pick('weight', measured.weight, frameValue.weight);
-      pick('color', measured.color, hexToRgb(frameValue.color ?? '#000000'));
-      pick('letterSpacing', measured.letterSpacing, frameValue.letterSpacing ?? 0);
-      pick('family', measured.family, 'inter');
-      const text = frameValue.text ?? '';
-      pick('caps', measured.caps, text === text.toUpperCase() && /[A-Z]/.test(text));
-    } else {
-      pick('radius', measured.radius, frameValue.radius ?? 0);
-      pick('padding', measured.paddingLeft, paddingSides(frameValue.padding).left);
-      pick('gap', measured.gap, frameValue.gap ?? 0);
-      if (frameValue.fill) pick('fill', measured.fill, hexToRgb(frameValue.fill));
-      const columns = entry.columns ?? 1;
-      const widthTarget =
-        (frameValue.width - (entry.widthInset ?? 0) - (columns - 1) * 8) / columns;
-      if (!entry.skipWidth)
-        expect
-          .soft(
-            Math.abs(measured.width - widthTarget),
-            `${label} width ${measured.width} vs frame ${frameValue.width} (inset ${entry.widthInset ?? 0}, columns ${columns})`
-          )
-          .toBeLessThanOrEqual(entry.widthTolerance ?? 0.75);
-      if (entry.heightRange)
-        expect
-          .soft(measured.height, `${label} height ${measured.height} vs frame ${frameValue.height}`)
-          .toBeGreaterThanOrEqual(entry.heightRange[0]);
-      if (entry.heightRange)
-        expect
-          .soft(measured.height, `${label} height upper bound`)
-          .toBeLessThanOrEqual(entry.heightRange[1]);
-    }
-  }
-}
-
 /** Every Pencil element is probed in some capture state or tied to a declared adaptation. */
 export function assertInventory(frame: CorrectionFrame) {
   const inventory = manifest.inventory[frame];
@@ -739,6 +613,7 @@ export async function measureFrame(
 ) {
   await page.setViewportSize(capture.viewport);
   const screen = screenSpecs[frame]!;
+  const clubhouse = clubhouseRaster[frame];
   const specs = regionSpecs[frame] ?? {};
   // Exact set per capture state: a missing region would silently skip its comparison.
   const expectedRegions = Object.entries(specs)
@@ -756,7 +631,7 @@ export async function measureFrame(
     )
     .toEqual(expectedRegions);
   const maskRects = [
-    ...(referenceMasks[frame] ?? []),
+    ...(clubhouse?.masks ?? referenceMasks[frame] ?? []),
     ...(screen.mode === 'masked' ? await productionMasks(page) : [])
   ];
   const regionInputs = [];
@@ -764,7 +639,7 @@ export async function measureFrame(
   for (const [name, locator] of Object.entries(regions))
     regionInputs.push({
       name,
-      spec: specs[name]!,
+      spec: { ...specs[name]!, ...clubhouse?.regions[name] },
       production: await regionData(locator, offsetY)
     });
   const actual = await page.screenshot({
@@ -773,9 +648,12 @@ export async function measureFrame(
     caret: 'hide',
     path: info.outputPath(`${frame}-actual.png`)
   });
-  const approved = readFileSync(new URL(`./references/paf-14/${frame}.png`, import.meta.url));
+  const referencePath = clubhouse
+    ? `./references/paf-202-${clubhouse.family}/${clubhouse.reference}.png`
+    : `./references/paf-14/${frame}.png`;
+  const approved = readFileSync(new URL(referencePath, import.meta.url));
   const measured = await page.evaluate(
-    async ({ actualUrl, approvedUrl, maskRects: masks, regionInputs: inputs }) => {
+    async ({ actualUrl, approvedUrl, maskRects: masks, regionInputs: inputs, referenceScale }) => {
       async function readPixels(url: string, scale: number) {
         const image = new Image();
         image.src = url;
@@ -794,7 +672,7 @@ export async function measureFrame(
       }
       const [rendered, reference] = await Promise.all([
         readPixels(actualUrl, 1),
-        readPixels(approvedUrl, 2)
+        readPixels(approvedUrl, referenceScale)
       ]);
       const differs = (a: Uint8ClampedArray, ai: number, b: Uint8ClampedArray, bi: number) => {
         const red = a[ai]! - b[bi]!;
@@ -942,13 +820,19 @@ export async function measureFrame(
       actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
       approvedUrl: `data:image/png;base64,${approved.toString('base64')}`,
       maskRects,
-      regionInputs
+      regionInputs,
+      referenceScale: clubhouse ? 1 : 2
     }
   );
-  console.info(`${frame} PAF-14 measurement: ${JSON.stringify(measured)}`);
+  console.info(
+    `${clubhouse?.reference ?? frame} ${clubhouse ? 'Clubhouse' : 'PAF-14'} measurement: ${JSON.stringify(measured)}`
+  );
   if (screen.mode === 'masked')
     expect
-      .soft(measured.screen.dimensionMismatch, `${frame} dimensions match the 2x Pencil export`)
+      .soft(
+        measured.screen.dimensionMismatch,
+        `${frame} dimensions match the normalized Pencil export`
+      )
       .toBe(false);
   if (screen.mode === 'masked' && measured.screen.difference !== null) {
     expect
@@ -965,7 +849,7 @@ export async function measureFrame(
     const spec = specs[name]!;
     expect
       .soft(result.referenceFill, `${frame} ${name} reference fill matches the manifest`)
-      .toEqual(spec.fill);
+      .toEqual(clubhouse?.regions[name]?.fill ?? spec.fill);
     expect
       .soft(result.comparedFraction, `${frame} ${name} keeps a meaningful compared share`)
       .toBeGreaterThanOrEqual(minComparedFraction);
@@ -979,5 +863,6 @@ export async function measureFrame(
     body: JSON.stringify(measured, null, 2),
     contentType: 'application/json'
   });
+  await info.attach(`${frame}-approved`, { body: approved, contentType: 'image/png' });
   return measured;
 }

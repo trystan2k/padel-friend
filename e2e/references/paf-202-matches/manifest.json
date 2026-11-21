@@ -1,0 +1,400 @@
+{
+  "sourceDesign": "docs/design/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export(['ENn8Q','kYI9H','uePpj','w25dY'], 'png', '<repo>/e2e/references/paf-202-matches', {scale:1})",
+  "width": 390,
+  "height": 844,
+  "sizeNote": "width/height are the live viewport clip (390x844) and the export size of kYI9H, uePpj and w25dY. ENn8Q is exported taller: see frames.ENn8Q.exportSize.",
+  "filters": "D6: list_match_events accepts community, cursor, entry, limit and as_of only. The frame filter chips are not rendered; no filter behavior is invented.",
+  "frames": {
+    "ENn8Q": {
+      "state": "Available matches — populated",
+      "exportSize": [390, 920],
+      "viewportOffsetY": 76,
+      "route": "/matches",
+      "sha256": "3ce5772923d9b5eb7531be43f88d09d4fff23ef387ced0c305e29283dcb389c7",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/ENn8Q-light.png",
+      "snapshotSha256": "883e4f553de7111683a08cf3cdcb42e9095d3c9fb8c825fe033b6992eb3127a0"
+    },
+    "kYI9H": {
+      "state": "Available matches — empty",
+      "route": "/matches (empty)",
+      "sha256": "de701afcf8e49ef3db1209fc6cb2c2c6ad5ca1c9c92e4dd180d9dab9f58fc472",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/kYI9H-light.png",
+      "snapshotSha256": "0421aad9161a864b75580e69b272af261589405038d25036baad36d450a2306e"
+    },
+    "uePpj": {
+      "state": "My matches",
+      "route": "/matches/my",
+      "sha256": "de64ad23d480e7243d8d6d72fd889a1f8ef8f209939688fdee3a9918ebe2dafd",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/uePpj-light.png",
+      "snapshotSha256": "5f4c47d6798f72a23ddd8aecc5e3f5880265878becbca703ac9d29ebc8f52317"
+    },
+    "w25dY": {
+      "state": "Past matches",
+      "route": "/matches/past",
+      "sha256": "f6902e226df26876e8cfb26d31eb60fe180c9c98af7d97c1314309840ddc7452",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/w25dY-light.png",
+      "snapshotSha256": "384c95a1363a51b5c0a0062785b15c06af77bb2d5b502c24714d8787ddeeec0a"
+    }
+  },
+  "frameRegions": {
+    "ENn8Q": {
+      "title": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 54,
+          "width": 119,
+          "height": 36
+        },
+        "offsetY": 44,
+        "geometry": ["x"],
+        "classification": "Token: --font-size-28 is the nearest token to the frame's 30px h1 (documented in assertListChrome); the live glyph box is 7.92px narrower and 5.2px shorter, so the 0.3205 residual is not budgeted. Not fixture noise."
+      },
+      "newAction": {
+        "status": "finding",
+        "reference": {
+          "x": 282,
+          "y": 48,
+          "width": 88,
+          "height": 44
+        },
+        "offsetY": 44,
+        "geometry": ["y", "height"],
+        "classification": "Layout: the frame right-aligns the 88x44 button at x=282; live sits 96.37px further left and 7.62px narrower so it clears the global language/theme chips, which the frame does not draw. Intentional shell adaptation; reported, not masked."
+      },
+      "tabs": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 104,
+          "width": 350,
+          "height": 56
+        },
+        "offsetY": 44,
+        "geometryTolerance": 1,
+        "budget": 0.035,
+        "classification": "Segment track 350x56 aligned on the frame track (frame offsets the 44px device status bar). Measured residual 0.0311; budget = measured + 0.004 for label and pill rasterization (the active pill shadow is drawn differently by Pencil and Chromium)."
+      },
+      "bottomNav": {
+        "status": "gated",
+        "reference": {
+          "x": 0,
+          "y": 839,
+          "width": 390,
+          "height": 81
+        },
+        "offsetY": 76,
+        "geometryTolerance": 1,
+        "budget": 0.05,
+        "classification": "Bottom navigation: exact box (390x81) and position. Measured residual 0.0432; budget = measured + margin for font and icon rasterization (Pencil vs Chromium). The live label row sits 2px above the frame label row; reported here, not widened into the budget."
+      },
+      "card": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 260,
+          "width": 350,
+          "height": 146
+        },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card renders level range, creator and Map as separate lines (D6, list_match_events has no filters; see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
+      },
+      "cardEdge": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 260,
+          "width": 350,
+          "height": 146
+        },
+        "offsetY": 0,
+        "crop": {
+          "dx": -20,
+          "dy": 22,
+          "width": 32,
+          "height": 20
+        },
+        "geometry": ["x", "width"],
+        "geometryTolerance": 1,
+        "budget": 0.005,
+        "classification": "Card edge: 32x20 crop at x=0, card top + 22, independently aligned on the frame card and the live card. Contains page background, hairline and card padding, never copy. Measured 0; budget 0.005 (3 px of 640) covers anti-aliasing only."
+      }
+    },
+    "kYI9H": {
+      "title": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 54,
+          "width": 119,
+          "height": 36
+        },
+        "offsetY": 44,
+        "geometry": ["x"],
+        "classification": "Token: --font-size-28 is the nearest token to the frame's 30px h1 (documented in assertListChrome); the live glyph box is 7.92px narrower and 5.2px shorter, so the 0.3205 residual is not budgeted. Not fixture noise."
+      },
+      "newAction": {
+        "status": "finding",
+        "reference": {
+          "x": 282,
+          "y": 48,
+          "width": 88,
+          "height": 44
+        },
+        "offsetY": 44,
+        "geometry": ["y", "height"],
+        "classification": "Layout: the frame right-aligns the 88x44 button at x=282; live sits 96.37px further left and 7.62px narrower so it clears the global language/theme chips, which the frame does not draw. Intentional shell adaptation; reported, not masked."
+      },
+      "tabs": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 104,
+          "width": 350,
+          "height": 56
+        },
+        "offsetY": 44,
+        "geometryTolerance": 1,
+        "budget": 0.035,
+        "classification": "Segment track 350x56 aligned on the frame track (frame offsets the 44px device status bar). Measured residual 0.0311; budget = measured + 0.004 for label and pill rasterization (the active pill shadow is drawn differently by Pencil and Chromium)."
+      },
+      "bottomNav": {
+        "status": "gated",
+        "reference": {
+          "x": 0,
+          "y": 763,
+          "width": 390,
+          "height": 81
+        },
+        "offsetY": 0,
+        "geometryTolerance": 1,
+        "budget": 0.075,
+        "classification": "Bottom navigation: exact box (390x81) and position. Measured residual 0.0678; budget = measured + margin for font and icon rasterization (Pencil vs Chromium). The live label row sits 2px above the frame label row; reported here, not widened into the budget."
+      },
+      "card": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 229,
+          "width": 350,
+          "height": 253
+        },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card renders level range, creator and Map as separate lines (D6, list_match_events has no filters; see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
+      },
+      "cardEdge": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 229,
+          "width": 350,
+          "height": 253
+        },
+        "offsetY": 0,
+        "crop": {
+          "dx": -20,
+          "dy": 22,
+          "width": 32,
+          "height": 20
+        },
+        "geometry": ["x", "width"],
+        "geometryTolerance": 1,
+        "budget": 0.005,
+        "classification": "Card edge: 32x20 crop at x=0, card top + 22, independently aligned on the frame card and the live card. Contains page background, hairline and card padding, never copy. Measured 0; budget 0.005 (3 px of 640) covers anti-aliasing only."
+      }
+    },
+    "uePpj": {
+      "title": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 54,
+          "width": 119,
+          "height": 36
+        },
+        "offsetY": 44,
+        "geometry": ["x"],
+        "classification": "Token: --font-size-28 is the nearest token to the frame's 30px h1 (documented in assertListChrome); the live glyph box is 7.92px narrower and 5.2px shorter, so the 0.3205 residual is not budgeted. Not fixture noise."
+      },
+      "newAction": {
+        "status": "finding",
+        "reference": {
+          "x": 282,
+          "y": 48,
+          "width": 88,
+          "height": 44
+        },
+        "offsetY": 44,
+        "geometry": ["y", "height"],
+        "classification": "Layout: the frame right-aligns the 88x44 button at x=282; live sits 96.37px further left and 7.62px narrower so it clears the global language/theme chips, which the frame does not draw. Intentional shell adaptation; reported, not masked."
+      },
+      "tabs": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 104,
+          "width": 350,
+          "height": 56
+        },
+        "offsetY": 44,
+        "geometryTolerance": 1,
+        "budget": 0.036,
+        "classification": "Segment track 350x56 aligned on the frame track (frame offsets the 44px device status bar). Measured residual 0.0317; budget = measured + 0.004 for label and pill rasterization (the active pill shadow is drawn differently by Pencil and Chromium)."
+      },
+      "bottomNav": {
+        "status": "gated",
+        "reference": {
+          "x": 0,
+          "y": 763,
+          "width": 390,
+          "height": 81
+        },
+        "offsetY": 0,
+        "geometryTolerance": 1,
+        "budget": 0.075,
+        "classification": "Bottom navigation: exact box (390x81) and position. Measured residual 0.0678; budget = measured + margin for font and icon rasterization (Pencil vs Chromium). The live label row sits 2px above the frame label row; reported here, not widened into the budget."
+      },
+      "card": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 204,
+          "width": 350,
+          "height": 147
+        },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card renders level range, creator and Map as separate lines (D6, list_match_events has no filters; see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
+      },
+      "cardEdge": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 204,
+          "width": 350,
+          "height": 147
+        },
+        "offsetY": 0,
+        "crop": {
+          "dx": -20,
+          "dy": 22,
+          "width": 32,
+          "height": 20
+        },
+        "geometry": ["x", "width"],
+        "geometryTolerance": 1,
+        "budget": 0.005,
+        "classification": "Card edge: 32x20 crop at x=0, card top + 22, independently aligned on the frame card and the live card. Contains page background, hairline and card padding, never copy. Measured 0; budget 0.005 (3 px of 640) covers anti-aliasing only."
+      }
+    },
+    "w25dY": {
+      "title": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 54,
+          "width": 119,
+          "height": 36
+        },
+        "offsetY": 44,
+        "geometry": ["x"],
+        "classification": "Token: --font-size-28 is the nearest token to the frame's 30px h1 (documented in assertListChrome); the live glyph box is 7.92px narrower and 5.2px shorter, so the 0.3205 residual is not budgeted. Not fixture noise."
+      },
+      "newAction": {
+        "status": "finding",
+        "reference": {
+          "x": 282,
+          "y": 48,
+          "width": 88,
+          "height": 44
+        },
+        "offsetY": 44,
+        "geometry": ["y", "height"],
+        "classification": "Layout: the frame right-aligns the 88x44 button at x=282; live sits 96.37px further left and 7.62px narrower so it clears the global language/theme chips, which the frame does not draw. Intentional shell adaptation; reported, not masked."
+      },
+      "tabs": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 102,
+          "width": 350,
+          "height": 56
+        },
+        "offsetY": 44,
+        "geometryTolerance": 2,
+        "budget": 0.034,
+        "classification": "Segment track 350x56 aligned on the frame track (frame offsets the 44px device status bar). Measured residual 0.0303; budget = measured + 0.004 for label and pill rasterization (the active pill shadow is drawn differently by Pencil and Chromium). Pencil lays the w25dY header 2px higher than ENn8Q/kYI9H/uePpj (frame-internal inconsistency; live uses one shared header on all three routes), so this frame gates y within 2px."
+      },
+      "bottomNav": {
+        "status": "gated",
+        "reference": {
+          "x": 0,
+          "y": 763,
+          "width": 390,
+          "height": 81
+        },
+        "offsetY": 0,
+        "geometryTolerance": 1,
+        "budget": 0.075,
+        "classification": "Bottom navigation: exact box (390x81) and position. Measured residual 0.0678; budget = measured + margin for font and icon rasterization (Pencil vs Chromium). The live label row sits 2px above the frame label row; reported here, not widened into the budget."
+      },
+      "card": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 168,
+          "width": 350,
+          "height": 89
+        },
+        "offsetY": 0,
+        "geometry": ["x", "width"],
+        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card renders level range, creator and Map as separate lines (D6, list_match_events has no filters; see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
+      },
+      "cardEdge": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 168,
+          "width": 350,
+          "height": 89
+        },
+        "offsetY": 0,
+        "crop": {
+          "dx": -20,
+          "dy": 22,
+          "width": 32,
+          "height": 20
+        },
+        "geometry": ["x", "width"],
+        "geometryTolerance": 1,
+        "budget": 0.005,
+        "classification": "Card edge: 32x20 crop at x=0, card top + 22, independently aligned on the frame card and the live card. Contains page background, hairline and card padding, never copy. Measured 0; budget 0.005 (3 px of 640) covers anti-aliasing only."
+      }
+    }
+  },
+  "toleranceEvidence": {
+    "ENn8Q": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "The frame draws filter chips (This week, Competitive, Friendly, My level) and one fused meta line. list_match_events has no filter arguments (D6), so the chips are omitted and participation, level range and creator render as separate muted lines. Card order (time/price, venue, chips, participation), day headings, segment track, 20px gutter and 44px/48px controls are probed exactly. Times and day rows are masked because fixture instants move with the clock. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "kYI9H": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "The frame is the filtered-empty state (Clear filters + Create match). No filter exists (D6), so the route renders the truthful empty state with one Create match action and a hint line. Header, segment track and empty card are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "uePpj": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "Fixture venues, times and counts differ from the sample. Creator/organizer badges are not rendered as personal chips (existing behavior is preserved). Day heading, card order and chip tones are probed exactly; times and day rows are masked. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "w25dY": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "The frame rows (W/L glyph, score, disputed/cancelled copy) are the statistics MatchHistory feature, masked here and owned by the statistics units; the event cards follow the Clubhouse card. Past is flat with no day headings. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    }
+  }
+}

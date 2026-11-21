@@ -20,7 +20,7 @@ vi.mock('../src/features/matches/matches.functions', () => ({
   getMatchLeagueOptions: mocks.leagues
 }));
 vi.mock('@tanstack/react-router', () => ({ useRouter: () => ({ invalidate: mocks.invalidate }) }));
-import { MatchEditDialog } from '../src/features/matches/MatchEditDialog';
+import { MatchEditPage } from '../src/features/matches/MatchEditPage';
 
 const eventId = '11111111-1111-4111-8111-111111111111';
 const springId = '44444444-4444-4444-8444-444444444444';
@@ -63,12 +63,7 @@ const rankedEvent = makeMatchDetail({
 function element(event = unrankedEvent, locale: Locale = 'en') {
   return (
     <I18nextProvider i18n={createI18n(locale)}>
-      <MatchEditDialog
-        event={event}
-        version={4}
-        onClose={mocks.close}
-        returnFocus={{ current: null }}
-      />
+      <MatchEditPage event={event} version={4} onClose={mocks.close} />
     </I18nextProvider>
   );
 }
@@ -98,7 +93,7 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe('Ranked/League edit dialog', () => {
+describe('Ranked/League edit page', () => {
   it('requests eligible Leagues for the edited schedule and switches Unranked to Ranked with visible impact', async () => {
     offer(spring);
     render(element());

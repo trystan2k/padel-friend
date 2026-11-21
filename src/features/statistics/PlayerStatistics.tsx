@@ -207,14 +207,6 @@ export function PlayerStatistics({
         )}
       </header>
 
-      {filterControls && (
-        <StatisticsFilterSection
-          id="player-stats-filters"
-          filters={stats.filters}
-          controls={filterControls}
-        />
-      )}
-
       <section aria-label={t('statistics.player.sections.highlights')} {...stylex.props(s.section)}>
         <dl {...stylex.props(s.hero)}>
           <MetricStat
@@ -279,6 +271,14 @@ export function PlayerStatistics({
       {children}
       {recentHistory !== undefined && (
         <PlayerRecentMatches response={recentHistory} isOwn={recentIsOwn} onRetry={onRecentRetry} />
+      )}
+
+      {filterControls && (
+        <StatisticsFilterSection
+          id="player-stats-filters"
+          filters={stats.filters}
+          controls={filterControls}
+        />
       )}
 
       <Section id="player-stats-matches" title={t('statistics.player.sections.matches')}>

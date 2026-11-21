@@ -1,6 +1,7 @@
 import { Select } from '@base-ui/react/select';
 import * as stylex from '@stylexjs/stylex';
 import { useTranslation } from 'react-i18next';
+import { communityStyles } from '../community/community-surface.styles';
 import type { HomeCommunity } from './home-contracts';
 import { homeStyles as s } from './home.styles';
 
@@ -8,11 +9,13 @@ import { homeStyles as s } from './home.styles';
 export function CommunitySwitcher({
   communities,
   value,
-  onSelect
+  onSelect,
+  variant = 'home'
 }: {
   communities: HomeCommunity[];
-  value: string;
+  value: string | null;
   onSelect: (communityId: string) => void;
+  variant?: 'home' | 'community';
 }) {
   const { t } = useTranslation();
   const items = communities.map((community) => ({ value: community.id, label: community.name }));
@@ -25,9 +28,15 @@ export function CommunitySwitcher({
       }}
     >
       <div {...stylex.props(s.switcher)}>
-        <Select.Label {...stylex.props(s.switcherLabel)}>{t('home.switcherLabel')}</Select.Label>
-        <Select.Trigger {...stylex.props(s.trigger)}>
-          <Select.Value />
+        <Select.Label
+          {...stylex.props(s.switcherLabel, variant === 'community' && communityStyles.srOnly)}
+        >
+          {t('home.switcherLabel')}
+        </Select.Label>
+        <Select.Trigger
+          {...stylex.props(s.trigger, variant === 'community' && communityStyles.switchTrigger)}
+        >
+          <Select.Value placeholder={t('home.switcherLabel')} />
           <Select.Icon aria-hidden="true">▾</Select.Icon>
         </Select.Trigger>
       </div>

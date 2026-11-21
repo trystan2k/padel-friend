@@ -3,6 +3,41 @@
     "skipToContent": "Skip to main content",
     "stale": "Live updates are delayed. Displayed information may be out of date. Updates will resume automatically."
   },
+  "communitySurface": {
+    "navigation": "Community sections",
+    "overview": "Overview",
+    "leagues": "Leagues",
+    "skill": "Skill",
+    "league": "League",
+    "rankingKind": "Ranking type",
+    "settings": "Community settings",
+    "public": "Public",
+    "private": "Private",
+    "visibilityUnavailable": "Visibility unavailable",
+    "members": "Members",
+    "activeWeek": "Active this week",
+    "unavailable": "Unavailable",
+    "invite": "Invite players",
+    "inviteUnavailable": "Invitations are not available here.",
+    "joinCountUnavailable": "Join request count unavailable.",
+    "upcoming": "Upcoming matches",
+    "noUpcoming": "No upcoming matches to show.",
+    "skillDescription": "Your app-wide level and rank in this community. Reliability below 50% is shown as provisional.",
+    "skillListUnavailable": "The full community skill leaderboard is unavailable.",
+    "provisional": "Provisional level",
+    "noStandings": "No standings rows yet.",
+    "selfName": "{{name}} (you)"
+  },
+  "appShell": {
+    "navigation": "Main navigation",
+    "nav": {
+      "home": "Home",
+      "matches": "Matches",
+      "create": "Create a match",
+      "community": "Community",
+      "me": "Me"
+    }
+  },
   "languageNames": {
     "en": "English",
     "pt-BR": "Português (Brasil)",
@@ -22,22 +57,20 @@
   "light": "Light",
   "dark": "Dark",
   "checkEmail": "Check your email to confirm your account.",
-  "signInWithGoogle": "CONTINUE WITH GOOGLE",
+  "signInWithGoogle": "Continue with Google",
   "googleSignInError": "Google sign-in was not completed. Please try again.",
   "communityOnboarding": {
-    "step": "STEP 3 OF 3  ·  COMMUNITY",
-    "createStep": "STEP 3 OF 3  ·  CREATE COMMUNITY",
+    "step": "Step 3 of 3 · Community",
     "title": "Find your community",
-    "subtitle": "Join a group or start one of your own.",
-    "lead": "Play with people nearby",
-    "help": "Public communities are visible to everyone. You can join more communities later.",
+    "lead": "Join a community",
+    "help": "Matches and rankings live inside communities. You can join more later.",
     "searchLabel": "Search community",
     "searchLoading": "Searching communities…",
     "searchPlaceholder": "Search by name or city",
-    "join": "JOIN COMMUNITY",
-    "requestToJoin": "REQUEST TO JOIN",
-    "createEntry": "+  CREATE A COMMUNITY",
-    "skip": "I’LL DO THIS LATER",
+    "join": "Join",
+    "requestToJoin": "Request",
+    "createEntry": "+ Create a community",
+    "skip": "I’ll do this later",
     "cityPolicy": "{{city}} · {{policy}}",
     "memberCount_one": "{{formattedCount}} member",
     "memberCount_other": "{{formattedCount}} members",
@@ -52,32 +85,30 @@
     "emptySearch": "No communities match your search.",
     "noCommunities": "No public communities yet.",
     "loadFailed": "Could not load communities.",
-    "retry": "TRY AGAIN",
-    "loadMore": "LOAD MORE",
-    "joining": "JOINING…",
-    "requesting": "REQUESTING…",
-    "createTitle": "Create a community",
-    "createSubtitle": "Bring your players together.",
-    "createLead": "Your group, your rules.",
-    "createHelp": "Choose who can find and join your community.",
-    "nameLabel": "COMMUNITY NAME",
+    "retry": "Try again",
+    "loadMore": "Load more",
+    "joining": "Joining…",
+    "requesting": "Requesting…",
+    "createTitle": "New community",
+    "createLead": "Start a community",
+    "nameLabel": "Name",
     "nameExample": "Northside Padel Club",
-    "visibilityLegend": "VISIBILITY",
+    "visibilityLegend": "Who can join?",
     "public": "Public",
     "publicHelp": "Discoverable by authenticated players. Joining can be open or require approval.",
     "private": "Private",
     "privateHelp": "Invite-only. Only members and invited players can access it.",
-    "optionalDetails": "OPTIONAL DETAILS",
-    "descriptionLabel": "Description",
-    "descriptionExample": "Description · e.g. after-work padel and weekend games",
+    "descriptionLabel": "Description (optional)",
+    "cityExample": "Madrid, Chamberí",
+    "descriptionExample": "After-work padel and weekend games",
     "cityLabel": "City or area",
-    "cityExample": "City or area · Madrid, Chamberí",
-    "adminNote": "You’ll become the first community admin. Add members and create matches anytime.",
-    "createSubmit": "CREATE COMMUNITY",
-    "back": "BACK TO COMMUNITIES",
-    "creating": "CREATING…",
+    "adminNote": "You’ll be the first admin.",
+    "createSubmit": "Create community",
+    "back": "Back to communities",
+    "creating": "Creating…",
     "created": "Your community is ready.",
-    "finish": "GO TO DASHBOARD",
+    "finish": "Go to dashboard",
+    "done": "Finish",
     "createFailed": "Could not create community. Please try again.",
     "createRateLimited": "You have created too many communities recently. Try again later.",
     "createOwnedLimit": "You have reached the maximum number of communities you can own.",
@@ -89,11 +120,27 @@
     "inviteConfirmDescription": "Only continue if you expected this invitation. Confirming signs you in to the account linked to the invitation.",
     "inviteAccountWarning": "You are currently signed in as {{email}}. Continuing will replace this session with the invited account. Cancel to keep your current account.",
     "inviteAccountWarningUnknown": "You are currently signed in. Continuing will replace your current session with the invited account. Cancel to keep your current account.",
-    "inviteSwitchConfirm": "SWITCH ACCOUNT AND ACCEPT INVITATION",
-    "inviteConfirm": "ACCEPT INVITATION",
-    "inviteCancel": "CANCEL AND KEEP CURRENT ACCOUNT",
+    "inviteSwitchConfirm": "Switch account and accept invitation",
+    "inviteConfirm": "Accept invitation",
+    "inviteCancel": "Cancel and keep current account",
     "inviteConfirmExpired": "This confirmation has expired or is unavailable. Open your original invitation again to continue.",
     "inviteConfirmVerificationFailed": "We could not verify your current account. Try opening your invitation again.",
+    "inviteBarTitle": "Invitation",
+    "inviteAccepting": "Accepting invitation…",
+    "inviteBusyTitle": "Accepting your invitation",
+    "inviteBusyDescription": "We’re checking your invitation. This may take a moment.",
+    "inviteFailedTitle": "Invitation couldn’t be verified",
+    "inviteExpiredTitle": "Invitation expired",
+    "inviteHelpTitle": "Need help?",
+    "inviteHelpHint": "Contact support if opening your invitation again still doesn’t work.",
+    "inviteHelpLink": "Contact support",
+    "inviteBackToSignIn": "Back to sign in",
+    "passwordStrengthLabel": "Password strength",
+    "passwordStrengthEmpty": "Enter a password",
+    "passwordStrengthWeak": "Weak",
+    "passwordStrengthFair": "Fair",
+    "passwordStrengthGood": "Good",
+    "passwordStrengthStrong": "Strong",
     "invitationEmail": {
       "subject": "You were added to a padel match",
       "heading": "You're in the game",
@@ -104,57 +151,67 @@
       "privacyCta": "Privacy policy"
     },
     "claim": {
-      "step": "FINISH SETTING UP",
+      "step": "Finish setting up",
       "title": "Finish setting up your account",
       "subtitle": "Your email is confirmed. Check your details to claim your player profile.",
       "levelNote": "The organizer estimated this starting level. Adjust it if it does not feel right.",
+      "lockedLevelTitle": "Your starting level",
+      "locked": "Locked",
+      "estimatedLevel": "Estimated level",
       "levelLocked": "Your starting level is locked because you already have rated games.",
-      "submit": "CLAIM MY PROFILE",
+      "submit": "Continue",
       "failed": "Couldn't claim your profile. Try again.",
       "verifyTitle": "Confirm your email first",
       "verifySubtitle": "You were added to a match. Confirm this email address to claim your profile.",
       "verifyOptionsTitle": "Open your invitation email",
       "verifyOptions": "Use the link in the invitation email, sign in with Google using the same address, or get a new link by email.",
-      "verifyAction": "EMAIL ME A LINK",
+      "verifyAction": "Email me a link",
+      "verifyBarTitle": "Verify email",
       "verifyFailed": "Couldn't start verification. Try again.",
       "invitedNotice_one": "You were invited to {{count}} match.",
       "invitedNotice_other": "You were invited to {{count}} matches.",
       "passwordTitle": "Choose a password",
       "passwordSubtitle": "Your profile is claimed. Set a password so you can sign in with your email next time.",
       "passwordSkipHelp": "You can already sign in with your linked account. A password is optional.",
-      "passwordSkip": "SKIP FOR NOW"
+      "passwordSkip": "Skip for now",
+      "passwordBarTitle": "Set password"
     },
     "welcomeBrand": "PADEL FRIENDS",
-    "welcomeTitle": "Welcome",
-    "welcomeSubtitle": "Log in to find your next match.",
-    "forgotLink": "Forgot your password?",
+    "loginBrand": "Padel Friends",
+    "welcomeTitle": "Find your next match",
+    "welcomeSubtitle": "Log in to play with your community.",
+    "forgotLink": "Forgot password?",
     "forgotTitle": "Forgot your password?",
-    "forgotDescription": "Enter the email address linked to your account. We'll send a secure link to reset your password.",
-    "forgotEmailNote": "If an account exists for this email, you'll receive a reset link.",
-    "forgotSubmit": "SEND RESET LINK",
+    "forgotDescription": "Enter the email linked to your account and we'll send a secure reset link.",
+    "forgotEmailNote": "If an account exists, you'll receive a reset link.",
+    "forgotSubmit": "Send reset link",
     "forgotInvalidEmail": "Enter a valid email address.",
     "forgotFailed": "We couldn't send the reset link. Try again later.",
-    "backToSignIn": "BACK TO SIGN IN",
-    "inboxNoticeTitle": "Check your inbox",
-    "inboxNoticeCopy": "If an account exists for that email, a password reset link is on its way. Open it to create a new password.",
+    "backToSignIn": "Back to log in",
+    "back": "Back",
+    "accountBarTitle": "Create account",
+    "forgotBarTitle": "Reset password",
+    "resetBarTitle": "New password",
+    "resetRuleMatch": "Both entries match",
+    "ruleMet": "Met",
+    "ruleUnmet": "Not met",
+    "inboxNoticeCopy": "If an account exists for that email, a reset link is on its way. Open it to set a new password.",
     "resetTitle": "Create a new password",
-    "resetDescription": "Choose a new password for your account.",
     "resetNewPasswordLabel": "New password",
     "resetNewPasswordPlaceholder": "Enter new password",
-    "resetConfirmPasswordLabel": "Confirm new password",
+    "resetConfirmPasswordLabel": "Repeat password",
     "resetConfirmPlaceholder": "Re-enter new password",
-    "resetRequirements": "Use at least {{min}} characters with upper and lower case letters, a number and a symbol. Both entries must match.",
-    "resetSubmit": "UPDATE PASSWORD",
+    "resetSubmit": "Save password",
     "resetMismatch": "Passwords do not match.",
     "passwordInvalid": "Password must be at least {{min}} characters with upper and lower case letters, a number and a symbol.",
     "resetFailed": "We couldn't update your password. Try again.",
-    "loginEmailLabel": "Email address",
+    "loginEmailLabel": "Email",
     "loginEmailPlaceholder": "name@example.com",
     "loginPasswordLabel": "Password",
-    "loginPasswordPlaceholder": "••••••••••••",
-    "loginSubmit": "LOG IN",
-    "signupSubmit": "CREATE ACCOUNT",
-    "signupLink": "Create account",
+    "loginPasswordPlaceholder": "Enter password",
+    "loginSubmit": "Log in",
+    "signupSubmit": "Create account",
+    "signupLink": "Create an account",
     "signupPasswordLabel": "Password",
     "signupPasswordPlaceholder": "Enter password",
     "passwordRequirements": "Use at least {{min}} characters with upper and lower case letters, a number and a symbol.",
@@ -165,29 +222,30 @@
     "captchaRetry": "The security check was not accepted. Complete it again and resubmit.",
     "captchaLoading": "Loading the security check…",
     "captchaExpired": "The security check expired. Complete it again.",
-    "signupSignIn": "SIGN IN",
+    "signupSignIn": "Sign in",
     "unauthorized": "Sign-in failed. Check your details and try again.",
     "sessionExpired": "Your session expired. Sign in again.",
     "retry": "Try again",
-    "accountIntro": "Your game, all in one place.",
-    "emailAddress": "Email address",
+    "emailAddress": "Email",
     "emailPlaceholder": "you@example.com",
-    "accountPrompt": "New to Padel Friends?",
+    "accountPrompt": "New here?",
     "returnPrompt": "Already have an account?",
-    "accountStep": "STEP 1 OF 3 · ACCOUNT",
-    "accountTitle": "Create your account",
-    "accountSubtitle": "Sign in to sync your matches and level.",
-    "accountDescription": "Create a secure account to save your player profile, match history, and community rankings.",
-    "or": "OR",
-    "profileFollows": "Your sign-in stays private. Next, set your display name, court side, and starting level.",
+    "accountStep": "Step 1 of 3 · Account",
+    "accountTitle": "Let's get you on court",
+    "accountSubtitle": "Save your level, matches and rankings in one place.",
+    "or": "or",
+    "profileFollows": "Next, you set your display name and level.",
     "privacyLink": "Privacy policy"
   },
   "onboarding": {
-    "step": "STEP 2 OF 3 · PLAYER PROFILE",
-    "title": "Let's set your level",
-    "subtitle": "A good starting point makes every match fair.",
-    "name": "DISPLAY NAME",
-    "side": "PREFERRED COURT SIDE",
+    "barTitle": "Player profile",
+    "step": "Step 2 of 3 · Player profile",
+    "title": "Set your starting level",
+    "subtitle": "A fair start makes every match better. It adjusts as you play.",
+    "name": "Display name",
+    "hand": "Dominant hand",
+    "bio": "Bio",
+    "side": "Preferred court side",
     "sideLeft": "Left side",
     "sideRight": "Right side",
     "sideEither": "Either side",
@@ -197,25 +255,26 @@
     "handLeft": "Left",
     "handRight": "Right",
     "handPreferNot": "Prefer not to say",
-    "level": "YOUR STARTING LEVEL",
-    "preciseLevel": "EXACT STARTING LEVEL (0.1 STEPS)",
+    "level": "Starting level",
+    "preciseLevel": "Exact starting level (0.1 steps)",
     "levelScale": "Starting level scale",
     "levelChoice": "Select level {{level}}",
     "levelDecrease": "Decrease level by 0.1",
     "levelIncrease": "Increase level by 0.1",
-    "beginner": "BEGINNER",
-    "advanced": "ADVANCED",
+    "beginner": "Beginner",
+    "advanced": "Expert",
     "levelHelp": "Choose the level that feels right.",
     "scaleDescription": "From 0.0 beginner to 7.0 advanced. Your level adjusts as you play.",
     "reliabilityHelp": "No experience needed. Your level is valid now and becomes more established with each confirmed competitive game.",
     "reliabilityLabel": "{{value}}% reliability",
-    "save": "SAVE PLAYER PROFILE",
+    "save": "Continue",
     "validationName": "Enter a display name of up to 80 characters.",
     "validationSide": "Select your preferred court side.",
     "validationLevel": "Choose a level from 0.0 to 7.0 in steps of 0.1.",
     "saving": "Saving…",
     "failed": "Couldn't save your player profile. Try again.",
-    "avatarLabel": "PROFILE PHOTO (OPTIONAL)",
+    "avatarLabel": "Profile photo (optional)",
+    "avatarChoose": "Choose a photo",
     "avatarHelp": "JPEG, PNG, or WebP · up to 2 MB. You can also add one later from your profile.",
     "avatarInvalid": "Choose a JPEG, PNG, or WebP image no larger than 2 MB.",
     "avatarAlt": "Profile photo of {{name}}",
@@ -235,19 +294,40 @@
   },
   "profile": {
     "title": "Player profile",
-    "subtitle": "Your app-wide padel identity",
+    "links": {
+      "label": "Profile shortcuts",
+      "statistics": "Statistics",
+      "matchHistory": "Match history",
+      "notifications": "Notifications"
+    },
     "edit": "Edit profile",
     "save": "Save changes",
-    "dominantHand": "DOMINANT HAND",
+    "dominantHand": "Dominant hand",
     "handLeft": "Left hand",
     "handRight": "Right hand",
     "handNone": "Not specified",
-    "bio": "BIO",
+    "bio": "Bio",
     "availability": "Availability",
     "availabilityHelp": "Optional. Share the days and times of day you usually like to play. They are two separate preferences, not fixed appointments.",
     "availabilityDaysLegend": "Days you usually play",
     "availabilityTimesLegend": "Times of day you usually play",
     "availabilityNotProvided": "Not provided",
+    "navTitle": "Profile",
+    "cancel": "Cancel",
+    "backToProfile": "Back to profile",
+    "changePhoto": "Change photo",
+    "preferredDays": "Preferred days",
+    "preferredTimes": "Preferred times",
+    "preferences": "Preferences",
+    "availabilityDaysShort": {
+      "MON": "Mon",
+      "TUE": "Tue",
+      "WED": "Wed",
+      "THU": "Thu",
+      "FRI": "Fri",
+      "SAT": "Sat",
+      "SUN": "Sun"
+    },
     "availabilityDays": {
       "MON": "Monday",
       "TUE": "Tuesday",
@@ -276,8 +356,8 @@
     "confirmedGroups": "Confirmed competitive groups",
     "joined": "Member since",
     "joinedOn": "Member since {{date}}",
-    "globalLevel": "GLOBAL LEVEL",
-    "levelScale": "LEVEL SCALE",
+    "globalLevel": "Global level",
+    "levelScale": "Level scale",
     "percent": "{{value}}%",
     "loadingTitle": "Loading profile",
     "errorTitle": "Couldn't load this screen",
@@ -297,7 +377,7 @@
     "loading": "Loading community administration…",
     "errorTitle": "Couldn’t load community administration",
     "backToDashboard": "Back to dashboard",
-    "requestBanner": "COMMUNITY ADMIN ACTIONS",
+    "requestBanner": "Community admin actions",
     "requestPrivacy": "Admin review only",
     "requestHistoryUnavailable": "Resolved request and invitation delivery history is unavailable.",
     "cityUnavailable": "City not listed",
@@ -307,9 +387,9 @@
       "requests": "Access requests",
       "members": "Members",
       "member": "Member controls",
-      "settings": "Community settings",
+      "settings": "Settings",
       "venues": "Saved venues",
-      "audit": "Community audit"
+      "audit": "Audit log"
     },
     "nav": {
       "requests": "Requests",
@@ -322,8 +402,8 @@
     "searchPlaceholder": "Search members",
     "memberFilters": "Filter community members",
     "memberJoined": "Member since {{date}}",
-    "search": "SEARCH",
-    "inviteUnavailable": "INVITE MEMBER · UNAVAILABLE",
+    "search": "Search",
+    "inviteUnavailable": "Invite member · unavailable",
     "requestMeta": "Requested {{date}} · {{privacy}}",
     "memberMeta": "{{status}} · {{role}} · since {{date}}",
     "memberAdminProfile": "{{name}} · Level {{level}} · {{reliability}}% reliability",
@@ -331,7 +411,7 @@
     "levelLabel": "App-wide level {{level}} · reliability {{reliability}}%",
     "ratingsUnavailable": "Ratings unavailable",
     "levelReadOnly": "Community admins can view app-wide level and reliability, but cannot edit player level.",
-    "memberActiveBanner": "ACTIVE MEMBER",
+    "memberActiveBanner": "Active member",
     "rolePanelTitle": "Community role",
     "rolePanelActive": "{{role}} · promote or demote",
     "rolePanelInactive": "Inactive member · reactivate",
@@ -353,8 +433,8 @@
       "remove": "Remove from community"
     },
     "confirm": "Confirm {{action}} for {{name}}?",
-    "confirmAction": "CONFIRM CHANGE",
-    "cancel": "CANCEL",
+    "confirmAction": "Confirm change",
+    "cancel": "Cancel",
     "result": {
       "approve": "Request approved.",
       "deny": "Request denied.",
@@ -395,10 +475,10 @@
     },
     "settingsUnavailable": "Timezone, currency, and league defaults are unavailable until supported by community settings.",
     "settingsAdminNote": "Community admins control access. Player level stays read-only.",
-    "save": "SAVE CHANGES",
+    "save": "Save changes",
     "refresh": "Refresh data",
-    "loadMore": "LOAD MORE CHANGES",
-    "retry": "TRY AGAIN",
+    "loadMore": "Load more",
+    "retry": "Try again",
     "empty": {
       "requests": "No pending access requests.",
       "members": "No members match this search.",
@@ -439,7 +519,7 @@
       "settingsUpdated": "Community settings updated",
       "invitationAdded": "Invitation issued",
       "invitationUpdated": "Invitation updated",
-      "recentChanges": "RECENT CHANGES",
+      "recentChanges": "Recent changes",
       "unknownActor": "Actor identity unavailable",
       "openMember": "View member",
       "leagueCorrectionsUnavailable": "League-result correction audit events are unavailable until league results and an authorized correction workflow exist."
@@ -484,7 +564,13 @@
     "oneWayNotice": "Messages are one-way. Replies, email and live delivery are not supported."
   },
   "communityInvites": {
-    "title": "Inviting people",
+    "detailLabel": "Invitation",
+    "pendingTitle": "Request sent",
+    "pendingHelp": "An admin must approve your membership before you can participate as a member.",
+    "memberCountUnavailable": "Member count unavailable",
+    "unavailableHelp": "This invitation can no longer be used.",
+    "approvalNotice": "Access depends on the community’s approval settings.",
+    "title": "Invite people",
     "searchLabel": "Search opted-in display names",
     "searchHelp": "Any private-community Admin may find your display name when enabled. Emails are never exposed.",
     "searching": "Searching…",
@@ -492,7 +578,7 @@
     "select": "Select",
     "invite": "Issue invitation",
     "issued": "One-time invitation token issued",
-    "copyLink": "Copy link",
+    "copyLink": "Copy token",
     "copied": "Copied",
     "shareHelp": "Link delivery unsupported. Share this one-time token securely.",
     "error": "Could not complete invitation action.",
@@ -508,7 +594,10 @@
   "home": {
     "title": "Home",
     "greeting": "Hello, {{name}}",
-    "levelTitle": "YOUR LEVEL",
+    "levelTitle": "Your level",
+    "levelSummary": {
+      "rankUnavailable": "Your rank is not available right now."
+    },
     "switcherLabel": "Switch community",
     "selectionUnavailable": "That community is not available to you. Showing your default community instead.",
     "switching": "Loading community…",
@@ -641,7 +730,7 @@
     "disableDevice": "Disable on this device",
     "disabling": "Disabling…",
     "enabled": "Web Push is on for this device.",
-    "intentOff": "This device is ready, but Web Push is switched off above. Turn it on and save to receive notifications.",
+    "intentOff": "Push is off in your saved preferences. Turn it on and save to receive notifications.",
     "permissionDefault": "Your browser asks for permission only after you tap Enable.",
     "grantedNotSubscribed": "Notifications are allowed, but this device is not registered for Web Push yet.",
     "denied": "Notifications are blocked for Padel Friend. Allow them in your browser or device settings, then come back.",
@@ -663,11 +752,12 @@
   "notifications": {
     "title": "Notifications",
     "subtitle": "Updates about your padel community.",
-    "markAllRead": "MARK ALL READ",
+    "backHome": "Back to home",
+    "markAllRead": "Mark all read",
     "markRead": "Mark as read",
     "view": "View notification",
-    "today": "Today notifications",
-    "earlier": "Earlier notifications",
+    "today": "Today",
+    "earlier": "Earlier",
     "loading": "Loading notifications…",
     "error": "Could not load notifications.",
     "retry": "Try again",
@@ -680,6 +770,8 @@
     "utc": "UTC",
     "unread_one": "{{count}} unread notification",
     "unread_other": "{{count}} unread notifications",
+    "unreadRow": "Unread",
+    "readRow": "Read",
     "badgeUnknown": "Notifications",
     "badge_one": "Notifications · {{count}} unread notification",
     "badge_other": "Notifications · {{count}} unread notifications",
@@ -764,11 +856,14 @@
       "open": "View request",
       "approvedBody": "Your level is now {{level}}. The change applies to future matches only; past results and League standings are unchanged.",
       "rejectedBody": "Your level stays as it was. No rating change was made.",
-      "requested": "Requested: {{range}}",
-      "note": "Review note: {{note}}",
-      "decided": "Decided {{date}}"
+      "cardTitle": "Level review outcome",
+      "requestedLabel": "Requested range",
+      "updatedLabel": "Updated level",
+      "decidedLabel": "Decided",
+      "note": "Review note: {{note}}"
     },
     "result": {
+      "cardTitle": "Match result",
       "group": "Group {{number}}",
       "score": "Score: {{score}}",
       "submittedBy": "Submitted by {{name}}",
@@ -829,8 +924,8 @@
     "openTarget": "Open current details"
   },
   "notificationPreferences": {
-    "preferencesLink": "Notification preferences",
-    "title": "Notification preferences",
+    "preferencesLink": "Settings",
+    "title": "Notification settings",
     "back": "Back to notifications",
     "context": "In-app notifications remain available even when Web Push is off.",
     "pushTitle": "Web Push",
@@ -842,9 +937,16 @@
       "rankings": "Level & reliability",
       "leagues": "Leagues & standings"
     },
+    "categoryHelp": {
+      "community": "Approvals and invitations",
+      "matches": "Places, changes and cancellations",
+      "results": "Scores to review and disputes",
+      "rankings": "Level and ranking changes",
+      "leagues": "League updates and standings"
+    },
     "criticalTitle": "Critical in-app notifications",
     "criticalHelper": "Community invitations, approvals, denials, and removals always stay in your in-app notifications.",
-    "alwaysOn": "ALWAYS ON",
+    "alwaysOn": "Always on",
     "save": "Save preferences",
     "saving": "Saving preferences…",
     "saved": "Preferences saved.",
@@ -853,6 +955,13 @@
     "offline": "You are offline. Reconnect to save your preferences."
   },
   "matches": {
+    "new": "New",
+    "emptyHint": {
+      "available": "Create the match you want, or check back soon.",
+      "my": "Matches you join or organize show up here.",
+      "past": "Matches you have played show up here."
+    },
+    "group": { "count_one": "{{count}} match", "count_other": "{{count}} matches" },
     "competition": {
       "ranked": "Ranked",
       "unranked": "Unranked"
@@ -874,7 +983,7 @@
       "submit": "Add player",
       "submitting": "Adding…",
       "success": "{{name}} was added and invited.",
-      "offline": "You're offline. Reconnect to add a player.",
+      "offline": "You’re offline. Nothing was sent. Reconnect and try again.",
       "validation": {
         "name": "Enter a name of up to 80 characters.",
         "email": "Enter a valid email address",
@@ -1078,17 +1187,20 @@
         }
       },
       "diagnostics": {
-        "title": "Result repairs",
+        "title": "Repair diagnostics",
         "back": "Back",
         "entryLink": "Open result repairs",
-        "platformSubtitle": "Platform queue · sanitized progress and attempts",
-        "communitySubtitle": "Your community · updates after result corrections",
+        "platformContext": "Platform admin · Operations",
+        "communityContext": "Community admin · Operations",
+        "platformSubtitle": "Result correction repairs across communities.",
+        "communitySubtitle": "Result correction repairs in your community.",
         "summary": "Queue summary",
         "summaryCaption": "Repairs by status",
-        "jobs": "Repairs",
-        "empty": "No repairs yet.",
+        "jobs": "Repair queue",
+        "empty": "No repairs waiting",
         "never": "never",
         "scheduler": "Scheduler health",
+        "schedulerHealthy": "Scheduler healthy",
         "schedulerMissing": "The repair scheduler is not provisioned. Approved corrections stay queued until it runs.",
         "schedulerUnavailable": "The scheduler extension is not installed. Approved corrections stay queued until an operator runs them.",
         "overdue_one": "{{count}} overdue repair",
@@ -1124,19 +1236,27 @@
       }
     },
     "results": {
-      "navigation": "Main navigation",
+      "record": {
+        "scoreTitle": "Enter the score",
+        "reviewTitle": "Check and submit",
+        "reviewAction": "Review",
+        "matchup": "{{first}} vs {{second}}",
+        "setSummary": "{{set}}: {{first}} to {{second}} · {{status}}",
+        "ratingUnavailable": "Estimated rating change unavailable before confirmation.",
+        "competitiveUnranked": "Competitive · Unranked",
+        "competitive": "Competitive",
+        "confirmationNote": "Eligible players have 48 hours to approve or report a problem. If nobody rejects the result, it confirms automatically.",
+        "outcome": {
+          "team_a": "Team A wins · {{winnerSets}}–{{loserSets}}",
+          "team_b": "Team B wins · {{winnerSets}}–{{loserSets}}",
+          "draw": "Draw · third set unfinished",
+          "incomplete": "Incomplete"
+        }
+      },
       "globalRating": "Global rating only",
       "venueHeadline": "Play under the lights.",
       "overviewDate": "{{weekday}}, {{date}}",
       "openMap": "Open map ↗",
-      "navigationUnavailable": "This section is not available yet.",
-      "nav": {
-        "home": "Home",
-        "matches": "Matches",
-        "community": "Community",
-        "ranking": "Ranking",
-        "profile": "Profile"
-      },
       "matchDetails": "Match details",
       "playedAtLabel": "Played at",
       "choosePlayedAt": "Choose date and time played",
@@ -1156,15 +1276,14 @@
       "autoConfirmDeadline": "Auto-confirm deadline: {{deadline}}.",
       "proposedWin": "Proposed score · {{winnerSets}}–{{loserSets}} sets to {{team}}",
       "proposedOther": "Proposed score · {{outcome}}",
-      "reviewProposal": "REVIEW PROPOSAL",
       "reviewUnavailable": "Proposal review is not available yet.",
       "matrixTeams": "Teams",
       "matrixSet": "S{{number}}",
       "title": "Record result",
       "steps": {
-        "players": "PLAYERS",
-        "score": "SCORE",
-        "review": "REVIEW"
+        "players": "Players",
+        "score": "Score",
+        "review": "Review"
       },
       "teams": {
         "team_a": "Team A",
@@ -1179,12 +1298,12 @@
       "groupLabel": "Game group",
       "group": "Group {{number}}",
       "sets": "Enter each set",
-      "setNumber": "SET {{number}}",
+      "setNumber": "Set {{number}}",
       "setState": {
-        "complete": "COMPLETE",
-        "inProgress": "IN PROGRESS",
-        "notPlayed": "NOT PLAYED",
-        "invalid": "INVALID"
+        "complete": "Complete",
+        "inProgress": "In progress",
+        "notPlayed": "Not played",
+        "invalid": "Invalid"
       },
       "setStateLabel": "Set {{number}} completion",
       "addSet": "Add set",
@@ -1216,7 +1335,6 @@
       "courtLabel": "Court label",
       "court": "Court",
       "notProvided": "Not provided",
-      "preview": "Review result",
       "review": {
         "approve": "Approve",
         "approving": "Recording approval…",
@@ -1238,9 +1356,9 @@
       },
       "back": "Back",
       "reload": "Reload latest result and roster",
-      "submit": "Submit for review",
+      "submit": "Submit result",
       "submitting": "Submitting result…",
-      "pending": "PENDING · NOT CONFIRMED",
+      "pending": "Pending · not confirmed",
       "pendingDescription": "No rating or League stats apply yet. Eligible players may approve or reject.",
       "lifecycleStatus": {
         "pending": "Pending review",
@@ -1256,7 +1374,7 @@
         "title": "Event result resolution",
         "progress": "{{confirmed}} of {{expected}} groups confirmed"
       },
-      "autoConfirmIn": "AUTO-CONFIRMS IN {{hours}}H",
+      "autoConfirmIn": "Auto-confirms in {{hours}}h",
       "autoConfirmCountdown": "Auto-confirms in {{time}}",
       "deadlineReached": "Deadline reached · checking current result",
       "awaitingResult": "Awaiting result",
@@ -1269,8 +1387,8 @@
       "confirmedAt": "Confirmed {{confirmedAt}}.",
       "timelineTitle": "Proposal timeline",
       "confirmation": {
-        "manual": "Confirmed · Manual",
-        "auto": "Confirmed · Auto 48H"
+        "manual": "Confirmed · manual",
+        "auto": "Confirmed · auto 48h"
       },
       "reject": {
         "title": "Dispute result",
@@ -1387,6 +1505,7 @@
         "cutoff": "Registration has closed. Participation and match details can no longer change.",
         "resultProtected": "Existing results protect this match from management changes.",
         "correctionExplanation": "Changes involving existing results require the correction or dispute process.",
+        "title": "Match changes locked",
         "correctionUnavailable": "Result correction and disputes are not available yet.",
         "backToMatch": "Back to match"
       },
@@ -1394,6 +1513,8 @@
         "title": "Edit match details",
         "save": "Save changes",
         "minorNotice": "Update venue, price, notes, capacity, or registration deadline. These changes do not require reconfirmation.",
+        "reviewMajor": "Review major change",
+        "changeSummary": "Was: {{before}}. Now: {{after}}.",
         "conflictTitle": "Match changed elsewhere",
         "conflictDescription": "Your draft is still here. Review it, or reload the match to discard this draft and reopen editing with the latest details.",
         "reload": "Reload details",
@@ -1446,6 +1567,7 @@
       "cancelTitle": "Cancel this match?",
       "cancelDescription": "Cancellation is permanent. Everyone involved will be notified.",
       "cancelReason": "Cancellation reason",
+      "keepMatch": "Keep match",
       "cancelled": "Cancelled",
       "ownershipTransferred": "Organization transferred.",
       "participants": "Manage participants",
@@ -1538,7 +1660,7 @@
     "loadMore": "Load more",
     "tabs": {
       "available": "Available",
-      "my": "My Matches",
+      "my": "My matches",
       "past": "Past"
     },
     "empty": {
@@ -1584,6 +1706,7 @@
       "notes": "Notes included",
       "pricePerPlayer": "Price per player",
       "openMaps": "Open map for {{venue}}",
+      "map": "Map",
       "photoAlt": "Match venue",
       "unlimited": "Unlimited"
     },
@@ -1627,7 +1750,15 @@
       "shareUrl": "Match link",
       "courtNotes": "Court notes",
       "paymentNote": "Payment note",
-      "duration": "Expected duration"
+      "duration": "Expected duration",
+      "hero": {
+        "anyLevel": "Any",
+        "level": "level",
+        "perPlayer": "per player",
+        "reserveQueue": "Reserve queue",
+        "reserveQueueNote": "First come, first in",
+        "shareHeader": "Share"
+      }
     }
   },
   "matchCreate": {
@@ -1646,10 +1777,20 @@
       }
     },
     "title": "Create match",
-    "subtitle": "Publish a padel match and invite players.",
+    "cancel": "Cancel",
+    "previousStep": "Previous step",
+    "stepOf": "Step {{current}} of {{total}}",
+    "readyTitle": "Ready to publish?",
+    "reviewRows": {
+      "when": "When",
+      "where": "Where",
+      "level": "Level",
+      "teams": "Teams",
+      "yes": "Yes"
+    },
     "noCommunities": "Join a community before creating a match.",
     "discoverCommunities": "Discover communities",
-    "next": "Next",
+    "next": "Continue",
     "previous": "Back",
     "review": "Review",
     "publish": "Publish & send invites",
@@ -1659,7 +1800,7 @@
     "steps": {
       "details": "Details",
       "players": "Players",
-      "teams": "Team mode",
+      "teams": "Teams",
       "review": "Review"
     },
     "fields": {
@@ -1770,29 +1911,29 @@
     "join": {
       "sectionTitle": "Your place in this match",
       "openCopy": "You’re in range and this community is open — join now and your place is confirmed instantly.",
-      "button": "JOIN MATCH",
+      "button": "Join match",
       "capacity_one": "1 of {{maximum}} place left",
       "capacity_other": "{{remaining}} of {{maximum}} places left",
       "levelRange": "Level range {{min}}–{{max}} · You: {{level}}",
       "levelRangeNoLevel": "Level range {{min}}–{{max}}",
       "note": "Direct joins are confirmed instantly and appear in your registrations.",
-      "requestButton": "REQUEST TO JOIN",
+      "requestButton": "Request to play",
       "requestNote": "Requests are decided by the organizer. Your queue place starts only if they approve."
     },
     "full": {
-      "badge": "MATCH FULL",
+      "badge": "Match full",
       "detail": "{{accepted}} of {{maximum}} places taken.",
       "copy": "This match reached its maximum of {{maximum}} registrations. Ask the organizer if a place opens.",
-      "button": "MATCH FULL",
+      "button": "Match full",
       "note": "Full capacity blocks new joins and new approvals until a place opens."
     },
     "closed": {
-      "badge": "REGISTRATION CLOSED",
+      "badge": "Registration closed",
       "detail": "Cutoff passed · playing quartets finalized.",
       "rosterCount": "{{playing}} playing · {{reserveNotPlaying}} reserve not playing",
-      "sectionTitle": "RESERVE NOT PLAYING",
+      "sectionTitle": "Reserve · not playing",
       "copy": "Registration closed at {{cutoff}}. New joins and new requests are no longer accepted.",
-      "button": "REGISTRATION CLOSED",
+      "button": "Registration closed",
       "note": "Cutoff is exact and server-authoritative. Playing quartets stay final."
     },
     "request": {
@@ -1802,12 +1943,12 @@
       "pendingCopy": "Sent to the organizer. Your queue place starts only if they approve.",
       "pendingMeta": "Requested {{when}} · no place reserved yet",
       "viewMatch": "View match",
-      "approvedPlayingBadge": "APPROVED · PLAYING · Group {{group}}",
+      "approvedPlayingBadge": "Approved · Playing · Group {{group}}",
       "approvedPlayingCopy": "Approved at {{when}} · your queue position started then.",
       "viewGroup": "View group",
-      "approvedReserveBadge": "APPROVED · RESERVE · #{{position}}",
+      "approvedReserveBadge": "Approved · Reserve #{{position}}",
       "approvedReserveCopy": "Approved at {{when}} · FIFO place, first reserve if a slot opens.",
-      "joinedPlayingBadge": "JOINED · PLAYING · Group {{group}}",
+      "joinedPlayingBadge": "Joined · Playing · Group {{group}}",
       "joinedPlayingCopy": "Joined at {{when}} · your place was confirmed instantly.",
       "joinedReserveBadge": "Joined · Reserve #{{position}}",
       "joinedReserveCopy": "Joined at {{when}} · FIFO place, first reserve if a slot opens.",
@@ -1815,10 +1956,10 @@
       "createdPlayingCopy": "You created this match · your place is confirmed.",
       "createdReserveBadge": "Creator · Reserve #{{position}}",
       "createdReserveCopy": "You created this match · FIFO place, first reserve if a slot opens.",
-      "declinedBadge": "DECLINED",
+      "declinedBadge": "Declined",
       "declinedCopy": "The organizer declined this request. You can request again until registration closes.",
       "requestAgain": "Request again",
-      "expiredBadge": "EXPIRED AT CUTOFF",
+      "expiredBadge": "Expired at cutoff",
       "expiredCopy": "Registration closed before a decision. No place was reserved.",
       "viewMatchHistory": "View match history",
       "note": "Approval time sets the queue position. Pending and expired requests never hold a place."
@@ -1832,10 +1973,10 @@
       "playerDetail": "Level {{level}} · {{placement}}",
       "playerDetailUnrated": "No level · {{placement}}",
       "playingLabel": "Playing",
-      "groupTitle": "GROUP {{group}}",
-      "reserveTitle": "RESERVE QUEUE",
+      "groupTitle": "Group {{group}}",
+      "reserveTitle": "Reserve queue",
       "fifo": "FIFO · first to join",
-      "notPlayingTitle": "NOT PLAYING",
+      "notPlayingTitle": "Not playing",
       "you": "You",
       "orderNote": "Accepted order is server-authoritative. Reserves keep FIFO position.",
       "authoritativeNote": "Accepted order is server-authoritative. Guests never become members.",
@@ -1846,12 +1987,12 @@
       "count_other": "{{count}} players"
     },
     "badges": {
-      "playing": "PLAYING",
-      "reserve": "RESERVE",
-      "reserveNotPlaying": "RESERVE NOT PLAYING",
-      "guest": "PUBLIC GUEST",
-      "creator": "CREATOR",
-      "member": "MEMBER"
+      "playing": "Playing",
+      "reserve": "Reserve",
+      "reserveNotPlaying": "Reserve · not playing",
+      "guest": "Public guest",
+      "creator": "Creator",
+      "member": "Member"
     },
     "queue": {
       "joinTitle": "Join requests",
@@ -1861,21 +2002,21 @@
       "title": "Join requests",
       "subtitle_one": "{{event}} · {{count}} to review",
       "subtitle_other": "{{event}} · {{count}} to review",
-      "sort": "SORT · NEWEST",
-      "count_one": "{{count}} REQUEST",
-      "count_other": "{{count}} REQUESTS",
+      "sort": "Sort · newest",
+      "count_one": "{{count}} request",
+      "count_other": "{{count}} requests",
       "fifoTitle": "Approval sets the queue position",
       "fifoCopy": "When you approve a guest, they join the Playing / Reserve queue at that time.",
-      "typeGuest": "PUBLIC GUEST",
-      "typeOutOfRange": "OUT OF RANGE",
-      "typeUnrated": "NO LEVEL",
+      "typeGuest": "Public guest",
+      "typeOutOfRange": "Out of range",
+      "typeUnrated": "No level",
       "contextGuest": "Not a community member · Requested {{when}}",
       "contextAboveRange": "Above your {{min}}–{{max}} range · Requested {{when}}",
       "contextBelowRange": "Below your {{min}}–{{max}} range · Requested {{when}}",
       "contextUnrated": "No level set · range {{min}}–{{max}} · Requested {{when}}",
       "contextMember": "Community member · Requested {{when}}",
-      "approve": "APPROVE",
-      "decline": "DECLINE",
+      "approve": "Approve",
+      "decline": "Decline",
       "empty": "No pending requests.",
       "error": "Could not load requests.",
       "loading": "Loading requests…",
@@ -1917,7 +2058,6 @@
   "rating": {
     "journey": {
       "title": "Rating journey",
-      "scope": "ALL TIME",
       "refreshed": "Rating journey updated.",
       "refreshFailed": "Could not refresh the rating journey. Use the retry option below."
     },
@@ -1926,13 +2066,16 @@
       "summary_one": "{{count}} confirmed game between {{from}} and {{to}}. Level moved from {{start}} to {{end}}.",
       "summary_other": "{{count}} confirmed games between {{from}} and {{to}}. Level moved from {{start}} to {{end}}.",
       "abbreviated": "Showing {{shown}} of {{total}} confirmed games. The first and latest games are always included.",
-      "empty": "Starting level {{level}}. Your confirmed competitive games will appear here.",
       "unavailable": "Rating progression appears once your player level is set up.",
-      "rangeStart": "From {{date}}",
-      "rangeEnd": "To {{date}}",
-      "order": "Games are spaced by order played, not by time. Lines only connect games; they do not estimate levels in between.",
-      "legendBaseline": "Starting level (hollow marker)",
-      "legendPoint": "Level after a confirmed game (filled marker)",
+      "scopeCaption": "All time · Level after rated games",
+      "changeUp": "↑ {{value}} all time",
+      "changeDown": "↓ {{value}} all time",
+      "changeFlat": "No change all time",
+      "legendLatest": "Latest level · {{date}}",
+      "latest": "Latest",
+      "start": "Start",
+      "emptyBody": "Your chart will appear after your first confirmed rated game.",
+      "startingLevel": "Starting level",
       "showTable": "Show data table",
       "hideTable": "Hide data table",
       "tableCaption": "Level after each confirmed game",
@@ -1940,11 +2083,11 @@
       "columnDate": "Date",
       "columnLevel": "Level",
       "baselineRow": "Starting level",
-      "legendAdjustment": "Level review correction (diamond marker)",
       "adjustmentRow": "Level review"
     },
     "history": {
       "title": "Recent games",
+      "emptyTitle": "Your level history starts here",
       "groupTitle": "Group {{number}}",
       "levelChange": "Level {{before}} to {{after}}",
       "reliabilityChange": "Reliability {{before}} to {{after}}",
@@ -2016,8 +2159,8 @@
     "title": "Leagues",
     "back": "Back to Leagues",
     "former": {
-      "title": "You played in this League",
-      "body": "This League is read-only for you. You can see its standings and results because you played in it, but you are no longer a member of this community.",
+      "title": "Read-only league",
+      "body": "You played here. Standings stay visible; community actions are hidden.",
       "back": "Back to match history"
     },
     "backToDashboard": "Back to dashboard",
@@ -2044,7 +2187,9 @@
       "manual": "From {{start}} · no end date"
     },
     "list": {
-      "create": "Create League",
+      "navTitle": "Community",
+      "backToCommunity": "Back to community",
+      "create": "Create league",
       "creationDisabled": "League creation is turned off for members in this community. Ask an Admin to create one.",
       "empty": "No Leagues yet.",
       "emptyHint": "Create a League to group a period of ranked matches.",
@@ -2054,21 +2199,21 @@
       "complete": "All {{total}} Leagues are shown. Reload to check for newer ones.",
       "moreError": "More Leagues could not be loaded. Try again.",
       "sections": {
-        "active": "Active",
-        "upcoming": "Upcoming",
-        "closed": "Closed"
+        "active": "Active leagues",
+        "upcoming": "Upcoming leagues",
+        "closed": "Closed leagues"
       }
     },
     "form": {
-      "title": "Create a League",
+      "title": "New league",
       "nameLabel": "League name",
       "namePlaceholder": "Autumn League",
       "descriptionLabel": "Description (optional)",
-      "endModeLegend": "How does the League end?",
+      "endModeLegend": "How it ends",
       "mode": {
         "fixed_date": "Fixed end date",
         "fixed_dateHelp": "Ends automatically after the last day.",
-        "manual": "Open-ended · manual",
+        "manual": "Manual",
         "manualHelp": "Stays active until an owner or Admin closes it."
       },
       "startDateLabel": "Start date",
@@ -2079,13 +2224,13 @@
       "periodLocked": "Dates can no longer change because this League is closed or already used by matches.",
       "minimumLabel": "Minimum matches for final award",
       "minimumHelp": "Players need at least this many matches to qualify for the final award.",
-      "submit": "Create League",
+      "submit": "Create league",
       "submitting": "Creating…",
-      "guidance": "Fixed End Date must follow start date. Only one Active League per community.",
+      "guidance": "Only ranked competitive matches between these dates count. One league at a time.",
       "conflict": {
-        "title": "{{name}} · ACTIVE",
-        "body": "This community already has one Active League. A League starting now cannot activate while it remains Active.",
-        "review": "Review Active League"
+        "title": "Another league is active",
+        "body": "This community already has one active league. A league starting now can't activate until {{name}} ends.",
+        "review": "Open {{name}}"
       },
       "errors": {
         "nameRequired": "Enter a League name.",
@@ -2093,9 +2238,9 @@
         "descriptionTooLong": "The description must be 500 characters or fewer.",
         "startRequired": "Choose a start date.",
         "startInPast": "The start date cannot be in the past.",
-        "endRequired": "Fixed End Date requires an end date.",
+        "endRequired": "A fixed end date needs an end date.",
         "endInPast": "The end date cannot be in the past.",
-        "endNotAfterStart": "End date must be later than start date.",
+        "endNotAfterStart": "End date must be after the start date.",
         "minimumInvalid": "Enter a whole number from 1 to 100."
       }
     },
@@ -2180,7 +2325,7 @@
         "result_amendment": "Corrected result applied after an audited amendment",
         "result_void": "Result voided after an audited decision"
       },
-      "correctionBanner": "Historical result updated",
+      "correctionBanner": "Final standings updated after a corrected result.",
       "supersedes": "Replaces version {{version}}. Earlier versions stay available.",
       "viewPrior": "View version {{version}}",
       "backfilled": "Rebuilt afterwards from stored records, not published at the time.",
@@ -2220,7 +2365,7 @@
       },
       "activate": "Activate League",
       "activateHint": "Another League is Active. Close it or wait until it ends, then activate this one.",
-      "close": "Close League",
+      "close": "End league",
       "edit": "Edit League",
       "save": "Save changes",
       "saving": "Saving…",
@@ -2229,10 +2374,10 @@
       "activated": "League activated.",
       "closedDone": "League closed.",
       "closeConfirm": {
-        "title": "Close {{name}}?",
+        "title": "End {{name}} now?",
         "body": "The League ends now and cannot be reopened. Matches played after this moment never count. A match played before it that is confirmed for the first time later still counts and adds a new final version; earlier finals stay available. This is recorded in its history.",
-        "cancel": "Keep open",
-        "confirm": "Close League"
+        "cancel": "Keep it",
+        "confirm": "End league"
       }
     },
     "errors": {
@@ -2247,9 +2392,9 @@
       "LEAGUE_END_MODE_INVALID": "Choose how the League ends.",
       "LEAGUE_START_DATE_INVALID": "Choose a valid start date.",
       "LEAGUE_START_IN_PAST": "The start date cannot be in the past.",
-      "LEAGUE_END_DATE_REQUIRED": "Fixed End Date requires an end date.",
+      "LEAGUE_END_DATE_REQUIRED": "A fixed end date needs an end date.",
       "LEAGUE_END_DATE_NOT_ALLOWED": "An open-ended League has no end date.",
-      "LEAGUE_END_NOT_AFTER_START": "End date must be later than start date.",
+      "LEAGUE_END_NOT_AFTER_START": "End date must be after the start date.",
       "LEAGUE_END_IN_PAST": "The end date cannot be in the past.",
       "LEAGUE_CHANGES_INVALID": "Those changes aren't valid.",
       "LEAGUE_INVALID_INPUT": "Those details aren't valid.",
@@ -2286,9 +2431,9 @@
       "community": "Community",
       "allCommunities": "All communities",
       "league": "League",
-      "noLeague": "No League",
-      "activeLeague": "Active League: {{name}}",
-      "historicalLeague": "Past League: {{name}}",
+      "noLeague": "No league",
+      "activeLeague": "Active league: {{name}}",
+      "historicalLeague": "Past league: {{name}}",
       "type": "Match type",
       "types": {
         "all": "All",
@@ -2315,12 +2460,12 @@
       "rivalryPair": "{{first}} and {{second}}: {{wins}}-{{losses}}-{{draws}}",
       "rivalryDetail": "Gap of {{gap}} across {{matches}} decided meetings",
       "leagueScope": {
-        "upcoming": "Showing League {{name}}: eligible ranked matches only.",
-        "active": "Showing the active League {{name}}: eligible ranked matches only.",
-        "closed": "Showing the past League {{name}}: eligible ranked matches in its period only."
+        "upcoming": "Showing league {{name}}: eligible ranked matches only.",
+        "active": "Showing the active league {{name}}: eligible ranked matches only.",
+        "closed": "Showing the past league {{name}}: eligible ranked matches in its period only."
       },
       "notice": {
-        "friendly_league": "Friendly matches never count towards a League, so this selection is empty. Choose All or Competitive, or remove the League."
+        "friendly_league": "Friendly matches never count towards a league, so this selection is empty. Choose all or competitive, or remove the league."
       },
       "matches": {
         "title": "Matches",
@@ -2384,18 +2529,21 @@
         "title": "Partnership",
         "heading": "{{first}} & {{second}}",
         "subtitle": "Results when these two players were on the same team.",
-        "played": "Matches together",
-        "headline": "{{played}} together · W {{wins}} · L {{losses}} · D {{draws}}",
-        "lastMeeting": "Last played together {{date}}",
-        "streak": "Current streak: {{length}} · {{kind}}",
-        "noStreak": "Current streak: none",
-        "noMeeting": "No matches together yet"
+        "played": "Matches together"
       },
       "opponent": {
         "title": "Head to head",
         "heading": "{{first}} vs {{second}}",
         "subtitle": "Results when these two players were on opposite teams, from the first player’s point of view.",
-        "played": "Meetings"
+        "played": "Meetings",
+        "versus": "vs"
+      },
+      "tiles": {
+        "matches": "Matches",
+        "meetings": "Meetings",
+        "record": "W–L–D",
+        "winRate": "Win rate",
+        "setDiff": "Set diff"
       },
       "sections": {
         "record": "Record",
@@ -2503,7 +2651,7 @@
       "ratingChange": "Rating {{delta}}",
       "noRating": "No rating change",
       "league": "League: {{name}}",
-      "leagueLink": "Open League {{name}}",
+      "leagueLink": "Open league {{name}}",
       "viewDetails": "Result details",
       "viewMatch": "Open match",
       "detailsLabel": "Result details, {{type}} match on {{date}}",
@@ -2515,8 +2663,8 @@
       "summary": {
         "played": "Played {{date}} at {{time}}",
         "court": "Court {{label}}",
-        "leagueCounts": "Counts for the League standings",
-        "leagueNotCounted": "Does not count for the League standings",
+        "leagueCounts": "Counts for the league standings",
+        "leagueNotCounted": "Does not count for the league standings",
         "community": "Community",
         "venue": "Venue",
         "type": "Match type",
@@ -2560,8 +2708,8 @@
         "reliability": "Reliability {{before}}% to {{after}}%",
         "expected": "Expected score {{value}}",
         "absent": {
-          "friendly": "No rating change: Friendly match",
-          "incomplete": "No rating change: Incomplete result",
+          "friendly": "No rating change: friendly match",
+          "incomplete": "No rating change: incomplete result",
           "not_rated": "No rating change: not rated",
           "missing_evidence": "Rating evidence missing"
         }
@@ -2777,7 +2925,7 @@
           "help": "Distinct players who played a confirmed match in this selection; not the member count."
         },
         "ranking": {
-          "help": "Eligible matches of the active League."
+          "help": "Eligible matches of the active league."
         },
         "frequency": {
           "average": {
@@ -2920,13 +3068,13 @@
             "help": "Position among the community players by level."
           },
           "leaguePosition": {
-            "help": "Position in the active League standings."
+            "help": "Position in the active league standings."
           },
           "bestCommunityRank": {
             "help": "Best community position held; the note says when the stored history starts."
           },
           "bestLeaguePosition": {
-            "help": "Best League position held; the note says when the stored history starts."
+            "help": "Best league position held; the note says when the stored history starts."
           }
         },
         "form": {
@@ -3114,16 +3262,21 @@
       "mark": "Mark under review",
       "marked": "Request marked under review.",
       "approve": "Approve",
-      "reject": "Reject",
-      "confirmApprove": "Confirm approval?",
-      "confirmReject": "Confirm rejection?",
+      "reject": "Deny",
+      "confirmApprove": "Review approval",
+      "confirmReject": "Review denial",
+      "confirmApproval": "Confirm approval",
+      "confirmDenial": "Confirm denial",
+      "levelAfter": "Level after approval",
+      "reliabilityUnchanged": "unchanged",
+      "trailHeading": "Audit trail",
+      "trailSubmitted": "Review request submitted",
       "after": "Level {{beforeLevel}} (internal μ {{beforeMu}}) → {{afterLevel}} (internal μ {{afterMu}}); reliability {{reliabilityBefore}}% → {{reliabilityAfter}}%.",
-      "rejectDescription": "Reject this request without changing the rating.",
+      "rejectDescription": "Deny this request without changing the rating.",
       "forward": "Changes apply going forward only. Historical matches and League standings remain unchanged.",
       "forwardHeading": "Forward-only correction",
       "forwardAudit": "Approval creates an audited adjustment event.",
-      "cancel": "Go back",
-      "confirm": "Confirm decision",
+      "cancel": "Cancel",
       "resolved": "Decision saved.",
       "event": "Committed adjustment event: {{id}}",
       "stale": "Rating changed. Preview refreshed; review and confirm again.",
@@ -3150,7 +3303,6 @@
     },
     "admin": {
       "title": "Level review queue",
-      "subtitle": "Review player level requests.",
       "pendingCount_one": "{{count}} pending request",
       "pendingCount_other": "{{count}} pending requests",
       "filter": "Filter by status",
@@ -3158,9 +3310,14 @@
       "loading": "Loading requests…",
       "empty": "No requests match this filter.",
       "current": "Submitted level: {{level}} · Reliability: {{reliability}}%",
+      "requestedRange": "Requested range",
+      "submittedLabel": "Submitted",
+      "review": "Review request",
+      "submittedLevel": "Level when submitted",
+      "submittedLevelValue": "{{level}} · {{reliability}}% reliability",
       "detail": "Level review request",
       "back": "Back to queue",
-      "reason": "Reason",
+      "reason": "Request context",
       "evidence": "Evidence",
       "reviewedAt": "Under review: {{date}}",
       "decidedAt": "Decided: {{date}}",
@@ -3177,7 +3334,7 @@
     },
     "request": {
       "title": "Request level review",
-      "context": "Your current level is {{level}}",
+      "intro": "Only a Platform Admin reviews requests.",
       "backLabel": "Back to profile",
       "currentLabel": "Current level",
       "currentValue": "{{level}} · {{reliability}} reliability",
@@ -3197,7 +3354,7 @@
       "evidenceHide": "Hide optional evidence",
       "evidenceLabel": "Evidence",
       "evidenceHelper": "Optional plain text. Links stay as text and are never opened automatically. {{count}} of {{max}} characters.",
-      "forwardOnly": "Only a Platform Admin reviews requests. Approval changes your current level going forward only; past matches are not replayed.",
+      "forwardOnly": "Approval changes your current level going forward only. Past matches are not replayed.",
       "submit": "Submit request",
       "submitting": "Submitting…",
       "submitted": "Request received. Opening its status…",
@@ -3234,7 +3391,7 @@
       "pending": "Pending",
       "under_review": "Under review",
       "approved": "Approved",
-      "rejected": "Rejected",
+      "rejected": "Denied",
       "canceled": "Canceled",
       "detail": {
         "pending": "Waiting for Platform Admin review.",
@@ -3254,6 +3411,7 @@
       "subtitle": "Your requests and what happened to them.",
       "newRequest": "Request level review",
       "viewActive": "View active request",
+      "viewRequest": "View request",
       "emptyTitle": "No requests yet",
       "emptyDescription": "Think your level is materially off? Submit a request and a Platform Admin will review it.",
       "loadingTitle": "Loading requests",
@@ -3267,7 +3425,7 @@
     },
     "detail": {
       "title": "Level review status",
-      "context": "Request #{{id}} · Submitted {{date}}",
+      "summary": "{{from}} → {{to}} · Request #{{id}}",
       "back": "Back to requests",
       "requestHeading": "Your request",
       "snapshotLevel": "Level when submitted",
@@ -3282,6 +3440,13 @@
       "timelineReview": "Under review since {{date}}",
       "timelineCanceled": "Canceled {{date}}",
       "timelineDecided": "Decided {{date}}",
+      "timelineWaiting": "Waiting for review",
+      "timelineDecision": "Decision",
+      "timelineNotify": "You'll get a notification when it's decided.",
+      "ifApprovedTitle": "If approved",
+      "ifApprovedBody": "Your level changes going forward. Past matches stay as they are.",
+      "ifRejectedTitle": "If rejected",
+      "ifRejectedBody": "You'll see the reason and can ask again later.",
       "decisionHeading": "Decision",
       "decisionNote": "Review note",
       "approvedLevel": "Approved level",
@@ -3304,6 +3469,7 @@
   },
   "privacy": {
     "title": "Privacy Policy",
+    "backHome": "Back to home",
     "updated": "Last updated: {{date}}",
     "reviewNotice": "Draft: this policy is awaiting final confirmation by the service owner and legal review, and may change before it is final.",
     "who": {
@@ -3422,6 +3588,7 @@
     }
   },
   "publicHomepage": {
+    "brand": "Padel Friends",
     "hero": {
       "title": "Find your next padel match.",
       "description": "Padel Friends helps you organize matches, invite your friends and keep track of results and ratings."
@@ -3429,27 +3596,29 @@
     "actions": {
       "signIn": "Sign in",
       "createAccount": "Create account",
-      "dashboard": "Go to dashboard"
+      "dashboard": "Go to dashboard",
+      "signedInNote": "You're signed in."
     },
     "features": {
+      "heading": "What you can do",
       "findMatches": {
-        "title": "Find matches",
-        "description": "Browse open matches or create your own."
+        "title": "Find and create matches",
+        "description": "Discover open matches in your community or set up your own."
       },
       "inviteFriends": {
-        "title": "Invite friends",
-        "description": "Share a link and fill the court."
+        "title": "Invite players",
+        "description": "Send invites and fill all four spots with friends."
       },
       "trackResults": {
-        "title": "Track results",
-        "description": "Record scores, ratings and history, plus leagues."
+        "title": "Track results and rating",
+        "description": "Record scores, follow your rating and match history, and play in leagues."
       }
     },
     "footer": {
       "contact": "Contact",
       "contactEmail": "{{email}}",
-      "operator": "Run by Thiago Mendonça, individual operator, Spain.",
-      "audience": "For players aged 16+."
+      "operator": "Padel Friends is run by Thiago Mendonça, an individual operator based in Spain.",
+      "audience": "For players aged 16 and over."
     }
   }
 }

@@ -25,6 +25,7 @@ export const SPEC_WEIGHTS = {
   'e2e/community-admin.spec.ts': 107,
   'e2e/community-lifecycle.spec.ts': 7,
   'e2e/community-onboarding.spec.ts': 30,
+  'e2e/community-overview.spec.ts': 15,
   'e2e/home.spec.ts': 3,
   'e2e/league-standings.spec.ts': 18,
   'e2e/leagues-former-participant.spec.ts': 40,
@@ -88,7 +89,7 @@ export function listSpecs(dir = 'e2e') {
 // - result-corrections-visual: its repair-diagnostics probes depend on the repair-lease lifecycle (an
 //   earlier describe deliberately holds a 600s lease), so a changed sweep order shifts their layout.
 //   Hypothesised mechanism (PAF-175, UNCONFIRMED): a 22px assertStacked drift (1 of 4 full gates) came
-//   from a sample taken before the layout settled. The bundled @fontsource Inter/Manrope subsets use
+//   from a sample taken before the layout settled. The bundled @fontsource Figtree subsets use
 //   font-display: swap and load lazily, so under load the probes may have measured fallback-font metrics
 //   before the swap rewrapped text. Evidence that would confirm it: a loaded-gate campaign (AC1) where
 //   a failure's captured geometry matches fallback-font metrics, or where the failure stops recurring

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import type { ResultPlayer, ResultSetRow } from './match-result-model';
 import { matchResultStyles as s } from './match-result.styles';
+import { recordResultStyles as r } from './record-match-result.styles';
 
 export function resultSetWins(sets: ResultSetRow[]) {
   return {
@@ -40,35 +41,42 @@ export function MatchResultTeams({
   );
 }
 
-export function MatchResultScores({ sets }: { sets: ResultSetRow[] }) {
+export function MatchResultScores({
+  sets,
+  teamNames
+}: {
+  sets: ResultSetRow[];
+  teamNames: readonly string[];
+}) {
   const { t } = useTranslation();
   return (
-    <section {...stylex.props(s.card)} aria-label={t('matches.results.setScores')}>
-      <h2 {...stylex.props(s.heading)}>{t('matches.results.setScores')}</h2>
-      {[1, 2, 3].map((position) => {
-        const set = sets.find((row) => row.position === position);
-        return (
-          <div key={position} {...stylex.props(s.scoreRow)}>
-            <span {...stylex.props(s.label)}>
-              {t('matches.results.setNumber', { number: position })}
-            </span>
-            <span {...stylex.props(s.scoreValue)}>{set?.team_a_games ?? '—'}</span>
-            <span aria-hidden="true" {...stylex.props(s.copy)}>
-              —
-            </span>
-            <span {...stylex.props(s.scoreValue)}>{set?.team_b_games ?? '—'}</span>
-            <span {...stylex.props(s.statePill, set?.completed ? s.positive : s.neutral)}>
-              {t(
-                set
-                  ? set.completed
-                    ? 'matches.results.setState.complete'
-                    : 'matches.results.setState.inProgress'
-                  : 'matches.results.setState.notPlayed'
-              )}
-            </span>
-          </div>
-        );
-      })}
+    <section
+      data-result-section="score-summary"
+      {...stylex.props(s.card, r.card)}
+      aria-label={t('matches.results.setScores')}
+    >
+      <p {...stylex.props(s.copy)}>
+        {t('matches.results.record.matchup', { first: teamNames[0], second: teamNames[1] })}
+      </p>
+      <p {...stylex.props(r.summaryScore)} aria-hidden="true">
+        {sets.map((set) => `${set.team_a_games}–${set.team_b_games}`).join(' · ')}
+      </p>
+      <ul {...stylex.props(s.srOnly)}>
+        {sets.map((set) => (
+          <li key={set.position}>
+            {t('matches.results.record.setSummary', {
+              set: t('matches.results.setNumber', { number: set.position }),
+              first: set.team_a_games,
+              second: set.team_b_games,
+              status: t(
+                set.completed
+                  ? 'matches.results.setState.complete'
+                  : 'matches.results.setState.inProgress'
+              )
+            })}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

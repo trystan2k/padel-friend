@@ -1,3 +1,7 @@
+import { Button } from '../../components/ui/Button';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { invitationStyles } from '../community/community-invitation.styles';
 import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
@@ -6,7 +10,14 @@ import {
   notificationResultHref,
   notificationRosterPosition
 } from './notification-target';
+import {
+  NotificationDetailActionIcon,
+  NotificationDetailMeta,
+  NotificationDetailRow,
+  NotificationDetailTopBar
+} from './NotificationDetailChrome';
 import { NotificationLevelReviewOutcome } from './NotificationLevelReviewOutcome';
+import { notificationGlyph } from './notification-presentation';
 import { NotificationResultOutcome } from './NotificationResultOutcome';
 import {
   acceptMyNotificationInvitation,
@@ -21,6 +32,7 @@ import {
   matchRegistrationReservePosition
 } from '../matches/match-registration-model';
 import { useUpdateGuard } from '../pwa/update-guard';
+import { detailStyles as detail } from './notification-detail.styles';
 import { styles } from './notifications.styles';
 import * as stylex from '@stylexjs/stylex';
 
@@ -197,6 +209,38 @@ function formatMatchTime(
   return new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone }).format(date);
 }
 
+// Received time: the feed shows UTC, so the detail does too (never the viewer's clock).
+function formatReceived(
+  value: string | null | undefined,
+  locale: string,
+  utc: string
+): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const text = new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'UTC'
+  }).format(date);
+  return `${text} ${utc}`;
+}
+
+function formatStart(
+  value: string | null | undefined,
+  timeZone: string,
+  locale: string
+): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(locale, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone
+  }).format(date);
+}
+
 export function NotificationDetailPage({
   notificationId,
   target: initialTarget,
@@ -219,6 +263,8 @@ export function NotificationDetailPage({
   useUpdateGuard(pending || unconfirmed);
   const [targetError, setTargetError] = useState(false);
   const [readError, setReadError] = useState(false);
+  // The chip reflects what the server confirmed: unread until the mark-read call succeeds.
+  const [read, setRead] = useState(false);
   const previousOnline = useRef<boolean | null>(null);
 
   useEffect(() => {
@@ -237,7 +283,9 @@ export function NotificationDetailPage({
     let active = true;
     void markNotificationRead({ data: { notificationId } })
       .then(() => {
-        if (active) setReadError(false);
+        if (!active) return;
+        setReadError(false);
+        setRead(true);
       })
       .catch(() => {
         if (active) setReadError(true);
@@ -310,6 +358,7 @@ export function NotificationDetailPage({
       try {
         await markNotificationRead({ data: { notificationId } });
         setReadError(false);
+        setRead(true);
       } catch {
         setReadError(true);
       }
@@ -355,55 +404,305 @@ export function NotificationDetailPage({
       ? reserveBody(currentMatchContext)
       : null;
   const hasError = targetError || readError;
-  return (
-    <main {...stylex.props(styles.page)}>
-      <output aria-live="polite">
-        {isOnline === false
-          ? t('notifications.offline')
-          : announcement
-            ? t(`notifications.${announcement}`)
-            : ''}
-      </output>
-      {unconfirmed && <p role="alert">{t('pwa.offline.unconfirmed')}</p>}
-      <section {...stylex.props(styles.panel)}>
-        {target.target_status === 'destination_available' && target.destination_href ? (
-          <>
-            <h1>{t('notifications.generic')}</h1>
-            <a href={target.destination_href} {...stylex.props(styles.link)}>
-              {t('notifications.openTarget')}
-            </a>
-            <Link to="/notifications" {...stylex.props(styles.link)}>
-              {t('notifications.back')}
-            </Link>
-          </>
-        ) : target.target_status === 'level_review_available' && target.level_review_context ? (
-          <>
-            <NotificationLevelReviewOutcome context={target.level_review_context} />
-            {hasError && !unconfirmed && <p role="alert">{t('notifications.targetError')}</p>}
-            {hasError && (
-              <button
-                {...stylex.props(styles.button)}
+  const isCommunityInvitation =
+    initialTarget.kind === 'community_invitation' ||
+    initialTarget.target_status === 'invitation_available' ||
+    target.kind === 'community_invitation';
+  const invitationState =
+    target.target_status === 'invitation_available'
+      ? 'available'
+      : isCommunityInvitation && target.target_status === 'unavailable'
+        ? 'unavailable'
+        : isCommunityInvitation && target.target_status === 'membership_available'
+          ? target.membership_status === 'active'
+            ? 'active'
+            : 'pending'
+          : null;
+  // The body line for a match notification, chosen from the kind; null renders no paragraph.
+  function matchBodyText(context: MatchNotificationContext): string | null {
+    if (target.kind === 'match_event_published')
+      return t('notifications.match.publishedBy', { name: context.creator_display_name });
+    if (target.kind === 'match_event_invitation')
+      return t('notifications.match.invitedBy', { name: context.creator_display_name });
+    switch (registrationKind) {
+      case null:
+        return t('notifications.generic');
+      case 'match_registration_requested':
+        return t('notifications.match.registrationRequestBody', {
+          name: context.requester_display_name ?? '',
+          event: context.venue
+        });
+      case 'match_registration_approved':
+        if (!approvedVariant || !approvedAt) return null;
+        return approvedVariant.participation === 'playing'
+          ? t('notifications.match.registrationApprovedPlayingBody', {
+              group: approvedVariant.group,
+              event: context.venue,
+              time: approvedAt
+            })
+          : t('notifications.match.registrationApprovedReserveBody', {
+              position: approvedVariant.position,
+              event: context.venue,
+              time: approvedAt
+            });
+      case 'match_registration_playing':
+        return fifoGroup === null
+          ? null
+          : t('notifications.match.registrationPlayingBody', {
+              group: fifoGroup,
+              event: context.venue
+            });
+      case 'match_registration_reserve':
+        return reserveBodyCopy ? t(reserveBodyCopy.key, reserveBodyCopy.values) : null;
+      case 'match_registration_promoted':
+        return fifoGroup === null
+          ? null
+          : t('notifications.match.registrationPromotedBody', { group: fifoGroup });
+      case 'match_registration_quartet_complete':
+        return fifoGroup === null
+          ? null
+          : t('notifications.match.registrationQuartetCompleteBody', {
+              group: fifoGroup,
+              event: context.venue
+            });
+      case 'match_invitation_accepted':
+        return t('notifications.match.invitationAcceptedBody');
+      case 'match_invitation_declined':
+        return t('notifications.match.invitationDeclinedBody');
+      case 'match_registration_withdrawn':
+        return t('notifications.match.registrationWithdrawnBody');
+      case 'match_registration_removed':
+        return t('notifications.match.registrationRemovedBody');
+      case 'match_registration_group_changed':
+        return t('notifications.match.registrationGroupChangedBody');
+      case 'match_event_ownership_transferred':
+        return t('notifications.match.ownershipTransferredBody');
+      case 'match_reconfirmation_required':
+        return t('notifications.match.reconfirmationRequiredBody');
+      case 'match_registration_reconfirmed':
+        return t('notifications.match.reconfirmedBody');
+      case 'match_reconfirmation_expired':
+        return t('notifications.match.reconfirmationExpiredBody');
+      case 'match_event_updated':
+        return t('notifications.match.updatedBody');
+      case 'match_event_cancelled':
+        return t('notifications.match.cancelledBody');
+      case 'match_invitation_expired':
+        return t('notifications.match.invitationExpiredBody');
+      case 'match_registration_expired':
+        return t('notifications.match.registrationExpiredBody');
+      case 'match_registration_not_playing':
+        return t('notifications.match.registrationNotPlayingBody');
+      default:
+        return t('notifications.match.registrationRejectedBody', { event: context.venue });
+    }
+  }
+  const matchBody = currentMatchContext ? matchBodyText(currentMatchContext) : null;
+  const liveRegion = (
+    <output aria-live="polite">
+      {isOnline === false
+        ? t('notifications.offline')
+        : announcement
+          ? t(`notifications.${announcement}`)
+          : ''}
+    </output>
+  );
+  const unconfirmedAlert = unconfirmed && <p role="alert">{t('pwa.offline.unconfirmed')}</p>;
+  if (invitationState)
+    return (
+      <main
+        {...stylex.props(styles.page, invitationStyles.page)}
+        data-community-invitation={invitationState}
+      >
+        <header {...stylex.props(invitationStyles.header)}>
+          {t('communityInvites.detailLabel')}
+        </header>
+        {liveRegion}
+        {unconfirmedAlert}
+        <section {...stylex.props(invitationStyles.content)}>
+          {invitationState === 'unavailable' ? (
+            <>
+              <h1 {...stylex.props(invitationStyles.title)}>
+                {t('notifications.targetUnavailable')}
+              </h1>
+              <SurfaceCard xstyle={invitationStyles.notice}>
+                <p {...stylex.props(invitationStyles.body)}>
+                  {t('communityInvites.unavailableHelp')}
+                </p>
+              </SurfaceCard>
+            </>
+          ) : (
+            <>
+              <span
+                aria-hidden="true"
+                {...stylex.props(
+                  invitationStyles.glyph,
+                  invitationState === 'pending' && invitationStyles.pendingGlyph
+                )}
+              >
+                {invitationState === 'pending'
+                  ? '◷'
+                  : Array.from(target.community_name ?? '')[0]?.toLocaleUpperCase(i18n.language)}
+              </span>
+              <h1 {...stylex.props(invitationStyles.title)}>
+                {invitationState === 'pending'
+                  ? t('communityInvites.pendingTitle')
+                  : target.community_name}
+              </h1>
+              {invitationState === 'available' && (
+                <div>
+                  <StatusBadge tone="muted">
+                    {t('communityInvites.memberCountUnavailable')}
+                  </StatusBadge>
+                </div>
+              )}
+              <p {...stylex.props(invitationStyles.body)}>
+                {t(
+                  invitationState === 'available'
+                    ? 'notifications.invitationContext'
+                    : invitationState === 'active'
+                      ? 'notifications.activeMembership'
+                      : 'notifications.pendingMembership'
+                )}
+              </p>
+              {(invitationState === 'available' || invitationState === 'pending') && (
+                <SurfaceCard xstyle={invitationStyles.notice}>
+                  <p {...stylex.props(invitationStyles.body)}>
+                    {t(
+                      invitationState === 'pending'
+                        ? 'communityInvites.pendingHelp'
+                        : 'communityInvites.approvalNotice'
+                    )}
+                  </p>
+                </SurfaceCard>
+              )}
+            </>
+          )}
+          {invitationState !== 'unavailable' && hasError && !unconfirmed && (
+            <p role="alert">{t('notifications.targetError')}</p>
+          )}
+          <footer {...stylex.props(invitationStyles.actions)}>
+            {invitationState === 'available' && !accepted && (
+              <Button
+                busy={pending}
+                disabled={pending || isOnline !== true}
+                onClick={() => void accept()}
+              >
+                {pending ? t('notifications.accepting') : t('notifications.accept')}
+              </Button>
+            )}
+            {target.target_status === 'membership_available' && target.community_id && (
+              <a href={'/community/' + target.community_id} {...stylex.props(styles.link)}>
+                {t('notifications.openTarget')}
+              </a>
+            )}
+            {invitationState !== 'unavailable' && hasError && (
+              <Button
+                variant="secondary"
+                busy={pending}
                 disabled={pending || isOnline !== true}
                 onClick={() => void retry()}
               >
                 {t('notifications.retry')}
-              </button>
+              </Button>
             )}
             <Link {...stylex.props(styles.link)} to="/notifications">
               {t('notifications.back')}
             </Link>
+          </footer>
+        </section>
+      </main>
+    );
+
+  const glyph = notificationGlyph(
+    target.level_review_context
+      ? `level_review_${target.level_review_context.outcome}`
+      : (target.result_context?.notification_kind ?? target.kind ?? ''),
+    target.target_status === 'result_available'
+      ? 'results'
+      : target.target_status === 'match_available'
+        ? 'matches'
+        : target.target_status === 'level_review_available'
+          ? 'rankings'
+          : 'community'
+  );
+  const feedback = (
+    <>
+      {hasError && !unconfirmed && (
+        <p role="alert" {...stylex.props(detail.alert)}>
+          {t('notifications.targetError')}
+        </p>
+      )}
+      {hasError && (
+        <Button
+          variant="secondary"
+          busy={pending}
+          disabled={pending || isOnline !== true}
+          onClick={() => void retry()}
+        >
+          {t('notifications.retry')}
+        </Button>
+      )}
+    </>
+  );
+  return (
+    <main {...stylex.props(detail.page)}>
+      <NotificationDetailTopBar />
+      {liveRegion}
+      {unconfirmedAlert}
+      <section {...stylex.props(detail.content)}>
+        <NotificationDetailMeta
+          symbol={glyph.symbol}
+          receivedAt={formatReceived(target.created_at, i18n.language, t('notifications.utc'))}
+          read={read}
+        />
+        {target.target_status === 'destination_available' && target.destination_href ? (
+          <>
+            <h1 {...stylex.props(detail.title)}>{t('notifications.generic')}</h1>
+            <a href={target.destination_href} {...stylex.props(detail.action)}>
+              <NotificationDetailActionIcon />
+              {t('notifications.openTarget')}
+            </a>
+          </>
+        ) : target.target_status === 'level_review_available' && target.level_review_context ? (
+          <>
+            <NotificationLevelReviewOutcome context={target.level_review_context} />
+            {feedback}
           </>
         ) : target.target_status === 'result_available' && target.result_context ? (
           <>
-            <h1>{t(`notifications.kinds.${target.result_context.notification_kind}`)}</h1>
+            <h1 {...stylex.props(detail.title)}>
+              {t(`notifications.kinds.${target.result_context.notification_kind}`)}
+            </h1>
             {correctionKinds.has(target.result_context.notification_kind) && (
-              <p>{t(`notifications.result.kindBody.${target.result_context.notification_kind}`)}</p>
+              <p {...stylex.props(detail.body)}>
+                {t(`notifications.result.kindBody.${target.result_context.notification_kind}`)}
+              </p>
             )}
             {target.result_context.entry_ready ? (
-              <p>{t('notifications.result.entryReady', { venue: target.result_context.venue })}</p>
+              <p {...stylex.props(detail.body)}>
+                {t('notifications.result.entryReady', { venue: target.result_context.venue })}
+              </p>
             ) : (
-              <>
-                <p>
+              <SurfaceCard xstyle={detail.card}>
+                <div {...stylex.props(detail.cardHeader)}>
+                  <h2 {...stylex.props(detail.cardTitle)}>{t('notifications.result.cardTitle')}</h2>
+                  <NotificationResultOutcome context={target.result_context} />
+                </div>
+                <p {...stylex.props(detail.note)}>
+                  {[
+                    target.result_context.venue,
+                    formatStart(
+                      target.result_context.starts_at,
+                      target.result_context.timezone,
+                      i18n.language
+                    )
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </p>
+                <hr {...stylex.props(detail.divider)} />
+                <p {...stylex.props(detail.note)}>
                   {t('notifications.result.group', {
                     number: target.result_context.group_number
                   })}{' '}
@@ -413,17 +712,18 @@ export function NotificationDetailPage({
                   })}
                 </p>
                 {target.result_context.score && (
-                  <p>{t('notifications.result.score', { score: target.result_context.score })}</p>
+                  <p {...stylex.props(detail.value)}>
+                    {t('notifications.result.score', { score: target.result_context.score })}
+                  </p>
                 )}
-                <NotificationResultOutcome context={target.result_context} />
-                <p>
+                <p {...stylex.props(detail.note)}>
                   {t('notifications.result.submittedBy', {
                     name:
                       target.result_context.submitted_by_name ?? t('matches.results.unknownPlayer')
                   })}
                 </p>
                 {target.result_context.review_deadline_at && (
-                  <p>
+                  <p {...stylex.props(detail.note)}>
                     {t('notifications.result.deadline', {
                       deadline: new Intl.DateTimeFormat(i18n.language, {
                         dateStyle: 'medium',
@@ -434,25 +734,20 @@ export function NotificationDetailPage({
                   </p>
                 )}
                 {!target.result_context.is_current && (
-                  <p>
+                  <p {...stylex.props(detail.note)}>
                     {t('notifications.result.historicalVersion', {
                       version: target.result_context.proposal_version
                     })}
                   </p>
                 )}
-              </>
+              </SurfaceCard>
             )}
-            {hasError && !unconfirmed && <p role="alert">{t('notifications.targetError')}</p>}
-            {hasError && (
-              <button
-                {...stylex.props(styles.button)}
-                disabled={pending || isOnline !== true}
-                onClick={() => void retry()}
-              >
-                {t('notifications.retry')}
-              </button>
-            )}
-            <a href={notificationResultHref(target.result_context)} {...stylex.props(styles.link)}>
+            {feedback}
+            <a
+              href={notificationResultHref(target.result_context)}
+              {...stylex.props(detail.action)}
+            >
+              <NotificationDetailActionIcon />
               {t(
                 target.result_context.entry_ready
                   ? 'notifications.result.openEvent'
@@ -464,205 +759,69 @@ export function NotificationDetailPage({
             {notificationRepairDiagnosticsHref(target.result_context) && (
               <a
                 href={notificationRepairDiagnosticsHref(target.result_context) ?? undefined}
-                {...stylex.props(styles.link)}
+                {...stylex.props(detail.action)}
               >
+                <NotificationDetailActionIcon />
                 {t('notifications.result.openRepairs')}
               </a>
             )}
-            <Link {...stylex.props(styles.link)} to="/notifications">
-              {t('notifications.back')}
-            </Link>
           </>
         ) : target.target_status === 'match_available' &&
           target.match_available &&
           target.match_event_id ? (
           <>
-            <h1>{registrationHeading(t, registrationKind, target.kind, fifoGroup)}</h1>
+            <h1 {...stylex.props(detail.title)}>
+              {registrationHeading(t, registrationKind, target.kind, fifoGroup)}
+            </h1>
             {currentMatchContext ? (
               <>
-                {target.kind === 'match_event_published' ? (
-                  <p>
-                    {t('notifications.match.publishedBy', {
-                      name: currentMatchContext.creator_display_name
-                    })}
-                  </p>
-                ) : target.kind === 'match_event_invitation' ? (
-                  <p>
-                    {t('notifications.match.invitedBy', {
-                      name: currentMatchContext.creator_display_name
-                    })}
-                  </p>
-                ) : registrationKind === null ? (
-                  <p>{t('notifications.generic')}</p>
-                ) : registrationKind === 'match_registration_requested' ? (
-                  <p>
-                    {t('notifications.match.registrationRequestBody', {
-                      name: currentMatchContext.requester_display_name ?? '',
-                      event: currentMatchContext.venue
-                    })}
-                  </p>
-                ) : registrationKind === 'match_registration_approved' ? (
-                  approvedVariant && approvedAt ? (
-                    <p>
-                      {approvedVariant.participation === 'playing'
-                        ? t('notifications.match.registrationApprovedPlayingBody', {
-                            group: approvedVariant.group,
-                            event: currentMatchContext.venue,
-                            time: approvedAt
-                          })
-                        : t('notifications.match.registrationApprovedReserveBody', {
-                            position: approvedVariant.position,
-                            event: currentMatchContext.venue,
-                            time: approvedAt
-                          })}
-                    </p>
-                  ) : null
-                ) : registrationKind === 'match_registration_playing' ? (
-                  fifoGroup === null ? null : (
-                    <p>
-                      {t('notifications.match.registrationPlayingBody', {
-                        group: fifoGroup,
-                        event: currentMatchContext.venue
-                      })}
-                    </p>
-                  )
-                ) : registrationKind === 'match_registration_reserve' ? (
-                  reserveBodyCopy ? (
-                    <p>{t(reserveBodyCopy.key, reserveBodyCopy.values)}</p>
-                  ) : null
-                ) : registrationKind === 'match_registration_promoted' ? (
-                  fifoGroup === null ? null : (
-                    <p>{t('notifications.match.registrationPromotedBody', { group: fifoGroup })}</p>
-                  )
-                ) : registrationKind === 'match_registration_quartet_complete' ? (
-                  fifoGroup === null ? null : (
-                    <p>
-                      {t('notifications.match.registrationQuartetCompleteBody', {
-                        group: fifoGroup,
-                        event: currentMatchContext.venue
-                      })}
-                    </p>
-                  )
-                ) : registrationKind === 'match_invitation_accepted' ? (
-                  <p>{t('notifications.match.invitationAcceptedBody')}</p>
-                ) : registrationKind === 'match_invitation_declined' ? (
-                  <p>{t('notifications.match.invitationDeclinedBody')}</p>
-                ) : registrationKind === 'match_registration_withdrawn' ? (
-                  <p>{t('notifications.match.registrationWithdrawnBody')}</p>
-                ) : registrationKind === 'match_registration_removed' ? (
-                  <p>{t('notifications.match.registrationRemovedBody')}</p>
-                ) : registrationKind === 'match_registration_group_changed' ? (
-                  <p>{t('notifications.match.registrationGroupChangedBody')}</p>
-                ) : registrationKind === 'match_event_ownership_transferred' ? (
-                  <p>{t('notifications.match.ownershipTransferredBody')}</p>
-                ) : registrationKind === 'match_reconfirmation_required' ? (
-                  <p>{t('notifications.match.reconfirmationRequiredBody')}</p>
-                ) : registrationKind === 'match_registration_reconfirmed' ? (
-                  <p>{t('notifications.match.reconfirmedBody')}</p>
-                ) : registrationKind === 'match_reconfirmation_expired' ? (
-                  <p>{t('notifications.match.reconfirmationExpiredBody')}</p>
-                ) : registrationKind === 'match_event_updated' ? (
-                  <p>{t('notifications.match.updatedBody')}</p>
-                ) : registrationKind === 'match_event_cancelled' ? (
-                  <p>{t('notifications.match.cancelledBody')}</p>
-                ) : registrationKind === 'match_invitation_expired' ? (
-                  <p>{t('notifications.match.invitationExpiredBody')}</p>
-                ) : registrationKind === 'match_registration_expired' ? (
-                  <p>{t('notifications.match.registrationExpiredBody')}</p>
-                ) : registrationKind === 'match_registration_not_playing' ? (
-                  <p>{t('notifications.match.registrationNotPlayingBody')}</p>
-                ) : (
-                  <p>
-                    {t('notifications.match.registrationRejectedBody', {
-                      event: currentMatchContext.venue
-                    })}
-                  </p>
-                )}
-                <p>
-                  {t('notifications.match.venue')}: {currentMatchContext.venue}
-                </p>
-                <p>
-                  {t('notifications.match.startsAt')}:{' '}
-                  {new Intl.DateTimeFormat(i18n.language, {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                    timeZone: currentMatchContext.timezone
-                  }).format(new Date(currentMatchContext.scheduled_at))}
-                </p>
+                {matchBody && <p {...stylex.props(detail.body)}>{matchBody}</p>}
+                <SurfaceCard xstyle={detail.card}>
+                  <NotificationDetailRow
+                    label={t('notifications.match.venue')}
+                    value={currentMatchContext.venue}
+                  />
+                  <NotificationDetailRow
+                    label={t('notifications.match.startsAt')}
+                    value={formatStart(
+                      currentMatchContext.scheduled_at,
+                      currentMatchContext.timezone,
+                      i18n.language
+                    )}
+                  />
+                </SurfaceCard>
               </>
             ) : (
-              <p>{t('notifications.match.unavailable')}</p>
+              <p {...stylex.props(detail.body)}>{t('notifications.match.unavailable')}</p>
             )}
-            {hasError && !unconfirmed && <p role="alert">{t('notifications.targetError')}</p>}
-            {hasError && (
-              <button
-                {...stylex.props(styles.button)}
-                disabled={pending || isOnline !== true}
-                onClick={() => void retry()}
-              >
-                {t('notifications.retry')}
-              </button>
-            )}
+            {feedback}
             <a
               href={`/matches/${encodeURIComponent(target.match_event_id)}`}
-              {...stylex.props(styles.link)}
+              {...stylex.props(detail.action)}
             >
+              <NotificationDetailActionIcon />
               {t('notifications.match.openEvent')}
             </a>
-            <Link {...stylex.props(styles.link)} to="/notifications">
-              {t('notifications.back')}
-            </Link>
           </>
         ) : target.target_status === 'unavailable' ? (
-          <>
-            <h1>{t('notifications.targetUnavailable')}</h1>
-            <Link {...stylex.props(styles.link)} to="/notifications">
-              {t('notifications.back')}
-            </Link>
-          </>
+          <h1 {...stylex.props(detail.title)}>{t('notifications.targetUnavailable')}</h1>
         ) : (
           <>
-            <h1>{target.community_name}</h1>
-            {target.target_status === 'invitation_available' ? (
-              <>
-                <p>{t('notifications.invitationContext')}</p>
-                {!accepted && (
-                  <button
-                    {...stylex.props(styles.button)}
-                    disabled={pending || isOnline !== true}
-                    onClick={() => void accept()}
-                  >
-                    {pending ? t('notifications.accepting') : t('notifications.accept')}
-                  </button>
-                )}
-              </>
-            ) : (
-              <p>
-                {t(
-                  target.membership_status === 'active'
-                    ? 'notifications.activeMembership'
-                    : 'notifications.pendingMembership'
-                )}
-              </p>
-            )}
+            <h1 {...stylex.props(detail.title)}>{target.community_name}</h1>
+            <p {...stylex.props(detail.body)}>
+              {t(
+                target.membership_status === 'active'
+                  ? 'notifications.activeMembership'
+                  : 'notifications.pendingMembership'
+              )}
+            </p>
+            {feedback}
             {target.target_status === 'membership_available' && target.community_id && (
-              <a href={'/community/' + target.community_id} {...stylex.props(styles.link)}>
+              <a href={'/community/' + target.community_id} {...stylex.props(detail.action)}>
+                <NotificationDetailActionIcon />
                 {t('notifications.openTarget')}
               </a>
             )}
-            {hasError && !unconfirmed && <p role="alert">{t('notifications.targetError')}</p>}
-            {hasError && (
-              <button
-                {...stylex.props(styles.button)}
-                disabled={pending || isOnline !== true}
-                onClick={() => void retry()}
-              >
-                {t('notifications.retry')}
-              </button>
-            )}
-            <Link {...stylex.props(styles.link)} to="/notifications">
-              {t('notifications.back')}
-            </Link>
           </>
         )}
       </section>

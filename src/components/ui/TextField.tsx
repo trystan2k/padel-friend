@@ -2,6 +2,7 @@ import { Field } from '@base-ui/react/field';
 import * as stylex from '@stylexjs/stylex';
 import type { StyleXStyles } from '@stylexjs/stylex';
 import { useId, type ComponentProps, type ReactNode } from 'react';
+import { controlStyles } from './control.styles';
 import { styles } from './text-field.styles';
 
 export type TextFieldProps = Omit<ComponentProps<typeof Field.Control>, 'children' | 'size'> & {
@@ -37,7 +38,7 @@ export function TextField({
     className: stylexClassName,
     style: stylexStyle,
     ...stylexProps
-  } = stylex.props(styles.control, xstyle);
+  } = stylex.props(styles.control, controlStyles.size, controlStyles.focusRing, xstyle);
   const mergedClassName =
     typeof className === 'function'
       ? (state: Parameters<typeof className>[0]) =>

@@ -1,8 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
 import { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SurfaceCard } from '../../components/ui/SurfaceCard';
-import { RatingError, isRetryableRatingError } from './RatingError';
+import { Button } from '../../components/ui/Button';
+import { normalizeReturnPath } from '../auth/return-path';
+import { isRetryableRatingError } from './RatingError';
 import {
   RatingExplanation,
   type ExplanationFocus,
@@ -11,6 +12,7 @@ import {
 import { RatingHistory } from './RatingHistory';
 import { RatingProgressChart } from './RatingProgressChart';
 import type { RatingLoad } from './rating-view';
+import { journey as j } from './rating-journey.styles';
 import { rating as s } from './rating.styles';
 
 /**
@@ -53,14 +55,14 @@ export function RatingJourney({ load, onReload }: { load: RatingLoad; onReload: 
     setTarget({ groupId, revision: load.revision, focus });
   }
 
+  // A brand-new player (no confirmed game yet) gets the single empty card of the frames.
+  const empty =
+    load.status === 'ok' && load.progress.state === 'empty' && load.history.items.length === 0;
   return (
-    <section aria-labelledby={headingId} {...stylex.props(s.journey)}>
-      <div {...stylex.props(s.journeyHeader)}>
-        <h2 id={headingId} ref={heading} tabIndex={-1} {...stylex.props(s.heading)}>
-          {t('rating.journey.title')}
-        </h2>
-        <span {...stylex.props(s.scope)}>{t('rating.journey.scope')}</span>
-      </div>
+    <section aria-labelledby={headingId} {...stylex.props(j.section)}>
+      <h2 id={headingId} ref={heading} tabIndex={-1} {...stylex.props(j.title)}>
+        {t('rating.journey.title')}
+      </h2>
       <output {...stylex.props(s.srOnly)}>
         {refreshed
           ? t('rating.journey.refreshed')
@@ -73,14 +75,57 @@ export function RatingJourney({ load, onReload }: { load: RatingLoad; onReload: 
             : ''}
       </output>
       {load.status === 'error' ? (
-        <SurfaceCard xstyle={s.card}>
+        <>
           {/* A failed reload is announced by the status above; first-load keeps the alert. */}
-          <RatingError code={load.code} onRetry={reload} announce={!refreshFailed} />
-        </SurfaceCard>
+          <div role={refreshFailed ? undefined : 'alert'} {...stylex.props(j.banner)}>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              {...stylex.props(j.bannerIcon)}
+            >
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4M12 17h.01" />
+            </svg>
+            <p {...stylex.props(j.bannerText)}>{t(`rating.errors.${load.code}`)}</p>
+          </div>
+          {isRetryableRatingError(load.code) && (
+            <Button variant="secondary" onClick={reload}>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                {...stylex.props(j.actionIcon)}
+              >
+                <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M3 21v-5h5" />
+              </svg>
+              {t('rating.errors.reload')}
+            </Button>
+          )}
+          {load.code === 'unauthenticated' && (
+            <Button
+              variant="secondary"
+              onClick={() =>
+                window.location.assign(
+                  `/login?next=${encodeURIComponent(normalizeReturnPath('/dashboard'))}`
+                )
+              }
+            >
+              {t('signIn')}
+            </Button>
+          )}
+        </>
       ) : (
         <Fragment key={revision}>
           <RatingProgressChart progress={load.progress} />
-          <RatingHistory initial={load.history} onExplain={explain} onStale={reload} />
+          {!empty && <RatingHistory initial={load.history} onExplain={explain} onStale={reload} />}
           <RatingExplanation
             target={activeTarget}
             returnFocus={trigger}

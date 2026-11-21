@@ -148,7 +148,9 @@ export async function fillApproval(page: Page, target: string, note: string) {
 export async function confirmDecision(page: Page) {
   await page
     .getByRole('alertdialog')
-    .getByRole('button', { name: lr.adminDecision.confirm })
+    .getByRole('button', {
+      name: new RegExp(`^(${lr.adminDecision.confirmApproval}|${lr.adminDecision.confirmDenial})$`)
+    })
     .click();
 }
 

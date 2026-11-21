@@ -10,116 +10,23 @@ const focusRing = {
 };
 
 export const rating = stylex.create({
-  journey: { display: 'grid', gap: 'var(--space-8)', minWidth: 0 },
-  journeyHeader: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 'var(--space-6)',
-    minHeight: 'calc(var(--space-20) + var(--space-17))'
-  },
-  heading: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-16)',
-    fontWeight: 'var(--font-weight-bold)',
-    color: 'var(--color-text)'
-  },
   subheading: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-13)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-semibold)',
     color: 'var(--color-text)'
-  },
-  scope: {
-    fontSize: 'var(--font-size-13)',
-    fontWeight: 'var(--font-weight-semibold)',
-    color: 'var(--color-green)',
-    textTransform: 'uppercase'
   },
   card: { minWidth: 0, overflowWrap: 'anywhere' },
   copy: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     color: 'var(--color-muted)',
     overflowWrap: 'anywhere'
   },
-  strong: { fontSize: 'var(--font-size-12)', fontWeight: 'var(--font-weight-semibold)' },
-  emptyState: { display: 'flex', alignItems: 'center', gap: 'var(--space-9)' },
-  emptyIcon: { fontSize: 'var(--font-size-17)', color: 'var(--color-muted)', flexShrink: 0 },
   stateCopy: { display: 'grid', gap: 'var(--space-3)', minWidth: 0 },
-  stateTitle: {
-    margin: 0,
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)'
-  },
   error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-12)' },
 
-  // Chart
-  plot: {
-    display: 'grid',
-    gridTemplateColumns: 'auto minmax(0, 1fr)',
-    gap: 'var(--space-6)',
-    alignItems: 'stretch'
-  },
-  axis: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-11)',
-    fontVariantNumeric: 'tabular-nums'
-  },
-  svg: { display: 'block', width: '100%', height: 'auto', overflow: 'visible' },
-  gridLine: {
-    stroke: 'var(--color-line)',
-    strokeWidth: 'var(--border-width-sm)'
-  },
-  area: { fill: 'var(--color-green)', fillOpacity: 0.15 },
-  trend: {
-    fill: 'none',
-    stroke: 'var(--color-green)',
-    strokeWidth: 'var(--border-width-lg)',
-    strokeLinejoin: 'round',
-    strokeLinecap: 'round'
-  },
-  point: {
-    fill: 'var(--color-green)',
-    stroke: 'var(--color-surface)',
-    strokeWidth: 'var(--border-width-lg)'
-  },
-  baselineMarker: {
-    fill: 'var(--color-surface)',
-    stroke: 'var(--color-green)',
-    strokeWidth: 'var(--border-width-lg)'
-  },
-  adjustmentMarker: {
-    fill: 'var(--color-green)',
-    stroke: 'var(--color-surface)',
-    strokeWidth: 'var(--border-width-lg)'
-  },
-  rangeLabels: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 'var(--space-8)',
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-regular)'
-  },
-  legend: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 'var(--space-9)',
-    margin: 0,
-    padding: 0,
-    listStyle: 'none',
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)'
-  },
-  legendItem: { display: 'inline-flex', alignItems: 'center', gap: 'var(--space-5)' },
-  legendGlyph: { width: 'var(--space-9)', height: 'var(--space-9)', flexShrink: 0 },
   disclosureTrigger: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -188,27 +95,6 @@ export const rating = stylex.create({
     fontSize: 'var(--font-size-14)',
     fontWeight: 'var(--font-weight-semibold)',
     color: 'var(--color-text)'
-  },
-  outcomeChip: {
-    display: 'grid',
-    placeItems: 'center',
-    flexShrink: 0,
-    minWidth: 'var(--space-20)',
-    minHeight: 'calc(var(--space-20) - var(--space-1))',
-    paddingInline: 'var(--space-4)',
-    borderRadius: 'var(--radius-6)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)'
-  },
-  outcomeWin: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
-  outcomeDraw: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-amber)' },
-  outcomeLoss: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-muted)' },
-  adjustmentChip: {
-    paddingInline: 'var(--space-6)',
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-green)',
-    textAlign: 'center',
-    overflowWrap: 'anywhere'
   },
   delta: {
     flexShrink: 0,

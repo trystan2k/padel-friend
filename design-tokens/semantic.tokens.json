@@ -5,6 +5,10 @@
       "$value": "0 {space.4} {space.16} color-mix(in srgb, {color.text} 12%, transparent)"
     }
   },
+  "focus": {
+    "width": { "$type": "dimension", "$value": "{space.3}" },
+    "offset": { "$type": "dimension", "$value": "{space.2}" }
+  },
   "color": {
     "bg": {
       "$type": "color",
@@ -31,6 +35,11 @@
       "$value": "{palette.muted}",
       "$extensions": { "theme": { "dark": "{palette.muted-dark}" } }
     },
+    "hairline": {
+      "$type": "color",
+      "$value": "{palette.hairline}",
+      "$extensions": { "theme": { "dark": "{palette.hairline-dark}" } }
+    },
     "line": {
       "$type": "color",
       "$value": "{palette.line}",
@@ -41,10 +50,20 @@
       "$value": "{palette.green}",
       "$extensions": { "theme": { "dark": "{palette.green-dark}" } }
     },
+    "on-green": {
+      "$type": "color",
+      "$value": "{palette.on-green}",
+      "$extensions": { "theme": { "dark": "{palette.on-green-dark}" } }
+    },
     "green-soft": {
       "$type": "color",
       "$value": "{palette.green-soft}",
       "$extensions": { "theme": { "dark": "{palette.green-soft-dark}" } }
+    },
+    "green-ink": {
+      "$type": "color",
+      "$value": "{palette.green-ink}",
+      "$extensions": { "theme": { "dark": "{palette.green-ink-dark}" } }
     },
     "green-deep": { "$type": "color", "$value": "{palette.green-deep}" },
     "on-hero": { "$type": "color", "$value": "{palette.surface}" },
@@ -60,10 +79,21 @@
       "$value": "{palette.amber}",
       "$extensions": { "theme": { "dark": "{palette.amber-dark}" } }
     },
+    "amber-soft": {
+      "$type": "color",
+      "$value": "{palette.amber-soft}",
+      "$extensions": { "theme": { "dark": "{palette.amber-soft-dark}" } }
+    },
     "red": {
       "$type": "color",
       "$value": "{palette.red}",
       "$extensions": { "theme": { "dark": "{palette.red-dark}" } }
-    }
+    },
+    "red-soft": {
+      "$type": "color",
+      "$value": "{palette.red-soft}",
+      "$extensions": { "theme": { "dark": "{palette.red-soft-dark}" } }
+    },
+    "focus": { "$type": "color", "$value": "{palette.focus}" }
   }
 }

@@ -9,7 +9,6 @@ export const matchesStyles = stylex.create({
     padding: 'var(--space-18)',
     color: 'var(--color-text)'
   },
-  heading: { display: 'grid', gap: 'var(--space-2)' },
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
@@ -22,14 +21,6 @@ export const matchesStyles = stylex.create({
     fontSize: 'var(--font-size-18)',
     lineHeight: 'var(--font-line-height-tight)'
   },
-  tabs: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 'var(--space-2)',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-surface-2)'
-  },
   link: {
     display: 'inline-flex',
     alignItems: 'center',
@@ -41,21 +32,6 @@ export const matchesStyles = stylex.create({
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-1)'
     }
-  },
-  activeLink: {
-    backgroundColor: 'var(--color-surface)',
-    fontWeight: 'var(--font-weight-semibold)',
-    textDecoration: 'underline',
-    textUnderlineOffset: 'var(--space-1)'
-  },
-  list: { display: 'grid', gap: 'var(--space-8)' },
-  card: {
-    display: 'grid',
-    gap: 'var(--space-3)',
-    padding: 'var(--space-4)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-surface)',
-    overflowWrap: 'anywhere'
   },
   detailSurface: {
     padding: 'var(--space-18)',
@@ -120,14 +96,6 @@ export const matchesStyles = stylex.create({
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-1)'
     }
-  },
-  empty: {
-    display: 'grid',
-    justifyItems: 'start',
-    gap: 'var(--space-3)',
-    padding: 'var(--space-5)',
-    borderRadius: 'var(--radius-10)',
-    backgroundColor: 'var(--color-surface)'
   },
   input: {
     minHeight: 'calc(var(--space-40) + var(--space-4))',

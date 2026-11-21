@@ -1,13 +1,7 @@
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import {
-  GLYPH,
-  MASKABLE_SAFE_RADIUS,
-  glyphReach,
-  iconColors,
-  iconFiles,
-  iconSvg
-} from '../scripts/generate-pwa-icons.mjs';
+import { iconSlots } from '../scripts/generate-pwa-icons.mjs';
 import { parseTokens, resolveTokens } from '../scripts/pwa-build.mjs';
 
 type Icon = { src: string; sizes: string; type: string; purpose: string };
@@ -65,27 +59,53 @@ describe('web app manifest', () => {
   });
 });
 
-describe('icon source', () => {
-  const colors = iconColors(tokensCss);
+describe('D8 icon source', () => {
+  const sha256 = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex');
 
-  it('uses token colors and keeps public/icon.svg in sync with the generator', () => {
-    expect(colors).toEqual({
-      background: palette['palette-green-deep'],
-      glyph: palette['palette-lime']
-    });
-    expect(readFileSync('public/icon.svg', 'utf8')).toBe(iconSvg(colors, { rounded: true }));
+  it('pins the approved source and all resizing/padding-only derivatives', () => {
+    // Output from pnpm pwa:icons; SVG fallback emitted by pnpm pwa:icons --svg.
+    const digests = {
+      'docs/design/padel-friends-app-icon.png':
+        '5f76f01f112dbdc8d7b80a5911d46ef1c0051be2d4af8c02c878ef7e0a74689a',
+      'public/icons/icon-192.png':
+        '917c168776b745b18d0fec4d95212d752578963718faed8a281f1a00be631317',
+      'public/icons/icon-512.png':
+        '9a23b8f077e61ea75042e83bc6774c2959365835a72506cf7a1ca0743d8a92a1',
+      'public/icons/maskable-192.png':
+        '4611e2974494222e76a18d2f1c67a3e6f226aae1d11f7dc963bd9b90614105c7',
+      'public/icons/maskable-512.png':
+        'a10a3e15bc27b78dc1d9383a1510e35658287e38ba9c2919e3a6b1087480aaca',
+      'public/icons/apple-touch-icon.png':
+        'a1bd9eec6217e6e074549fa383d7eee021fcb9dcad654fc95306a3054b8faa8c',
+      'public/icons/favicon.png':
+        '2217a191c3eaea1c5fbe3812cae8ef96158c472cebae5f43027e0f24f2b28f3b',
+      'public/icon.svg': '944d6e108df2a09ea9c7d1016925f293fc2a21c1c3ffcc07d3677e75b5042d42'
+    };
+    for (const [path, digest] of Object.entries(digests))
+      expect([path, sha256(path)]).toEqual([path, digest]);
+    expect(sha256('docs/design/icon-exports/favicon.png')).toBe(
+      digests['public/icons/favicon.png']
+    );
+    expect(sha256('docs/design/icon-exports/pwa-icon-512.png')).toBe(
+      digests['public/icons/icon-512.png']
+    );
+    expect(manifest.icons.map(({ src }) => src).sort()).toEqual(
+      iconSlots
+        .filter(({ file }) => !file.includes('apple-touch'))
+        .map(({ file }) => file.slice('public'.length))
+        .sort()
+    );
+    for (const { file, size } of iconSlots) {
+      expect([file, pngSize(file)]).toEqual([file, { width: size, height: size }]);
+    }
   });
 
-  it('keeps the maskable glyph inside the 80% safe zone and the mask full-bleed', () => {
-    expect(glyphReach()).toBeLessThanOrEqual(MASKABLE_SAFE_RADIUS);
-    expect(GLYPH.start).toBeGreaterThan(256 - MASKABLE_SAFE_RADIUS);
-    expect(iconSvg(colors, { rounded: false })).not.toContain('rx=');
-    expect(iconSvg(colors, { rounded: true })).toContain('rx=');
-  });
-
-  it('generates every manifest icon file plus the apple-touch icon', () => {
-    const generated = iconFiles(colors).map((entry) => entry.file.replace('public', ''));
-    for (const icon of manifest.icons) expect(generated).toContain(icon.src);
-    expect(generated).toContain('/icons/apple-touch-icon.png');
+  it('keeps the 56% square inside the 80% maskable safe circle and fills the edges', () => {
+    const maskable = iconSlots.filter(({ file }) => file.includes('maskable'));
+    expect(maskable.map(({ size }) => size)).toEqual([192, 512]);
+    for (const { file, artworkWidth } of maskable) {
+      expect((Math.SQRT2 * Number.parseFloat(artworkWidth ?? '100%')) / 100).toBeLessThan(0.8);
+      expect(readFileSync(file)[25]).toBe(2);
+    }
   });
 });

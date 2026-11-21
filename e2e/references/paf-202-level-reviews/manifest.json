@@ -1,0 +1,91 @@
+{
+  "status": "chromium-certified-with-scoped-route-adaptations",
+  "sourceDesign": {
+    "path": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
+    "sha256": "41f3b06db61a180ed1d0eebe0fb3ff71e0086a703b5497ad7b47cd7ba7bb971e",
+    "exportCommand": "Pencil MCP: Export([\"qWosG\",\"OKYtp\"], \"png\", \"<repo>/e2e/references/paf-202-level-reviews\", {scale:1})"
+  },
+  "route": "/level-reviews/new (qWosG) · /level-reviews/$requestId (OKYtp)",
+  "precedence": "D7: route-specific frames qWosG and OKYtp govern their own pages. D1 (resolved 2026-11-20): the player level-review HISTORY, the platform level-review QUEUE and the platform DETAIL now have approved frames (A9f626, SCPeI, Y7NRH, e8Z3Rb, rBhs4 and dark twins) pinned in e2e/references/paf-202-d1-notifications/manifest.json; gGNxk is no longer used.",
+  "approvedReferences": {
+    "qWosG": {
+      "frameId": "qWosG",
+      "certifies": "Top bar (48px back target, 17/700 title), muted 16px intro, 20px hairline level card (muted label + bold value), 15/600 field labels with 14px helper text, 48px outlined evidence trigger, 14px muted meta, 52px green submit",
+      "sha256": "ff54c9a8f781b1c6dcac93199367c01b81811ba7a72bd34ccd937a699345b745",
+      "pixelSize": [390, 844]
+    },
+    "OKYtp": {
+      "frameId": "OKYtp",
+      "certifies": "Top bar, tone-soft status notice, 24px timeline marks (done / current / pending), 20px hairline 'If approved' / 'If rejected' cards with 40px glyph, 16/800 title and 14px muted body, outlined withdraw action",
+      "sha256": "7c9473e4ca81542c7c322297b6238ccc30ac3a41c59340ed81138a7028dad496",
+      "pixelSize": [390, 844]
+    }
+  },
+  "surfaces": {
+    "PlayerLevelReviewRequest": {
+      "frames": ["qWosG"],
+      "note": "Flat fields on the page background, level card on the 20px hairline surface, 52px submit following the fields (the frame's sticky bar is not adopted: the form scrolls and the submit follows the last field). Exact/range text fields keep the stored min/max contract in place of the frame's -/+ stepper."
+    },
+    "PlayerLevelReviewStatus": {
+      "frames": ["OKYtp"],
+      "note": "Tone-soft notice from the REAL state (amber open, green approved, red rejected, surface-2 canceled) with the real snapshot level, requested level or range and the real short request id; timeline built from the real timestamps; 'If approved / If rejected' cards only while the request is open; decision card when decided; outlined cancel action. The request snapshot card, reason, evidence and decision note are kept (real data, behavior preserved)."
+    },
+    "PlayerLevelReviewHistory": {
+      "frames": ["A9f626", "ftEUR"],
+      "manifest": "e2e/references/paf-202-d1-notifications/manifest.json",
+      "note": "D1 implemented: 28/800 title, hairline request cards with a pill status chip, decision line and View request link; the request link, load-more and empty states are kept."
+    },
+    "PlatformLevelReviewQueue": {
+      "frames": ["SCPeI", "SeklE"],
+      "manifest": "e2e/references/paf-202-d1-notifications/manifest.json",
+      "note": "D1 implemented: pending summary chip, hairline review cards with initials avatar, status chip, requested range, submitted date and review link; the status filter and paging are kept."
+    },
+    "PlatformLevelReviewDetail": {
+      "frames": ["Y7NRH", "zkFgA", "e8Z3Rb", "QWdyf", "rBhs4", "w34ZL"],
+      "manifest": "e2e/references/paf-202-d1-notifications/manifest.json",
+      "note": "D1 implemented: player header card, request context, decision section, audit trail, sticky Deny / Approve bar and the approve / deny confirmation sheet; decision constraints and mutation feedback are unchanged."
+    },
+    "PlatformAdminEntry": {
+      "frames": [],
+      "note": "Moved to /me and restyled in U18 (vARtQ hairline list); verified here, not redone."
+    },
+    "LevelReviewStates": {
+      "frames": [],
+      "note": "Loading and error cards keep the shared level review styles; the default back destination is /me. Not covered by a frame."
+    }
+  },
+  "omittedDrawnElements": {
+    "requestId": "'#LR-2048' has no source (D6). The status notice shows the real short request id (first 8 hex characters of the request id) instead.",
+    "sla": "'Most reviews take 2-3 days' / 'Usually 2-3 days' have no source (D6): omitted. Intro copy states only that a Platform Admin reviews the request; the open timeline step says it is waiting for review.",
+    "stepper": "'Level you think fits' with -/+ and a single value 4.1: the stored request is a min/max range (D6). The form keeps Exact level / Range text fields with the same validation.",
+    "stickyBar": "Sticky action bar not adopted (matches U17 league forms): the submit and cancel actions follow the content."
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-viewport-pixel-difference",
+    "measurementMethod": "Chromium 390 CSS px, deviceScaleFactor 1, light, en. The live region (clipped from a full-page capture at the element top) is compared with the same-size region of the scale-1 Pencil PNG, pinned perceptual threshold (35215 x 0.1^2). Regions: qWosG topbar (frame y 48-96, aligned on the back link top), qWosG card (frame y 164-234, aligned on the level card top), qWosG evidence (frame y 404-452, aligned on the disclosure trigger), OKYtp topbar, OKYtp approved (frame y 347-435) and OKYtp rejected (frame y 449-538) on a request under review, aligned on each card top. Structural probes (order, 48px back target, 17/700 title, gutters, 14px rhythm, radii, mark and glyph sizes, tone fills, no invented id/SLA, >=44px targets, no overflow) assert exactly and are independent of the budgets.",
+    "perScreen": {
+      "qWosG:topbar": 0.095,
+      "qWosG:card": 0.148,
+      "qWosG:evidence": 0.144,
+      "OKYtp:topbar": 0.094,
+      "OKYtp:approved": 0.12,
+      "OKYtp:rejected": 0.092
+    },
+    "perScreenRationale": {
+      "qWosG:topbar": "Observed residual 0.0755 on the back-link-aligned 390x48 region; 0.095 leaves 0.0195 for cross-renderer variance. Intentional adaptation, not a layout defect: the frame centers the title between a 48px back target and a 72px empty action, production keeps the title next to the back target (shared with the league and community headers); the 48px target, 17/700 title and row alignment are exact structural probes.",
+      "qWosG:card": "Observed residual 0.1276 on the level-card-aligned 390x70 region; 0.148 leaves 0.0204 for cross-renderer variance. Residual is the frame's sample figures ('3.82 · 76% reliable' with a -/+ stepper row) versus the real level and reliability copy and the real helper line (D6); card radius, hairline and gutters are exact structural probes.",
+      "qWosG:evidence": "Observed residual 0.1240 on the disclosure-aligned 390x48 region; 0.144 leaves 0.02 for cross-renderer variance. Residual is the label wording ('Add optional evidence' versus '+ Add evidence (optional)') and the leading glyph placement; the 48px height, 14px radius and line border are exact structural probes.",
+      "OKYtp:topbar": "Observed residual 0.0744 on the back-link-aligned 390x48 region; 0.094 leaves 0.0196 for cross-renderer variance. Same title-position adaptation as the request top bar.",
+      "OKYtp:approved": "Observed residual 0.1005 on the 'If approved' card region of a request under review; 0.12 leaves 0.0195 for cross-renderer variance. Residual is card height (production copy wraps differently at the real font metrics) and glyph rasterization; the 20px hairline radius, 40px glyph and green-soft tone are exact structural probes.",
+      "OKYtp:rejected": "Observed residual 0.0721 on the 'If rejected' card region; 0.092 leaves 0.0199 for cross-renderer variance. Same documented causes as the approved card; the 40px surface-2 glyph and 20px radius are exact structural probes."
+    },
+    "measured": {
+      "qWosG:topbar": 0.0755,
+      "qWosG:card": 0.1276,
+      "qWosG:evidence": 0.124,
+      "OKYtp:topbar": 0.0744,
+      "OKYtp:approved": 0.1005,
+      "OKYtp:rejected": 0.0721
+    }
+  }
+}

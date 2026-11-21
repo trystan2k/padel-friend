@@ -1,46 +1,18 @@
 import * as stylex from '@stylexjs/stylex';
 
+// Frame ZthyR: the password rules sit under both fields as two 14px muted lines with a state mark.
 export const styles = stylex.create({
-  page: {
-    backgroundColor: 'var(--color-bg)',
-    color: 'var(--color-text)',
-    fontFamily: 'var(--font-family-body)',
-    minHeight: '100dvh',
-    width: '100%',
-    boxSizing: 'border-box',
-    maxWidth: 'calc(var(--space-40) * 12)',
-    marginInline: 'auto',
-    padding: 'calc(var(--space-20) + var(--space-4)) var(--space-18) var(--space-20)',
+  rules: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-20)'
-  },
-  header: { display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' },
-  brand: {
-    color: 'var(--color-green)',
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)'
-  },
-  title: {
+    gap: 'var(--space-6)',
     margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'calc(var(--font-size-25) + var(--space-1))',
-    fontWeight: 'var(--font-weight-bold)'
+    padding: 0,
+    listStyle: 'none',
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-14)',
+    lineHeight: 'var(--font-line-height-comfortable)'
   },
-  subtitle: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-14)' },
-  form: { display: 'flex', flexDirection: 'column', gap: 'var(--space-14)' },
-  warning: {
-    margin: 0,
-    padding: 'var(--space-16)',
-    backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-text)',
-    border: 'var(--border-width-sm) solid var(--color-muted)',
-    borderRadius: 'var(--radius-12)',
-    overflowWrap: 'anywhere',
-    fontSize: 'var(--font-size-14)'
-  },
-  requirementsHelper: { marginBlockStart: 'var(--space-8)' },
-  error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-12)' }
+  rule: { display: 'flex', gap: 'var(--space-6)' },
+  ruleMet: { color: 'var(--color-green-ink)' }
 });

@@ -54,6 +54,7 @@ describe('result copy', () => {
   });
   it.each([en, pt, es])('includes every result state and mapped error', (catalog) => {
     for (const key of [
+      'record',
       'steps',
       'teams',
       'suggested',
@@ -67,7 +68,6 @@ describe('result copy', () => {
       'playedAt',
       'playedAtOffset',
       'courtLabel',
-      'preview',
       'submit',
       'submitting',
       'pending',

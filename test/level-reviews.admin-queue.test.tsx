@@ -54,7 +54,9 @@ it('renders queue identity, status, count and detail link', () => {
   setup();
   expect(screen.getByText('1 pending request')).toBeTruthy();
   expect(screen.getByText('Player')).toBeTruthy();
-  expect(screen.getByRole('link').getAttribute('href')).toBe('/platform-admin/level-reviews/one');
+  expect(screen.getByRole('link', { name: 'Review request' }).getAttribute('href')).toBe(
+    '/platform-admin/level-reviews/one'
+  );
 });
 it('filters server-side and shows empty results distinctly', async () => {
   mocks.list.mockResolvedValue({ ...initial, items: [], pending_count: 1 });

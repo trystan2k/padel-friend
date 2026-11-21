@@ -21,7 +21,28 @@ export function PrivacyPolicy({ approved = PRIVACY_POLICY_APPROVED }: { approved
   return (
     <main {...stylex.props(styles.page)}>
       <header {...stylex.props(styles.header)}>
-        <span {...stylex.props(styles.brand)}>{t('auth.welcomeBrand')}</span>
+        <div {...stylex.props(styles.brandRow)}>
+          <span aria-hidden="true" {...stylex.props(styles.mark)}>
+            <span {...stylex.props(styles.markBall)} />
+            <span {...stylex.props(styles.markLine)} />
+          </span>
+          <span {...stylex.props(styles.brand)}>{t('auth.loginBrand')}</span>
+        </div>
+        <TextLink to="/" xstyle={styles.back}>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            {...stylex.props(styles.backIcon)}
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          {t('privacy.backHome')}
+        </TextLink>
         <h1 {...stylex.props(styles.title)}>{t('privacy.title')}</h1>
         <p {...stylex.props(styles.updated)}>{t('privacy.updated', { date: updated })}</p>
       </header>
@@ -45,7 +66,9 @@ export function PrivacyPolicy({ approved = PRIVACY_POLICY_APPROVED }: { approved
           {items > 0 && (
             <ul {...stylex.props(styles.list)}>
               {range(items).map((n) => (
-                <li key={n}>{t(`privacy.${id}.i${n}`)}</li>
+                <li key={n} {...stylex.props(styles.item)}>
+                  {t(`privacy.${id}.i${n}`)}
+                </li>
               ))}
             </ul>
           )}
@@ -58,10 +81,6 @@ export function PrivacyPolicy({ approved = PRIVACY_POLICY_APPROVED }: { approved
           )}
         </section>
       ))}
-
-      <footer {...stylex.props(styles.footer)}>
-        <TextLink to="/login">{t('auth.backToSignIn')}</TextLink>
-      </footer>
     </main>
   );
 }

@@ -8,7 +8,7 @@ import { waitForHydratedPage } from './auth-helpers';
 type Copy = {
   auth: { loginEmailLabel: string; loginPasswordLabel: string; loginSubmit: string };
   communityOnboarding: {
-    createTitle: string;
+    createLead: string;
     createSubmit: string;
     nameLabel: string;
     private: string;
@@ -95,7 +95,7 @@ async function createCommunityThroughUi(
   await page.goto('/onboarding/community?view=create');
   await waitForHydratedPage(page);
   await expect(
-    page.getByRole('heading', { name: en.communityOnboarding.createTitle })
+    page.getByRole('heading', { name: en.communityOnboarding.createLead })
   ).toBeVisible();
   await page.getByLabel(en.communityOnboarding.nameLabel).fill(name);
   if (visibility === 'private')

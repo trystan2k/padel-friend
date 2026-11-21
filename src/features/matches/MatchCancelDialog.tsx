@@ -2,6 +2,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import * as stylex from '@stylexjs/stylex';
 import { useId, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
 import { hasMatchControlCharacters } from './match-management-edit';
 import { matchManagementStyles as s } from './match-management.styles';
 
@@ -43,10 +44,14 @@ export function MatchCancelDialog({
           }
           {...stylex.props(s.popup)}
         >
-          <Dialog.Title>{t('matches.management.cancelTitle')}</Dialog.Title>
-          <Dialog.Description>{t('matches.management.cancelDescription')}</Dialog.Description>
+          <Dialog.Title {...stylex.props(s.dialogTitle)}>
+            {t('matches.management.cancelTitle')}
+          </Dialog.Title>
+          <Dialog.Description {...stylex.props(s.copy)}>
+            {t('matches.management.cancelDescription')}
+          </Dialog.Description>
           <form
-            {...stylex.props(s.section)}
+            {...stylex.props(s.dialogForm)}
             onSubmit={async (event) => {
               event.preventDefault();
               if (valid && !pending && (await onConfirm(reason.trim()))) {
@@ -55,7 +60,9 @@ export function MatchCancelDialog({
               }
             }}
           >
-            <label htmlFor={id}>{t('matches.management.cancelReason')}</label>
+            <label htmlFor={id} {...stylex.props(s.fieldLabel)}>
+              {t('matches.management.cancelReason')}
+            </label>
             <textarea
               id={id}
               required
@@ -71,18 +78,19 @@ export function MatchCancelDialog({
               <p id={`${id}-error`}>{t('matches.management.reasonInvalid')}</p>
             )}
             <output aria-live="polite">{feedback ? t(feedback) : null}</output>
-            <div {...stylex.props(s.row)}>
-              <Dialog.Close disabled={pending} {...stylex.props(s.button)}>
-                {t('matches.management.cancel')}
-              </Dialog.Close>
-              <button
+            <div {...stylex.props(s.dialogActions)}>
+              <Button
                 type="submit"
-                disabled={pending || !valid}
-                aria-busy={pending}
-                {...stylex.props(s.button)}
+                variant="destructive"
+                xstyle={s.destructive}
+                disabled={!valid}
+                busy={pending}
               >
                 {t('matches.management.cancelMatch')}
-              </button>
+              </Button>
+              <Dialog.Close disabled={pending} render={<Button variant="secondary" />}>
+                {t('matches.management.keepMatch')}
+              </Dialog.Close>
             </div>
           </form>
         </Dialog.Popup>

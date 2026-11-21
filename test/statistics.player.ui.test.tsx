@@ -361,15 +361,15 @@ describe('player statistics composition (Pencil RN0yw / RRuhH)', () => {
   const follows = (first: HTMLElement, second: HTMLElement) =>
     (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
 
-  it('orders filters, highlights, form, then the detailed sections like the frames', () => {
+  it('shows highlights and form before filters and detailed sections', () => {
     render(
       wrap(<PlayerStatistics stats={scoped} filterControls={controls(vi.fn<() => void>())} />)
     );
     const region = (name: string) => screen.getByRole('region', { name });
     const order = [
-      'Statistics filters',
       'Highlights',
       'Form',
+      'Statistics filters',
       'Matches',
       'Sets and games',
       'Rating and rank',

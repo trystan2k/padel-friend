@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import type { ResultProposal } from '../src/features/matches/match-result-model';
 import { parseResultProposals } from '../src/features/matches/match-result-model';
+import decision from './references/paf-202-result-decision/manifest.json' with { type: 'json' };
 import manifest from './references/paf-8/manifest.json' with { type: 'json' };
+import { assertResultScreenshot } from './result-recording-visual';
 import {
   copies,
   enterScore,
@@ -158,7 +160,14 @@ function assertAbove(upper: Box, lower: Box, label: string, gap = 0) {
 }
 
 async function assertDialogGeometry(dialog: Locator) {
-  const dialogBox = await box(dialog);
+  // The sheet scrolls when its content is taller than the viewport: contain against the full
+  // scrollable extent, then separately require the visible edge to touch the viewport bottom.
+  const visibleBox = await box(dialog);
+  const dialogBox = await dialog.evaluate((element) => {
+    element.scrollTop = 0;
+    const { x, y, right, width } = element.getBoundingClientRect();
+    return { x, y, right, width, bottom: y + element.scrollHeight, height: element.scrollHeight };
+  });
   const radios = dialog.getByRole('radio');
   const radioBoxes = await radios.evaluateAll((nodes) =>
     nodes.map((node) => {
@@ -190,9 +199,18 @@ async function assertDialogGeometry(dialog: Locator) {
   assertContained(dialogBox, note, 'optional note field');
   assertContained(dialogBox, cancel, 'cancel footer button');
   assertContained(dialogBox, submit, 'submit footer button');
-  assertAbove(note, cancel, 'dialog footer follows note', 2);
   assertAbove(note, submit, 'dialog submit follows note', 2);
-  expect(Math.abs(cancel.y - submit.y), 'footer buttons share row').toBeLessThanOrEqual(2);
+  // H6VcqC bottom sheet: Submit dispute above Cancel, both full-width 52px actions.
+  assertAbove(submit, cancel, 'cancel follows submit', 12);
+  expect(Math.abs(cancel.width - submit.width), 'stacked actions share width').toBeLessThanOrEqual(
+    2
+  );
+  expect(submit.height, 'submit dispute 52px control').toBeGreaterThanOrEqual(52);
+  expect(cancel.height, 'cancel 52px control').toBeGreaterThanOrEqual(52);
+  const viewport = await dialog.evaluate(() => window.innerHeight);
+  expect(visibleBox.bottom, 'sheet anchors to the bottom edge').toBeGreaterThanOrEqual(
+    viewport - 2
+  );
 }
 
 async function assertMixedGroupGeometry(page: Page, groupFour: Locator) {
@@ -256,9 +274,30 @@ async function compareFrame(frame: Frame, page: Page, info: TestInfo) {
     caret: 'hide',
     path: info.outputPath(`${frame}-actual.png`)
   });
-  const approved = readFileSync(new URL(`./references/paf-8/${frame}.png`, import.meta.url));
+  if (frame === 'sLXK7' || frame === 'alZmm') {
+    await expect(page.getByRole('navigation', { name: copies.en.appShell.navigation })).toHaveCount(
+      0
+    );
+    await assertResultScreenshot(page, actual, frame, 'lifecycle');
+    if (frame === 'alZmm') {
+      // A taller capture clears content so the bottom band can verify navigation suppression.
+      await page.setViewportSize({ width, height: height + 120 });
+      const tall = await page.screenshot({ animations: 'disabled', caret: 'hide' });
+      await assertResultScreenshot(page, tall, frame, 'recording');
+    }
+    await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
+    return;
+  }
+  const clubhouse = frame === 'H6VcqC' || frame === 'GMcbD';
+  const approved = readFileSync(
+    new URL(
+      `./references/${clubhouse ? 'paf-202-result-decision' : 'paf-8'}/${frame}.png`,
+      import.meta.url
+    )
+  );
+  const referenceScale = clubhouse ? 1 : 2;
   const measured = await page.evaluate(
-    async ({ actualUrl, approvedUrl }) => {
+    async ({ actualUrl, approvedUrl, approvedScale }) => {
       async function readPixels(url: string, scale: number) {
         const image = new Image();
         image.src = url;
@@ -277,7 +316,7 @@ async function compareFrame(frame: Frame, page: Page, info: TestInfo) {
       }
       const [rendered, reference] = await Promise.all([
         readPixels(actualUrl, 1),
-        readPixels(approvedUrl, 2)
+        readPixels(approvedUrl, approvedScale)
       ]);
       if (rendered.width !== reference.width || rendered.height !== reference.height)
         return {
@@ -309,26 +348,30 @@ async function compareFrame(frame: Frame, page: Page, info: TestInfo) {
     },
     {
       actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
-      approvedUrl: `data:image/png;base64,${approved.toString('base64')}`
+      approvedUrl: `data:image/png;base64,${approved.toString('base64')}`,
+      approvedScale: referenceScale
     }
   );
   console.info(`${frame} PAF-8 full-frame measurement: ${JSON.stringify(measured)}`);
-  const budget = manifest.visualBudgets.perScreen[frame];
+  const budget =
+    frame === 'H6VcqC' || frame === 'GMcbD'
+      ? decision.rasterBudgets[frame].maxPerceptualDiff
+      : manifest.visualBudgets.perScreen[frame];
   expect
     .soft(measured.dimensionMismatch, `${frame} dimensions must match the 2x Pencil export`)
     .toBe(false);
   expect.soft(budget, `${frame} needs a reviewed nonzero screenshot budget`).not.toBeNull();
-  if (budget !== null && measured.perceptualPixelDifference !== null)
+  if (budget !== null && measured.perceptualPixelDifference !== null) {
     expect
       .soft(measured.perceptualPixelDifference, `${frame} reviewed raster budget`)
       .toBeLessThanOrEqual(budget);
+  }
   await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
   await info.attach(`${frame}-approved`, { body: approved, contentType: 'image/png' });
   await info.attach(`${frame}-measurement`, {
     body: JSON.stringify(measured, null, 2),
     contentType: 'application/json'
   });
-  return measured;
 }
 
 test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster budgets', async ({
@@ -491,7 +534,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
     await correctionPage.locator(`#score-${index}-team_b`).fill(String(b));
     await correctionPage.locator(`#score-${index}-team_b`).blur();
   }
-  await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
+  await correctionPage.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
   await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
   await expect(correctionPage.locator('article[data-result-status="pending"]')).toBeVisible();
   await correctionPage.context().close();
@@ -529,7 +572,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   const pendingCard = await resultCard(pendingPage);
   const pendingRegion = pendingCard.getByRole('region', { name: r.pending, exact: true });
   await expect(pendingRegion.getByRole('timer')).toBeVisible();
-  await expect(pendingRegion.getByRole('timer')).toContainText('48H');
+  await expect(pendingRegion.getByRole('timer')).toContainText('48h');
   await assertTouchTargets(pendingPage);
   await scrollToTopOf(pendingRegion);
   await compareFrame('JXjNs', pendingPage, info);
@@ -608,32 +651,21 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   const friendlyOverview = confirmationPage.locator('section').filter({
     has: confirmationPage.getByText('Friendly match', { exact: true })
   });
-  const resultsNavigation = confirmationPage.getByRole('navigation', {
-    name: r.navigation,
-    exact: true
-  });
-  const [friendlyCardBox, friendlySectionBox, overviewBox, navigationBox] = await Promise.all([
+  // The result flow suppresses the app bottom navigation (PAF-202 D9); none may render here.
+  await expect(
+    confirmationPage.getByRole('navigation', { name: copies.en.appShell.navigation })
+  ).toHaveCount(0);
+  const [friendlyCardBox, friendlySectionBox, overviewBox] = await Promise.all([
     box(friendlyCard),
     box(friendlyGroupSection),
-    box(friendlyOverview),
-    box(resultsNavigation)
+    box(friendlyOverview)
   ]);
   assertContained(friendlySectionBox, friendlyCardBox, 'confirmed card within result section', 2);
   assertAbove(overviewBox, friendlySectionBox, 'overview rows above confirmed result section', 2);
-  assertAbove(
-    friendlySectionBox,
-    navigationBox,
-    'confirmed result section above related navigation',
-    2
-  );
   expect(
     overviewBox.bottom,
     'overview rows and confirmed card section do not overlap'
   ).toBeLessThanOrEqual(friendlySectionBox.y + 2);
-  expect(
-    friendlySectionBox.bottom,
-    'confirmed card and related navigation do not overlap'
-  ).toBeLessThanOrEqual(navigationBox.y + 2);
   const timeline = friendlyCard.locator('details');
   if (await timeline.count()) {
     const timelineBox = await box(timeline);

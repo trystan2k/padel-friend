@@ -87,6 +87,10 @@ function submitForm(): void {
   fireEvent.submit(form);
 }
 
+function precedes(first: Element, second: Element): boolean {
+  return (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+}
+
 describe('AccountSignup', () => {
   it('renders the step 1 badge, signup form and back-link to the Welcome screen', async () => {
     await renderSignup({ next: '/matches' });
@@ -103,6 +107,36 @@ describe('AccountSignup', () => {
     expect(
       new URL(backLink.getAttribute('href') ?? '', 'http://localhost').searchParams.get('next')
     ).toBe('/matches');
+  });
+
+  it('follows frame EGb2g: back bar, progress, title, fields, then the sticky create action', async () => {
+    await renderSignup({ next: '/matches' });
+
+    const main = screen.getByRole('main');
+    const form = main.querySelector('form');
+    const barBack = screen.getByRole('link', { name: en.auth.back });
+    const step = screen.getByText(en.auth.accountStep);
+    const heading = screen.getByRole('heading', { level: 1 });
+    const email = screen.getByLabelText(en.auth.emailAddress);
+    const password = screen.getByLabelText(en.auth.signupPasswordLabel);
+    const note = screen.getByText(en.auth.profileFollows);
+    const submit = screen.getByRole('button', { name: en.auth.signupSubmit });
+
+    expect(barBack.nextElementSibling?.textContent).toBe(en.auth.accountBarTitle);
+    expect(
+      new URL(barBack.getAttribute('href') ?? '', 'http://localhost').searchParams.get('next')
+    ).toBe('/matches');
+    const segments = step.previousElementSibling?.querySelectorAll('span') ?? [];
+    expect(segments).toHaveLength(3);
+    expect(step.previousElementSibling?.getAttribute('aria-hidden')).toBe('true');
+    const order = [barBack, step, heading, email, password, note, submit];
+    for (const [index, element] of order.slice(1).entries())
+      expect(precedes(order[index]!, element)).toBe(true);
+    // The sticky CTA stays inside the form so it still submits it.
+    expect(form?.contains(submit)).toBe(true);
+    expect(form?.contains(note)).toBe(true);
+    // Signup never offers Google: that flow lives on the login screen only.
+    expect(screen.queryByText(en.signInWithGoogle)).toBeNull();
   });
 
   it('links to the public privacy policy', async () => {

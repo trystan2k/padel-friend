@@ -3,10 +3,10 @@ import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '../../components/ui/Button';
-import { rootStyles } from '../../root.styles';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import type { LeagueDto, LeagueListResult, LeagueStatus } from './league-contracts';
-import { LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
+import { leagueIndex as c } from './league-index.styles';
+import { LeagueBackIcon, LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
 import { listMoreLeagues } from './league.functions';
 import { styles } from './league.styles';
 
@@ -41,17 +41,31 @@ function LeagueListItem({ league }: { league: LeagueDto }) {
         to="/community/$communityId/leagues/$leagueId"
         params={{ communityId: league.community_id, leagueId: league.id }}
         id={leagueLinkId(league.id)}
-        {...stylex.props(styles.itemLink)}
+        {...stylex.props(c.card)}
       >
-        <span {...stylex.props(styles.itemHeader)}>
-          <span {...stylex.props(styles.itemName)}>{league.name}</span>
-          <LeagueStatusBadge status={league.status} />
+        <span {...stylex.props(c.cardHeader)}>
+          <span {...stylex.props(c.name)}>{league.name}</span>
+          <LeagueStatusBadge
+            status={league.status}
+            xstyle={c.chip}
+            dot={league.status === 'active'}
+          />
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            {...stylex.props(c.chevron)}
+          >
+            <path d="m9 18 6-6-6-6" />
+          </svg>
         </span>
-        <span {...stylex.props(styles.muted)}>{period}</span>
+        <span {...stylex.props(c.period)}>{period}</span>
         {league.blocked_reason && (
-          <span {...stylex.props(styles.blocked)}>
-            {t(`leagues.blocked.${league.blocked_reason}`)}
-          </span>
+          <span {...stylex.props(c.blocked)}>{t(`leagues.blocked.${league.blocked_reason}`)}</span>
         )}
       </Link>
     </li>
@@ -125,29 +139,41 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
     }
   };
   return (
-    <main {...stylex.props(styles.page)}>
-      <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
-        <div {...stylex.props(styles.headingRow)}>
-          <Link
-            to="/dashboard"
-            aria-label={t('leagues.backToDashboard')}
-            {...stylex.props(styles.backLink)}
-          >
-            <span aria-hidden="true">‹</span>
-          </Link>
-          <h1 {...stylex.props(styles.title)}>{t('leagues.title')}</h1>
-        </div>
-        <p {...stylex.props(styles.context)}>
-          {t('leagues.communityContext', { community: community.name })}
-        </p>
+    <main data-route-chrome="navigation" {...stylex.props(c.page)}>
+      <header {...stylex.props(c.topBar)}>
+        <Link
+          to="/community/$communityId"
+          params={{ communityId: community.id }}
+          aria-label={t('leagues.list.backToCommunity')}
+          {...stylex.props(styles.backLink)}
+        >
+          <LeagueBackIcon />
+        </Link>
+        <p {...stylex.props(c.navTitle)}>{t('leagues.list.navTitle')}</p>
       </header>
+      <div {...stylex.props(c.heading)}>
+        <h1 {...stylex.props(c.title)}>{t('leagues.title')}</h1>
+        <p {...stylex.props(c.context)}>{community.name}</p>
+      </div>
       <div {...stylex.props(styles.content)}>
         {community.can_create ? (
           <Link
             to="/community/$communityId/leagues/create"
             params={{ communityId: community.id }}
-            {...stylex.props(styles.primaryLink)}
+            {...stylex.props(c.create)}
           >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              {...stylex.props(c.createIcon)}
+            >
+              <path d="M5 12h14M12 5v14" />
+            </svg>
             {t('leagues.list.create')}
           </Link>
         ) : (
@@ -179,12 +205,12 @@ export function LeagueListPage({ data }: { data: LeagueListResult }) {
               <section
                 key={status}
                 aria-labelledby={`leagues-${status}`}
-                {...stylex.props(styles.content)}
+                {...stylex.props(c.section)}
               >
-                <h2 id={`leagues-${status}`} {...stylex.props(styles.sectionTitle)}>
+                <h2 id={`leagues-${status}`} {...stylex.props(c.sectionTitle)}>
                   {t(`leagues.list.sections.${status}`)}
                 </h2>
-                <ul {...stylex.props(styles.list)}>
+                <ul {...stylex.props(c.list)}>
                   {items.map((league) => (
                     <LeagueListItem key={league.id} league={league} />
                   ))}

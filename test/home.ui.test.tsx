@@ -29,7 +29,6 @@ vi.mock('../src/features/notifications/NotificationBadge', () => ({
 }));
 
 import { HomeDashboard } from '../src/features/home/HomeDashboard';
-import { HomeNavigation } from '../src/features/home/HomeNavigation';
 
 const A = '00000000-0000-4000-8000-00000000000a';
 const B = '00000000-0000-4000-8000-00000000000b';
@@ -164,8 +163,10 @@ describe('Home dashboard', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Hello, Thiago' })).toBeTruthy();
     expect(document.querySelector('time')?.getAttribute('datetime')).toBe(home().asOf);
     expect(document.querySelector('time')?.textContent).toBe('Saturday, June 1, 2030 · UTC');
-    for (const name of ['Needs your attention', 'Next match', 'Ranking', 'Recent activity'])
+    for (const name of ['Hello, Thiago', 'Next match', 'Needs your attention'])
       expect(screen.getByRole('region', { name })).toBeTruthy();
+    expect(screen.queryByRole('region', { name: 'Ranking' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Recent activity' })).toBeNull();
     expect(screen.getByTestId('badge').textContent).toBe('3');
     const next = screen.getByRole('link', { name: 'Centre Court' });
     expect(next.getAttribute('href')).toBe(`/matches/${EVENT}`);
@@ -184,11 +185,39 @@ describe('Home dashboard', () => {
     expect(document.querySelector('time')?.textContent).toBe(expected);
   });
 
-  it('renders committed level and reliability as text, never fabricated movement', () => {
+  it('orders the sections: header, greeting with level summary, next match, attention', () => {
     view(home(), { level: { display_level: 3.82, reliability_percent: 76 } });
-    const hero = screen.getByRole('region', { name: 'YOUR LEVEL' });
+    const root = document.getElementById('home-top');
+    const [header, ...sections] = Array.from(root?.children ?? []);
+    expect(header?.contains(screen.getByRole('combobox', { name: /Switch community/ }))).toBe(true);
+    expect(header?.querySelector('time')).toBeTruthy();
+    expect(header?.contains(screen.getByTestId('badge'))).toBe(true);
+    expect(sections.slice(0, 3)).toEqual([
+      screen.getByRole('region', { name: 'Hello, Thiago' }),
+      screen.getByRole('region', { name: 'Next match' }),
+      screen.getByRole('region', { name: 'Needs your attention' })
+    ]);
+    expect(root?.querySelectorAll('h1')).toHaveLength(1);
+  });
+
+  it('keeps the full profile, management entries and inbox off Home', () => {
+    view(home());
+    expect(document.getElementById('home-profile')).toBeNull();
+    expect(document.getElementById('home-community')).toBeNull();
+    expect(screen.queryByRole('region', { name: /Ranking|Recent activity/ })).toBeNull();
+  });
+
+  it('renders the light level summary from real data and no invented trend or progress', () => {
+    view(home(), { level: { display_level: 3.82, reliability_percent: 76 } });
+    const hero = screen.getByRole('region', { name: 'Hello, Thiago' });
+    expect(hero.textContent).toContain('Your level');
     expect(hero.textContent).toContain('3.82');
-    expect(hero.textContent).toContain('76%');
+    expect(hero.textContent).toContain('Reliability: 76%');
+    expect(hero.textContent).not.toContain('ranked players');
+    expect(hero.textContent).not.toMatch(/↑|↓|to 100%|this season/);
+    expect(within(hero).getByRole('link', { name: 'My statistics' }).getAttribute('href')).toBe(
+      '/players/me'
+    );
   });
 
   it('keeps an unknown unread count unknown', () => {
@@ -196,33 +225,15 @@ describe('Home dashboard', () => {
     expect(screen.getByTestId('badge').textContent).toBe('unknown');
   });
 
-  it('labels the skill rank, League context and movement explicitly', () => {
-    view(home());
-    const ranking = screen.getByRole('region', { name: 'Ranking' });
-    expect(within(ranking).getByText(/#2 of 10 ranked players · New entry/)).toBeTruthy();
-    expect(within(ranking).getByText('Community skill rank')).toBeTruthy();
-    expect(within(ranking).getByRole('link', { name: 'League: Summer League' })).toBeTruthy();
-    expect(within(ranking).getByText('First of 2 active Leagues')).toBeTruthy();
-    expect(within(ranking).getByText('Up 2 places since the last published rank')).toBeTruthy();
-    expect(within(ranking).getByText(/You/)).toBeTruthy();
-    expect(within(ranking).getByRole('link', { name: 'Community statistics' })).toBeTruthy();
-    const activity = screen.getByRole('region', { name: 'Recent activity' });
-    expect(within(activity).getByText(/Global rating/)).toBeTruthy();
-  });
-
   it('shows errors, unavailable and empty states instead of fake content', () => {
     view(
       home({
         matches: { status: 'error' },
-        actions: { status: 'empty' },
-        ranking: { status: 'unavailable' },
-        activity: { status: 'empty' }
+        actions: { status: 'empty' }
       })
     );
     expect(screen.getByRole('alert').textContent).toBe('This section could not be loaded.');
     expect(screen.getByText('Nothing needs your attention.')).toBeTruthy();
-    expect(screen.getByText('This section is not available right now.')).toBeTruthy();
-    expect(screen.getByText('No confirmed activity yet.')).toBeTruthy();
   });
 
   it('flags an incomplete action list', () => {
@@ -256,7 +267,7 @@ describe('Home dashboard', () => {
   it('shows an explicit Home error with retry, never empty sections', async () => {
     const { onRetry } = view(null);
     expect(screen.getByRole('alert').textContent).toContain('Home could not be loaded.');
-    expect(screen.queryByRole('region', { name: 'Ranking' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Next match' })).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
@@ -272,7 +283,7 @@ describe('Home dashboard', () => {
     expect(onSelect).toHaveBeenCalledWith(B);
     // Old community DTOs are gone synchronously while the new load is in flight.
     expect(screen.getByText('Loading community…')).toBeTruthy();
-    expect(screen.queryByRole('region', { name: 'Ranking' })).toBeNull();
+    expect(screen.queryByRole('region', { name: 'Next match' })).toBeNull();
     expect(screen.queryByText('Centre Court')).toBeNull();
 
     rerenderWith(
@@ -303,7 +314,6 @@ describe('Home dashboard', () => {
     expect(screen.getByText('Olá, Thiago')).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Próxima partida' })).toBeTruthy();
     expect(screen.getByText('2 resultados aguardando revisão em Centre Court')).toBeTruthy();
-    expect(screen.getByText(/2º de 10 jogadores no ranking/)).toBeTruthy();
   });
 });
 
@@ -312,44 +322,38 @@ describe('Home layout contract', () => {
   const block = (name: string) =>
     styles.slice(styles.indexOf(`  ${name}: {`)).split('\n  },')[0] ?? '';
 
-  it('keeps the bottom navigation viewport-fixed instead of sticky inside a short wrapper', () => {
-    const navigation = block('navigation');
-    expect(navigation).toContain("position: 'fixed'");
-    expect(navigation).not.toContain('sticky');
-    expect(block('navClearance')).toContain('height:');
+  it('leaves the bottom navigation to the protected shell instead of mounting its own bar', () => {
+    expect(styles).not.toContain('navigation:');
+    expect(styles).not.toContain('navClearance');
     const route = readFileSync('src/routes/_protected.dashboard.tsx', 'utf8');
-    expect(route).toContain('{...stylex.props(homeStyles.navClearance)}');
-    expect(route).not.toMatch(/<div[^>/]*>\s*<HomeNavigation \/>/);
+    expect(route).not.toContain('Navigation');
+    expect(route).not.toContain('navClearance');
+  });
+
+  it('relocates profile, management, inbox and discovery to the community surface', () => {
+    const route = readFileSync('src/routes/_protected.dashboard.tsx', 'utf8');
+    expect(route).not.toContain('<PlayerProfile');
+    expect(route).not.toContain('home-profile');
+    expect(route).not.toContain('home-community');
+    const entries = readFileSync('src/features/community/CommunitySurface.tsx', 'utf8');
+    // D5 (U18): the platform-admin entry lives on Me; community-scoped entries stay here.
+    expect(entries).not.toContain('PlatformAdminEntry');
+    expect(entries).not.toContain('platformAdmin');
+    expect(readFileSync('src/features/player/PlayerProfile.tsx', 'utf8')).toContain(
+      '<PlatformAdminEntry'
+    );
+    for (const entry of [
+      'CommunityAdminEntries',
+      'LeagueEntries',
+      'CommunityInbox',
+      'InvitationDiscoverability'
+    ])
+      expect(entries).toContain(`<${entry}`);
   });
 
   it('guarantees a token-backed minimum width as well as height for text links', () => {
     const link = block('link');
     expect(link).toContain('minHeight: target');
     expect(link).toContain('minWidth: target');
-  });
-});
-
-describe('Home navigation', () => {
-  it('exposes working destinations for every item', () => {
-    render(
-      <I18nextProvider i18n={createI18n('en')}>
-        <div id="home-top" />
-        <HomeNavigation />
-      </I18nextProvider>
-    );
-    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
-    const hrefs = within(nav)
-      .getAllByRole('link')
-      .map((link) => [link.textContent, link.getAttribute('href')]);
-    expect(hrefs).toEqual([
-      ['Home', '#home-top'],
-      ['Matches', '/matches'],
-      ['Community', '#home-community'],
-      ['Ranking', '#home-ranking'],
-      ['Profile', '#home-profile']
-    ]);
-    expect(within(nav).getByRole('link', { name: 'Home' }).getAttribute('aria-current')).toBe(
-      'page'
-    );
   });
 });

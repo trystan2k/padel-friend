@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { Link, type LinkProps } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import type { StyleXStyles } from '@stylexjs/stylex';
+import { controlStyles } from './control.styles';
 import { styles } from './text-link.styles';
 
 type TextLinkProps = {
@@ -12,9 +13,13 @@ type TextLinkProps = {
   xstyle?: StyleXStyles;
 };
 
+export function textLinkProps(xstyle?: StyleXStyles) {
+  return stylex.props(styles.link, controlStyles.focusRing, xstyle);
+}
+
 export function TextLink({ children, xstyle, ...props }: TextLinkProps) {
   return (
-    <Link {...props} {...stylex.props(styles.link, xstyle)}>
+    <Link {...props} {...textLinkProps(xstyle)}>
       {children}
     </Link>
   );

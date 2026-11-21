@@ -39,7 +39,7 @@ type Copy = {
   matchCreate: {
     title: string;
     next: string;
-    review: string;
+    readyTitle: string;
     publish: string;
     steps: { players: string; teams: string };
     fields: {
@@ -471,7 +471,7 @@ async function publishMatchViaUi(
     .getByRole('radio', { name: en.matches.teamMode[options.teamMode ?? 'POST_MATCH_TEAMS'] })
     .check();
   await page.getByRole('button', { name: en.matchCreate.next }).click();
-  await expect(page.getByRole('heading', { name: en.matchCreate.review })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
   await page.getByRole('button', { name: en.matchCreate.publish }).click();
   await expect(page).toHaveURL(/\/matches$/);
   await waitForHydratedPage(page);
@@ -1576,7 +1576,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await requesterPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(requesterPage);
     await expect(
-      requesterPage.getByText(en.matchRegistration.closed.badge, { exact: true })
+      requesterPage
+        .locator('section[aria-labelledby="match-registration-heading"]')
+        .getByText(en.matchRegistration.closed.badge, { exact: true })
     ).toBeVisible();
     await expect(
       requesterPage.getByText(
@@ -1597,7 +1599,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await requesterPage.getByRole('link', { name: en.notifications.match.openEvent }).click();
     await expect(requesterPage).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      requesterPage.getByText(en.matchRegistration.closed.badge, { exact: true })
+      requesterPage
+        .locator('section[aria-labelledby="match-registration-heading"]')
+        .getByText(en.matchRegistration.closed.badge, { exact: true })
     ).toBeVisible();
 
     // A viewer without a registration row sees the explicit closed state with the

@@ -2,28 +2,30 @@ import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import {
   LEVEL_REVIEW_STATUSES,
   type LevelReviewErrorCode,
   type LevelReviewQueueResult,
   type LevelReviewStatus
 } from './level-review-contracts';
+import { levelReviewClubhouse as c } from './level-review-clubhouse.styles';
 import { levelReviewErrorCode } from './level-review-errors';
 import { formatRequestedRange, formatReviewDate } from './level-review-format';
 import { levelReviewErrorKind } from './level-review-form';
 import { listLevelReviewQueueRequests } from './level-review.functions';
-import { levelReview as s } from './level-review.styles';
+import { LevelReviewBackLink } from './LevelReviewBackLink';
+import { LevelReviewAvatar, LevelReviewLinkIcon, LevelReviewStatusChip } from './LevelReviewParts';
 import { formatLevel } from '../player/rating-format';
 
-const tones = {
-  pending: s.toneAmber,
-  under_review: s.toneGreen,
-  approved: s.toneGreen,
-  rejected: s.toneRed,
-  canceled: s.toneMuted
-} as const;
 type Filter = LevelReviewStatus | 'all';
 
+/**
+ * Platform queue (frame SCPeI): pending summary chip, then one hairline card per request with the
+ * player, status chip, requested range, submitted date and the review link. The status filter and
+ * keyset paging are kept. The frame's community line has no source in the queue row, so the
+ * player's submitted level and reliability take its place.
+ */
 export function PlatformLevelReviewQueue({ initial }: { initial: LevelReviewQueueResult }) {
   const { t, i18n } = useTranslation();
   const [page, setPage] = useState(initial);
@@ -58,46 +60,52 @@ export function PlatformLevelReviewQueue({ initial }: { initial: LevelReviewQueu
   }
 
   return (
-    <main {...stylex.props(s.page)}>
-      <header {...stylex.props(s.header)}>
-        <h1 {...stylex.props(s.title)}>{t('levelReview.admin.title')}</h1>
-        <p {...stylex.props(s.context)}>{t('levelReview.admin.subtitle')}</p>
-        <p {...stylex.props(s.statusLabel, s.toneAmber, s.pendingBadge)}>
-          {t('levelReview.admin.pendingCount', { count: page.pending_count })}
-        </p>
+    <main {...stylex.props(c.page)}>
+      <header {...stylex.props(c.topBar, c.topBarFrame)}>
+        <LevelReviewBackLink to="/me" label={t('levelReview.request.backLabel')} />
+        <p {...stylex.props(c.navTitle)}>{t('levelReview.admin.entryTitle')}</p>
       </header>
-      <label {...stylex.props(s.strong)} htmlFor="review-filter">
-        {t('levelReview.admin.filter')}
-      </label>
-      <select
-        id="review-filter"
-        value={filter}
-        {...stylex.props(s.filterSelect)}
-        onChange={(event) => {
-          const value = event.target.value;
-          const next =
-            value === 'all' ? 'all' : LEVEL_REVIEW_STATUSES.find((status) => status === value);
-          if (!next) return;
-          setFilter(next);
-          void load(next, false);
-        }}
-      >
-        <option value="all">{t('levelReview.admin.all')}</option>
-        {LEVEL_REVIEW_STATUSES.map((status) => (
-          <option value={status} key={status}>
-            {t(`levelReview.status.${status}`)}
-          </option>
-        ))}
-      </select>
-      {loading && <output {...stylex.props(s.muted)}>{t('levelReview.admin.loading')}</output>}
+      <div {...stylex.props(c.heading)}>
+        <h1 {...stylex.props(c.pageTitle)}>{t('levelReview.admin.title')}</h1>
+      </div>
+      <p {...stylex.props(c.chip, c.toneAmber)}>
+        <span aria-hidden="true">◷</span>
+        {t('levelReview.admin.pendingCount', { count: page.pending_count })}
+      </p>
+      <div {...stylex.props(c.section)}>
+        <label {...stylex.props(c.label)} htmlFor="review-filter">
+          {t('levelReview.admin.filter')}
+        </label>
+        <select
+          id="review-filter"
+          value={filter}
+          {...stylex.props(c.select)}
+          onChange={(event) => {
+            const value = event.target.value;
+            const next =
+              value === 'all' ? 'all' : LEVEL_REVIEW_STATUSES.find((status) => status === value);
+            if (!next) return;
+            setFilter(next);
+            void load(next, false);
+          }}
+        >
+          <option value="all">{t('levelReview.admin.all')}</option>
+          {LEVEL_REVIEW_STATUSES.map((status) => (
+            <option value={status} key={status}>
+              {t(`levelReview.status.${status}`)}
+            </option>
+          ))}
+        </select>
+      </div>
+      {loading && <output {...stylex.props(c.meta)}>{t('levelReview.admin.loading')}</output>}
       {error && (
-        <div role="alert" {...stylex.props(s.alert)}>
-          <p {...stylex.props(s.alertText)}>
+        <div role="alert" {...stylex.props(c.alert)}>
+          <p {...stylex.props(c.alertText)}>
             {t(`levelReview.errors.${levelReviewErrorKind(error)}`)}
           </p>
           <button
             type="button"
-            {...stylex.props(s.textButton)}
+            {...stylex.props(c.textButton)}
             onClick={() => void load(filter, retryMore)}
           >
             {t('levelReview.errors.retry')}
@@ -107,49 +115,60 @@ export function PlatformLevelReviewQueue({ initial }: { initial: LevelReviewQueu
       {(!error || retryMore) &&
         (!loading || retryMore) &&
         (page.items.length === 0 ? (
-          <div {...stylex.props(s.card)}>
-            <h2 {...stylex.props(s.cardTitle)}>{t('levelReview.admin.empty')}</h2>
-          </div>
+          <SurfaceCard xstyle={c.card}>
+            <h2 {...stylex.props(c.cardHeading)}>{t('levelReview.admin.empty')}</h2>
+          </SurfaceCard>
         ) : (
-          <ul {...stylex.props(s.list)}>
-            {page.items.map((item) => (
-              <li key={item.id}>
-                <Link
-                  to="/platform-admin/level-reviews/$requestId"
-                  params={{ requestId: item.id }}
-                  {...stylex.props(s.itemLink)}
-                >
-                  <span {...stylex.props(s.strong)}>
-                    {item.owner_display_name || item.owner_id}
-                  </span>
-                  <span {...stylex.props(s.muted)}>
-                    {t('levelReview.admin.current', {
-                      level: formatLevel(item.snapshot_display_level, i18n.language),
-                      reliability: item.snapshot_reliability_percent
-                    })}
-                  </span>
-                  <span {...stylex.props(s.strong)}>
-                    {t('levelReview.history.itemRequested', {
-                      range: formatRequestedRange(item, i18n.language, t)
-                    })}
-                  </span>
-                  <span {...stylex.props(s.statusLabel, tones[item.status])}>
-                    {t(`levelReview.status.${item.status}`)}
-                  </span>
-                  <span {...stylex.props(s.muted)}>
-                    {t('levelReview.history.itemSubmitted', {
-                      date: formatReviewDate(item.created_at, i18n.language)
-                    })}
-                  </span>
-                </Link>
-              </li>
-            ))}
+          <ul {...stylex.props(c.cardList)}>
+            {page.items.map((item) => {
+              const name = item.owner_display_name || item.owner_id;
+              return (
+                <li key={item.id}>
+                  <SurfaceCard xstyle={c.card}>
+                    <div {...stylex.props(c.cardHeader)}>
+                      <LevelReviewAvatar name={name} locale={i18n.language} />
+                      <div {...stylex.props(c.player)}>
+                        <h2 {...stylex.props(c.playerName)}>{name}</h2>
+                        <p {...stylex.props(c.meta)}>
+                          {t('levelReview.admin.current', {
+                            level: formatLevel(item.snapshot_display_level, i18n.language),
+                            reliability: item.snapshot_reliability_percent
+                          })}
+                        </p>
+                      </div>
+                      <LevelReviewStatusChip status={item.status} />
+                    </div>
+                    <hr {...stylex.props(c.divider)} />
+                    <p {...stylex.props(c.levelRow)}>
+                      <span {...stylex.props(c.meta)}>{t('levelReview.admin.requestedRange')}</span>
+                      <span {...stylex.props(c.rowValue)}>
+                        {formatRequestedRange(item, i18n.language, t)}
+                      </span>
+                    </p>
+                    <p {...stylex.props(c.levelRow)}>
+                      <span {...stylex.props(c.meta)}>{t('levelReview.admin.submittedLabel')}</span>
+                      <span {...stylex.props(c.rowValue)}>
+                        {formatReviewDate(item.created_at, i18n.language)}
+                      </span>
+                    </p>
+                    <Link
+                      to="/platform-admin/level-reviews/$requestId"
+                      params={{ requestId: item.id }}
+                      {...stylex.props(c.linkRow)}
+                    >
+                      <LevelReviewLinkIcon />
+                      {t('levelReview.admin.review')}
+                    </Link>
+                  </SurfaceCard>
+                </li>
+              );
+            })}
           </ul>
         ))}
       {page.next_cursor && !loading && !error && (
         <button
           type="button"
-          {...stylex.props(s.textButton)}
+          {...stylex.props(c.textButton)}
           onClick={() => void load(filter, true)}
         >
           {t('levelReview.history.loadMore')}

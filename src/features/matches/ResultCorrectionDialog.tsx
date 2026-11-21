@@ -93,16 +93,17 @@ export function ResultCorrectionDialog<V extends string = string>({
     >
       <Dialog.Portal>
         <Dialog.Backdrop {...stylex.props(s.reviewBackdrop)} />
-        <Dialog.Viewport {...stylex.props(s.reviewViewport)}>
+        <Dialog.Viewport {...stylex.props(s.sheetViewport)}>
           <Dialog.Popup
             initialFocus={decisions ? firstRef : textRef}
             finalFocus={() =>
               triggerRef.current?.isConnected ? triggerRef.current : fallbackFocusRef.current
             }
-            {...stylex.props(s.reviewPopup)}
+            {...stylex.props(s.sheetPopup)}
           >
+            <div aria-hidden="true" {...stylex.props(s.sheetGrabber)} />
             <header {...stylex.props(s.dialogHeader)}>
-              <Dialog.Title {...stylex.props(s.dialogTitle, decisions && c.resolveDialogTitle)}>
+              <Dialog.Title {...stylex.props(s.sheetTitle, decisions && c.resolveDialogTitle)}>
                 {title}
               </Dialog.Title>
               <Dialog.Description {...stylex.props(s.dialogDescription)}>
@@ -188,26 +189,26 @@ export function ResultCorrectionDialog<V extends string = string>({
                   {feedbackMessage}
                 </p>
               )}
-              {notice && <p {...stylex.props(s.dialogNotice)}>{notice}</p>}
-              <div {...stylex.props(s.dialogActions)}>
-                <Dialog.Close
-                  disabled={pending}
-                  type="button"
-                  {...stylex.props(base.button, s.dialogAction)}
-                >
-                  {t('matches.corrections.dialog.cancel')}
-                </Dialog.Close>
+              {notice && <p {...stylex.props(s.sheetNotice)}>{notice}</p>}
+              <div {...stylex.props(s.sheetActions)}>
                 <button
                   type="submit"
                   disabled={pending}
                   {...stylex.props(
                     base.button,
-                    s.dialogAction,
-                    destructive ? s.dialogSubmit : c.primary
+                    s.sheetAction,
+                    destructive ? s.sheetDanger : c.primary
                   )}
                 >
                   {pending ? t('matches.corrections.dialog.submitting') : submitLabel}
                 </button>
+                <Dialog.Close
+                  disabled={pending}
+                  type="button"
+                  {...stylex.props(base.button, s.sheetAction)}
+                >
+                  {t('matches.corrections.dialog.cancel')}
+                </Dialog.Close>
               </div>
             </form>
           </Dialog.Popup>

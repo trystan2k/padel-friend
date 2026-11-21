@@ -3,12 +3,12 @@ import * as stylex from '@stylexjs/stylex';
 export const styles = stylex.create({
   badge: {
     alignSelf: 'flex-start',
-    padding: 'var(--space-5) var(--space-9)',
+    padding: 'var(--space-5) var(--space-10)',
     borderRadius: 'var(--radius-20)',
     backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
+    color: 'var(--color-green-ink)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-semibold)'
   }
 });

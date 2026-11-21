@@ -19,7 +19,6 @@ export const matchManagementStyles = stylex.create({
     justifyContent: 'center',
     gap: 'var(--space-8)',
     width: '100%',
-    textTransform: 'uppercase',
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-bold)',
     borderWidth: 0,
@@ -28,8 +27,7 @@ export const matchManagementStyles = stylex.create({
   editTrigger: {
     width: '100%',
     backgroundColor: 'var(--color-green)',
-    color: 'var(--color-bg)',
-    textTransform: 'uppercase',
+    color: 'var(--color-on-green)',
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-bold)',
     borderWidth: 0,
@@ -40,8 +38,8 @@ export const matchManagementStyles = stylex.create({
   menuItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--space-8)',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    gap: 'var(--space-12)',
+    minHeight: 'calc(var(--space-40) + var(--space-12))',
     paddingInline: 'var(--space-10)',
     paddingBlock: 'var(--space-8)',
     borderRadius: 'var(--radius-8)',
@@ -91,27 +89,65 @@ export const matchManagementStyles = stylex.create({
     position: 'fixed',
     inset: 0,
     backgroundColor: 'var(--color-bg)',
-    opacity: 0.94,
+    opacity: 0.76,
     zIndex: 20
   },
   popup: {
+    boxSizing: 'border-box',
     fontFamily: 'var(--font-family-body)',
     position: 'fixed',
-    insetInline: 'var(--space-16)',
-    top: 'var(--space-40)',
-    marginInline: 'auto',
-    width: 'auto',
-    maxWidth: 'calc(var(--space-40) * 14)',
-    maxHeight: 'calc(100dvh - var(--space-40) - var(--space-40))',
+    insetInline: 'var(--space-20)',
+    insetBlockStart: 'max(var(--space-20), env(safe-area-inset-top))',
+    insetBlockEnd: 'max(var(--space-20), env(safe-area-inset-bottom))',
+    margin: 'auto',
+    height: 'fit-content',
+    maxWidth: 'calc(var(--space-40) * 11)',
+    maxHeight:
+      'calc(100dvh - max(var(--space-20), env(safe-area-inset-top)) - max(var(--space-20), env(safe-area-inset-bottom)))',
     overflowY: 'auto',
+    overscrollBehavior: 'contain',
+    overflowWrap: 'anywhere',
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr)',
-    gap: 'var(--space-16)',
+    gap: 'var(--space-12)',
     padding: 'var(--space-20)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
-    borderRadius: 'var(--radius-12)',
+    borderRadius: 'var(--radius-18)',
     zIndex: 21
+  },
+  sheet: {
+    '@media (max-width: 36rem)': {
+      insetInline: 0,
+      insetBlockStart: 'auto',
+      insetBlockEnd: 0,
+      marginBlock: 0,
+      borderEndStartRadius: 0,
+      borderEndEndRadius: 0,
+      paddingInline: 'var(--space-16)',
+      paddingBottom: 'max(var(--space-20), env(safe-area-inset-bottom))'
+    }
+  },
+  dialogTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-24)',
+    lineHeight: 'var(--font-line-height-snug)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  dialogForm: { display: 'grid', gap: 'var(--space-12)', minWidth: 0 },
+  dialogActions: { display: 'grid', gap: 'var(--space-8)' },
+  fieldLabel: { fontWeight: 'var(--font-weight-semibold)' },
+  locked: {
+    display: 'grid',
+    gap: 'var(--space-8)',
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface-2)'
+  },
+  destructive: {
+    backgroundColor: 'var(--color-red)',
+    color: 'var(--color-bg)'
   },
   menu: {
     padding: 'var(--space-6)',
@@ -135,6 +171,11 @@ export const matchManagementStyles = stylex.create({
     color: 'var(--color-text)',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
-    borderColor: 'var(--color-line)'
+    borderColor: 'var(--color-line)',
+    // Tokenized ring: the UA default `outline: auto` colour is OS-specific (blue on macOS, near-black on Linux).
+    ':focus-visible': {
+      outline: 'var(--focus-width) solid var(--color-focus)',
+      outlineOffset: 'var(--focus-offset)'
+    }
   }
 });

@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { expect, type Locator, type Page, type TestInfo } from '@playwright/test';
-import manifest from './references/paf-12/manifest.json' with { type: 'json' };
+import manifest from './references/paf-202-leagues/manifest.json' with { type: 'json' };
 
-// PAF-12 visual certification helpers (same method as PAF-11 `leagues-visual.spec.ts`): capture at
-// the exact half-scale reference size, compare against the uncropped 2x Pencil export with the
+// PAF-202 league visual certification helpers (Clubhouse frames, same method as the earlier
+// league lanes): capture at the exact reference size, compare against the 1x Pencil export with the
 // pinned perceptual threshold and a documented nonzero per-screen budget. Structural probes live
 // in the journeys and never depend on these budgets.
 export type StandingsFrame = keyof typeof manifest.visualBudgets.perScreen;
@@ -235,23 +235,23 @@ export function standingsStyleChecks(
       locator: summary,
       tokens: {
         'background-color': 'var(--color-surface)',
-        'border-top-left-radius': 'var(--radius-14)',
-        'padding-top': 'var(--space-12)',
+        'border-top-left-radius': 'var(--radius-18)',
+        'padding-top': 'var(--space-14)',
         'column-gap': 'var(--space-8)'
       },
       palette: { 'background-color': 'surface' },
-      literals: { 'border-top-left-radius': '14px', 'padding-top': '12px' }
+      literals: { 'border-top-left-radius': '18px', 'padding-top': '14px' }
     },
     {
       name: 'summary label',
       locator: summary.locator('dt', { hasText: copy.yourPlace }),
       tokens: {
         color: 'var(--color-muted)',
-        'font-size': 'var(--font-size-11)',
+        'font-size': 'var(--font-size-13)',
         'font-weight': 'var(--font-weight-semibold)'
       },
       palette: { color: 'muted' },
-      literals: { 'font-size': '11px', 'font-weight': '600', 'text-transform': 'uppercase' }
+      literals: { 'font-size': '13px', 'font-weight': '600', 'text-transform': 'none' }
     },
     {
       name: 'summary place value (accent)',
@@ -260,10 +260,10 @@ export function standingsStyleChecks(
         color: 'var(--color-green)',
         'font-family': 'var(--font-family-heading)',
         'font-size': 'var(--font-size-24)',
-        'font-weight': 'var(--font-weight-bold)'
+        'font-weight': 'var(--font-weight-extrabold)'
       },
       palette: { color: 'green' },
-      literals: { 'font-size': '24px', 'font-weight': '700' }
+      literals: { 'font-size': '24px', 'font-weight': '800' }
     },
     {
       name: 'summary matches value',
@@ -272,7 +272,7 @@ export function standingsStyleChecks(
         color: 'var(--color-text)',
         'font-family': 'var(--font-family-heading)',
         'font-size': 'var(--font-size-24)',
-        'font-weight': 'var(--font-weight-bold)'
+        'font-weight': 'var(--font-weight-extrabold)'
       },
       palette: { color: 'text' }
     },
@@ -280,27 +280,25 @@ export function standingsStyleChecks(
       name: 'primary table',
       locator: table,
       tokens: {
-        'background-color': 'var(--color-surface)',
-        'font-size': 'var(--font-size-12)',
+        'font-size': 'var(--font-size-15)',
         'font-family': 'var(--font-family-body)'
       },
-      palette: { 'background-color': 'surface' },
-      literals: { 'font-size': '12px', 'font-variant-numeric': 'tabular-nums' }
+      literals: { 'font-size': '15px', 'font-variant-numeric': 'tabular-nums' }
     },
     {
       name: 'primary table column header',
       locator: table.getByRole('columnheader').first(),
       tokens: {
         color: 'var(--color-muted)',
-        'font-size': 'var(--font-size-11)',
+        'font-size': 'var(--font-size-13)',
         'font-weight': 'var(--font-weight-semibold)',
         'padding-top': 'var(--space-8)',
         'padding-left': 'var(--space-6)',
-        'border-bottom-color': 'var(--color-line)'
+        'border-bottom-color': 'var(--color-hairline)'
       },
-      palette: { color: 'muted', 'border-bottom-color': 'line' },
+      palette: { color: 'muted', 'border-bottom-color': 'hairline' },
       literals: {
-        'font-size': '11px',
+        'font-size': '13px',
         'font-weight': '600',
         'border-bottom-style': 'solid',
         'border-bottom-width': '1px'
@@ -311,9 +309,9 @@ export function standingsStyleChecks(
       locator: table.locator('tr[aria-current]'),
       tokens: {
         'background-color': 'var(--color-green-soft)',
-        color: 'var(--color-green)'
+        color: 'var(--color-text)'
       },
-      palette: { 'background-color': 'green-soft', color: 'green' }
+      palette: { 'background-color': 'green-soft', color: 'text' }
     },
     {
       name: 'primary table body cell',
@@ -321,9 +319,9 @@ export function standingsStyleChecks(
       tokens: {
         'padding-top': 'var(--space-8)',
         'padding-left': 'var(--space-6)',
-        'border-bottom-color': 'var(--color-line)'
+        'border-bottom-color': 'var(--color-hairline)'
       },
-      palette: { color: 'text', 'border-bottom-color': 'line' }
+      palette: { color: 'text', 'border-bottom-color': 'hairline' }
     }
   ];
 }
@@ -371,7 +369,9 @@ export async function measureStandingsFrame(page: Page, frame: StandingsFrame, i
     caret: 'hide',
     path: info.outputPath(`${frame}-actual.png`)
   });
-  const approved = readFileSync(new URL(`./references/paf-12/${frame}.png`, import.meta.url));
+  const approved = readFileSync(
+    new URL(`./references/paf-202-leagues/${frame}.png`, import.meta.url)
+  );
   const measured = await page.evaluate(
     async ({ actualUrl, approvedUrl, maskRects }) => {
       async function readPixels(url: string, scale: number) {
@@ -392,7 +392,7 @@ export async function measureStandingsFrame(page: Page, frame: StandingsFrame, i
       }
       const [rendered, reference] = await Promise.all([
         readPixels(actualUrl, 1),
-        readPixels(approvedUrl, 2)
+        readPixels(approvedUrl, 1)
       ]);
       if (rendered.width !== reference.width || rendered.height !== reference.height)
         return {
@@ -444,10 +444,10 @@ export async function measureStandingsFrame(page: Page, frame: StandingsFrame, i
       maskRects: masks
     }
   );
-  console.info(`${frame} PAF-12 scoped measurement: ${JSON.stringify(measured)}`);
+  console.info(`${frame} PAF-202 scoped measurement: ${JSON.stringify(measured)}`);
   const budget = manifest.visualBudgets.perScreen[frame];
   expect
-    .soft(measured.dimensionMismatch, `${frame} dimensions must match the 2x Pencil export`)
+    .soft(measured.dimensionMismatch, `${frame} dimensions must match the Pencil export`)
     .toBe(false);
   expect.soft(budget, `${frame} needs a reviewed nonzero screenshot budget`).toBeGreaterThan(0);
   if (measured.perceptualPixelDifference !== null)

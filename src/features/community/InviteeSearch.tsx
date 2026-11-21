@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Dialog } from '@base-ui/react/dialog';
 import { Button } from '../../components/ui/Button';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TextField } from '../../components/ui/TextField';
 import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import { issueInvitation } from './community-admin.functions';
 import { searchCommunityInvitees } from './community-invitee.functions';
@@ -11,10 +13,16 @@ import { styles } from './community-admin.styles';
 const inviteeStyles = stylex.create({
   option: {
     boxSizing: 'border-box',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: 'calc(var(--space-40) + var(--space-12))',
     display: 'flex',
-    alignItems: 'center'
-  }
+    alignItems: 'center',
+    gap: 'var(--space-12)',
+    overflowWrap: 'anywhere'
+  },
+  search: { display: 'grid', gap: 'var(--space-12)' },
+  card: { padding: 'var(--space-14)', gap: 'var(--space-12)' },
+  actions: { display: 'grid', gap: 'var(--space-8)' },
+  token: { display: 'block', overflowWrap: 'anywhere', marginBlock: 'var(--space-8)' }
 });
 
 type IssuedInvitation = {
@@ -118,9 +126,14 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
               <Dialog.Title {...stylex.props(styles.confirmTitle)}>
                 {t('communityInvites.title')}
               </Dialog.Title>
-              <label>
-                {t('communityInvites.searchLabel')}{' '}
-                <input
+              <search {...stylex.props(inviteeStyles.search)}>
+                <TextField
+                  type="search"
+                  name="player"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  label={t('communityInvites.searchLabel')}
+                  helper={t('communityInvites.searchHelp')}
                   value={query}
                   onChange={(event) => {
                     generation.current += 1;
@@ -133,58 +146,63 @@ export function InviteeSearch({ communityId }: { communityId: string }) {
                     setRows([]);
                     setQuery(event.target.value);
                   }}
-                  aria-describedby="invitee-search-help"
                 />
-              </label>
-              <p id="invitee-search-help">{t('communityInvites.searchHelp')}</p>
-              {loading && <p aria-live="polite">{t('communityInvites.searching')}</p>}
-              {!loading && !error && query.trim().length >= 3 && rows.length === 0 && (
-                <p>{t('communityInvites.noResults')}</p>
-              )}
-              {rows.map((person) => (
-                <label key={person.user_id} {...stylex.props(inviteeStyles.option)}>
-                  <input
-                    type="radio"
-                    name="invitee"
-                    value={person.user_id}
-                    checked={selected === person.user_id}
-                    onChange={() => {
-                      if (selected === person.user_id) return;
-                      setCopiedInvitation(null);
-                      setError(false);
-                      setSelected(person.user_id);
-                    }}
-                  />{' '}
-                  {person.display_name} — {t('communityInvites.select')}
-                </label>
-              ))}
-              <Button
-                type="button"
-                disabled={!selected || issuing}
-                busy={issuing}
-                onClick={() => void invite()}
-              >
-                {t('communityInvites.invite')}
-              </Button>
-              {invitation && (
-                <div>
-                  <output>
-                    {t('communityInvites.issued')}: {invitation.inviteeName} —{' '}
-                    <code>{invitation.token}</code>. {t('communityInvites.shareHelp')}
-                  </output>
-                  <Button type="button" onClick={() => void copyToken()}>
-                    {t('communityInvites.copyLink')}
-                  </Button>
-                  {copiedInvitation === invitation && (
-                    <output aria-live="polite">{t('communityInvites.copied')}</output>
-                  )}
-                </div>
-              )}
-              {error && <p role="alert">{t('communityInvites.error')}</p>}
-              {issueError && <p role="alert">{t(`communityInvites.${issueError}`)}</p>}
-              <Dialog.Close render={<Button variant="secondary" />}>
-                {t('communityAdmin.cancel')}
-              </Dialog.Close>
+                {loading && <p aria-live="polite">{t('communityInvites.searching')}</p>}
+                {!loading && !error && query.trim().length >= 3 && rows.length === 0 && (
+                  <p>{t('communityInvites.noResults')}</p>
+                )}
+                {rows.map((person) => (
+                  <SurfaceCard key={person.user_id} xstyle={inviteeStyles.card}>
+                    <label {...stylex.props(inviteeStyles.option)}>
+                      <input
+                        type="radio"
+                        name="invitee"
+                        value={person.user_id}
+                        checked={selected === person.user_id}
+                        onChange={() => {
+                          if (selected === person.user_id) return;
+                          setCopiedInvitation(null);
+                          setError(false);
+                          setSelected(person.user_id);
+                        }}
+                      />{' '}
+                      {person.display_name} — {t('communityInvites.select')}
+                    </label>
+                  </SurfaceCard>
+                ))}
+              </search>
+              <div {...stylex.props(inviteeStyles.actions)}>
+                <Button
+                  type="button"
+                  disabled={!selected || issuing}
+                  busy={issuing}
+                  onClick={() => void invite()}
+                >
+                  {t('communityInvites.invite')}
+                </Button>
+                {invitation && (
+                  <SurfaceCard xstyle={inviteeStyles.card}>
+                    <output>
+                      <strong>
+                        {t('communityInvites.issued')}: {invitation.inviteeName}
+                      </strong>
+                      <code {...stylex.props(inviteeStyles.token)}>{invitation.token}</code>
+                      {t('communityInvites.shareHelp')}
+                    </output>
+                    <Button type="button" onClick={() => void copyToken()}>
+                      {t('communityInvites.copyLink')}
+                    </Button>
+                    {copiedInvitation === invitation && (
+                      <output aria-live="polite">{t('communityInvites.copied')}</output>
+                    )}
+                  </SurfaceCard>
+                )}
+                {error && <p role="alert">{t('communityInvites.error')}</p>}
+                {issueError && <p role="alert">{t(`communityInvites.${issueError}`)}</p>}
+                <Dialog.Close render={<Button variant="secondary" />}>
+                  {t('communityAdmin.cancel')}
+                </Dialog.Close>
+              </div>
             </section>
           </Dialog.Popup>
         </Dialog.Viewport>

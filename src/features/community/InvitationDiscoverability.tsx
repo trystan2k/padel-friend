@@ -1,6 +1,8 @@
 import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { inboxStyles } from './community-inbox.styles';
 import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import {
   getMyInviteeDiscoverability,
@@ -13,7 +15,14 @@ const styles = stylex.create({
     minHeight: 'calc(var(--space-40) + var(--space-4))',
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--space-6)'
+    gap: 'var(--space-12)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
+  checkbox: {
+    flexShrink: 0,
+    width: 'var(--space-20)',
+    height: 'var(--space-20)',
+    accentColor: 'var(--color-green)'
   }
 });
 
@@ -55,19 +64,23 @@ export function InvitationDiscoverability() {
     }
   }
   return (
-    <section aria-busy={busy}>
+    <SurfaceCard aria-busy={busy} xstyle={inboxStyles.card}>
       <label {...stylex.props(styles.consentLabel)}>
         <input
           type="checkbox"
+          {...stylex.props(styles.checkbox)}
+          aria-describedby="invite-discoverability-help"
           checked={enabled}
           disabled={busy}
           onChange={(event) => void change(event.target.checked)}
         />{' '}
         {t('communityInvites.discoverableLabel')}
       </label>
-      <p>{t('communityInvites.discoverableHelp')}</p>
+      <p id="invite-discoverability-help" {...stylex.props(inboxStyles.notice)}>
+        {t('communityInvites.discoverableHelp')}
+      </p>
       {error && <p role="alert">{t(`communityInvites.${error}`)}</p>}
       {saved && <p aria-live="polite">{t('communityInvites.discoverabilitySaved')}</p>}
-    </section>
+    </SurfaceCard>
   );
 }

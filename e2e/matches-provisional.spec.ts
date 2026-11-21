@@ -233,9 +233,14 @@ test('added player opens the invitation, claims the prefilled profile and gains 
     await expect(player).toHaveURL(/\/onboarding\?next=/);
     await waitForHydratedPage(player);
     const claim = en.auth.claim;
-    await expect(player.getByRole('heading', { level: 1, name: claim.title })).toBeVisible();
+    await expect(
+      player.getByRole('heading', { level: 1, name: en.onboarding.title })
+    ).toBeVisible();
     await expect(player.getByLabel(en.onboarding.name)).toHaveValue('Carla Convidada');
     await expect(player.getByLabel(en.onboarding.preciseLevel)).toHaveValue('3.5');
+    const level = player.getByTestId('onboarding-level');
+    await expect(level.getByText(claim.estimatedLevel)).toBeVisible();
+    await expect(level.getByRole('slider', { name: en.onboarding.levelScale })).toBeEnabled();
 
     // Nothing else is reachable before the claim: other pages send the player back here.
     const probe = await context.newPage();
@@ -244,7 +249,10 @@ test('added player opens the invitation, claims the prefilled profile and gains 
     await probe.close();
 
     await player.getByLabel(en.onboarding.name).fill('Carla Reclamada');
-    await player.getByLabel(en.onboarding.sideLeftShort).first().check();
+    await player
+      .getByRole('group', { name: en.onboarding.side })
+      .getByRole('radio', { name: en.onboarding.sideLeftShort })
+      .check();
     // Optional availability: both groups persist with the claim, in the same transaction.
     await player
       .getByRole('group', { name: en.profile.availabilityDaysLegend })
@@ -296,6 +304,7 @@ test('added player opens the invitation, claims the prefilled profile and gains 
     await expect(player.getByText('Past private court').first()).toBeVisible();
     await player.goto('/dashboard');
     await expect(player).toHaveURL(/\/dashboard$/);
+    await player.goto('/me');
     await expect(
       player.getByAltText(en.profile.avatarAlt.replace('{{name}}', 'Carla Reclamada')).first()
     ).toHaveAttribute('src', /\/object\/sign\//);
@@ -335,7 +344,10 @@ test('a reload before password setup cannot bypass the password step on any prot
     await player.getByRole('button', { name: en.auth.inviteConfirm, exact: true }).click();
     await expect(player).toHaveURL(/\/onboarding\?next=/);
     await waitForHydratedPage(player);
-    await player.getByLabel(en.onboarding.sideLeftShort).first().check();
+    await player
+      .getByRole('group', { name: en.onboarding.side })
+      .getByRole('radio', { name: en.onboarding.sideLeftShort })
+      .check();
     await player.getByRole('button', { name: en.auth.claim.submit }).click();
 
     // Claimed, but the password is still owed: the step replaces the form.

@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 // Pencil "Result amendment — request" (adujr), "corrected result review" (s5TRC) and "Community
 // dispute resolution" (CWJkF): a status label, an official-vs-proposed pair of surface cards,
 // and a stacked action list. Tokens only; every target is at least 44px.
-const touchTarget = 'calc(var(--space-40) + var(--space-4))';
+const touchTarget = 'calc(var(--space-40) + var(--space-12))';
 
 export const resultCorrectionStyles = stylex.create({
   section: { display: 'grid', gap: 'var(--space-10)', minWidth: 0 },
@@ -16,15 +16,17 @@ export const resultCorrectionStyles = stylex.create({
   },
   card: {
     display: 'grid',
-    gap: 'var(--space-14)',
+    gap: 'var(--space-10)',
     minWidth: 0,
-    padding: 'var(--space-18)',
-    borderWidth: 'var(--border-width-sm)',
-    borderStyle: 'solid',
-    borderColor: 'var(--color-line)',
-    borderRadius: 'var(--radius-16)',
+    padding: 'var(--space-16)',
+    borderRadius: 'var(--radius-18)',
     backgroundColor: 'var(--color-surface)',
     overflowWrap: 'anywhere'
+  },
+  requestCard: {
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)'
   },
   cardEmbedded: {
     padding: 0,
@@ -33,16 +35,19 @@ export const resultCorrectionStyles = stylex.create({
     backgroundColor: 'transparent'
   },
   banner: {
+    boxSizing: 'border-box',
     display: 'block',
+    justifySelf: 'start',
+    width: 'fit-content',
+    maxWidth: '100%',
     margin: 0,
-    padding: 'var(--space-8) var(--space-9)',
-    borderRadius: 'var(--radius-12)',
+    paddingBlock: 'var(--space-4)',
+    paddingInline: 'var(--space-10)',
+    borderRadius: 'var(--radius-20)',
     backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)',
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-bold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)',
-    textTransform: 'uppercase',
     overflowWrap: 'anywhere'
   },
   // Compact repair-status chip (SluH3 / cuVwp): sentence case, content width. Pair with a tone.
@@ -61,8 +66,8 @@ export const resultCorrectionStyles = stylex.create({
     fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere'
   },
-  bannerDisputed: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-red)' },
-  bannerPending: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-amber)' },
+  bannerDisputed: { backgroundColor: 'var(--color-red-soft)', color: 'var(--color-red)' },
+  bannerPending: { backgroundColor: 'var(--color-amber-soft)', color: 'var(--color-amber)' },
   facts: { display: 'grid', gap: 'var(--space-3)', margin: 0, minWidth: 0 },
   factLabel: {
     margin: 0,
@@ -71,12 +76,13 @@ export const resultCorrectionStyles = stylex.create({
     textTransform: 'uppercase',
     letterSpacing: 'var(--font-letter-spacing-1-5)'
   },
+  proposedLabel: { textTransform: 'none', letterSpacing: 'normal' },
   factValue: { margin: 0, fontWeight: 'var(--font-weight-semibold)', overflowWrap: 'anywhere' },
   factCompact: { fontSize: 'var(--font-size-13)' },
   scoreLine: {
     margin: 0,
-    fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-22)',
+    fontWeight: 'var(--font-weight-extrabold)',
     overflowWrap: 'anywhere'
   },
   newScore: {
@@ -120,8 +126,9 @@ export const resultCorrectionStyles = stylex.create({
       outlineOffset: 'var(--space-1)'
     }
   },
-  primary: { backgroundColor: 'var(--color-green)', color: 'var(--color-bg)' },
+  primary: { backgroundColor: 'var(--color-green)', color: 'var(--color-on-green)' },
   danger: { color: 'var(--color-red)' },
+  reviewReject: { minHeight: 'calc(var(--space-40) + var(--space-8))' },
   list: {
     display: 'grid',
     gap: 'var(--space-6)',

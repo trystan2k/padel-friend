@@ -1,4 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
+import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Link } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
@@ -207,15 +208,9 @@ export function MatchRegistrationPanel({
   if (registration.state === 'none' && action === 'invited') return null;
 
   const submitButton = (label: string, disabled: boolean) => (
-    <button
-      type="button"
-      onClick={controller.submit}
-      disabled={disabled}
-      aria-busy={controller.pending || undefined}
-      {...stylex.props(s.primaryButton, s.fullWidth, disabled && s.disabledButton)}
-    >
+    <Button onClick={controller.submit} disabled={disabled} busy={controller.pending}>
       {label}
-    </button>
+    </Button>
   );
 
   const rosterBlock = (() => {

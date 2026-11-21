@@ -48,6 +48,12 @@ describe('TextField', () => {
     expect(screen.getByLabelText('Email').getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('exposes a disabled control that is not focusable by keyboard', () => {
+    renderField({ id: 'email', disabled: true });
+
+    expect(screen.getByLabelText('Email').hasAttribute('disabled')).toBe(true);
+  });
+
   it('renders helper text and wires it through aria-describedby', () => {
     renderField({ id: 'email', helper: 'We never share your email' });
 

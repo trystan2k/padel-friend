@@ -49,7 +49,7 @@ test('assign two groups and submit only one pending result', async ({ browserNam
     new Set([...teams.team_a, ...teams.team_b, ...groupTwo.team_a, ...groupTwo.team_b]).size
   ).toBe(8);
   await enterScore(page);
-  await expect(page.getByText(r.outcome.draw, { exact: true })).toBeVisible();
+  await expect(page.getByText(r.record.outcome.draw, { exact: true })).toBeVisible();
   await review(page);
   await info.attach('manual-draw-review', {
     body: await page.screenshot({
@@ -248,7 +248,9 @@ test('invalid score identifies set and team inline', async () => {
   const page = await f.page(f.creator);
   await openRecord(page, id);
   await enterScore(page, [[6, 5, true]]);
-  await expect(page.getByRole('button', { name: r.submit, exact: true })).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: r.record.reviewAction, exact: true })
+  ).toBeDisabled();
   const error = page.locator('#set-error-1');
   await expect(error).toContainText(
     fill(r.invalidCompletedSet, { number: 1, team: r.teams.team_b, score: '6–5' })
@@ -271,7 +273,7 @@ test('friendly preview shows no rating effect', async () => {
     [7, 5, true]
   ]);
   await expect(page.getByText(r.ratingEffectNone, { exact: true })).toBeVisible();
-  await expect(page.getByText(r.ratingEffect, { exact: true })).toHaveCount(0);
+  await expect(page.getByText(r.record.ratingUnavailable, { exact: true })).toHaveCount(0);
   await review(page);
   await page.getByRole('button', { name: r.submit, exact: true }).click();
   await expect(page.getByText(r.pending, { exact: true })).toBeVisible();

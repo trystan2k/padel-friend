@@ -54,6 +54,7 @@ export function MatchReconfirmationPanel({
       timeStyle: 'medium',
       timeZone: event.timezone
     }).format(new Date(instant));
+  const startsAtLabel = `${t(`matches.type.${event.event_type}`)} · ${date(event.starts_at)} · ${event.timezone}`;
   const impact = (value: MatchConsentChange | null | undefined) =>
     value?.from && value.to ? (
       <MatchLeagueImpact
@@ -63,10 +64,7 @@ export function MatchReconfirmationPanel({
     ) : null;
   const closed = event.is_past || Date.parse(event.registration_cutoff_at) <= asOf;
   return (
-    <section
-      {...stylex.props(card.panel, card.positive)}
-      aria-labelledby="match-reconfirmation-heading"
-    >
+    <section {...stylex.props(card.panel, s.locked)} aria-labelledby="match-reconfirmation-heading">
       <h2 id="match-reconfirmation-heading" {...stylex.props(card.title, card.reconfirmTitle)}>
         <svg
           aria-hidden="true"
@@ -130,13 +128,14 @@ export function MatchReconfirmationPanel({
           >
             <Dialog.Portal>
               <Dialog.Backdrop {...stylex.props(s.backdrop)} />
-              <Dialog.Popup {...stylex.props(s.popup)} finalFocus={trigger}>
-                <Dialog.Title>{t('matches.reconfirmation.reviewTerms')}</Dialog.Title>
-                <Dialog.Description>{t('matches.reconfirmation.description')}</Dialog.Description>
-                <p>
-                  {t(`matches.type.${event.event_type}`)} · {date(event.starts_at)} ·{' '}
-                  {event.timezone}
-                </p>
+              <Dialog.Popup {...stylex.props(s.popup, s.sheet)} finalFocus={trigger}>
+                <Dialog.Title {...stylex.props(s.dialogTitle)}>
+                  {t('matches.reconfirmation.reviewTerms')}
+                </Dialog.Title>
+                <Dialog.Description {...stylex.props(s.copy)}>
+                  {t('matches.reconfirmation.description')}
+                </Dialog.Description>
+                <p>{startsAtLabel}</p>
                 <p>{event.venue_name}</p>
                 {impact(required.change)}
                 <p>

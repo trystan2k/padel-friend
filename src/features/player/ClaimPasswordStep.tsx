@@ -4,10 +4,13 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { PasswordField } from '../../components/ui/PasswordField';
 import { getBrowserClient } from '../../lib/supabase/client';
+import { AuthActionBar, AuthTopBar } from '../auth/AuthChrome';
+import { chromeStyles } from '../auth/auth-chrome.styles';
+import { PasswordStrength } from '../auth/PasswordStrength';
 import { PASSWORD_MIN_LENGTH, isPasswordValid } from '../auth/password-policy';
+import { styles as ruleStyles } from '../auth/reset-password.styles';
 import { normalizeReturnPath } from '../auth/return-path';
 import { getPasswordSetupState } from './player.functions';
-import { ui } from './player-ui.styles';
 
 type ValidationError = 'short' | 'mismatch' | null;
 
@@ -24,6 +27,21 @@ export function ClaimPasswordStep({ canSkip = false, next }: { canSkip?: boolean
   const [busy, setBusy] = useState(false);
   const [validationError, setValidationError] = useState<ValidationError>(null);
   const [requestFailed, setRequestFailed] = useState(false);
+  const [typedPassword, setTypedPassword] = useState('');
+  const [typedConfirmation, setTypedConfirmation] = useState('');
+  // Presentation only: submit() still validates with isPasswordValid and the match check.
+  const rules = [
+    {
+      key: 'policy',
+      met: isPasswordValid(typedPassword),
+      label: t('auth.passwordRequirements', { min: PASSWORD_MIN_LENGTH })
+    },
+    {
+      key: 'match',
+      met: typedConfirmation !== '' && typedConfirmation === typedPassword,
+      label: t('auth.resetRuleMatch')
+    }
+  ];
 
   // The step replaces the claim form (or a whole page): move focus to its heading.
   useEffect(() => {
@@ -76,57 +94,92 @@ export function ClaimPasswordStep({ canSkip = false, next }: { canSkip?: boolean
   }
 
   return (
-    <main {...stylex.props(ui.page, ui.onboardingPage)}>
-      <header {...stylex.props(ui.header)}>
-        <h1 ref={headingRef} tabIndex={-1} {...stylex.props(ui.title)}>
-          {t('auth.claim.passwordTitle')}
-        </h1>
-        <p {...stylex.props(ui.subtitle)}>{t('auth.claim.passwordSubtitle')}</p>
-      </header>
-      <form onSubmit={(event) => void submit(event)} noValidate {...stylex.props(ui.stack)}>
-        <PasswordField
-          id="claim-password"
-          name="password"
-          label={t('auth.resetNewPasswordLabel')}
-          placeholder={t('auth.resetNewPasswordPlaceholder')}
-          autoComplete="new-password"
-          required
-          disabled={busy}
-          error={
-            validationError === 'short'
-              ? t('auth.passwordInvalid', { min: PASSWORD_MIN_LENGTH })
-              : undefined
-          }
-          onChange={() => setValidationError(null)}
-        />
-        <PasswordField
-          id="claim-password-confirmation"
-          name="confirmation"
-          label={t('auth.resetConfirmPasswordLabel')}
-          placeholder={t('auth.resetConfirmPlaceholder')}
-          autoComplete="new-password"
-          required
-          disabled={busy}
-          helper={t('auth.resetRequirements', { min: PASSWORD_MIN_LENGTH })}
-          error={validationError === 'mismatch' ? t('auth.resetMismatch') : undefined}
-          onChange={() => setValidationError(null)}
-        />
-        {requestFailed && (
-          <p role="alert" {...stylex.props(ui.error)}>
-            {t('auth.resetFailed')}
-          </p>
-        )}
-        <Button type="submit" busy={busy}>
-          {t('auth.resetSubmit')}
-        </Button>
-        {canSkip && (
-          <>
-            <p {...stylex.props(ui.muted)}>{t('auth.claim.passwordSkipHelp')}</p>
-            <Button type="button" variant="secondary" disabled={busy} onClick={done}>
-              {t('auth.claim.passwordSkip')}
-            </Button>
-          </>
-        )}
+    <main {...stylex.props(chromeStyles.page)}>
+      <AuthTopBar title={t('auth.claim.passwordBarTitle')} />
+      <form
+        onSubmit={(event) => void submit(event)}
+        noValidate
+        {...stylex.props(chromeStyles.form)}
+      >
+        <div {...stylex.props(chromeStyles.content, chromeStyles.contentTight)}>
+          <header {...stylex.props(chromeStyles.heading)}>
+            <h1
+              ref={headingRef}
+              tabIndex={-1}
+              {...stylex.props(chromeStyles.title, chromeStyles.headingFocus)}
+            >
+              {t('auth.claim.passwordTitle')}
+            </h1>
+            <p {...stylex.props(chromeStyles.body)}>{t('auth.claim.passwordSubtitle')}</p>
+          </header>
+          <PasswordField
+            id="claim-password"
+            name="password"
+            label={t('auth.resetNewPasswordLabel')}
+            placeholder={t('auth.resetNewPasswordPlaceholder')}
+            autoComplete="new-password"
+            required
+            disabled={busy}
+            aria-describedby="claim-password-rules"
+            error={
+              validationError === 'short'
+                ? t('auth.passwordInvalid', { min: PASSWORD_MIN_LENGTH })
+                : undefined
+            }
+            onChange={(event) => {
+              setTypedPassword(event.target.value);
+              setValidationError(null);
+            }}
+          />
+          <PasswordField
+            id="claim-password-confirmation"
+            name="confirmation"
+            label={t('auth.resetConfirmPasswordLabel')}
+            placeholder={t('auth.resetConfirmPlaceholder')}
+            autoComplete="new-password"
+            required
+            disabled={busy}
+            aria-describedby="claim-password-rules"
+            error={validationError === 'mismatch' ? t('auth.resetMismatch') : undefined}
+            onChange={(event) => {
+              setTypedConfirmation(event.target.value);
+              setValidationError(null);
+            }}
+          />
+          <PasswordStrength password={typedPassword} />
+          <ul id="claim-password-rules" {...stylex.props(ruleStyles.rules)}>
+            {rules.map(({ key, met, label }) => (
+              <li key={key} {...stylex.props(ruleStyles.rule, met && ruleStyles.ruleMet)}>
+                <span aria-hidden="true">{met ? '✓' : '○'}</span>
+                <span>
+                  {label}
+                  <span {...stylex.props(chromeStyles.srOnly)}>
+                    {' '}
+                    {t(met ? 'auth.ruleMet' : 'auth.ruleUnmet')}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {requestFailed && (
+            <p role="alert" {...stylex.props(chromeStyles.error)}>
+              {t('auth.resetFailed')}
+            </p>
+          )}
+        </div>
+        <AuthActionBar>
+          <Button type="submit" busy={busy}>
+            {t('auth.resetSubmit')}
+          </Button>
+          {canSkip && (
+            <>
+              <p {...stylex.props(chromeStyles.barNote)}>{t('auth.claim.passwordSkipHelp')}</p>
+              <Button type="button" variant="secondary" disabled={busy} onClick={done}>
+                {t('auth.claim.passwordSkip')}
+              </Button>
+            </>
+          )}
+        </AuthActionBar>
       </form>
     </main>
   );

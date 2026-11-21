@@ -98,10 +98,14 @@ describe('RatingProgressChart', () => {
         '1 confirmed game between Nov 1, 2026 and Nov 1, 2026. Level moved from 4.00 to 4.12.'
       )
     ).toBeTruthy();
-    expect(screen.getByText('From Nov 1, 2026')).toBeTruthy();
-    expect(screen.getByText(/Lines only connect games/)).toBeTruthy();
-    expect(screen.getByText('Starting level (hollow marker)')).toBeTruthy();
-    expect(document.querySelectorAll('svg[aria-hidden="true"] circle')).toHaveLength(4);
+    // Frame lNj83: latest level, all-time change, scope caption, one bar per month plus latest.
+    expect(screen.getByText('4.12')).toBeTruthy();
+    expect(screen.getByText('↑ 0.12 all time')).toBeTruthy();
+    expect(screen.getByText('All time · Level after rated games')).toBeTruthy();
+    expect(screen.getByText('Latest level · Nov 1, 2026')).toBeTruthy();
+    expect(screen.getByText('Start')).toBeTruthy();
+    expect(screen.getByText('Latest')).toBeTruthy();
+    expect(document.querySelectorAll('[aria-hidden="true"] > div > div')).toHaveLength(2);
 
     expect(screen.queryByRole('table')).toBeNull();
     const toggle = screen.getByRole('button', { name: 'Show data table' });
@@ -174,10 +178,14 @@ describe('RatingProgressChart', () => {
         />
       )
     );
+    // Frame DtbIE: one empty card with the starting level and no chart.
+    expect(screen.getByText('Your level history starts here')).toBeTruthy();
     expect(
-      screen.getByText(/Starting level 4\.00\. Your confirmed competitive games/)
+      screen.getByText('Your chart will appear after your first confirmed rated game.')
     ).toBeTruthy();
-    expect(document.querySelector('svg')).toBeNull();
+    expect(screen.getByText('Starting level')).toBeTruthy();
+    expect(screen.getByText('4.00')).toBeTruthy();
+    expect(document.querySelector('[aria-hidden="true"] > div')).toBeNull();
     expect(screen.queryByRole('button')).toBeNull();
   });
 
@@ -557,10 +565,10 @@ describe('RatingJourney', () => {
     history: historyView()
   });
 
-  it('renders the Pencil journey structure: heading, scope, chart, recent games', () => {
+  it('renders the Clubhouse journey structure: heading, chart card, recent games', () => {
     render(wrap(<RatingJourney load={okLoad()} onReload={vi.fn<() => void>()} />));
     const region = screen.getByRole('region', { name: 'Rating journey' });
-    expect(within(region).getByText('ALL TIME')).toBeTruthy();
+    expect(within(region).getByText('All time · Level after rated games')).toBeTruthy();
     expect(within(region).getByRole('heading', { name: 'Rating progression' })).toBeTruthy();
     expect(within(region).getByRole('heading', { name: 'Recent games' })).toBeTruthy();
   });
@@ -583,7 +591,7 @@ describe('RatingJourney', () => {
     render(wrap(<RatingJourney load={load} onReload={onReload} />));
     expect(screen.getByRole('alert').textContent).toContain("Couldn't load rating information");
     expect(screen.queryByText(/No competitive history yet/)).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reload' }));
     expect(onReload).toHaveBeenCalledOnce();
   });
 });
@@ -660,7 +668,7 @@ describe('RatingJourney stale reload focus', () => {
     );
     // The status is the only announcement; the error copy stays visible without a second alert.
     expect(screen.queryByRole('alert')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Reload' }));
     await waitFor(() =>
       expect(screen.getByRole('status').textContent).toBe('Rating journey updated.')
     );
@@ -724,7 +732,7 @@ describe('RatingJourney stale reload focus', () => {
     expect(status.textContent).not.toMatch(/retry|try again/i);
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reload' })).toBeNull();
   });
 });
 
@@ -864,7 +872,7 @@ describe('level review correction timeline', () => {
     expect(screen.getByText('Showing 1 of 2 games')).toBeTruthy();
     const correction = rows[0]!;
     expect(within(correction).getByText('Level review')).toBeTruthy();
-    expect(within(correction).getByText('Level review adjustment')).toBeTruthy();
+    expect(within(correction).getByText(/Level review adjustment/)).toBeTruthy();
     expect(within(correction).getByText('Level 4.12 to 4.60')).toBeTruthy();
     expect(within(correction).getByText('Reliability stays at 16%')).toBeTruthy();
     expect(within(correction).queryByText(/Win|Draw|Loss/)).toBeNull();
@@ -911,7 +919,7 @@ describe('level review correction timeline', () => {
     expect(screen.queryByRole('link', { name: /example\.com/ })).toBeNull();
   });
 
-  it('draws the correction as a diamond checkpoint, counts only games and labels the table row', async () => {
+  it('charts the correction as the latest level, counts only games and labels the table row', async () => {
     const correctionProgress = progress({
       total_events: 1,
       total_points: 2,
@@ -929,11 +937,9 @@ describe('level review correction timeline', () => {
       ]
     });
     render(wrap(<RatingProgressChart progress={correctionProgress} />));
-    // baseline + one game circle (and the two legend circles); the correction is a rotated rect.
-    expect(
-      document.querySelectorAll('svg[aria-hidden="true"] rect[transform^="rotate"]')
-    ).toHaveLength(2);
-    expect(screen.getByText('Level review correction (diamond marker)')).toBeTruthy();
+    // The correction feeds the latest level (4.60) and its all-time change; only games are counted.
+    expect(screen.getByText('4.60')).toBeTruthy();
+    expect(screen.getByText('↑ 0.60 all time')).toBeTruthy();
     expect(
       screen.getByText(
         '1 confirmed game between Nov 1, 2026 and Nov 3, 2026. Level moved from 4.00 to 4.60.'
@@ -947,14 +953,6 @@ describe('level review correction timeline', () => {
       '1Nov 1, 20264.12',
       'Level reviewNov 3, 20264.60'
     ]);
-  });
-
-  it('does not show the correction legend without a correction', () => {
-    render(wrap(<RatingProgressChart progress={progress()} />));
-    expect(screen.queryByText(/Level review correction/)).toBeNull();
-    expect(
-      document.querySelectorAll('svg[aria-hidden="true"] rect[transform^="rotate"]')
-    ).toHaveLength(0);
   });
 });
 

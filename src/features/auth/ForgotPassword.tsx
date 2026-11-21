@@ -10,7 +10,8 @@ import { TurnstileWidget } from '../../components/ui/TurnstileWidget';
 import { useCaptcha } from '../../lib/captcha';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { useHydrated } from '../../lib/use-hydrated';
-import { styles } from './forgot-password.styles';
+import { AuthActionBar, AuthTopBar } from './AuthChrome';
+import { chromeStyles as styles } from './auth-chrome.styles';
 import { normalizeReturnPath } from './return-path';
 
 type ForgotPasswordProps = { next?: string };
@@ -120,47 +121,53 @@ export function ForgotPassword({ next: returnPath }: ForgotPasswordProps) {
   return (
     <>
       <main {...stylex.props(styles.page)}>
-        <header {...stylex.props(styles.header)}>
-          <span {...stylex.props(styles.brand)}>{t('auth.welcomeBrand')}</span>
-          <h1 {...stylex.props(styles.title)}>{t('auth.forgotTitle')}</h1>
-          <p {...stylex.props(styles.subtitle)}>{t('auth.forgotDescription')}</p>
-        </header>
-
+        <AuthTopBar
+          title={t('auth.forgotBarTitle')}
+          back={{ to: '/login', search: returnPath ? { next } : undefined }}
+        />
         <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
-          <TextField
-            id="forgot-email"
-            name="email"
-            type="email"
-            label={t('auth.emailAddress')}
-            placeholder={t('auth.loginEmailPlaceholder')}
-            autoComplete="email"
-            required
-            disabled={!ready || busy}
-            error={emailInvalid ? t('auth.forgotInvalidEmail') : undefined}
-            onChange={() => setEmailInvalid(false)}
-          />
-          <p {...stylex.props(styles.note)}>{t('auth.forgotEmailNote')}</p>
-          <TurnstileWidget {...captcha.widgetProps} />
-          {(captchaMissing || captchaRejected) && (
-            <p role="alert" {...stylex.props(styles.error)}>
-              {t(captchaMessageKey(captchaRejected, captcha.failed))}
-            </p>
-          )}
-          <Button type="submit" size="large" disabled={!ready} busy={busy}>
-            {t('auth.forgotSubmit')}
-          </Button>
-          {requestFailed && (
-            <p role="alert" {...stylex.props(styles.error)}>
-              {t('auth.forgotFailed')}
-            </p>
-          )}
+          <div {...stylex.props(styles.content)}>
+            <h1 {...stylex.props(styles.title)}>{t('auth.forgotTitle')}</h1>
+            <p {...stylex.props(styles.body)}>{t('auth.forgotDescription')}</p>
+            <TextField
+              id="forgot-email"
+              name="email"
+              type="email"
+              label={t('auth.emailAddress')}
+              placeholder={t('auth.loginEmailPlaceholder')}
+              autoComplete="email"
+              required
+              disabled={!ready || busy}
+              helper={t('auth.forgotEmailNote')}
+              helperXstyle={styles.meta}
+              error={emailInvalid ? t('auth.forgotInvalidEmail') : undefined}
+              onChange={() => setEmailInvalid(false)}
+            />
+            <TurnstileWidget {...captcha.widgetProps} />
+            {(captchaMissing || captchaRejected) && (
+              <p role="alert" {...stylex.props(styles.error)}>
+                {t(captchaMessageKey(captchaRejected, captcha.failed))}
+              </p>
+            )}
+            {requestFailed && (
+              <p role="alert" {...stylex.props(styles.error)}>
+                {t('auth.forgotFailed')}
+              </p>
+            )}
+          </div>
+          <AuthActionBar>
+            <Button type="submit" disabled={!ready} busy={busy}>
+              {t('auth.forgotSubmit')}
+            </Button>
+            <TextLink
+              to="/login"
+              search={returnPath ? { next } : undefined}
+              xstyle={styles.barLink}
+            >
+              {t('auth.backToSignIn')}
+            </TextLink>
+          </AuthActionBar>
         </form>
-
-        <footer {...stylex.props(styles.footer)}>
-          <TextLink to="/login" search={returnPath ? { next } : undefined} xstyle={styles.backLink}>
-            {t('auth.backToSignIn')}
-          </TextLink>
-        </footer>
       </main>
       <PrivacyLink />
     </>

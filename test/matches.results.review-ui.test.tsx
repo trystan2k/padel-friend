@@ -148,8 +148,8 @@ describe('result lifecycle review UI', () => {
     expect(screen.getByRole('heading', { name: 'Result proposal' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
-    expect(screen.getByText('PENDING · NOT CONFIRMED')).toBeTruthy();
-    expect(screen.getByRole('timer', { name: 'AUTO-CONFIRMS IN 48H' })).toBeTruthy();
+    expect(screen.getByText('Pending · not confirmed')).toBeTruthy();
+    expect(screen.getByRole('timer', { name: 'Auto-confirms in 48h' })).toBeTruthy();
     expect(
       screen.getByText(
         'No rating or League stats apply yet. Eligible players may approve or reject.'
@@ -186,7 +186,7 @@ describe('result lifecycle review UI', () => {
       })
     );
 
-    expect(screen.getByText('Confirmed · Manual')).toBeTruthy();
+    expect(screen.getByText('Confirmed · manual')).toBeTruthy();
     expect(screen.getByText('Friendly · no rating effect')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
@@ -197,7 +197,7 @@ describe('result lifecycle review UI', () => {
 
     expect(screen.getByRole('heading', { name: 'Group 1' })).toBeTruthy();
     expect(screen.getByRole('region', { name: 'Set scores' })).toBeTruthy();
-    expect(screen.getByRole('timer', { name: 'AUTO-CONFIRMS IN 48H' })).toBeTruthy();
+    expect(screen.getByRole('timer', { name: 'Auto-confirms in 48h' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Approve' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Reject' })).toBeTruthy();
   });
@@ -211,7 +211,7 @@ describe('result lifecycle review UI', () => {
     vi.setSystemTime(new Date('2036-10-01T12:00:00.000Z'));
     await act(async () => vi.advanceTimersByTimeAsync(60_000));
 
-    expect(screen.getByRole('timer', { name: 'AUTO-CONFIRMS IN 48H' })).toBeTruthy();
+    expect(screen.getByRole('timer', { name: 'Auto-confirms in 48h' })).toBeTruthy();
   });
 
   it.each([false, true])(
@@ -238,7 +238,7 @@ describe('result lifecycle review UI', () => {
       });
       const view = mount(firstVersion, vi.fn<() => void>(), compact, asOf);
       await act(async () => vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000));
-      expect(screen.getByRole('timer', { name: 'AUTO-CONFIRMS IN 44H' })).toBeTruthy();
+      expect(screen.getByRole('timer', { name: 'Auto-confirms in 44h' })).toBeTruthy();
 
       view.rerender(
         <I18nextProvider i18n={createI18n('en')}>
@@ -252,7 +252,7 @@ describe('result lifecycle review UI', () => {
           />
         </I18nextProvider>
       );
-      expect(screen.getByRole('timer', { name: 'AUTO-CONFIRMS IN 48H' })).toBeTruthy();
+      expect(screen.getByRole('timer', { name: 'Auto-confirms in 48h' })).toBeTruthy();
     }
   );
 
@@ -549,5 +549,33 @@ describe('result lifecycle review UI', () => {
         view.unmount();
       }
     });
+  });
+
+  it('announces the auto-confirm countdown politely and shows the stored deadline', () => {
+    mount(makeProposal({ can_approve: true }));
+
+    const timer = screen.getByRole('timer', { name: 'Auto-confirms in 48h' });
+    expect(timer.getAttribute('aria-live')).toBe('polite');
+    expect(timer.getAttribute('aria-atomic')).toBe('true');
+    expect(screen.getByText(/Auto-confirm deadline:/)).toBeTruthy();
+  });
+
+  it('withholds approve and reject while a stale proposal waits for a refresh', async () => {
+    const onRefresh = vi.fn<() => void>();
+    mocks.review.mockResolvedValue({
+      status: 'conflict',
+      code: 'stale_version',
+      current_version: 2,
+      current_status: 'pending'
+    });
+    mount(makeProposal({ can_approve: true, can_reject: true }), onRefresh);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Approve' }));
+
+    await waitFor(() => expect(onRefresh).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Reload latest result and roster' })).toBeTruthy();
+    expect(mocks.review).toHaveBeenCalledTimes(1);
   });
 });

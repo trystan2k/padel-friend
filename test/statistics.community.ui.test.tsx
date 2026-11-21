@@ -189,10 +189,10 @@ describe('CommunityStatistics', () => {
       )
     );
     expect(screen.getByRole('status').textContent).toContain(
-      'Friendly matches never count towards a League'
+      'Friendly matches never count towards a league'
     );
     expect(screen.queryByText('No confirmed matches in this selection yet.')).toBeNull();
-    expect(screen.getByText(/Showing the active League Spring League/)).toBeTruthy();
+    expect(screen.getByText(/Showing the active league Spring League/)).toBeTruthy();
   });
 
   it('lists a tie partially when more players are tied than shown', () => {

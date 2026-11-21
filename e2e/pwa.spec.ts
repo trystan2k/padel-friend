@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 import { expect, test, type Page } from '@playwright/test';
 import { testSupabaseConfig } from './test-supabase-config';
@@ -47,10 +48,22 @@ test.describe('static install metadata', () => {
     const manifest = await manifestResponse.json();
     expect(manifest).toMatchObject({ id: '/', scope: '/', start_url: '/', display: 'standalone' });
 
-    const sources = [...manifest.icons.map((icon: { src: string }) => icon.src), touchIcon];
+    const favicon = page.locator('link[rel="icon"]');
+    await expect(favicon).toHaveAttribute('href', '/icons/favicon.png');
+    const sources: string[] = [
+      ...manifest.icons.map((icon: { src: string }) => icon.src),
+      '/icons/apple-touch-icon.png',
+      '/icon.svg'
+    ];
     for (const source of sources) {
       const response = await request.get(source);
       expect(response.status(), source).toBe(200);
+      expect(
+        (await response.body()).equals(
+          readFileSync(new URL(`../public${source}`, import.meta.url))
+        ),
+        source
+      ).toBe(true);
       expect(response.headers()['content-type']).toMatch(/^image\/(png|svg\+xml)/);
     }
     expect((await request.get('/offline.html')).status()).toBe(200);

@@ -9,11 +9,9 @@ import {
   fill,
   sql
 } from './result-amendments-chronology-fixtures';
-import manifest from './references/paf-14/manifest.json' with { type: 'json' };
 import { assertDesignSystemStyles } from './league-standings-visual';
 import {
   assertColumnStructure,
-  assertFrameContract,
   childSummary,
   runCompositionProbes,
   assertContrast,
@@ -95,8 +93,8 @@ test('October correction after the League close replays later groups, preserves 
     await row.getByRole('textbox', { name: r.teams.team_b, exact: true }).blur();
   }
   // First press reviews the recap, the second submits the corrected proposal.
-  await page.getByRole('button', { name: r.correctSubmit, exact: true }).click();
-  await expect(page.getByRole('heading', { name: r.matchRecap, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
+  await expect(page.getByRole('region', { name: r.matchRecap, exact: true })).toBeVisible();
   await page.getByRole('button', { name: r.correctSubmit, exact: true }).click();
   // Successful submission navigates to match details; the receipt can disappear before it is observed.
   await expect(page).toHaveURL(new RegExp(`/matches/${f.october.eventId}$`));
@@ -226,14 +224,13 @@ test('October correction after the League close replays later groups, preserves 
   await assertTargets(viewPrior.locator('xpath=..'), 'league history prior version');
   await assertNoOverflow(leaguePage, 'league history');
   await assertContrast(leaguePage.locator('main'), 'league history');
-  const g = manifest.geometryReference;
+  const gutter = 20; // U17's Clubhouse xbIxj owns the League history surface.
   const versionCard = banner.locator('xpath=..');
   const cardBox = await box(versionCard);
-  assertNear(cardBox.x, g.gutter, 'league version card left gutter equals the frame gutter');
-  assertNear(frameViewport.width - cardBox.right, g.gutter, 'league version card right gutter');
+  assertNear(cardBox.x, gutter, 'league version card left gutter equals the frame gutter');
+  assertNear(frameViewport.width - cardBox.right, gutter, 'league version card right gutter');
   const cardInner = await innerBox(versionCard);
   assertNear((await box(banner)).x, cardInner.x, 'league banner aligned to card content edge');
-  assertNear((await box(viewPrior)).height, g.actionHeight, 'league view-prior action height');
   const table = leaguePage
     .locator('section[aria-labelledby="league-standings-heading"]')
     .getByRole('table')
@@ -241,10 +238,10 @@ test('October correction after the League close replays later groups, preserves 
   const tableBox = await box(table);
   expect
     .soft(tableBox.x, 'league standings table starts inside the frame gutter')
-    .toBeGreaterThanOrEqual(g.gutter - 0.5);
+    .toBeGreaterThanOrEqual(gutter - 0.5);
   expect
     .soft(tableBox.right, 'league standings table ends inside the frame gutter')
-    .toBeLessThanOrEqual(frameViewport.width - g.gutter + 0.5);
+    .toBeLessThanOrEqual(frameViewport.width - gutter + 0.5);
   await assertColumnStructure(table, 'league standings table');
   await assertDesignSystemStyles(
     leaguePage,
@@ -263,7 +260,7 @@ test('October correction after the League close replays later groups, preserves 
   );
   const historySection = leaguePage.locator('section[aria-labelledby="league-history-heading"]');
   const leagues = copies.en.leagues;
-  await runCompositionProbes('xbIxj', 'page', {
+  const historyProbes = {
     'D1.banner': async () => {
       await expect(banner).toHaveText(history.correctionBanner);
       const children = await childSummary(versionCard);
@@ -304,39 +301,30 @@ test('October correction after the League close replays later groups, preserves 
     },
     'D5.noShellNav': async () => {
       await expect(versionCard.locator('nav, [role=navigation]')).toHaveCount(0);
-    }
-  });
-  await assertFrameContract('xbIxj', 'page', [
-    {
-      ref: 'AUDITED CORRECTION label',
-      locator: banner,
-      allow: {
-        caps: 'sentence',
-        color: 'var(--color-text)',
-        weight: 'var(--font-weight-semibold)'
-      },
-      adaptation: 'D1'
     },
-    { ref: 'Corrected result', locator: versionCard.locator('p').nth(4) },
-    { ref: 'Audit actor', locator: versionCard.locator('p').nth(1) },
-    {
-      ref: 'Correction summary',
-      locator: versionCard,
-      allow: {
-        gap: 'var(--space-6)',
-        padding: 'var(--space-10)',
-        radius: 'var(--radius-14)'
-      },
-      adaptation: 'D2'
-    },
-    {
-      ref: 'Standing 1',
-      locator: table.locator('tbody tr').first().locator('td').first(),
-      allow: { weight: 'var(--font-weight-bold)' },
-      adaptation: 'D3'
+    'D6.clubhouseControl': async () => {
+      assertNear((await box(viewPrior)).height, 52, 'league view-prior Clubhouse control height');
     }
-  ]);
-  await banner.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  };
+  await runCompositionProbes('xbIxj', 'page', historyProbes);
+  await assertDesignSystemStyles(
+    leaguePage,
+    'light',
+    [
+      {
+        name: 'correction notice',
+        locator: banner,
+        tokens: {
+          'font-family': 'var(--font-family-body)',
+          'font-size': 'var(--font-size-15)'
+        },
+        palette: { 'background-color': 'amber-soft' },
+        literals: { 'text-transform': 'none' }
+      }
+    ],
+    'Clubhouse League history'
+  );
+  await leaguePage.evaluate(() => window.scrollTo(0, 0));
   await measureFrame('xbIxj', leaguePage, testInfo, 'page', { versionCard });
   await page.goto(league);
   await waitForHydratedPage(page);

@@ -1,0 +1,42 @@
+{
+  "sourceDesign": "docs/design/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export(['PdRtP', 'cs78ezj', 'ct4tab0'], 'png', '<repo>/e2e/references/paf-202-onboarding', {scale:1})",
+  "width": 390,
+  "height": 844,
+  "statusBarHeight": 44,
+  "frames": {
+    "PdRtP": {
+      "state": "New player setup",
+      "sha256": "1c081477803911232d552c2701ca0b51a436cb7c191b087bb238bce4a342d7dd"
+    },
+    "cs78ezj": {
+      "state": "Verified claim with editable level",
+      "parent": "cnU76",
+      "sha256": "afbc16abe6bbe732cffb01d72aa04249b4332a5eb2480f25e2061f884a8df72b"
+    },
+    "ct4tab0": {
+      "state": "Verified claim with history-locked level",
+      "parent": "cnU76",
+      "sha256": "a7ce161990aa8a9d019e19a9f74137e6788611dc4da1ba64245abc8859a10d0e"
+    }
+  },
+  "toleranceEvidence": {
+    "reference": {
+      "frameId": "PdRtP",
+      "clipHeight": 595,
+      "maxDiffPixelRatio": 0.0392,
+      "calibration": {
+        "environment": "macOS Darwin, deterministic Playwright Chromium flags, device scale 1",
+        "threshold": 0.1,
+        "differingPixels": 7237,
+        "totalPixels": 232050,
+        "ratio": 0.031187
+      },
+      "justification": "Compare the frame-owned content only. Omit OS chrome and the part of the screen occupied by required app-only fields; sticky footer is geometrically probed and included in the Chromium baseline. Real labels, a native slider thumb, and no fictitious predecessor/back link differ from the illustrative frame. Keep the previous nonzero budget; reject structural drift independently."
+    },
+    "chromium": {
+      "maxDiffPixelRatio": 0.025,
+      "justification": "Keep the existing Chromium cross-platform raster allowance. Mobile light and wide dark screenshots include the real form; structural probes protect dimensions, sticky action placement and access to additional fields."
+    }
+  }
+}

@@ -661,6 +661,8 @@ describe('match registration styles', () => {
     expect(styles).toContain('var(--space-');
     expect(styles).toContain('calc(var(--space-40) + var(--space-4))');
     expect(styles).not.toMatch(/#[0-9a-f]{3,8}|\b\d+px\b/i);
-    expect(styles).toContain('var(--border-width-lg) solid var(--color-green)');
+    expect(styles).toContain('var(--focus-width) solid var(--color-focus)');
+    expect(styles).not.toContain('text-transform');
+    expect(styles).not.toContain('textTransform');
   });
 });

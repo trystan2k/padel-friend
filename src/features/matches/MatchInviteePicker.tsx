@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { searchMatchInvitees } from './matches.functions';
+import { playerInitials } from '../player/player-initials';
 import { createMatchStyles as s } from './create-match.styles';
 import type { MatchInvitee } from './match-contracts';
 
@@ -48,7 +49,7 @@ export function MatchInviteePicker({
   const results = response.query === query ? response.items : [];
   return (
     <section {...stylex.props(s.fields)}>
-      <label>
+      <label {...stylex.props(s.field)}>
         {t('matchCreate.invitees.search')}
         <input
           {...stylex.props(s.input)}
@@ -60,39 +61,59 @@ export function MatchInviteePicker({
           }}
         />
       </label>
-      {loading && <p aria-live="polite">{t('matchCreate.invitees.loading')}</p>}
-      {error && <p role="alert">{t('matchCreate.invitees.error')}</p>}
-      {results.map((person) => (
-        <button
-          type="button"
-          key={person.user_id}
-          onClick={() => {
-            if (!selected.some((selectedPerson) => selectedPerson.user_id === person.user_id))
-              onChange([...selected, person]);
-          }}
-          {...stylex.props(s.button)}
-        >
-          {person.display_name}
-        </button>
-      ))}
-      <ul>
-        {selected.map((person) => (
-          <li key={person.user_id}>
-            {person.display_name}
+      {loading && (
+        <p aria-live="polite" {...stylex.props(s.muted)}>
+          {t('matchCreate.invitees.loading')}
+        </p>
+      )}
+      {error && (
+        <p role="alert" {...stylex.props(s.formMessage)}>
+          {t('matchCreate.invitees.error')}
+        </p>
+      )}
+      {results.length > 0 && (
+        <div {...stylex.props(s.list)}>
+          {results.map((person) => (
             <button
               type="button"
-              {...stylex.props(s.button)}
-              onClick={() =>
-                onChange(
-                  selected.filter((selectedPerson) => selectedPerson.user_id !== person.user_id)
-                )
-              }
+              key={person.user_id}
+              onClick={() => {
+                if (!selected.some((selectedPerson) => selectedPerson.user_id === person.user_id))
+                  onChange([...selected, person]);
+              }}
+              {...stylex.props(s.row, s.rowAction)}
             >
-              {t('matchCreate.invitees.remove')}
+              <span aria-hidden="true" {...stylex.props(s.avatar)}>
+                {playerInitials(person.display_name)}
+              </span>
+              <span {...stylex.props(s.name)}>{person.display_name}</span>
             </button>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </div>
+      )}
+      {selected.length > 0 && (
+        <ul aria-label={t('matchCreate.invitees.selected')} {...stylex.props(s.list)}>
+          {selected.map((person) => (
+            <li key={person.user_id} {...stylex.props(s.row)}>
+              <span aria-hidden="true" {...stylex.props(s.avatar)}>
+                {playerInitials(person.display_name)}
+              </span>
+              <span {...stylex.props(s.name)}>{person.display_name}</span>
+              <button
+                type="button"
+                {...stylex.props(s.chip)}
+                onClick={() =>
+                  onChange(
+                    selected.filter((selectedPerson) => selectedPerson.user_id !== person.user_id)
+                  )
+                }
+              >
+                {t('matchCreate.invitees.remove')}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

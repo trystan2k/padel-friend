@@ -1,14 +1,10 @@
 import { execFileSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { TestStackEnvError, resolveTestStackEnv } from './test-stack-env.mjs';
 
-// Single source of truth for the env an e2e-capable build needs. The add-player server functions read
-// the server-only service-role key from the preview worker's environment
-// (src/lib/supabase/admin.server.ts), and @cloudflare/vite-plugin only bakes process env into
-// dist/server/.dev.vars at BUILD time when CLOUDFLARE_INCLUDE_PROCESS_ENV is set. Every build that e2e
-// may preview (Playwright's webServer, the complete-check build stage) must therefore get these.
-// The whole TEST tuple (public URL/key baked into the client bundle AND the server binding) comes from
-// one status read of the test stack, so build, preview and test processes can never mix tuples. The
-// service key never reaches a tracked file: it lands only in git-ignored dist/.
+// Single source of truth for builds and Worker bindings used by E2E. Wrangler loads a root
+// .dev.vars before considering process.env, even with CLOUDFLARE_INCLUDE_PROCESS_ENV set.
+// Replace the generated .dev.vars after an E2E build so preview uses only the test bindings.
 
 /**
  * Resolves the test tuple from the pinned test workdir's live status and installs it into env,
@@ -49,9 +45,9 @@ export const E2E_WEB_PUSH_ENV = {
 export const E2E_APP_ORIGIN = 'http://127.0.0.1:4173';
 
 /**
- * Env additions for a build (or preview) that e2e specs exercise; empty without a tuple. Explicit
- * process env wins over root .env*, so the public pair is pinned here too. The DB connection strings
- * are blanked: Cloudflare would otherwise bake the password into the server bundle's vars.
+ * Env additions for a build (or preview) that e2e specs exercise; empty without a tuple. Vite
+ * gives the process env priority over .env files for the client bundle's public pair. The DB
+ * connection strings are blanked so Wrangler's dotenv fallback cannot bake the password.
  */
 export function e2eBuildEnv(tuple) {
   return tuple
@@ -67,3 +63,24 @@ export function e2eBuildEnv(tuple) {
       }
     : {};
 }
+
+/** Only bindings needed by the preview Worker; never copy the whole build environment. */
+export function devVarsContent(tuple) {
+  const bindings = {
+    SUPABASE_SERVICE_ROLE_KEY: tuple.SUPABASE_SERVICE_ROLE_KEY,
+    APP_ORIGIN: E2E_APP_ORIGIN,
+    ...E2E_WEB_PUSH_ENV
+  };
+  return Object.entries(bindings)
+    .map(([key, value]) => key + '=' + value + '\n')
+    .join('');
+}
+
+export function writeE2ePreviewVars(env = process.env, write = writeFileSync) {
+  if (env.CLOUDFLARE_INCLUDE_PROCESS_ENV !== 'true' || env.APP_ORIGIN !== E2E_APP_ORIGIN) return;
+  if (!env.SUPABASE_SERVICE_ROLE_KEY)
+    throw new Error('The E2E preview build requires a test service-role key.');
+  write('dist/server/.dev.vars', devVarsContent(env));
+}
+
+if (import.meta.main) writeE2ePreviewVars();

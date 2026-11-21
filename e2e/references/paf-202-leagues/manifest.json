@@ -1,0 +1,195 @@
+{
+  "sourceDesign": {
+    "path": "docs/design/padel-friend-clubhouse.pen",
+    "sha256": "69638a9da9bc47ab40165a1455b5e70c06c0fb11faacc8f51c7015457464d8d7",
+    "exportCommand": "Pencil MCP: Export([\"ywfn7\",\"ik5JC\",\"d6ANDN\",\"xbIxj\",\"MYsDp\",\"r9r34\"], \"png\", \"<repo>/e2e/references/paf-202-leagues/<id>.png\", {scale:1})"
+  },
+  "route": "/community/$communityId/leagues/create · /community/$communityId/leagues/$leagueId",
+  "precedence": "D7: route-specific frames govern their own regions. D1 group C (implemented): the league index is governed by the approved frames Fj5bc and ssomJ (see paf-202-d1-group-c).",
+  "surfaces": {
+    "LeagueEntries": {
+      "frames": [],
+      "note": "Community-surface entry links keep their destinations; restyled through the league item-link tokens (18px hairline cards, 16px bold name)."
+    },
+    "LeagueListPage": {
+      "frames": [],
+      "implemented": "D1 group C: Fj5bc / ssomJ (paf-202-d1-group-c). Top bar, 52px Create league action, status chips and 20px cards follow the frames; the frame-only participation row is not drawn (no source data, D6)."
+    },
+    "CreateLeaguePage": {
+      "frames": ["ik5JC", "MYsDp"],
+      "note": "Flat fields on the page background, 52px actions, notice (surface-2) after the form. The frame's sticky action bar is not adopted: the form scrolls with the page and its submit follows the fields."
+    },
+    "LeagueForm": {
+      "frames": ["ik5JC", "MYsDp"],
+      "note": "Base UI radio group keeps its two-line options (title + help) in place of the frame's two-segment control so each mode keeps its explanation; selected mode uses green-soft."
+    },
+    "LeagueDetailPage": {
+      "frames": ["ywfn7", "d6ANDN", "r9r34"],
+      "note": "Back chevron in a 48px target, status chips, destructive End league action, stacked End/Keep it dialog with a 20px radius (nearest radius token to the frame's 24px)."
+    },
+    "LeagueSummary": {
+      "frames": ["ywfn7", "xbIxj"],
+      "note": "Status badge and period text read through the StatusBadge chip tones."
+    },
+    "LeagueStandings": {
+      "frames": ["ywfn7"],
+      "note": "Table inside an 18px hairline card, 36px header, 48px rows, own row green-soft. Award column and record spoken text are kept (real data only, D6); the frame's P column is not invented."
+    },
+    "LeagueStandingsHistory": {
+      "frames": ["xbIxj"],
+      "note": "Amber-soft correction notice, 18px summary card, audit trail as 68px hairline rows. Version selector (52px) and retry states unchanged."
+    },
+    "LeagueRouteStates": {
+      "frames": [],
+      "note": "Loading and error cards inherit the 18px league card; copy unchanged."
+    },
+    "LeagueFormerParticipant": {
+      "frames": ["r9r34"],
+      "note": "Notice card: 40px surface-2 glyph, 16/800 title, 14px muted body. Replaces the green-soft treatment; re-baselined with documented justification."
+    }
+  },
+  "frameFindings": {
+    "ywfn7": "Chips (green-soft Active, surface-2 dates), muted 16px body, 18px hairline standings card (36px header, 48px rows, own row green-soft), audited-correction row, 48px outlined red End league early.",
+    "ik5JC": "Flat 52px inputs, 15/600 labels, two-column dates, segmented end mode, surface-2 notice, 52px green Create league.",
+    "d6ANDN": "Centered 24px card with 20/800 title, 16px muted body, solid red End league above a 52px outlined Keep it.",
+    "xbIxj": "Ended chip, amber-soft notice for the corrected result, standings card, 68px correction row with glyph and chevron, muted audit meta.",
+    "MYsDp": "Red-bordered field with a 14/600 red message directly below; conflict card with a red-soft '!' glyph and a 48px outlined Open action.",
+    "r9r34": "Read-only league card: 40px surface-2 glyph, 16/800 title, 14px muted body, outlined View standings action."
+  },
+  "exportSha256": {
+    "ywfn7": "288fe5891832894a902a3adaccd172311e0233685f5989cdd4a799f295e658d7",
+    "ik5JC": "341334fed95df1ce6a37c80e5103541fd2c6f3622ca47c4164394305aec4679b",
+    "d6ANDN": "69668b6818c4fc37c4c942da861d4310420fd0f605cba37ab5ad9cd70de1a211",
+    "xbIxj": "14b0f4c0f528c43cfb5e111fecaf59b544c709abae19fa05b17c220163e53ba9",
+    "MYsDp": "ed0f4e35a0a29c85620f01c579e454967e196e5b66a18d49c962111c6ededf10",
+    "r9r34": "f5014d2ba406eaecb3e689a8cbb65a3a0728728ccf27e8b409f0d255f3442d13"
+  },
+  "exportSize": {
+    "ywfn7": [390, 844],
+    "ik5JC": [390, 844],
+    "d6ANDN": [390, 844],
+    "xbIxj": [390, 844],
+    "MYsDp": [430, 430],
+    "r9r34": [430, 293]
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-scoped-pixel-difference",
+    "scale": 1,
+    "measurementMethod": "Capture the viewport at Chromium deviceScaleFactor 1 (ywfn7 dark, xbIxj light, en) and compare with the 1x Pencil export. Mask every block with a documented content delta: the referenceMasks rects (Pencil frame coordinates) plus the matching production blocks, each with a 1px margin. Pixels outside the masks use the pinned perceptual threshold (35215 x 0.1^2); dimension mismatches fail before the budget applies and masks above maxMaskedFraction fail.",
+    "reason": "Frame data (names, dates, numbers) is illustrative, so content blocks are masked and gated by exact structural/token probes; the budget only covers page background, gutters and shell.",
+    "maxMaskedFraction": {
+      "ywfn7": 0.95,
+      "xbIxj": 0.95
+    },
+    "perScreen": {
+      "ywfn7": 0.01,
+      "xbIxj": 0.01
+    },
+    "referenceMasks": {
+      "ywfn7": [
+        {
+          "name": "status bar and top bar",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 100
+        },
+        {
+          "name": "status and dates chips",
+          "x": 20,
+          "y": 104,
+          "width": 350,
+          "height": 28
+        },
+        {
+          "name": "body copy",
+          "x": 20,
+          "y": 146,
+          "width": 350,
+          "height": 48
+        },
+        {
+          "name": "standings card",
+          "x": 20,
+          "y": 208,
+          "width": 350,
+          "height": 326
+        },
+        {
+          "name": "audited correction card",
+          "x": 20,
+          "y": 548,
+          "width": 350,
+          "height": 70
+        },
+        {
+          "name": "end league action",
+          "x": 20,
+          "y": 632,
+          "width": 350,
+          "height": 48
+        }
+      ],
+      "xbIxj": [
+        {
+          "name": "status bar and top bar",
+          "x": 0,
+          "y": 0,
+          "width": 390,
+          "height": 100
+        },
+        {
+          "name": "ended and dates chips",
+          "x": 20,
+          "y": 104,
+          "width": 350,
+          "height": 28
+        },
+        {
+          "name": "corrected result notice",
+          "x": 20,
+          "y": 146,
+          "width": 350,
+          "height": 64
+        },
+        {
+          "name": "standings card",
+          "x": 20,
+          "y": 224,
+          "width": 350,
+          "height": 326
+        },
+        {
+          "name": "correction row card",
+          "x": 20,
+          "y": 564,
+          "width": 350,
+          "height": 70
+        },
+        {
+          "name": "audit meta",
+          "x": 20,
+          "y": 648,
+          "width": 350,
+          "height": 40
+        }
+      ]
+    }
+  },
+  "rasterBudgets": {
+    "ik5JC": {
+      "maxPerceptualDiff": 0.17,
+      "measured": 0.1652,
+      "reason": "Full 390x844 viewport against the 1x frame: production fields carry a description textarea, two-line mode options, stacked dates and the community header that the frame omits, so the residual is content composition; probes pin column geometry, 52px controls, section order and rhythm."
+    },
+    "MYsDp": {
+      "maxPerceptualDiff": 0.25,
+      "measured": 0.244,
+      "reason": "Viewport capture of the production form (conflict card, full form, date error) against the compact 430x430 validation board: the board shows only the end field, its message and the conflict card, so the residual is layout scale and content; probes pin the error adjacent to its field, red message colour, association, focus and the card inset."
+    }
+  },
+  "structuralOnly": {
+    "d6ANDN": "Full-screen frame adapted to a Base UI alert dialog over the page; exact structural and token probes gate it.",
+    "r9r34": "State board; the notice is certified by the former-participant lane (structural probes + Chromium baselines)."
+  }
+}

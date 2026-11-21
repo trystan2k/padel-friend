@@ -1,35 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 
 export const matchEditStyles = stylex.create({
-  backdrop: { opacity: 0.97 },
-  popup: {
-    insetInline: 'var(--space-18)',
-    top: 'calc(var(--space-40) * 2 + var(--space-8))',
-    maxHeight: 'calc(100dvh - var(--space-40) * 2 - var(--space-8) - var(--space-18))',
-    borderRadius: 'var(--radius-16)',
-    gap: 'var(--space-16)',
-    fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
-    lineHeight: 'var(--font-line-height-body)',
-    overscrollBehavior: 'contain'
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 'var(--space-12)'
-  },
-  title: { margin: 0, fontSize: 'var(--font-size-18)', fontWeight: 'var(--font-weight-semibold)' },
-  close: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 'calc(var(--space-40) + var(--space-4))',
-    height: 'calc(var(--space-40) + var(--space-4))',
-    flexShrink: 0,
-    borderWidth: 0,
-    borderRadius: 'var(--radius-36)'
-  },
   copy: { margin: 0, color: 'var(--color-muted)' },
   conflict: {
     display: 'grid',
@@ -62,6 +33,32 @@ export const matchEditStyles = stylex.create({
     margin: 0,
     minWidth: 0
   },
+  // Shared field components keep the legacy edit-dialog presentation until its redesign.
+  sharedField: { display: 'grid', gap: 'var(--space-1)' },
+  sharedInput: {
+    minHeight: 'calc(var(--space-40) + var(--space-12))',
+    width: '100%',
+    paddingInline: 'var(--space-3)',
+    borderRadius: 'var(--radius-8)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-1)'
+    }
+  },
+  competitionLabel: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    minInlineSize: 'calc(var(--space-40) + var(--space-4))',
+    minBlockSize: 'calc(var(--space-40) + var(--space-4))',
+    gap: 'var(--space-8)',
+    borderRadius: 'var(--radius-8)',
+    backgroundColor: 'var(--color-surface-2)',
+    paddingInline: 'var(--space-12)',
+    paddingBlock: 'var(--space-2)'
+  },
   field: {
     display: 'grid',
     gap: 'var(--space-4)',
@@ -72,7 +69,7 @@ export const matchEditStyles = stylex.create({
     appearance: 'none',
     boxShadow: 'none',
     minWidth: 0,
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: 'calc(var(--space-40) + var(--space-12))',
     paddingInline: 'var(--space-12)',
     paddingBlock: 'var(--space-8)',
     backgroundColor: 'var(--color-surface)',
@@ -96,7 +93,6 @@ export const matchEditStyles = stylex.create({
     borderWidth: 0,
     borderStyle: 'none',
     backgroundColor: 'var(--color-surface-2)',
-    textTransform: 'uppercase',
     fontFamily: 'var(--font-family-body)',
     fontSize: 'var(--font-size-12)',
     fontWeight: 'var(--font-weight-bold)',
@@ -104,7 +100,7 @@ export const matchEditStyles = stylex.create({
   },
   primary: {
     backgroundColor: 'var(--color-green)',
-    color: 'var(--color-bg)',
+    color: 'var(--color-on-green)',
     borderColor: 'var(--color-green)'
   },
   helper: { margin: 0, color: 'var(--color-amber)' }

@@ -20,11 +20,9 @@ const NAME_MAX_CODE_POINTS = 80;
 
 function AddMatchPlayerForm({
   pending,
-  feedbackKey,
   onSubmit
 }: {
   pending: boolean;
-  feedbackKey: string | null;
   onSubmit: (fields: AddPlayerFields) => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
@@ -177,11 +175,6 @@ function AddMatchPlayerForm({
         </svg>
         {t('matches.addPlayer.note')}
       </p>
-      {feedbackKey && (
-        <p role="alert" {...stylex.props(s.error, s.status)}>
-          {t(feedbackKey)}
-        </p>
-      )}
       <div {...stylex.props(s.actions)}>
         <Dialog.Close disabled={pending} render={<Button variant="secondary" xstyle={s.action} />}>
           {t('matches.addPlayer.cancel')}
@@ -226,7 +219,7 @@ export function AddMatchPlayerDialog({
               ? returnFocus.current
               : document.getElementById('match-detail-heading')
           }
-          {...stylex.props(management.popup, s.popup)}
+          {...stylex.props(management.popup, management.sheet, s.popup)}
         >
           <div {...stylex.props(s.heading)}>
             <Dialog.Title {...stylex.props(s.title)}>{t('matches.addPlayer.title')}</Dialog.Title>
@@ -234,9 +227,13 @@ export function AddMatchPlayerDialog({
               {t('matches.addPlayer.subtitle')}
             </Dialog.Description>
           </div>
+          {feedbackKey && (
+            <p role="alert" {...stylex.props(s.feedback)}>
+              {t(feedbackKey)}
+            </p>
+          )}
           <AddMatchPlayerForm
             pending={pending}
-            feedbackKey={feedbackKey}
             onSubmit={async (fields) => {
               if (await onSubmit(fields)) onOpenChange(false);
             }}

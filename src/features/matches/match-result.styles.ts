@@ -140,35 +140,6 @@ export const matchResultStyles = stylex.create({
     fontSize: 'var(--font-size-16)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  navigation: {
-    display: 'flex',
-    alignItems: 'center',
-    minHeight: 'calc(var(--space-40) + var(--space-16))',
-    paddingBlock: 'var(--space-4)',
-    paddingInline: 'var(--space-1)',
-    borderRadius: 'var(--radius-16)',
-    backgroundColor: 'var(--color-surface)'
-  },
-  navItem: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 'var(--space-2)',
-    flex: 1,
-    minWidth: 0,
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
-    color: 'var(--color-muted)',
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    textDecoration: 'none',
-    padding: 0,
-    borderRadius: 'var(--radius-12)'
-  },
-  navActive: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
-  navIcon: { width: 'var(--space-20)', height: 'var(--space-20)' },
   compactNumber: {
     width: '100%',
     minWidth: 0,
@@ -244,25 +215,42 @@ export const matchResultStyles = stylex.create({
   pendingRow: {
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--space-9)',
-    paddingBlock: 'var(--space-8)',
-    paddingInline: 'var(--space-9)',
-    borderWidth: 'var(--border-width-sm)',
-    borderStyle: 'solid',
-    borderColor: 'var(--color-line)',
-    borderRadius: 'var(--radius-12)',
+    gap: 'var(--space-10)',
+    paddingBlock: 'var(--space-12)',
+    paddingInline: 'var(--space-14)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-amber-soft)'
+  },
+  pendingCard: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-12)',
+    padding: 'var(--space-14)',
+    borderRadius: 'var(--radius-18)',
     backgroundColor: 'var(--color-surface)'
   },
+  statusGlyph: {
+    display: 'grid',
+    placeItems: 'center',
+    width: 'calc(var(--space-40))',
+    height: 'calc(var(--space-40))',
+    flexShrink: 0,
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-amber-soft)',
+    color: 'var(--color-amber)'
+  },
+  noticeTitle: { color: 'var(--color-amber)' },
   statusIcon: {
     width: 'var(--space-17)',
     height: 'var(--space-17)',
     flexShrink: 0,
-    color: 'var(--color-green)'
+    color: 'var(--color-amber)'
   },
   statusTitle: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)'
+    fontSize: 'var(--font-size-15)',
+    lineHeight: 'var(--font-line-height-snug)',
+    fontWeight: 'var(--font-weight-bold)'
   },
   statusCopy: { display: 'grid', gap: 'var(--space-3)' },
   matrixName: {
@@ -528,19 +516,18 @@ export const matchResultReviewStyles = stylex.create({
   statusBadge: {
     display: 'inline-flex',
     alignItems: 'center',
-    minHeight: 'var(--space-20)',
-    paddingBlock: 'var(--space-3)',
-    paddingInline: 'var(--space-8)',
+    paddingBlock: 'var(--space-4)',
+    paddingInline: 'var(--space-10)',
     borderRadius: 'var(--radius-20)',
     backgroundColor: 'var(--color-surface-2)',
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-11)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-bold)',
     overflowWrap: 'anywhere'
   },
-  statusPending: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
-  statusDisputed: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-red)' },
-  statusConfirmed: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
+  statusPending: { backgroundColor: 'var(--color-amber-soft)', color: 'var(--color-amber)' },
+  statusDisputed: { backgroundColor: 'var(--color-red-soft)', color: 'var(--color-red)' },
+  statusConfirmed: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green-ink)' },
   statusAwaiting: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-muted)' },
   resultMeta: {
     display: 'grid',
@@ -626,8 +613,15 @@ export const matchResultReviewStyles = stylex.create({
   disputeCopy: { margin: 0, color: 'var(--color-red)', overflowWrap: 'anywhere' },
   impactCopy: { margin: 0, color: 'var(--color-muted)', overflowWrap: 'anywhere' },
   actionRow: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)', minWidth: 0 },
-  action: { flex: '1 1 calc(var(--space-40) * 4)', minWidth: 0 },
-  reviewApprove: { backgroundColor: 'var(--color-green)', color: 'var(--color-bg)' },
+  action: {
+    flex: '1 1 calc(var(--space-40) * 4)',
+    minWidth: 0,
+    minHeight: 'calc(var(--space-40) + var(--space-12))',
+    borderRadius: 'var(--radius-14)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  reviewApprove: { backgroundColor: 'var(--color-green)', color: 'var(--color-on-green)' },
   rejectAction: { color: 'var(--color-red)' },
   correctionAction: {
     display: 'inline-flex',
@@ -694,6 +688,77 @@ export const matchResultReviewStyles = stylex.create({
     fontSize: 'var(--font-size-13)',
     overscrollBehavior: 'contain'
   },
+  sheetViewport: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 21,
+    display: 'grid',
+    placeItems: 'end center',
+    overflowY: 'auto',
+    overscrollBehavior: 'contain'
+  },
+  sheetPopup: {
+    boxSizing: 'border-box',
+    display: 'grid',
+    gap: 'var(--space-8)',
+    width: 'min(100%, calc(var(--space-40) * 11))',
+    maxHeight: '100dvh',
+    overflowY: 'auto',
+    paddingBlockStart: 'var(--space-10)',
+    paddingBlockEnd: 'calc(var(--space-16) + var(--space-12) + env(safe-area-inset-bottom, 0px))',
+    paddingInline: 'var(--space-16)',
+    borderTopLeftRadius: 'calc(var(--radius-20) + var(--space-8))',
+    borderTopRightRadius: 'calc(var(--radius-20) + var(--space-8))',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
+    fontSize: 'var(--font-size-14)',
+    overscrollBehavior: 'contain'
+  },
+  sheetGrabber: {
+    justifySelf: 'center',
+    width: 'var(--space-40)',
+    height: 'var(--space-5)',
+    borderRadius: 'var(--radius-6)',
+    backgroundColor: 'var(--color-hairline)'
+  },
+  sheetTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    overflowWrap: 'anywhere'
+  },
+  sheetOption: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-12)',
+    minHeight: 'calc(var(--space-40) + var(--space-12))',
+    paddingInline: 'var(--space-12)',
+    fontSize: 'var(--font-size-16)',
+    overflowWrap: 'anywhere',
+    cursor: 'pointer'
+  },
+  sheetNotice: {
+    margin: 0,
+    paddingBlock: 'var(--space-12)',
+    paddingInline: 'var(--space-14)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-amber-soft)',
+    color: 'var(--color-amber)',
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere'
+  },
+  sheetActions: { display: 'grid', gap: 'var(--space-8)' },
+  sheetAction: {
+    width: '100%',
+    minHeight: 'calc(var(--space-40) + var(--space-12))',
+    borderRadius: 'var(--radius-14)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  sheetDanger: { backgroundColor: 'var(--color-red)', color: 'var(--color-on-green)' },
   dialogHeader: { display: 'grid', gap: 'var(--space-3)' },
   dialogTitle: {
     margin: 0,

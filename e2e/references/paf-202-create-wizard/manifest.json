@@ -1,0 +1,71 @@
+{
+  "sourceDesign": "docs/design/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export(['wHaAb','vAxZh','b5RR4','RDV2r'], 'png', '<repo>/e2e/references/paf-202-create-wizard', {scale:1})",
+  "width": 390,
+  "frames": {
+    "wHaAb": {
+      "state": "Create match — step 1 Details",
+      "route": "/matches/create (step 0)",
+      "exportHeight": 916,
+      "sha256": "5eefbf2b991a4722dfc9eb557161084bd8e1c2d2ef74bfa4905176a570f39a02",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/wHaAb-light.png",
+      "snapshotSha256": "fc821c43adb09557b1dd9ba549e89a9ffa86dd82f4cef11d7ef5125b79f1443f"
+    },
+    "vAxZh": {
+      "state": "Create match — step 2 Players",
+      "route": "/matches/create (step 1)",
+      "exportHeight": 844,
+      "sha256": "80ef7e1a33fd7dbb0fb6008dd0d1f68ba764697156925d52e478b314a1261524",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/vAxZh-light.png",
+      "snapshotSha256": "ac1a2d6023c4b6602c96f4dff7f06cf7f07072ed857519745a4c1e92cb99f770"
+    },
+    "b5RR4": {
+      "state": "Create match — step 3 Teams",
+      "route": "/matches/create (step 2)",
+      "exportHeight": 844,
+      "sha256": "52ed614242c15f1f486cbe9968a44c94789cb0488485ebec3d226d07201b5766",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/b5RR4-light.png",
+      "snapshotSha256": "cb143c7a39a6ea861aeeb68f42fcfdd86a6d00fecb8a380ef321123dd56da417"
+    },
+    "RDV2r": {
+      "state": "Create match — step 4 Review and publish",
+      "route": "/matches/create (step 3)",
+      "exportHeight": 844,
+      "sha256": "28cf1e1b9c06ef77c2482f35e87bd57197ddce569857c05fbe36c33c51b09f28",
+      "snapshot": "e2e/matches-visual.spec.ts-snapshots/RDV2r-light.png",
+      "snapshotSha256": "5faf5f17a1aff006915475d01905d99e05799d235aed71c3e7ed1beb7f571c5f"
+    }
+  },
+  "decisions": {
+    "D6": "b5RR4 draws predefined-team pair pickers (Pair 1 / Pair 2 / Open spot). No stored pair fields or data source exist: only the team_assignment_mode radios do. The Teams step renders those two radios as the frame segmented control; no picker, select or text input is invented.",
+    "D9": "The wizard suppresses the bottom navigation (shell isSuppressed) and owns a sticky action bar that carries the bottom safe-area inset.",
+    "deviations": [
+      "wHaAb draws a Ranked switch, date chips, a time+price row and a single venue select. The form keeps its existing fields and order (venue, Maps URL, photo, timezone, currency, cutoff, level restriction, league control) as native selects/inputs on 52px controls; Ranked/Unranked is the existing competition radio pair rendered as the segmented control.",
+      "vAxZh draws Format (1/2/3 groups), Registration and Level range segments and a seeded invite list. None of these has a source in the wizard; the Players step keeps the member search, with results as full-row buttons and selected invitees as an avatar row with a Remove chip.",
+      "b5RR4 and the segmented controls keep frame order after play → predefined; the Details step keeps Cancel + Continue, later steps Back + Continue, and Publish & send invites replaces the frame Publish match copy because invitations are sent on publish.",
+      "The frames draw Back top-left. The global language/theme chips still float top-right, so the top bar reserves their width; on steps 2-4 the chevron steps back and the sticky Back keeps the visible label."
+    ]
+  },
+  "toleranceEvidence": {
+    "wHaAb": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "The Details frame is a 916px board with a Ranked switch, date chips and a venue select; the wizard keeps its real field set (see deviations), so below the progress the sample copy differs. Top bar, progress, step label, 20px gutter, 14px rhythm, 52px controls and the sticky Cancel + Continue bar are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "vAxZh": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "The frame seeds Format/Registration/Level segments and invited players that have no source. The step renders the empty member search (no fake participants). Chrome, progress and the sticky Back + Continue bar are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "b5RR4": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "The frame draws predefined-team pair pickers that have no data source (D6); only the segmented team-mode control renders and the area below it is intentionally empty. Segmented order, 48px segments, chrome and the sticky bar are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "RDV2r": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
+      "justification": "Fixture date, cutoff instant, venue, price and the staged photo differ from the sample and move with the clock, so the review values and the preview are masked; the definition-list order, row heights, heading, chrome and the sticky Back + Publish bar are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    }
+  }
+}

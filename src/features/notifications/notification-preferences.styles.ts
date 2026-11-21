@@ -3,7 +3,7 @@ import * as stylex from '@stylexjs/stylex';
 export const preferenceStyles = stylex.create({
   page: {
     minHeight: '100%',
-    padding: 'var(--space-16)',
+    padding: 'var(--space-20)',
     color: 'var(--color-text)',
     backgroundColor: 'var(--color-bg)',
     fontFamily: 'var(--font-family-body)'
@@ -15,25 +15,37 @@ export const preferenceStyles = stylex.create({
     flexDirection: 'column',
     gap: 'var(--space-12)'
   },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-8)',
+    minHeight: 'calc(var(--space-40) + var(--space-16))'
+  },
   back: {
-    minHeight: '44px',
+    minHeight: 'calc(var(--space-40) + var(--space-8))',
+    minWidth: 'calc(var(--space-40) + var(--space-8))',
     display: 'inline-flex',
+    justifyContent: 'center',
     alignItems: 'center',
     color: 'var(--color-text)',
-    fontSize: 'var(--font-size-20)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontSize: 'var(--font-size-24)',
     textDecoration: 'none'
   },
-  title: { fontSize: 'var(--font-size-20)', lineHeight: 'var(--font-line-height-tight)' },
+  title: {
+    margin: 0,
+    fontSize: 'var(--font-size-18)',
+    lineHeight: 'var(--font-line-height-tight)'
+  },
   context: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-12)' },
   group: {
     boxSizing: 'border-box',
     width: '100%',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
-    borderColor: 'var(--color-line)',
-    borderRadius: 'var(--radius-14)',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-18)',
     padding: 'var(--space-16)',
+    minInlineSize: 0,
     margin: 0,
     backgroundColor: 'var(--color-surface)'
   },
@@ -43,36 +55,51 @@ export const preferenceStyles = stylex.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 'var(--space-4)',
-    minHeight: '44px',
-    paddingBlock: 'var(--space-2)',
+    minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-8))',
+    paddingBlock: 'var(--space-4)',
     borderBlockEndWidth: 'var(--border-width-sm)',
     borderBlockEndStyle: 'solid',
     borderBlockEndColor: 'var(--color-line)'
   },
-  copy: { minWidth: 0, overflowWrap: 'anywhere' },
+  copy: {
+    display: 'grid',
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   helper: {
     color: 'var(--color-muted)',
-    marginBlockStart: 'var(--space-8)',
-    fontSize: 'var(--font-size-12)'
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'normal'
   },
   switch: {
     boxSizing: 'border-box',
     width: 'calc(var(--space-40) + var(--space-4))',
     minWidth: 'calc(var(--space-40) + var(--space-4))',
-    height: 'calc(var(--space-40) + var(--space-4))',
+    height: 'calc(var(--space-40) + var(--space-12))',
     display: 'inline-flex',
     alignItems: 'center',
     padding: 'var(--space-2)',
     borderWidth: 0,
     borderStyle: 'none',
     borderRadius: 'var(--radius-20)',
-    backgroundColor: 'var(--color-muted)',
+    backgroundColor: 'transparent',
+    position: 'relative',
+    '::before': {
+      content: '""',
+      position: 'absolute',
+      insetInline: 0,
+      height: 'calc(var(--space-20) + var(--space-4))',
+      borderRadius: 'var(--radius-20)',
+      backgroundColor: 'var(--color-muted)'
+    },
+    ':is([data-disabled])': { opacity: 0.65 },
     ':focus-visible': {
       outline: 'var(--border-width-lg) solid var(--color-green)',
       outlineOffset: 'var(--space-2)'
     }
   },
-  checked: { backgroundColor: 'var(--color-green)' },
+  checked: { '::before': { backgroundColor: 'var(--color-green)' } },
   thumb: {
     width: 'var(--space-20)',
     height: 'var(--space-20)',
@@ -80,7 +107,7 @@ export const preferenceStyles = stylex.create({
     backgroundColor: 'var(--color-surface)',
     transform: 'translateX(0)'
   },
-  thumbChecked: { transform: 'translateX(var(--space-16))' },
+  thumbChecked: { transform: 'translateX(calc(var(--space-20) + var(--space-2)))' },
   always: {
     padding: 'var(--space-12)',
     borderRadius: 'var(--radius-14)',
@@ -93,10 +120,9 @@ export const preferenceStyles = stylex.create({
   alwaysCopy: { marginBlock: 'var(--space-4)', fontSize: 'var(--font-size-12)' },
   alwaysBadge: {
     fontSize: 'var(--font-size-12)',
-    color: 'var(--color-green)',
+    color: 'var(--color-green-ink)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  save: { minHeight: 'calc(var(--space-40) + var(--space-4))', paddingInline: 'var(--space-4)' },
   device: {
     boxSizing: 'border-box',
     width: '100%',
@@ -108,15 +134,20 @@ export const preferenceStyles = stylex.create({
     borderRadius: 'var(--radius-16)',
     backgroundColor: 'var(--color-surface)'
   },
-  deviceTitle: {
-    margin: 0,
-    color: 'var(--color-amber)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
-    textTransform: 'uppercase'
+  deviceHeader: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)' },
+  deviceGlyph: {
+    width: 'var(--space-40)',
+    height: 'var(--space-40)',
+    flexShrink: 0,
+    display: 'grid',
+    placeItems: 'center',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green-ink)'
   },
-  deviceTitleOk: { color: 'var(--color-green)' },
-  deviceTitleFailed: { color: 'var(--color-red)' },
+  deviceTitle: { margin: 0, fontSize: 'var(--font-size-16)' },
+  deviceTitleOk: { color: 'var(--color-green-ink)' },
+  deviceTitleFailed: { color: 'var(--color-red)', backgroundColor: 'var(--color-red-soft)' },
   deviceCopy: {
     display: 'block',
     margin: 0,
@@ -128,32 +159,5 @@ export const preferenceStyles = stylex.create({
   },
   deviceAlert: { color: 'var(--color-red)' },
   deviceFallback: { color: 'var(--color-green)' },
-  deviceAction: {
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    marginBlockStart: 'var(--space-8)',
-    paddingInline: 'var(--space-16)',
-    borderWidth: 0,
-    borderStyle: 'none',
-    borderRadius: 'var(--radius-14)',
-    backgroundColor: 'var(--color-green)',
-    color: 'var(--color-surface)',
-    fontFamily: 'inherit',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)',
-    textTransform: 'uppercase',
-    cursor: 'pointer',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-text)',
-      outlineOffset: 'var(--space-2)'
-    },
-    ':disabled': { cursor: 'not-allowed', opacity: 0.6 }
-  },
-  deviceSecondary: {
-    backgroundColor: 'transparent',
-    color: 'var(--color-text)',
-    borderWidth: 'var(--border-width-sm)',
-    borderStyle: 'solid',
-    borderColor: 'var(--color-line)'
-  },
-  disabledLook: { cursor: 'not-allowed', opacity: 0.6 }
+  deviceAction: { alignSelf: 'stretch' }
 });

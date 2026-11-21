@@ -34,7 +34,7 @@ import {
   LeagueStandingsUnavailable
 } from './LeagueStandings';
 import { LeagueStandingsHistory } from './LeagueStandingsHistory';
-import { LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
+import { LeagueBackIcon, LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
 import { styles } from './league.styles';
 
 type Feedback = { kind: 'success'; key: string } | { kind: 'error'; code: LeagueErrorCode } | null;
@@ -96,6 +96,7 @@ export function LeagueDetailPage({
   // standings still disagreeing, the page offers a retry instead of waiting forever.
   const [reloading, setReloading] = useState(false);
   const closeTrigger = useRef<HTMLButtonElement>(null);
+  const keepOpen = useRef<HTMLButtonElement>(null);
   const period = useLeaguePeriodText(league);
   useRefreshWhenVisible(
     () => router.invalidate(),
@@ -190,7 +191,7 @@ export function LeagueDetailPage({
               aria-label={t('leagues.former.back')}
               {...stylex.props(styles.backLink)}
             >
-              <span aria-hidden="true">‹</span>
+              <LeagueBackIcon />
             </Link>
           ) : (
             <Link
@@ -199,7 +200,7 @@ export function LeagueDetailPage({
               aria-label={t('leagues.back')}
               {...stylex.props(styles.backLink)}
             >
-              <span aria-hidden="true">‹</span>
+              <LeagueBackIcon />
             </Link>
           )}
           <h1 id="league-heading" {...stylex.props(styles.title)}>
@@ -226,20 +227,22 @@ export function LeagueDetailPage({
 
         {former && (
           <SurfaceCard xstyle={styles.formerNotice} data-testid="former-participant-notice">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              data-testid="former-participant-icon"
-              {...stylex.props(styles.formerIcon)}
-            >
-              <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
+            <span {...stylex.props(styles.formerGlyph)}>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                data-testid="former-participant-icon"
+                {...stylex.props(styles.formerIcon)}
+              >
+                <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </span>
             <div {...stylex.props(styles.formerCopy)}>
               <h2 {...stylex.props(styles.formerTitle)}>{t('leagues.former.title')}</h2>
               <p {...stylex.props(styles.muted)}>{t('leagues.former.body')}</p>
@@ -359,7 +362,7 @@ export function LeagueDetailPage({
             {canClose && (
               <Button
                 ref={closeTrigger}
-                variant="secondary"
+                variant="destructive"
                 disabled={busy}
                 onClick={() => setCloseOpen(true)}
               >
@@ -403,11 +406,15 @@ export function LeagueDetailPage({
         <AlertDialog.Portal>
           <AlertDialog.Backdrop {...stylex.props(styles.dialogBackdrop)} />
           <AlertDialog.Viewport {...stylex.props(styles.dialogViewport)}>
-            <AlertDialog.Popup finalFocus={closeTrigger} {...stylex.props(styles.dialog)}>
+            <AlertDialog.Popup
+              initialFocus={keepOpen}
+              finalFocus={closeTrigger}
+              {...stylex.props(styles.dialog)}
+            >
               <AlertDialog.Title {...stylex.props(styles.dialogTitle)}>
                 {t('leagues.detail.closeConfirm.title', { name: league.name })}
               </AlertDialog.Title>
-              <AlertDialog.Description {...stylex.props(styles.text)}>
+              <AlertDialog.Description {...stylex.props(styles.dialogBody)}>
                 {t('leagues.detail.closeConfirm.body')}
               </AlertDialog.Description>
               {feedback?.kind === 'error' && (
@@ -415,14 +422,9 @@ export function LeagueDetailPage({
                   {t(`leagues.errors.${feedback.code}`)}
                 </p>
               )}
-              <div {...stylex.props(styles.actions)}>
-                <AlertDialog.Close
-                  disabled={busy}
-                  render={
-                    <Button variant="secondary">{t('leagues.detail.closeConfirm.cancel')}</Button>
-                  }
-                />
+              <div {...stylex.props(styles.dialogActions)}>
                 <Button
+                  xstyle={styles.destructiveSolid}
                   busy={busy}
                   onClick={async () => {
                     const closed = await run(
@@ -437,6 +439,14 @@ export function LeagueDetailPage({
                 >
                   {t('leagues.detail.closeConfirm.confirm')}
                 </Button>
+                <AlertDialog.Close
+                  disabled={busy}
+                  render={
+                    <Button ref={keepOpen} variant="secondary">
+                      {t('leagues.detail.closeConfirm.cancel')}
+                    </Button>
+                  }
+                />
               </div>
             </AlertDialog.Popup>
           </AlertDialog.Viewport>

@@ -3,19 +3,27 @@ import * as stylex from '@stylexjs/stylex';
 // Player statistics. Tokens only; interactive targets keep the 44px floor and every state carries
 // text, never colour alone. Grids are fluid so translated labels wrap instead of overflowing.
 const TOUCH = 'calc(var(--space-40) + var(--space-4))';
+const CONTROL = 'calc(var(--space-40) + var(--space-8))';
 const focusRing = {
   outline: 'var(--border-width-lg) solid var(--color-green)',
   outlineOffset: 'var(--space-2)'
 };
 
 export const playerStyles = stylex.create({
+  // Clubhouse page (RN0yw): page background, 20px gutters, 14px rhythm between sections.
   page: {
+    boxSizing: 'border-box',
     display: 'grid',
-    gap: 'var(--space-12)',
+    alignContent: 'start',
+    gap: 'var(--space-14)',
     width: '100%',
+    maxWidth: 'calc(var(--space-40) * 12)',
+    minHeight: '100vh',
     marginInline: 'auto',
-    padding: 'var(--space-18)',
+    padding: 'var(--space-4) var(--space-20) var(--space-20)',
+    backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
     minWidth: 0
   },
   header: { display: 'grid', gap: 'var(--space-4)' },
@@ -35,15 +43,71 @@ export const playerStyles = stylex.create({
     margin: 0
   },
   tile: {
-    padding: 'var(--space-12)',
-    borderRadius: 'var(--radius-16)',
+    padding: 'var(--space-14)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-20)',
     backgroundColor: 'var(--color-surface)'
   },
   tileValue: {
     fontSize: 'var(--font-size-24)',
-    fontWeight: 'var(--font-weight-bold)',
-    color: 'var(--color-green)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    color: 'var(--color-text)',
     overflowWrap: 'anywhere'
+  },
+  // Pair / head-to-head identity (GrkSH, khmeK): two initials avatars with a connector, then the
+  // other player's name; wraps instead of clipping when a translated name or caption is long.
+  identity: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 'var(--space-12)',
+    rowGap: 'var(--space-8)',
+    minWidth: 0
+  },
+  avatars: { display: 'flex', alignItems: 'center', gap: 'var(--space-10)', flexShrink: 0 },
+  avatar: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 'calc(var(--space-40) + var(--space-16))',
+    height: 'calc(var(--space-40) + var(--space-16))',
+    borderRadius: 'var(--radius-36)',
+    backgroundColor: 'var(--color-green-soft)',
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-17)',
+    fontWeight: 'var(--font-weight-extrabold)'
+  },
+  avatarFocal: { backgroundColor: 'var(--color-lime)', color: 'var(--color-green-deep)' },
+  connector: {
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-bold)',
+    color: 'var(--color-muted)'
+  },
+  identityText: {
+    display: 'grid',
+    gap: 'var(--space-2)',
+    flex: '1 1 calc(var(--space-40) * 3)',
+    minWidth: 0
+  },
+  identityName: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-tight)',
+    color: 'var(--color-text)',
+    overflowWrap: 'anywhere'
+  },
+  // Headline metric tile: figure above its label; the label stays the term for assistive tech.
+  tileStack: { display: 'flex', flexDirection: 'column-reverse', gap: 'var(--space-2)' },
+  tileBody: {
+    margin: 0,
+    display: 'grid',
+    gap: 'var(--space-2)',
+    fontVariantNumeric: 'tabular-nums',
+    minWidth: 0
   },
   strip: {
     display: 'flex',
@@ -52,14 +116,21 @@ export const playerStyles = stylex.create({
     justifyContent: 'space-between',
     gap: 'var(--space-4)',
     margin: 0,
-    padding: 'var(--space-12)',
-    borderRadius: 'var(--radius-16)',
+    padding: 'var(--space-14) var(--space-16)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-20)',
     backgroundColor: 'var(--color-surface)',
-    fontSize: 'var(--font-size-14)',
+    fontSize: 'var(--font-size-15)',
     fontVariantNumeric: 'tabular-nums'
   },
   stripLabel: { color: 'var(--color-muted)' },
-  stripValue: { fontWeight: 'var(--font-weight-bold)', color: 'var(--color-text)' },
+  stripValue: {
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    color: 'var(--color-text)'
+  },
   // Compact figure rows (partnership summary): label and value stay on one line while they fit.
   compact: {
     display: 'flex',
@@ -79,8 +150,11 @@ export const playerStyles = stylex.create({
   recentRow: {
     display: 'grid',
     gap: 'var(--space-6)',
-    padding: 'var(--space-12)',
-    borderRadius: 'var(--radius-16)',
+    padding: 'var(--space-14) var(--space-16)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-20)',
     backgroundColor: 'var(--color-surface)',
     minWidth: 0
   },
@@ -96,7 +170,7 @@ export const playerStyles = stylex.create({
   headline: {
     margin: 0,
     fontSize: 'var(--font-size-16)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontWeight: 'var(--font-weight-extrabold)',
     color: 'var(--color-text)',
     fontVariantNumeric: 'tabular-nums',
     overflowWrap: 'anywhere'
@@ -104,33 +178,69 @@ export const playerStyles = stylex.create({
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-21)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-tight)',
+    overflowWrap: 'anywhere'
+  },
+  // GrkSH / khmeK top bar: back chevron + title on one compact row; the global chips keep their corner.
+  topBar: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-8)',
+    minHeight: 'calc(var(--space-40) + var(--space-16))',
+    paddingInlineEnd: `calc(${TOUCH} * 2 + var(--space-8) + var(--space-8))`,
+    minWidth: 0
+  },
+  back: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    minHeight: TOUCH,
+    minWidth: TOUCH,
+    borderRadius: 'var(--radius-14)',
+    color: 'var(--color-text)',
     fontSize: 'var(--font-size-24)',
-    lineHeight: 'var(--font-line-height-tight)'
+    fontWeight: 'var(--font-weight-bold)',
+    textDecoration: 'none',
+    ':focus-visible': focusRing
+  },
+  filterAccess: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: TOUCH,
+    minWidth: TOUCH,
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-semibold)',
+    textDecoration: 'underline',
+    ':focus-visible': focusRing
   },
   // minmax(0, 1fr): a wide table inside the card scrolls instead of widening the grid track.
   section: {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr)',
-    gap: 'var(--space-8)',
+    gap: 'var(--space-10)',
     minWidth: 0
   },
   heading: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-18)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontSize: 'var(--font-size-17)',
+    fontWeight: 'var(--font-weight-extrabold)',
     color: 'var(--color-text)'
   },
   subheading: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-bold)',
     color: 'var(--color-text)'
   },
   copy: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     color: 'var(--color-muted)',
     overflowWrap: 'anywhere'
   },
@@ -156,7 +266,7 @@ export const playerStyles = stylex.create({
   },
   statLabel: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     color: 'var(--color-muted)',
     overflowWrap: 'anywhere'
   },
@@ -167,14 +277,14 @@ export const playerStyles = stylex.create({
     fontVariantNumeric: 'tabular-nums'
   },
   value: {
-    fontSize: 'var(--font-size-18)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontSize: 'var(--font-size-17)',
+    fontWeight: 'var(--font-weight-extrabold)',
     color: 'var(--color-text)',
     overflowWrap: 'anywhere'
   },
   valueMuted: { color: 'var(--color-muted)' },
   detail: {
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
     color: 'var(--color-muted)',
     overflowWrap: 'anywhere'
   },
@@ -191,7 +301,7 @@ export const playerStyles = stylex.create({
   table: {
     width: '100%',
     borderCollapse: 'collapse',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-14)',
     fontVariantNumeric: 'tabular-nums'
   },
   tableScroll: { overflowX: 'auto', maxWidth: '100%' },
@@ -201,27 +311,30 @@ export const playerStyles = stylex.create({
     color: 'var(--color-muted)'
   },
   cell: {
-    paddingBlock: 'var(--space-3)',
-    paddingInline: 'var(--space-4)',
+    paddingBlock: 'var(--space-8)',
+    paddingInline: 'var(--space-6)',
     textAlign: 'start',
     borderBottomWidth: 'var(--border-width-sm)',
     borderBottomStyle: 'solid',
-    borderBottomColor: 'var(--color-line)'
+    borderBottomColor: 'var(--color-hairline)'
   },
-  error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-12)' },
+  error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-14)' },
   link: {
     justifySelf: 'start',
     display: 'inline-flex',
     alignItems: 'center',
-    minHeight: TOUCH,
+    minHeight: CONTROL,
     minWidth: TOUCH,
-    paddingInline: 'var(--space-9)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-surface-2)',
+    paddingInline: 'var(--space-16)',
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-bold)',
     textDecoration: 'none',
     ':focus-visible': focusRing
   },
@@ -230,16 +343,18 @@ export const playerStyles = stylex.create({
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: TOUCH,
+    minHeight: CONTROL,
     minWidth: TOUCH,
-    paddingInline: 'var(--space-9)',
-    borderWidth: 0,
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-surface-2)',
+    paddingInline: 'var(--space-16)',
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-bold)',
     cursor: 'pointer',
     ':focus-visible': focusRing
   }
