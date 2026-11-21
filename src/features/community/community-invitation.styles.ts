@@ -25,8 +25,8 @@ export const invitationStyles = stylex.create({
   glyph: {
     display: 'grid',
     placeItems: 'center',
-    width: 'calc(var(--space-40) + var(--space-24))',
-    height: 'calc(var(--space-40) + var(--space-24))',
+    width: 'calc(var(--space-40) + var(--space-12) * 2)',
+    height: 'calc(var(--space-40) + var(--space-12) * 2)',
     borderRadius: 'var(--radius-14)',
     color: 'var(--color-green-ink)',
     backgroundColor: 'var(--color-green-soft)',

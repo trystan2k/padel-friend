@@ -179,7 +179,7 @@ export const ui = stylex.create({
     marginInline: 'calc(-1 * var(--space-20))',
     paddingInline: 'var(--space-20)',
     paddingBlockStart: 'var(--space-12)',
-    paddingBlockEnd: 'calc(var(--space-24) + env(safe-area-inset-bottom, 0px))',
+    paddingBlockEnd: 'calc(var(--space-12) * 2 + env(safe-area-inset-bottom, 0px))',
     backgroundColor: 'var(--color-surface)',
     borderTop: 'var(--border-width-sm) solid var(--color-line)'
   },
@@ -197,7 +197,7 @@ export const ui = stylex.create({
     display: 'flex',
     alignItems: 'center',
     gap: 'var(--space-12)',
-    minHeight: 'calc(var(--space-40) + var(--space-24) + var(--space-5))',
+    minHeight: 'calc(var(--space-40) + var(--space-12) * 2 + var(--space-5))',
     padding: 'var(--space-14)',
     boxSizing: 'border-box',
     borderRadius: 'var(--radius-14)',

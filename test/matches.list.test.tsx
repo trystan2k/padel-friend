@@ -442,6 +442,29 @@ describe('clubhouse match list structure', () => {
     ).toBeNull();
     expect(screen.getByRole('heading', { level: 2, name: 'Court Central' })).toBeTruthy();
   });
+  it('shows the local date on ungrouped Past cards', () => {
+    mount({ entry: 'past', initialItems: [{ ...event(74, 0), is_past: true }] });
+    expect(screen.getByText(/Oct 20, /)).toBeTruthy();
+  });
+  it('keeps day-group heading ids unique when a local date repeats non-consecutively', () => {
+    const atZone = (id: number, startsAt: string, timezone: string) => ({
+      ...event(id, 0),
+      starts_at: startsAt,
+      timezone
+    });
+    mount({
+      entry: 'my',
+      initialItems: [
+        atZone(75, '2026-10-20T10:00:00.000Z', 'Europe/Madrid'),
+        atZone(76, '2026-10-20T12:00:00.000Z', 'Pacific/Auckland'),
+        atZone(77, '2026-10-20T13:00:00.000Z', 'Europe/Madrid')
+      ]
+    });
+    const ids = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.id);
+    const dayIds = ids.filter((id) => id.startsWith('matches-day-'));
+    expect(dayIds.length).toBeGreaterThan(1);
+    expect(new Set(dayIds).size).toBe(dayIds.length);
+  });
   it('renders the segments as one labelled navigation of three keyboard-focusable links', async () => {
     mount({ entry: 'my' });
     const nav = screen.getByRole('navigation', { name: copy.navigationLabel });

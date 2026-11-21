@@ -64,6 +64,12 @@ export function MatchCard({
       <div {...stylex.props(s.top)}>
         <span>
           <time dateTime={event.starts_at} {...stylex.props(s.time)}>
+            {!grouped &&
+              `${new Intl.DateTimeFormat(i18n.language, {
+                day: 'numeric',
+                month: 'short',
+                timeZone: event.timezone
+              }).format(new Date(event.starts_at))}, `}
             {new Intl.DateTimeFormat(i18n.language, {
               timeStyle: 'short',
               timeZone: event.timezone

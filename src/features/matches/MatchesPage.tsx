@@ -199,10 +199,12 @@ export function MatchesPage({
       <section aria-label={t(`matches.tabs.${entry}`)} {...stylex.props(s.list)}>
         {groups
           ? groups.map((group, index) => {
-              const headingId = `matches-day-${group.key}`;
+              // Chronological order across timezones can repeat a local date in nonconsecutive groups.
+              const groupId = `${index}-${group.key}`;
+              const headingId = `matches-day-${groupId}`;
               const open = cursor !== null && index === groups.length - 1;
               return (
-                <section key={group.key} aria-labelledby={headingId} {...stylex.props(s.group)}>
+                <section key={groupId} aria-labelledby={headingId} {...stylex.props(s.group)}>
                   <div {...stylex.props(s.day)}>
                     <h2 id={headingId} {...stylex.props(s.dayTitle)}>
                       {group.label}
