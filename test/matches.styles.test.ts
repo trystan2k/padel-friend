@@ -5,7 +5,9 @@ import { MANAGEMENT_COMPONENTS } from './helpers/match-management-contract';
 describe('match styles', () => {
   it('keeps detail photos fixed-height, roster rows compact, and cancelled badges inline', () => {
     const shell = readFileSync('src/features/matches/match-detail-shell.styles.ts', 'utf8');
-    expect(shell).toMatch(/image: \{[^}]*height: 'calc\(var\(--space-40\) \* 4\)'/);
+    expect(shell).toMatch(
+      /image: \{[^}]*height: 'calc\(var\(--space-40\) \* 3 \+ var\(--space-12\)\)'/
+    );
     expect(shell).toMatch(
       /cancelledBadge: \{\s*display: 'flex',\s*justifyContent: 'flex-start',\s*minHeight: 'calc\(var\(--space-20\) \+ var\(--space-4\)\)'/
     );

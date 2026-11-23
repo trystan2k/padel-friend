@@ -113,14 +113,14 @@ function mount(
 afterEach(cleanup);
 
 describe('clubhouse match detail hero', () => {
-  it('orders header, hero, participation, registration action and eligibility', () => {
+  it('orders top bar, hero, registration status, participation detail and eligibility', () => {
     mount(detail());
     const heading = (name: string, level = 2) => screen.getByRole('heading', { level, name });
     const ordered = [
-      heading(en.matches.detail.title, 1),
+      heading(en.matches.detail.barTitle, 1),
       heading('Court Central'),
-      heading(en.matches.detail.participation),
       heading(en.matchRegistration.place.title),
+      heading(en.matches.detail.participation),
       heading(en.matches.detail.eligibilityVisibility)
     ];
     for (let index = 1; index < ordered.length; index += 1)
@@ -136,15 +136,13 @@ describe('clubhouse match detail hero', () => {
     const overview = screen.getByRole('heading', { name: 'Court Central' }).closest('section')!;
     expect(within(overview).getByText(en.matches.type.competitive)).toBeTruthy();
     expect(within(overview).getByText(en.matches.competition.ranked)).toBeTruthy();
-    const participation = screen
-      .getByRole('heading', { name: en.matches.detail.participation })
-      .closest('section')!;
-    expect(within(participation).getByText('4/8')).toBeTruthy();
-    expect(within(participation).getByText('2.5–5')).toBeTruthy();
-    expect(within(participation).getByText('€8.50')).toBeTruthy();
-    expect(within(participation).getByText(en.matches.detail.hero.reserveQueue)).toBeTruthy();
-    expect(within(participation).getByText(en.matches.detail.hero.reserveQueueNote)).toBeTruthy();
-    expect(within(participation).getByText('2', { selector: 'span' })).toBeTruthy();
+    expect(within(overview).getByText(en.matches.detail.visibility.community_open)).toBeTruthy();
+    expect(screen.getByText('4/8')).toBeTruthy();
+    expect(screen.getByText('2.5–5')).toBeTruthy();
+    expect(screen.getByText('€8.50')).toBeTruthy();
+    expect(screen.getByText(en.matches.detail.hero.reserveQueue)).toBeTruthy();
+    expect(screen.getByText(en.matches.detail.hero.reserveQueueNote)).toBeTruthy();
+    expect(screen.getByText('2', { selector: 'span' })).toBeTruthy();
   });
 
   it('shows truthful unavailable metrics instead of inventing them', () => {
@@ -159,13 +157,10 @@ describe('clubhouse match detail hero', () => {
         reserve_count: 0
       })
     );
-    const participation = screen
-      .getByRole('heading', { name: en.matches.detail.participation })
-      .closest('section')!;
-    expect(within(participation).queryByText(en.matches.detail.hero.perPlayer)).toBeNull();
-    expect(within(participation).getByText(en.matches.detail.hero.anyLevel)).toBeTruthy();
-    expect(within(participation).getByText('4')).toBeTruthy();
-    expect(within(participation).getByText('0', { selector: 'span' })).toBeTruthy();
+    expect(screen.queryByText(en.matches.detail.hero.perPlayer)).toBeNull();
+    expect(screen.getByText(en.matches.detail.hero.anyLevel)).toBeTruthy();
+    expect(screen.getByText('4', { selector: 'p' })).toBeTruthy();
+    expect(screen.getByText('0', { selector: 'span' })).toBeTruthy();
   });
 
   it('keeps share in the header and the map link as an external fallback', () => {
@@ -286,6 +281,105 @@ describe('participation variants map to truthful actions', () => {
   it.each(cases)('$name ($frame)', ({ event, registration, check }) => {
     mount(detail(event), registration);
     expect(() => check()).not.toThrow();
+  });
+});
+
+describe('sticky registration action bar', () => {
+  const join = en.matchRegistration.join;
+  const bars = () => document.querySelectorAll<HTMLElement>('[data-match-action-bar]');
+  const bar = () => {
+    const [node] = bars();
+    if (!node) throw new Error('missing action bar');
+    return node;
+  };
+  const cases: Array<{
+    name: string;
+    event: Partial<MatchEventDetail>;
+    registration: MyMatchRegistration;
+    action: string;
+    disabled?: boolean;
+  }> = [
+    { name: 'direct join', event: {}, registration: none, action: join.button },
+    {
+      name: 'approval required',
+      event: { caller_eligibility: 'nonmember', caller_requires_approval: true },
+      registration: none,
+      action: join.requestButton
+    },
+    {
+      name: 'full',
+      event: { accepted_count: 8, maximum_registrations: 8 },
+      registration: none,
+      action: en.matchRegistration.full.button,
+      disabled: true
+    }
+  ];
+  const withoutAction: Array<{
+    name: string;
+    event: Partial<MatchEventDetail>;
+    registration: MyMatchRegistration;
+  }> = [
+    {
+      name: 'closed',
+      event: { registration_cutoff_at: '2020-01-01T00:00:00.000Z' },
+      registration: none
+    },
+    {
+      name: 'pending request',
+      event: { caller_eligibility: 'nonmember', caller_requires_approval: true },
+      registration: pending
+    },
+    { name: 'playing', event: {}, registration: accepted() },
+    {
+      name: 'invited',
+      event: { caller_is_invited: true, visibility: 'invite_only' },
+      registration: none
+    }
+  ];
+  it.each(withoutAction)('$name has no registration action, so no bar', (c) => {
+    mount(detail(c.event), c.registration);
+    expect(bars()).toHaveLength(0);
+  });
+  it.each(cases)('$name places its one registration action in the bar', (c) => {
+    mount(detail(c.event), c.registration);
+    expect(bars()).toHaveLength(1);
+    const buttons = within(bar()).getAllByRole<HTMLButtonElement>('button');
+    expect(buttons).toHaveLength(1);
+    expect(buttons[0]!.textContent).toBe(c.action);
+    expect(buttons[0]!.disabled).toBe(c.disabled ?? false);
+    // The registration action exists once on the page: placed in the bar, never duplicated.
+    expect(screen.getAllByRole('button', { name: c.action })).toHaveLength(1);
+  });
+
+  it('keeps the bar after the hero, status and lower-priority panels', () => {
+    mount(detail(), none);
+    const hero = screen.getByRole('heading', { name: 'Court Central' });
+    const status = screen.getByRole('heading', { name: en.matchRegistration.place.title });
+    const eligibility = screen.getByRole('heading', {
+      name: en.matches.detail.eligibilityVisibility
+    });
+    const follows = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(follows(hero, status)).toBe(true);
+    expect(follows(status, eligibility)).toBe(true);
+    expect(follows(eligibility, bar())).toBe(true);
+  });
+
+  it('shows the capacity notice for a direct join and the request note for a request', () => {
+    mount(detail(), none);
+    expect(within(bar()).getByText('2 of 8 places left')).toBeTruthy();
+    cleanup();
+    mount(detail({ caller_eligibility: 'nonmember', caller_requires_approval: true }), none);
+    expect(within(bar()).getByText(join.requestNote)).toBeTruthy();
+  });
+
+  it('owns the top chrome: centered Match bar, Share on the end, chips step aside', () => {
+    const { container } = mount(detail(), none);
+    expect(container.querySelector('main')!.getAttribute('data-route-chrome')).toBe('navigation');
+    const header = screen.getByRole('heading', { level: 1 }).closest('header')!;
+    expect(header.textContent).toContain(en.matches.detail.barTitle);
+    expect(within(header).getByRole('button', { name: en.matches.detail.share })).toBeTruthy();
+    expect(within(header).getByRole('link', { name: en.matches.back })).toBeTruthy();
   });
 });
 

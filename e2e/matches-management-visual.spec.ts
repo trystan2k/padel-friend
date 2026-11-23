@@ -674,6 +674,13 @@ for (const [state, frame] of frames) {
     // browser regressions. A mapped state without manifest regions must not skip the comparison.
     if (locators) {
       if (!regions) throw new Error(`Missing frame regions: ${state} ${frame}`);
+      // F25: management panels follow the hero and roster, so a panel below the first screen is
+      // scrolled into view (centered, clear of the sticky action bar) before it is cropped.
+      for (const locator of Object.values(locators))
+        await locator.first().evaluate((node) => {
+          const box = node.getBoundingClientRect();
+          if (box.bottom > innerHeight || box.top < 0) node.scrollIntoView({ block: 'center' });
+        });
       await assertFrameRegions({
         page,
         frame,

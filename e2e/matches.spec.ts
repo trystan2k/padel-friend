@@ -33,6 +33,7 @@ type Copy = {
     card: { photoAlt: string; pricePerPlayer: string; openMaps: string };
     detail: {
       title: string;
+      barTitle: string;
       visibility: { community_open: string; invite_only: string };
       creatorAccepted: string;
       invitationInfo: string;
@@ -486,12 +487,12 @@ test.describe.serial('public community_open lifecycle', () => {
     await creatorPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(creatorPage);
     await expect(
-      creatorPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      creatorPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      creatorPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      creatorPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     await expect(creatorPage.getByText(en.matches.detail.creatorAccepted)).toBeVisible();
     await expect(creatorPage.getByText('€12.00', { exact: true })).toBeVisible();
@@ -521,12 +522,12 @@ test.describe.serial('public community_open lifecycle', () => {
     await cards.getByRole('link', { name: en.notifications.match.openEvent }).click();
     await expect(memberPage).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      memberPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      memberPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      memberPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      memberPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
 
     // The member discovers the event in Available.
@@ -549,12 +550,12 @@ test.describe.serial('public community_open lifecycle', () => {
     await card.click();
     await expect(guestPage).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      guestPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      guestPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      guestPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      guestPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     const photo = guestPage.getByRole('img', { name: en.matches.card.photoAlt });
     await expect(photo).toBeVisible();
@@ -595,12 +596,12 @@ test.describe.serial('public community_open lifecycle', () => {
     await excludedPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(excludedPage);
     await expect(
-      excludedPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      excludedPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      excludedPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      excludedPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
 
     // KNOWN GAP (reported, not faked): the localized out-of-range approval note
@@ -889,12 +890,12 @@ test('invite_only stays invisible until an explicit invitation and never auto-re
     await inviteePage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(inviteePage);
     await expect(
-      inviteePage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      inviteePage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      inviteePage.getByText(`${venue} · ${en.matches.detail.visibility.invite_only}`, {
-        exact: true
-      })
+      inviteePage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.invite_only, { exact: true })
     ).toBeVisible();
     await expect(inviteePage.getByText(en.matches.detail.invitationInfo)).toBeVisible();
 
@@ -1155,10 +1156,12 @@ test('an elapsed Past event shows scheduled history without fabricated results',
     await expect(page).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await waitForHydratedPage(page);
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, { exact: true })
+      page
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Scheduled history only: no result badge, no score-like pair, no confirmed/disputed prose.
     const mainText = await page.locator('main').innerText();

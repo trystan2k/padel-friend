@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { TopBar, TopBarAction } from '../../components/ui/TopBar';
 import { MatchCompetitionBadge } from './MatchCompetitionBadge';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
@@ -171,53 +172,197 @@ export function MatchDetailPage({
     );
   const resultEntry =
     management?.correction.available && event.is_past && event.status !== 'cancelled';
+  const cancelled = event.status === 'cancelled';
+  const levelRange =
+    event.restriction_enabled && event.min_level !== null && event.max_level !== null
+      ? `${event.min_level}–${event.max_level}`
+      : null;
+  // Roster-adjacent and lower-priority content. It renders after the hero and the registration
+  // status/roster, and before the sticky registration action, wherever the panel is mounted.
+  const lowerPanels = (
+    <>
+      {!cancelled && (
+        <div {...stylex.props(shell.reserveRow)}>
+          <span {...stylex.props(shell.reserveText)}>
+            <span {...stylex.props(shell.reserveTitle)}>
+              {t('matches.detail.hero.reserveQueue')}
+            </span>
+            <span {...stylex.props(shell.reserveNote)}>
+              {t('matches.detail.hero.reserveQueueNote')}
+            </span>
+          </span>
+          <span {...stylex.props(shell.reserveCount)}>{event.reserve_count}</span>
+        </div>
+      )}
+      {management?.actions.remove.allowed && !cancelled && (
+        <>
+          {managementError && <p role="alert">{t('matches.management.errors.unavailable')}</p>}
+          <MatchRosterCard
+            eventId={eventId}
+            roster={registration?.state === 'accepted' ? (roster ?? []) : []}
+            participants={managementParticipants.filter(
+              () =>
+                registration !== null &&
+                registration.state !== 'none' &&
+                (registration.state !== 'accepted' || registration.attempt_id !== undefined)
+            )}
+            callerOrder={
+              registration && 'accepted_order' in registration ? registration.accepted_order : null
+            }
+            disabled={event.is_past || Date.parse(event.registration_cutoff_at) <= asOf}
+            started={event.is_past}
+          />
+        </>
+      )}
+      {management && (!unavailable || unavailable === 'closed') && (
+        <MatchOrganizerActions
+          eventId={eventId}
+          management={management}
+          participants={managementParticipants}
+        />
+      )}
+      {management?.actions.edit.allowed && (
+        <button
+          ref={editTrigger}
+          type="button"
+          {...stylex.props(s.button, managementStyles.editTrigger)}
+          onClick={() => setEditing(true)}
+        >
+          {t('matches.management.edit.title')}
+        </button>
+      )}
+      {isCreator && !cancelled && !unavailable && (
+        <MatchRequestQueue
+          eventId={eventId}
+          queue={queue}
+          minLevel={event.min_level}
+          maxLevel={event.max_level}
+          error={queueError}
+          onRetry={onRetry}
+        />
+      )}
+      {!cancelled && (
+        <section
+          aria-labelledby="match-participation-heading"
+          {...stylex.props(shell.card, resultEntry && shell.resultParticipation)}
+        >
+          <h2 id="match-participation-heading" {...stylex.props(shell.title)}>
+            {t('matches.detail.participation')}
+          </h2>
+          <p {...stylex.props(shell.note)}>
+            {t('matches.detail.timezone')}: {zone}
+          </p>
+          <h3 {...stylex.props(shell.participants, resultEntry && shell.resultCountLine)}>
+            {t('matches.detail.participants')}
+          </h3>
+          {event.duration_minutes !== null && (
+            <p {...stylex.props(shell.copy)}>
+              {t('matches.detail.duration')}: {event.duration_minutes}
+            </p>
+          )}
+          <p {...stylex.props(shell.accepted, resultEntry && shell.resultCountLine)}>
+            {event.accepted_count} · {t('matches.detail.accepted')}
+          </p>
+          <p {...stylex.props(shell.copy)}>
+            {event.playing_count}{' '}
+            {t('matches.counts.playing', {
+              count: event.playing_count
+            })}{' '}
+            · {event.reserve_count}{' '}
+            {t('matches.counts.reserve', {
+              count: event.reserve_count
+            })}{' '}
+            · {event.group_count}{' '}
+            {t('matches.counts.groups', {
+              count: event.group_count
+            })}{' '}
+            · {event.more_needed}{' '}
+            {t('matches.counts.moreNeeded', {
+              count: event.more_needed
+            })}
+          </p>
+          {event.caller_badge === 'creator' && callerAccepted && (
+            <p {...stylex.props(shell.copy)}>{t('matches.detail.creatorAccepted')}</p>
+          )}
+          {event.caller_is_invited && (
+            <p {...stylex.props(shell.copy)}>{t('matches.detail.invitationInfo')}</p>
+          )}
+        </section>
+      )}
+      <section aria-labelledby="match-eligibility-heading" {...stylex.props(shell.card)}>
+        <h2 id="match-eligibility-heading" {...stylex.props(shell.title)}>
+          {t('matches.detail.eligibilityVisibility')}
+        </h2>
+        <p {...stylex.props(shell.copy)}>
+          {event.restriction_enabled && event.min_level !== null && event.max_level !== null
+            ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
+            : t('matches.card.noLevelRestriction')}{' '}
+          · {t(`matches.visibility.${event.visibility}`)}
+        </p>
+        <p {...stylex.props(shell.copy)}>
+          {t(`matches.teamMode.${event.team_assignment_mode}`)} ·{' '}
+          {event.maximum_registrations == null
+            ? t('matches.detail.unlimitedRegistrations')
+            : `${t('matches.card.maximum')}: ${event.maximum_registrations}`}
+        </p>
+        {!event.registration_open && (
+          <p {...stylex.props(shell.copy)}>{t('matches.detail.registrationClosed')}</p>
+        )}
+        {!cancelled && !callerAccepted && event.caller_eligibility === 'nonmember' && (
+          <p>{t('matches.detail.guestApprovalRequired')}</p>
+        )}
+        {!cancelled && !callerAccepted && event.caller_eligibility === 'ranked_members_only' && (
+          <p>{t('matches.detail.rankedMembersOnly')}</p>
+        )}
+        {!cancelled &&
+          event.caller_eligibility === 'out_of_range' &&
+          event.caller_requires_approval &&
+          !callerAccepted && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
+        {!cancelled && event.is_past && (
+          <p {...stylex.props(shell.copy)}>
+            {t('matches.detail.pastScheduled')} · {t('matches.detail.outcomeUnavailable')}
+          </p>
+        )}
+      </section>
+      <label {...stylex.props(shell.shareField)}>
+        {t('matches.detail.shareUrl')}
+        <textarea
+          {...stylex.props(s.input, shell.input)}
+          readOnly
+          rows={2}
+          value={`/matches/${eventId}`}
+          onFocus={(e) => e.currentTarget.select()}
+          onCopy={(e) => {
+            e.clipboardData.setData('text/plain', canonical);
+            e.preventDefault();
+          }}
+        />
+      </label>
+    </>
+  );
   return (
     <main
+      data-route-chrome="navigation"
       data-result-entry={resultEntry ? 'available' : undefined}
-      {...stylex.props(
-        stylex.defaultMarker(),
-        s.page,
-        shell.page,
-        resultEntry && shell.resultEntryPage
-      )}
+      {...stylex.props(stylex.defaultMarker(), shell.page)}
     >
-      <header {...stylex.props(shell.header)}>
-        <Link to="/matches" aria-label={t('matches.back')} {...stylex.props(shell.back)}>
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-            {...stylex.props(shell.icon)}
-          >
-            <path d="m14 6-6 6 6 6" />
-          </svg>
-        </Link>
-        <div {...stylex.props(shell.heading)}>
-          <h1
-            id="match-detail-heading"
-            tabIndex={-1}
-            {...stylex.props(s.title, resultEntry && shell.resultEntryTitle)}
-          >
-            {t('matches.detail.title')}
-          </h1>
-          <p {...stylex.props(shell.subtitle)}>
-            {venue} · {t(`matches.detail.visibility.${event.visibility}`)}
-          </p>
-        </div>
-        <button
-          type="button"
-          aria-label={t('matches.detail.share')}
-          onClick={() => void share()}
-          {...stylex.props(shell.headerShare)}
-        >
-          {t('matches.detail.hero.shareHeader')}
-        </button>
-      </header>
-      {copied && <output>{t('matches.detail.copied')}</output>}
-      {shareError && <p role="alert">{t('matches.detail.copyFailed')}</p>}
-      <div {...stylex.props(shell.groups)}>
+      <TopBar
+        title={t('matches.detail.barTitle')}
+        headingId="match-detail-heading"
+        back={{ to: '/matches', label: t('matches.back') }}
+        trailing={
+          <TopBarAction aria-label={t('matches.detail.share')} onClick={() => void share()}>
+            {t('matches.detail.hero.shareHeader')}
+          </TopBarAction>
+        }
+      />
+      {copied && <output {...stylex.props(shell.shareStatus)}>{t('matches.detail.copied')}</output>}
+      {shareError && (
+        <p role="alert" {...stylex.props(shell.shareStatus)}>
+          {t('matches.detail.copyFailed')}
+        </p>
+      )}
+      <div {...stylex.props(shell.groups, resultEntry && shell.resultEntryPage)}>
         {resultEntry && management?.correction.available && (
           <Link
             to="/matches/$eventId/record"
@@ -236,14 +381,14 @@ export function MatchDetailPage({
             </button>
           </section>
         )}
-        {event.status === 'cancelled' && (
+        {cancelled && (
           <div {...stylex.props(shell.cancelledBadge)}>
             <StatusBadge>{t('matches.management.cancelled')}</StatusBadge>
           </div>
         )}
         {unavailable &&
           (!registration ||
-            event.status === 'cancelled' ||
+            cancelled ||
             unavailable === 'closed' ||
             (management && (unavailable === 'started' || unavailable === 'result_protected'))) &&
           (unavailable === 'closed' ||
@@ -254,24 +399,7 @@ export function MatchDetailPage({
           ) : (
             <MatchManagementUnavailable reason={unavailable} />
           ))}
-        {management && (!unavailable || unavailable === 'closed') && (
-          <MatchOrganizerActions
-            eventId={eventId}
-            management={management}
-            participants={managementParticipants}
-          />
-        )}
-        {management?.actions.edit.allowed && (
-          <button
-            ref={editTrigger}
-            type="button"
-            {...stylex.props(s.button, managementStyles.editTrigger)}
-            onClick={() => setEditing(true)}
-          >
-            {t('matches.management.edit.title')}
-          </button>
-        )}
-        {invitation && event.status !== 'cancelled' && (
+        {invitation && !cancelled && (
           <MatchInvitationPanel
             key={event.event_id}
             eventId={event.event_id}
@@ -280,7 +408,7 @@ export function MatchDetailPage({
             pendingApproval={registration?.state === 'pending'}
           />
         )}
-        {event.status !== 'cancelled' && !unavailable && (
+        {!cancelled && !unavailable && (
           <MatchReconfirmationPanel
             key={`${eventId}:${event.reconfirmation_generation ?? 0}`}
             event={event}
@@ -291,7 +419,7 @@ export function MatchDetailPage({
           />
         )}
         {/* D3: the public-guest frame JLqMT is reused for signed-in states only; this route stays under _protected. */}
-        <section aria-labelledby="match-overview-heading" {...stylex.props(shell.card, shell.hero)}>
+        <section aria-labelledby="match-overview-heading" {...stylex.props(shell.hero)}>
           {event.photo_url !== null && (
             <img
               {...stylex.props(shell.image)}
@@ -299,13 +427,14 @@ export function MatchDetailPage({
               alt={t('matches.card.photoAlt')}
             />
           )}
+          <div {...stylex.props(shell.chips)}>
+            <StatusBadge tone={event.event_type === 'competitive' ? 'positive' : 'neutral'}>
+              {t(`matches.type.${event.event_type}`)}
+            </StatusBadge>
+            <MatchCompetitionBadge event={event} />
+            <StatusBadge>{t(`matches.detail.visibility.${event.visibility}`)}</StatusBadge>
+          </div>
           <div {...stylex.props(shell.heroBody)}>
-            <div {...stylex.props(shell.chips)}>
-              <StatusBadge tone={event.event_type === 'competitive' ? 'positive' : 'neutral'}>
-                {t(`matches.type.${event.event_type}`)}
-              </StatusBadge>
-              <MatchCompetitionBadge event={event} />
-            </div>
             <h2 id="match-overview-heading" {...stylex.props(shell.title, shell.venue)}>
               {venue}
             </h2>
@@ -315,9 +444,6 @@ export function MatchDetailPage({
                 timeStyle: 'short',
                 timeZone: zone
               }).format(new Date(typeof event.starts_at === 'string' ? event.starts_at : ''))}
-            </p>
-            <p {...stylex.props(shell.note)}>
-              {t('matches.detail.timezone')}: {zone}
             </p>
             <a
               href={event.maps_url}
@@ -345,101 +471,48 @@ export function MatchDetailPage({
             )}
           </div>
         </section>
-        {event.status !== 'cancelled' && (
-          <section
-            aria-labelledby="match-participation-heading"
-            {...stylex.props(shell.card, resultEntry && shell.resultParticipation)}
-          >
-            <h2 id="match-participation-heading" {...stylex.props(shell.title)}>
-              {t('matches.detail.participation')}
-            </h2>
-            <div {...stylex.props(shell.metrics)}>
-              <div {...stylex.props(shell.metric)}>
-                <p {...stylex.props(shell.metricValue)}>
-                  {event.maximum_registrations == null
-                    ? event.playing_count
-                    : `${event.playing_count}/${event.maximum_registrations}`}
-                </p>
-                <p {...stylex.props(shell.metricLabel)}>
-                  {t('matches.counts.playing', { count: event.playing_count })}
-                </p>
-              </div>
-              <div {...stylex.props(shell.metric)}>
-                <p {...stylex.props(shell.metricValue)}>
-                  {event.restriction_enabled && event.min_level !== null && event.max_level !== null
-                    ? `${event.min_level}–${event.max_level}`
-                    : t('matches.detail.hero.anyLevel')}
-                </p>
-                <p {...stylex.props(shell.metricLabel)}>{t('matches.detail.hero.level')}</p>
-              </div>
-              {price && (
-                <div {...stylex.props(shell.metric)}>
-                  <p {...stylex.props(shell.metricValue)}>{price}</p>
-                  <p {...stylex.props(shell.metricLabel)}>{t('matches.detail.hero.perPlayer')}</p>
-                </div>
-              )}
-            </div>
-            <div {...stylex.props(shell.reserveRow)}>
-              <span {...stylex.props(shell.reserveText)}>
-                <span {...stylex.props(shell.reserveTitle)}>
-                  {t('matches.detail.hero.reserveQueue')}
-                </span>
-                <span {...stylex.props(shell.reserveNote)}>
-                  {t('matches.detail.hero.reserveQueueNote')}
-                </span>
-              </span>
-              <span {...stylex.props(shell.reserveCount)}>{event.reserve_count}</span>
-            </div>
-            <h3 {...stylex.props(shell.participants, resultEntry && shell.resultCountLine)}>
-              {t('matches.detail.participants')}
-            </h3>
-            {event.duration_minutes !== null && (
-              <p {...stylex.props(shell.copy)}>
-                {t('matches.detail.duration')}: {event.duration_minutes}
+        {!cancelled && (
+          <div {...stylex.props(shell.metrics)}>
+            <div {...stylex.props(shell.metric)}>
+              <p {...stylex.props(shell.metricValue)}>
+                {event.maximum_registrations == null
+                  ? event.playing_count
+                  : `${event.playing_count}/${event.maximum_registrations}`}
               </p>
+              <p {...stylex.props(shell.metricLabel)}>
+                {t('matches.counts.playing', { count: event.playing_count })}
+              </p>
+            </div>
+            <div {...stylex.props(shell.metric)}>
+              <p {...stylex.props(shell.metricValue)}>
+                {levelRange ?? t('matches.detail.hero.anyLevel')}
+              </p>
+              <p {...stylex.props(shell.metricLabel)}>{t('matches.detail.hero.level')}</p>
+            </div>
+            {price && (
+              <div {...stylex.props(shell.metric)}>
+                <p {...stylex.props(shell.metricValue)}>{price}</p>
+                <p {...stylex.props(shell.metricLabel)}>{t('matches.detail.hero.perPlayer')}</p>
+              </div>
             )}
-            <p {...stylex.props(shell.accepted, resultEntry && shell.resultCountLine)}>
-              {event.accepted_count} · {t('matches.detail.accepted')}
-            </p>
-            <p {...stylex.props(shell.copy)}>
-              {event.playing_count}{' '}
-              {t('matches.counts.playing', {
-                count: event.playing_count
-              })}{' '}
-              · {event.reserve_count}{' '}
-              {t('matches.counts.reserve', {
-                count: event.reserve_count
-              })}{' '}
-              · {event.group_count}{' '}
-              {t('matches.counts.groups', {
-                count: event.group_count
-              })}{' '}
-              · {event.more_needed}{' '}
-              {t('matches.counts.moreNeeded', {
-                count: event.more_needed
-              })}
-            </p>
-            {event.caller_badge === 'creator' && callerAccepted && (
-              <p {...stylex.props(shell.copy)}>{t('matches.detail.creatorAccepted')}</p>
-            )}
-            {event.caller_is_invited && (
-              <p {...stylex.props(shell.copy)}>{t('matches.detail.invitationInfo')}</p>
-            )}
-          </section>
+          </div>
         )}
         {registrationError ? (
-          <section
-            role="alert"
-            aria-labelledby="match-registration-error-heading"
-            {...stylex.props(shell.card)}
-          >
-            <h2 id="match-registration-error-heading" {...stylex.props(shell.title)}>
-              {t('matchRegistration.loadError.title')}
-            </h2>
-            <p {...stylex.props(shell.copy)}>{t('matchRegistration.loadError.body')}</p>
-            <Button onClick={onRetry}>{t('matchRegistration.loadError.retry')}</Button>
-          </section>
-        ) : registration && event.status !== 'cancelled' ? (
+          <>
+            <section
+              role="alert"
+              aria-labelledby="match-registration-error-heading"
+              {...stylex.props(shell.card)}
+            >
+              <h2 id="match-registration-error-heading" {...stylex.props(shell.title)}>
+                {t('matchRegistration.loadError.title')}
+              </h2>
+              <p {...stylex.props(shell.copy)}>{t('matchRegistration.loadError.body')}</p>
+              <Button onClick={onRetry}>{t('matchRegistration.loadError.retry')}</Button>
+            </section>
+            {lowerPanels}
+          </>
+        ) : registration && !cancelled ? (
           <MatchRegistrationPanel
             event={event}
             registration={registration}
@@ -448,93 +521,12 @@ export function MatchDetailPage({
             unavailable={unavailable}
             isOrganizer={isCreator}
             showRoster={!management?.actions.remove.allowed}
-          />
-        ) : null}
-        {management?.actions.remove.allowed && event.status !== 'cancelled' && (
-          <>
-            {managementError && <p role="alert">{t('matches.management.errors.unavailable')}</p>}
-            <MatchRosterCard
-              eventId={eventId}
-              roster={registration?.state === 'accepted' ? (roster ?? []) : []}
-              participants={managementParticipants.filter(
-                () =>
-                  registration !== null &&
-                  registration.state !== 'none' &&
-                  (registration.state !== 'accepted' || registration.attempt_id !== undefined)
-              )}
-              callerOrder={
-                registration && 'accepted_order' in registration
-                  ? registration.accepted_order
-                  : null
-              }
-              disabled={event.is_past || Date.parse(event.registration_cutoff_at) <= asOf}
-              started={event.is_past}
-            />
-          </>
+          >
+            {lowerPanels}
+          </MatchRegistrationPanel>
+        ) : (
+          lowerPanels
         )}
-        {isCreator && event.status !== 'cancelled' && !unavailable && (
-          <MatchRequestQueue
-            eventId={eventId}
-            queue={queue}
-            minLevel={event.min_level}
-            maxLevel={event.max_level}
-            error={queueError}
-            onRetry={onRetry}
-          />
-        )}
-        <section aria-labelledby="match-eligibility-heading" {...stylex.props(shell.card)}>
-          <h2 id="match-eligibility-heading" {...stylex.props(shell.title)}>
-            {t('matches.detail.eligibilityVisibility')}
-          </h2>
-          <p {...stylex.props(shell.copy)}>
-            {event.restriction_enabled && event.min_level !== null && event.max_level !== null
-              ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
-              : t('matches.card.noLevelRestriction')}{' '}
-            · {t(`matches.visibility.${event.visibility}`)}
-          </p>
-          <p {...stylex.props(shell.copy)}>
-            {t(`matches.teamMode.${event.team_assignment_mode}`)} ·{' '}
-            {event.maximum_registrations == null
-              ? t('matches.detail.unlimitedRegistrations')
-              : `${t('matches.card.maximum')}: ${event.maximum_registrations}`}
-          </p>
-          {!event.registration_open && (
-            <p {...stylex.props(shell.copy)}>{t('matches.detail.registrationClosed')}</p>
-          )}
-          {event.status !== 'cancelled' &&
-            !callerAccepted &&
-            event.caller_eligibility === 'nonmember' && (
-              <p>{t('matches.detail.guestApprovalRequired')}</p>
-            )}
-          {event.status !== 'cancelled' &&
-            !callerAccepted &&
-            event.caller_eligibility === 'ranked_members_only' && (
-              <p>{t('matches.detail.rankedMembersOnly')}</p>
-            )}
-          {event.status !== 'cancelled' &&
-            event.caller_eligibility === 'out_of_range' &&
-            event.caller_requires_approval &&
-            !callerAccepted && <p>{t('matches.detail.outOfRangeApprovalRequired')}</p>}
-          {event.status !== 'cancelled' && event.is_past && (
-            <p {...stylex.props(shell.copy)}>
-              {t('matches.detail.pastScheduled')} · {t('matches.detail.outcomeUnavailable')}
-            </p>
-          )}
-        </section>
-        <label {...stylex.props(shell.shareField)}>
-          {t('matches.detail.shareUrl')}
-          <textarea
-            {...stylex.props(s.input, shell.input)}
-            readOnly
-            rows={2}
-            value={`/matches/${eventId}`}
-            onFocus={(e) => e.currentTarget.select()}
-            onCopy={(e) => {
-              e.clipboardData.setData('text/plain', canonical);
-              e.preventDefault();
-            }}
-          />
-        </label>
       </div>
     </main>
   );

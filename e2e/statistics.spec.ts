@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import { watchBrowserErrors, withoutSurface } from './browser-error-gate';
 import { en, fill } from './matches-management-fixtures';
+import { assertChipsStepAside } from './route-chrome';
 import {
   A_ALL_TOTALS,
   SEED_GROUPS,
@@ -467,6 +468,7 @@ test('chart data tables open by keyboard and list every seeded value', async () 
   ).toBeVisible();
 
   await visit(page, `/community/${w.f.community}/statistics`);
+  await assertChipsStepAside(page, 'community statistics');
   const main = SEED_GROUPS.filter((group) => group.community === 'main');
   const weekly = new Map<number, number>();
   for (const group of main)

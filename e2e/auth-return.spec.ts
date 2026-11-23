@@ -32,7 +32,14 @@ type LocaleCopy = {
     save: string;
   };
   communityOnboarding: { skip: string };
-  matches: { detail: { title: string; shareUrl: string; visibility: { community_open: string } } };
+  matches: {
+    detail: {
+      title: string;
+      barTitle: string;
+      shareUrl: string;
+      visibility: { community_open: string };
+    };
+  };
   matchCreate: {
     title: string;
     next: string;
@@ -415,8 +422,8 @@ test.describe.serial('shared match link returns to the exact event', () => {
     const creatorPage = shared.page!;
     const eventId = shared.eventId!;
     const sharedPath = `/matches/${eventId}`;
-    const detailHeading = en.matches.detail.title;
-    const venueLine = `${shared.venue} · ${en.matches.detail.visibility.community_open}`;
+    const detailHeading = en.matches.detail.barTitle;
+    const venueLine = en.matches.detail.visibility.community_open;
 
     // The displayed share value is relative; share/copy still use the canonical absolute URL.
     // The creator signs out
@@ -491,8 +498,8 @@ test.describe.serial('shared match link returns to the exact event', () => {
   }) => {
     test.setTimeout(240_000);
     const sharedPath = `/matches/${shared.eventId!}`;
-    const detailHeading = en.matches.detail.title;
-    const venueLine = `${shared.venue} · ${en.matches.detail.visibility.community_open}`;
+    const detailHeading = en.matches.detail.barTitle;
+    const venueLine = en.matches.detail.visibility.community_open;
     const freshContext = await browser.newContext({
       viewport: { width: 390, height: 844 },
       deviceScaleFactor: 1,

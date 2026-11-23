@@ -1713,6 +1713,7 @@
     "detail": {
       "rankedMembersOnly": "Este partido es Clasificatorio y solo está abierto a miembros activos de la comunidad.",
       "title": "Detalles del partido",
+      "barTitle": "Partido",
       "viewCourtLocation": "Ver ubicación de la cancha",
       "viewCourtLocationFor": "Ver ubicación de la cancha para {{venue}}",
       "unlimitedRegistrations": "Inscripciones sin límite",

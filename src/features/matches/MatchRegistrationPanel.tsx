@@ -2,7 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { Button } from '../../components/ui/Button';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { Link } from '@tanstack/react-router';
-import { useState, type ReactNode } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { matchEventCounts } from './match-model';
 import type { MatchEventDetail } from './match-contracts';
@@ -15,6 +15,7 @@ import {
 } from './match-registration-model';
 import { matchRegistrationErrorKey } from './match-registration-error-copy';
 import { matchRegistrationStyles as s } from './match-registration.styles';
+import { matchDetailShellStyles as shell } from './match-detail-shell.styles';
 import { registrationActionTone, registrationStateTone } from './match-status-tone';
 import { useMatchRegistration } from './use-match-registration';
 import { MatchParticipantActions } from './MatchParticipantActions';
@@ -139,7 +140,8 @@ export function MatchRegistrationPanel({
   roster = null,
   unavailable = null,
   isOrganizer = false,
-  showRoster = true
+  showRoster = true,
+  children
 }: {
   event: MatchRegistrationEvent;
   registration: MyMatchRegistration;
@@ -148,6 +150,8 @@ export function MatchRegistrationPanel({
   unavailable?: ManagementErrorCode | null;
   isOrganizer?: boolean;
   showRoster?: boolean;
+  /** Lower-priority panels, rendered after the roster and before the sticky action bar. */
+  children?: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const eventId = event.event_id;
@@ -205,13 +209,20 @@ export function MatchRegistrationPanel({
   // show. The invitation sentence is owned by the detail page's participation
   // section (matches.detail.invitationInfo); repeating it here would render the
   // same user-facing paragraph twice on one screen. Render nothing instead.
-  if (registration.state === 'none' && action === 'invited') return null;
+  const lowerPanels = <Fragment key="lower-panels">{children}</Fragment>;
+  if (registration.state === 'none' && action === 'invited') return lowerPanels;
 
   const submitButton = (label: string, disabled: boolean) => (
     <Button onClick={controller.submit} disabled={disabled} busy={controller.pending}>
       {label}
     </Button>
   );
+  const failure = controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline';
+  const feedbackOutput = <FeedbackOutput message={feedbackMessage} failure={failure} />;
+  // The one registration action (frames eYIgj, nNzWb, fo8Zn, SYMLa) sticks to the bottom: the existing
+  // controller button is placed in the action bar by each state below, never duplicated or remounted.
+  let cta: ReactNode = null;
+  let notice: string | null = null;
 
   const rosterBlock = (() => {
     if (registration.state !== 'accepted' || !showRoster) return null;
@@ -279,6 +290,7 @@ export function MatchRegistrationPanel({
           unavailable !== 'started' &&
           unavailable !== 'result_protected' && <MatchManagementUnavailable reason={blocked} />}
         {rosterBlock}
+        {lowerPanels}
       </>
     );
   if (registration.state === 'accepted') {
@@ -357,6 +369,8 @@ export function MatchRegistrationPanel({
       </div>
     );
   } else if (registration.state === 'withdrawn' && isOrganizer) {
+    if (action === 'join' || action === 'request' || action === 'invited')
+      cta = submitButton(t('matches.management.reenter'), controller.pending || !controller.online);
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
@@ -365,17 +379,14 @@ export function MatchRegistrationPanel({
           </span>
         </div>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.place.organizerCopy')}</p>
-        {(action === 'join' || action === 'request' || action === 'invited') &&
-          submitButton(t('matches.management.reenter'), controller.pending || !controller.online)}
         {action === 'closed' && <p>{t('matches.management.errors.closed')}</p>}
         {action === 'full' && <p>{t('matchRegistration.full.copy', { maximum })}</p>}
-        <FeedbackOutput
-          message={feedbackMessage}
-          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
-        />
+        {!cta && feedbackOutput}
       </div>
     );
   } else if (registration.state === 'withdrawn' || registration.state === 'removed_by_creator') {
+    if (action === 'join' || action === 'request' || action === 'invited')
+      cta = submitButton(t('matches.management.reenter'), controller.pending || !controller.online);
     body = (
       <div {...stylex.props(s.body)}>
         <p {...stylex.props(s.copy)}>
@@ -390,14 +401,9 @@ export function MatchRegistrationPanel({
             {t('matches.management.removalReason', { reason: registration.removal_reason })}
           </p>
         )}
-        {(action === 'join' || action === 'request' || action === 'invited') &&
-          submitButton(t('matches.management.reenter'), controller.pending || !controller.online)}
         {action === 'closed' && <p>{t('matches.management.errors.closed')}</p>}
         {action === 'full' && <p>{t('matchRegistration.full.copy', { maximum })}</p>}
-        <FeedbackOutput
-          message={feedbackMessage}
-          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
-        />
+        {!cta && feedbackOutput}
       </div>
     );
   } else if (registration.state === 'pending') {
@@ -430,14 +436,13 @@ export function MatchRegistrationPanel({
     (registration.state === 'rejected' || registration.state === 'expired') &&
     action === 'join'
   ) {
+    cta = submitButton(
+      t('matchRegistration.join.button'),
+      controller.pending || !controller.online
+    );
     body = (
       <div {...stylex.props(s.body)}>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.place.openCopy')}</p>
-        {submitButton(t('matchRegistration.join.button'), controller.pending || !controller.online)}
-        <FeedbackOutput
-          message={feedbackMessage}
-          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
-        />
       </div>
     );
   } else if (
@@ -463,6 +468,11 @@ export function MatchRegistrationPanel({
       </div>
     );
   } else if (registration.state === 'rejected') {
+    if (action === 'request' || action === 'join')
+      cta = submitButton(
+        t('matchRegistration.request.requestAgain'),
+        controller.pending || !controller.online
+      );
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
@@ -472,20 +482,11 @@ export function MatchRegistrationPanel({
         </div>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.request.declinedCopy')}</p>
         <div {...stylex.props(s.actions)}>
-          {action === 'request' || action === 'join'
-            ? submitButton(
-                t('matchRegistration.request.requestAgain'),
-                controller.pending || !controller.online
-              )
-            : null}
           <Link to="/matches/$eventId" params={{ eventId }} {...stylex.props(s.link)}>
             {t('matchRegistration.request.viewMatch')}
           </Link>
         </div>
-        <FeedbackOutput
-          message={feedbackMessage}
-          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
-        />
+        {!cta && feedbackOutput}
         <p {...stylex.props(s.note)}>{t('matchRegistration.request.note')}</p>
       </div>
     );
@@ -511,6 +512,7 @@ export function MatchRegistrationPanel({
       </div>
     );
   } else if (action === 'full') {
+    cta = submitButton(t('matchRegistration.full.button'), true);
     body = (
       <div {...stylex.props(s.body)}>
         <div {...stylex.props(s.badgeRow)}>
@@ -522,13 +524,6 @@ export function MatchRegistrationPanel({
           {t('matchRegistration.full.detail', { accepted: counts.accepted, maximum })}
         </p>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.full.copy', { maximum })}</p>
-        <div {...stylex.props(s.actions)}>
-          {submitButton(t('matchRegistration.full.button'), true)}
-        </div>
-        <FeedbackOutput
-          message={feedbackMessage}
-          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
-        />
         <p {...stylex.props(s.note)}>{t('matchRegistration.full.note')}</p>
       </div>
     );
@@ -539,6 +534,11 @@ export function MatchRegistrationPanel({
       </div>
     );
   } else if (action === 'request') {
+    cta = submitButton(
+      t('matchRegistration.join.requestButton'),
+      controller.pending || !controller.online
+    );
+    notice = t('matchRegistration.join.requestNote');
     body = (
       <div {...stylex.props(s.body)}>
         <p {...stylex.props(s.copy)}>
@@ -546,37 +546,20 @@ export function MatchRegistrationPanel({
             ? t('matches.detail.guestApprovalRequired')
             : t('matches.detail.outOfRangeApprovalRequired')}
         </p>
-        <div {...stylex.props(s.actions)}>
-          {submitButton(
-            t('matchRegistration.join.requestButton'),
-            controller.pending || !controller.online
-          )}
-        </div>
         {capacity && <p {...stylex.props(s.meta)}>{capacity}</p>}
         {levelRange && <p {...stylex.props(s.meta)}>{levelRange}</p>}
-        <FeedbackOutput
-          message={feedbackMessage}
-          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
-        />
-        <p {...stylex.props(s.note)}>{t('matchRegistration.join.requestNote')}</p>
       </div>
     );
   } else if (action === 'join') {
+    cta = submitButton(
+      t('matchRegistration.join.button'),
+      controller.pending || !controller.online
+    );
+    notice = capacity;
     body = (
       <div {...stylex.props(s.body)}>
         <p {...stylex.props(s.copy)}>{t('matchRegistration.place.openCopy')}</p>
-        <div {...stylex.props(s.actions)}>
-          {submitButton(
-            t('matchRegistration.join.button'),
-            controller.pending || !controller.online
-          )}
-        </div>
-        {capacity && <p {...stylex.props(s.meta)}>{capacity}</p>}
         {levelRange && <p {...stylex.props(s.meta)}>{levelRange}</p>}
-        <FeedbackOutput
-          message={feedbackMessage}
-          failure={controller.feedback?.kind === 'error' || controller.feedback?.kind === 'offline'}
-        />
       </div>
     );
   } else {
@@ -612,6 +595,16 @@ export function MatchRegistrationPanel({
         )}
       </section>
       {rosterBlock}
+      {lowerPanels}
+      {cta && (
+        <div data-match-action-bar="" {...stylex.props(shell.actionBar)}>
+          {notice && <p {...stylex.props(shell.barNotice)}>{notice}</p>}
+          <div {...stylex.props(shell.barAction)}>
+            {cta}
+            {feedbackOutput}
+          </div>
+        </div>
+      )}
     </>
   );
 }

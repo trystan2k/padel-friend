@@ -28,7 +28,8 @@ export const createMatchStyles = stylex.create({
     lineHeight: 'var(--font-line-height-body)',
     overflowWrap: 'anywhere'
   },
-  // The global language/theme chips still float top-right, so the bar reserves their width.
+  // The wizard and edit routes opt into data-route-chrome="navigation", so the global chips step aside
+  // and the bar reserves no width for them.
   topBar: {
     boxSizing: 'border-box',
     display: 'flex',
@@ -37,7 +38,7 @@ export const createMatchStyles = stylex.create({
     minHeight: 'calc(var(--space-40) + var(--space-16))',
     paddingBlockStart: 'max(var(--space-4), env(safe-area-inset-top))',
     paddingInlineStart: 'max(var(--space-8), env(safe-area-inset-left))',
-    paddingInlineEnd: 'calc(var(--space-40) * 2 + var(--space-8) * 3)'
+    paddingInlineEnd: 'max(var(--space-8), env(safe-area-inset-right))'
   },
   back: {
     display: 'inline-flex',

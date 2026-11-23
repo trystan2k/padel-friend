@@ -28,6 +28,7 @@ type Copy = {
     unavailable: string;
     detail: {
       title: string;
+      barTitle: string;
       visibility: { community_open: string; invite_only: string };
       accepted: string;
       participation: string;
@@ -676,12 +677,12 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await page.goto(`/matches/${eventId}`);
     await waitForHydratedPage(page);
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${family.venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: family.venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: en.matchRegistration.join.sectionTitle })
@@ -1095,12 +1096,12 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await adminPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(adminPage);
     await expect(
-      adminPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      adminPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      adminPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      adminPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
   });
 

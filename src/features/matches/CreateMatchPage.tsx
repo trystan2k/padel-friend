@@ -571,10 +571,10 @@ export function CreateMatchPage() {
     </header>
   );
   if (optionsLoading && !options.communities.length)
-    return <main {...stylex.props(s.page)} aria-busy="true" />;
+    return <main data-route-chrome="navigation" {...stylex.props(s.page)} aria-busy="true" />;
   if (optionsError && !options.communities.length)
     return (
-      <main {...stylex.props(s.page)}>
+      <main data-route-chrome="navigation" {...stylex.props(s.page)}>
         {wizardHeader}
         <div {...stylex.props(s.centered)}>
           <p role="alert" {...stylex.props(s.formMessage)}>
@@ -588,7 +588,7 @@ export function CreateMatchPage() {
     );
   if (!options.communities.length)
     return (
-      <main {...stylex.props(s.page)}>
+      <main data-route-chrome="navigation" {...stylex.props(s.page)}>
         {wizardHeader}
         <div {...stylex.props(s.centered)}>
           <p {...stylex.props(s.body)}>{t('matchCreate.noCommunities')}</p>
@@ -609,7 +609,7 @@ export function CreateMatchPage() {
     competitionError && competitionErrorActive ? fieldErrors : otherErrors;
   const requiredInvalid = Object.keys(activeErrors).length > 0;
   return (
-    <main {...stylex.props(s.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(s.page)}>
       {wizardHeader}
       {optionsError && (
         <div {...stylex.props(s.centered)}>

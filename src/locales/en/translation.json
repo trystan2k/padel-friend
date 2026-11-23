@@ -1713,6 +1713,7 @@
     "detail": {
       "rankedMembersOnly": "This match is Ranked and only open to active community members.",
       "title": "Match details",
+      "barTitle": "Match",
       "viewCourtLocation": "View court location",
       "viewCourtLocationFor": "View court location for {{venue}}",
       "unlimitedRegistrations": "Unlimited registrations",

@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import { en, fill, fixtures, organizerMenu, sql } from './matches-management-fixtures';
+import { assertChipsStepAside } from './route-chrome';
 
 test.use({ viewport: { width: 390, height: 844 }, serviceWorkers: 'block' });
 let f: Awaited<ReturnType<typeof fixtures>>;
@@ -183,6 +184,7 @@ test('major change requires consent and excludes unreconfirmed at cutoff', async
   const creatorPage = await f.page(f.creator);
   await f.open(creatorPage, id);
   const dialog = await edit(creatorPage);
+  await assertChipsStepAside(creatorPage, 'edit match');
   await dialog
     .getByRole('combobox', { name: en.matchCreate.fields.type, exact: true })
     .selectOption('competitive');

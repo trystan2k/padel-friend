@@ -12,7 +12,7 @@
     "eYIgj": {
       "state": "Match detail — friendly, approval required",
       "route": "/matches/$eventId (request state)",
-      "probe": "structural: hero order, header share, 12px rhythm, request action",
+      "probe": "structural (F25): centered Match top bar with Share on the end, hero (photo, chips, 28/800 venue title, date line), playing/level/price strip, roster/status, one sticky request action, 14px rhythm",
       "sha256": "6eb7b734be81351783fffe7dd9339c7d60e7acb84b25e13246e280b1fd9417e6"
     },
     "nNzWb": {
@@ -81,11 +81,14 @@
     "D6": "Hero metrics render real event data: playing/maximum, level range or 'Any', price when present, reserve count. Group average levels (frames) have no source for non-roster viewers and are not rendered.",
     "deviations": [
       "SYMLa draws 'Join reserve queue'; no reserve-join mutation exists for a full match, so the control is a disabled 'Match full' action.",
-      "Frames draw Share top-right; the global language/theme chips still float there, so the header reserves their width and the Share chip sits left of it.",
+      "F25 (owner decision RESTYLE): the detail renders the shared TopBar (centered 17/700 Match title, 48px back, Share as a 15/700 green text action on the end) and marks main data-route-chrome=\"navigation\", so the global language/theme chips step aside on this route; preferences stay reachable via Me.",
+      "F25: the frame title is a match name; the app has no match name, so the 28/800 title is the venue and the date line is the localized zoned date and time (no end time). The frame's venue card is not drawn: View court location and the existing notes sit under the date line.",
+      "F25: the stats strip carries playing, level and price (price omitted when absent). The reserve queue row follows the roster; Timezone and the Participation counts are relocated to a lower Participation card, not removed. Organizer and management panels follow the roster; invitation, reconfirmation and status banners stay above the hero as urgent per-state content.",
+      "F25: exactly one sticky action bar exists where the existing registration controller renders a control (join, request, request again, register again, disabled full). Closed, pending, accepted and invited states render no control, so no bar is invented. The bar holds the capacity or request-note line plus the one control and its feedback; it is last in the content column, full-bleed, with safe-area bottom padding.",
       "Roster is gated to accepted viewers (PAF-5.5 recorded deviation, unchanged)."
     ]
   },
   "toleranceEvidence": {
-    "screenshots": "none. Detail screens are structural-probe gated (hero order, rhythm, gutter, token fills, hit targets); fixture venues, dates, photo and roster names differ from the frame samples, so no per-screen pixel budget is claimed and none is widened to mask a defect."
+    "screenshots": "none. Detail screens are structural-probe gated (top bar geometry, hero order, 14px rhythm, gutter, sticky action bar, token fills, hit targets); fixture venues, dates, photo and roster names differ from the frame samples, so no per-screen pixel budget is claimed and none is widened to mask a defect."
   }
 }

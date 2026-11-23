@@ -159,7 +159,7 @@ export function MatchEditPage({
   const busy = action.pending;
   const blocked = busy || action.conflict || saved || !!action.unavailable || competitionUnresolved;
   return (
-    <main {...stylex.props(page.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(page.page)}>
       <header {...stylex.props(page.topBar)}>
         <button
           type="button"

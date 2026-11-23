@@ -222,7 +222,7 @@ export function CommunityStatistics({
   const empty = stats.matches.played === 0;
 
   return (
-    <main {...stylex.props(s.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(s.page)}>
       <header {...stylex.props(s.header)}>
         <h1 {...stylex.props(s.title)}>
           {community

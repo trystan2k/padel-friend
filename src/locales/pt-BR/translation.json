@@ -1713,6 +1713,7 @@
     "detail": {
       "rankedMembersOnly": "Esta partida é Ranqueada e só está aberta a membros ativos da comunidade.",
       "title": "Detalhes da partida",
+      "barTitle": "Partida",
       "viewCourtLocation": "Ver localização da quadra",
       "viewCourtLocationFor": "Ver localização da quadra para {{venue}}",
       "unlimitedRegistrations": "Inscrições ilimitadas",

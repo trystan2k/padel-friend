@@ -2,10 +2,11 @@ import * as stylex from '@stylexjs/stylex';
 
 const target = 'calc(var(--space-40) + var(--space-4))';
 
-// Clubhouse match detail (frames JLqMT, eYIgj, nNzWb, fo8Zn, SYMLa, tYXlh): 20-unit gutter, 12-unit
-// rhythm, radius-18 cards. The hero reads photo, chips, venue and schedule, metrics, reserve row; the
-// registration action card follows it. The status banner, header and share styles are shared with the
-// invitation, result and management surfaces that mount on this page.
+// Clubhouse match detail (frames JLqMT, eYIgj, nNzWb, fo8Zn, SYMLa, tYXlh): shared top bar, 20-unit
+// gutter, 14-unit rhythm. The hero reads photo, chips, venue title, date line and a compact
+// playing/level/price strip; roster and registration status follow it, lower-priority management
+// panels come next, and the registration action sticks to the bottom. The status banner and card styles
+// are shared with the invitation, result and management surfaces that mount on this page.
 export const matchDetailShellStyles = stylex.create({
   resultEntryTitle: { lineHeight: 'calc(var(--space-20) + var(--space-6))' },
   resultParticipation: { gap: 'var(--space-6)' },
@@ -15,73 +16,67 @@ export const matchDetailShellStyles = stylex.create({
     paddingInlineStart: 'var(--space-18)',
     paddingInlineEnd: 'var(--space-18)'
   },
+  // The top bar owns the chrome (data-route-chrome="navigation"), so the page carries no chip inset.
   page: {
     boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    width: '100%',
     maxWidth: 'calc(var(--space-40) * 16)',
-    paddingInlineStart: 'max(var(--space-20), env(safe-area-inset-left))',
-    paddingInlineEnd: 'max(var(--space-20), env(safe-area-inset-right))',
-    paddingBlockStart: 'max(var(--space-4), env(safe-area-inset-top))',
-    paddingBlockEnd: 'var(--space-20)',
-    gap: 'var(--space-12)',
+    minHeight: '100dvh',
+    marginInline: 'auto',
     fontFamily: 'var(--font-family-body)',
     fontSize: 'var(--font-size-14)',
     lineHeight: 'var(--font-line-height-body)',
     overflowWrap: 'anywhere'
   },
-  // The global language/theme chips still float top-right, so the header reserves their width.
-  header: {
+  // Frame content column: 4/20/20/20 inset, 14 rhythm. It is the sticky action bar's containing block.
+  icon: { width: 'var(--space-20)', height: 'var(--space-20)', flexShrink: 0 },
+  groups: {
+    boxSizing: 'border-box',
     display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: 'var(--space-8)',
-    minHeight: target,
-    paddingInlineEnd: 'calc(var(--space-40) * 2 + var(--space-8) * 3)'
+    flexDirection: 'column',
+    flexGrow: 1,
+    gap: 'var(--space-14)',
+    minWidth: 0,
+    paddingInlineStart: 'max(var(--space-20), env(safe-area-inset-left))',
+    paddingInlineEnd: 'max(var(--space-20), env(safe-area-inset-right))',
+    paddingBlockStart: 'var(--space-4)',
+    paddingBlockEnd: 'var(--space-20)'
   },
-  heading: { display: 'grid', flexGrow: 1, gap: 'var(--space-2)', minWidth: 0 },
-  subtitle: {
+  // Frame "Sticky actions": white bar, 12/20/24 inset, hairline top edge, bleeding past the content gutter.
+  actionBar: {
+    position: 'sticky',
+    insetBlockEnd: 0,
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-8)',
+    marginBlockStart: 'auto',
+    marginBlockEnd: 'calc(var(--space-20) * -1)',
+    marginInlineStart: 'calc(max(var(--space-20), env(safe-area-inset-left)) * -1)',
+    marginInlineEnd: 'calc(max(var(--space-20), env(safe-area-inset-right)) * -1)',
+    paddingBlockStart: 'var(--space-12)',
+    paddingBlockEnd: 'max(calc(var(--space-20) + var(--space-4)), env(safe-area-inset-bottom))',
+    paddingInlineStart: 'max(var(--space-20), env(safe-area-inset-left))',
+    paddingInlineEnd: 'max(var(--space-20), env(safe-area-inset-right))',
+    backgroundColor: 'var(--color-surface)',
+    borderBlockStartWidth: 'var(--border-width-sm)',
+    borderBlockStartStyle: 'solid',
+    borderBlockStartColor: 'var(--color-hairline)'
+  },
+  barNotice: {
     margin: 0,
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-13)',
+    padding: 'var(--space-12) var(--space-14)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface-2)',
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-semibold)',
     lineHeight: 'var(--font-line-height-snug)'
   },
-  back: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    width: target,
-    height: target,
-    color: 'var(--color-text)',
-    borderRadius: 'var(--radius-14)',
-    ':focus-visible': {
-      outline: 'var(--focus-width) solid var(--color-focus)',
-      outlineOffset: 'var(--focus-offset)'
-    }
-  },
-  icon: { width: 'var(--space-20)', height: 'var(--space-20)', flexShrink: 0 },
-  headerShare: {
-    boxSizing: 'border-box',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    minHeight: target,
-    minWidth: target,
-    paddingInline: 'var(--space-14)',
-    borderWidth: 0,
-    borderRadius: 'var(--radius-14)',
-    backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-text)',
-    fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-bold)',
-    cursor: 'pointer',
-    ':focus-visible': {
-      outline: 'var(--focus-width) solid var(--color-focus)',
-      outlineOffset: 'var(--focus-offset)'
-    }
-  },
-  groups: { display: 'grid', gap: 'var(--space-12)', minWidth: 0 },
+  barAction: { display: 'grid', gap: 'var(--space-8)', justifyItems: 'stretch' },
+  shareStatus: { margin: 0, paddingInline: 'max(var(--space-20), env(safe-area-inset-left))' },
   card: {
     boxSizing: 'border-box',
     display: 'grid',
@@ -91,8 +86,9 @@ export const matchDetailShellStyles = stylex.create({
     backgroundColor: 'var(--color-surface)',
     minWidth: 0
   },
-  hero: { padding: 0, overflow: 'hidden', gap: 0 },
-  heroBody: { display: 'grid', gap: 'var(--space-8)', padding: 'var(--space-16)', minWidth: 0 },
+  // Frame hero: photo, chips and title sit on the page background, not inside a card.
+  hero: { display: 'grid', gap: 'var(--space-14)', minWidth: 0 },
+  heroBody: { display: 'grid', gap: 'var(--space-4)', minWidth: 0 },
   chips: {
     display: 'flex',
     flexWrap: 'wrap',
@@ -109,14 +105,14 @@ export const matchDetailShellStyles = stylex.create({
   venue: {
     fontFamily: 'var(--font-family-heading)',
     fontWeight: 'var(--font-weight-extrabold)',
-    fontSize: 'var(--font-size-22)',
-    lineHeight: 'var(--font-line-height-tight)'
+    fontSize: 'var(--font-size-28)',
+    lineHeight: 'var(--font-line-height-snug)'
   },
   schedule: {
     margin: 0,
-    color: 'var(--color-text)',
-    fontSize: 'var(--font-size-15)',
-    fontWeight: 'var(--font-weight-semibold)'
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-16)',
+    lineHeight: 'var(--font-line-height-comfortable)'
   },
   copy: { margin: 0, color: 'var(--color-muted)' },
   note: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-13)' },
@@ -132,35 +128,36 @@ export const matchDetailShellStyles = stylex.create({
     fontWeight: 'var(--font-weight-bold)',
     lineHeight: 'var(--font-line-height-snug)'
   },
+  // Frame "Stats": one white strip, three equal centered columns (playing, level, price).
   metrics: {
+    boxSizing: 'border-box',
     display: 'grid',
     gridAutoFlow: 'column',
     gridAutoColumns: 'minmax(0, 1fr)',
-    gap: 'var(--space-8)',
-    margin: 0
+    paddingBlock: 'var(--space-12)',
+    margin: 0,
+    borderRadius: 'var(--radius-16)',
+    backgroundColor: 'var(--color-surface)'
   },
   metric: {
-    boxSizing: 'border-box',
     display: 'grid',
     alignContent: 'center',
+    justifyItems: 'center',
     gap: 'var(--space-2)',
     minWidth: 0,
-    padding: 'var(--space-12)',
-    borderRadius: 'var(--radius-14)',
-    backgroundColor: 'var(--color-surface-2)',
+    paddingInline: 'var(--space-4)',
     textAlign: 'center'
   },
   metricValue: {
     margin: 0,
-    fontSize: 'var(--font-size-20)',
+    fontSize: 'var(--font-size-18)',
     fontWeight: 'var(--font-weight-extrabold)',
     lineHeight: 'var(--font-line-height-tight)'
   },
   metricLabel: {
     margin: 0,
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)'
+    fontSize: 'var(--font-size-13)'
   },
   reserveRow: {
     boxSizing: 'border-box',
@@ -180,10 +177,10 @@ export const matchDetailShellStyles = stylex.create({
   image: {
     display: 'block',
     width: '100%',
-    height: 'calc(var(--space-40) * 4)',
+    height: 'calc(var(--space-40) * 3 + var(--space-12))',
     aspectRatio: 'auto',
     objectFit: 'cover',
-    borderRadius: 0,
+    borderRadius: 'var(--radius-20)',
     minHeight: 0
   },
   cancelledBadge: {

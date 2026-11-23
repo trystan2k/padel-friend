@@ -61,6 +61,7 @@ type Copy = {
     management: { leave: string };
     detail: {
       title: string;
+      barTitle: string;
       visibility: { community_open: string; invite_only: string };
       overview: string;
       participation: string;
@@ -628,7 +629,7 @@ async function assertPrimaryHitTargets(
 async function assertGutterAxis(page: Page, label: string): Promise<void> {
   const expectedInset = await tokenValue(page, '--space-20');
   const metrics = await page.evaluate(() => {
-    const main = document.querySelector('main');
+    const main = document.querySelector('main > div');
     if (!main) return null;
     const innerWidth = window.innerWidth;
     const mainStyle = getComputedStyle(main);
@@ -637,10 +638,13 @@ async function assertGutterAxis(page: Page, label: string): Promise<void> {
       paddingRight: mainStyle.paddingRight,
       borderLeft: mainStyle.borderLeftWidth,
       borderRight: mainStyle.borderRightWidth,
-      blocks: Array.from(main.children, (node) => {
-        const box = node.getBoundingClientRect();
-        return { left: box.left, right: innerWidth - box.right };
-      })
+      // The sticky action bar bleeds past the gutter by design (asserted in matches-visual).
+      blocks: Array.from(main.children)
+        .filter((node) => !node.hasAttribute('data-match-action-bar'))
+        .map((node) => {
+          const box = node.getBoundingClientRect();
+          return { left: box.left, right: innerWidth - box.right };
+        })
     };
   });
   expect(metrics, `${label}: main must be present`).not.toBeNull();
@@ -708,8 +712,12 @@ function numberClose(measured: number, expected: number): boolean {
   return Math.abs(measured - expected) < 0.05;
 }
 
+// The registration status card and its sticky action bar are one logical panel (F25): the one
+// existing action control sits in the bar, the heading and copy in the card.
 function registrationPanel(page: Page): Locator {
-  return page.locator('section[aria-labelledby="match-registration-heading"]');
+  return page.locator(
+    'section[aria-labelledby="match-registration-heading"], [data-match-action-bar]'
+  );
 }
 
 function rosterRegion(page: Page, copy: Copy): Locator {
@@ -1663,12 +1671,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await ready(page);
 
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${VENUES.join} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: VENUES.join, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Registration state (manifest fo8Zn facts: join CTA block + capacity fact
     // "2 of 8 places left" + level range + instant-confirmation note).
@@ -1686,6 +1694,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
       )
     ).toBeVisible();
     // Instant-confirmation copy now lives in the place card; no separate legacy note.
+    // F25: the one registration action sits in the sticky bar, not in the status card.
+    await expect(
+      page
+        .locator('[data-match-action-bar]')
+        .getByRole('button', { name: en.matchRegistration.join.button })
+    ).toBeVisible();
     await assertRegistrationCta(
       page,
       panel.getByRole('button', { name: en.matchRegistration.join.button }),
@@ -1734,12 +1748,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await ready(page);
 
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${VENUES.full} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: VENUES.full, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Registration state (manifest SYMLa facts: capacity badge [18,561,95,23]
     // + disabled button [18,591,354,44] + explicit MATCH FULL surface).
@@ -1795,12 +1809,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await ready(page);
 
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${VENUES.closed} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: VENUES.closed, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Frame-driven closed place card: cutoff badge, finalized counts and note,
     // with no join action. Permission and server-count checks remain below.
@@ -1825,6 +1839,8 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         .getByText(en.matches.detail.registrationClosed, { exact: true })
     ).toBeVisible();
     await expect(panel.getByRole('button')).toHaveCount(0);
+    // F25: closed has no registration control, so there is no sticky bar to invent.
+    await expect(page.locator('[data-match-action-bar]')).toHaveCount(0);
 
     // Roster visibility contract (recorded deviation, same as fo8Zn).
     await expect(rosterRegion(page, en)).toHaveCount(0);
@@ -1939,13 +1955,15 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
       await expect(
         page.getByRole('heading', {
           level: 1,
-          name: en.matches.detail.title,
+          name: en.matches.detail.barTitle,
           exact: true
         })
       ).toBeVisible();
       const venue = state.label === 'Za6r4 expired' ? VENUES.closed : VENUES.join;
       await expect(
-        page.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, { exact: true })
+        page
+          .getByRole('region', { name: venue, exact: true })
+          .getByText(en.matches.detail.visibility.community_open, { exact: true })
       ).toBeVisible();
       await assertRequesterState(page, en, state.label, state.expected);
 
@@ -2067,12 +2085,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await page.goto(`/matches/${family.rosterEventId}`);
     await ready(page);
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${VENUES.roster} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: VENUES.roster, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Participation determines sections: playing groups, then live reserves
     // with #1/#2/#3 FIFO positions. The real cutoff-processed CLOSED event
