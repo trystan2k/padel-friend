@@ -22,6 +22,16 @@ function useFormat() {
       new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(
         new Date(instant)
       ),
+    zoned: (instant: string, timeZone: string) =>
+      new Intl.DateTimeFormat(locale, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZoneName: 'short',
+        timeZone
+      }).format(new Date(instant)),
     day: (instant: string) =>
       new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' }).format(
         new Date(instant)
@@ -69,57 +79,61 @@ function SectionShell({ id, title, children }: { id: string; title: string; chil
   );
 }
 
-function MatchItem({ event, heading }: { event: HomeMatchCard; heading: 'h3' | 'h4' }) {
-  const { t, when } = useFormat();
-  const Heading = heading;
+function NextMatchCard({ event }: { event: HomeMatchCard }) {
+  const { t, zoned } = useFormat();
+  const headingId = `home-next-${event.event_id}`;
   return (
-    <article {...stylex.props(s.card)}>
-      <Heading {...stylex.props(s.cardTitle)}>
-        <Link to="/matches/$eventId" params={{ eventId: event.event_id }} {...stylex.props(s.link)}>
-          {event.venue_name}
-        </Link>
-      </Heading>
-      <p {...stylex.props(s.body)}>
-        <time dateTime={event.starts_at}>{when(event.starts_at, event.timezone)}</time>
-        {' · '}
-        {event.timezone}
-      </p>
-      <p {...stylex.props(s.meta)}>
+    <article aria-labelledby={headingId} {...stylex.props(s.nextCard)}>
+      <div {...stylex.props(s.nextTop)}>
+        <p {...stylex.props(s.nextTime)}>
+          <time dateTime={event.starts_at}>{zoned(event.starts_at, event.timezone)}</time>
+        </p>
+        {event.competition_status === 'ranked' && (
+          <span {...stylex.props(s.chip)}>
+            <span aria-hidden="true">★</span>
+            {t('matches.competition.ranked')}
+          </span>
+        )}
+      </div>
+      <h3 id={headingId} {...stylex.props(s.nextVenue)}>
+        {event.venue_name}
+      </h3>
+      <p {...stylex.props(s.nextMeta)}>
         {event.community_name}
         {' · '}
         {t('home.nextMatch.playing', { count: event.playing_count })}
         {event.more_needed > 0 &&
           ` · ${t('home.nextMatch.moreNeeded', { count: event.more_needed })}`}
       </p>
+      <Link
+        to="/matches/$eventId"
+        params={{ eventId: event.event_id }}
+        aria-describedby={headingId}
+        {...stylex.props(s.openButton)}
+      >
+        {t('home.nextMatch.open')}
+      </Link>
     </article>
   );
 }
 
+/**
+ * Open matches are the Matches list's own "available" entry, so Home keeps one pointer to it
+ * instead of repeating the list.
+ */
 export function NextMatchSection({ section }: { section: HomeSection<HomeMatches> }) {
   const { t } = useFormat();
   return (
     <SectionShell id="home-next-match" title={t('home.nextMatch.title')}>
       <Outcome section={section} empty="home.nextMatch.empty">
-        {({ next, available }) => (
+        {({ next }) => (
           <>
             {next ? (
-              <MatchItem event={next} heading="h3" />
+              <NextMatchCard event={next} />
             ) : (
               <p {...stylex.props(s.state)}>{t('home.nextMatch.empty')}</p>
             )}
-            {available.length > 0 && (
-              <>
-                <h3 {...stylex.props(s.cardTitle)}>{t('home.available.title')}</h3>
-                <ul {...stylex.props(s.list)}>
-                  {available.map((event) => (
-                    <li key={event.event_id}>
-                      <MatchItem event={event} heading="h4" />
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <Link to="/matches" {...stylex.props(s.link)}>
+            <Link to="/matches" {...stylex.props(s.link, s.statsLink)}>
               {t('home.available.all')}
             </Link>
           </>
@@ -143,6 +157,13 @@ function actionText(t: Translate, action: HomeAction) {
   }
 }
 
+const ACTION_GLYPH: Record<HomeAction['kind'], { glyph: string; amber: boolean }> = {
+  result_review: { glyph: '✓', amber: true },
+  reconfirmation: { glyph: '◷', amber: true },
+  organizer_requests: { glyph: '+', amber: false },
+  reserve_standby: { glyph: '…', amber: false }
+};
+
 export function ActionsSection({
   section
 }: {
@@ -155,21 +176,35 @@ export function ActionsSection({
         {({ items, partial }) => (
           <>
             {partial && <output {...stylex.props(s.state)}>{t('home.actions.partial')}</output>}
-            <ul {...stylex.props(s.list)}>
-              {items.map((item) => (
-                <li key={`${item.kind}-${item.event_id}`} {...stylex.props(s.card)}>
-                  <p {...stylex.props(s.body)}>{actionText(t, item)}</p>
-                  <p {...stylex.props(s.meta)}>{when(item.starts_at, item.timezone)}</p>
-                  <Link
-                    to="/matches/$eventId"
-                    params={{ eventId: item.event_id }}
-                    aria-label={t('home.actions.openVenue', { venue: item.venue_name })}
-                    {...stylex.props(s.link)}
-                  >
-                    {t('home.actions.open')}
-                  </Link>
-                </li>
-              ))}
+            <ul {...stylex.props(s.attention)}>
+              {items.map((item) => {
+                const { glyph, amber } = ACTION_GLYPH[item.kind];
+                return (
+                  <li key={`${item.kind}-${item.event_id}`} {...stylex.props(s.attentionItem)}>
+                    <Link
+                      to="/matches/$eventId"
+                      params={{ eventId: item.event_id }}
+                      {...stylex.props(s.attentionLink)}
+                    >
+                      <span
+                        aria-hidden="true"
+                        {...stylex.props(s.glyph, amber ? s.glyphAmber : s.glyphGreen)}
+                      >
+                        {glyph}
+                      </span>
+                      <span {...stylex.props(s.rowText)}>
+                        <span {...stylex.props(s.rowTitle)}>{actionText(t, item)}</span>
+                        <span {...stylex.props(s.rowMeta)}>
+                          {when(item.starts_at, item.timezone)}
+                        </span>
+                      </span>
+                      <span aria-hidden="true" {...stylex.props(s.chevron)}>
+                        ›
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           </>
         )}

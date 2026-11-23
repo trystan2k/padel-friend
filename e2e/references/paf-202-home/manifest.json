@@ -1,0 +1,218 @@
+{
+  "status": "chromium-certified-with-scoped-route-adaptations",
+  "sourceDesign": {
+    "path": "docs/design/padel-friend-clubhouse.pen",
+    "sha256": "69638a9da9bc47ab40165a1455b5e70c06c0fb11faacc8f51c7015457464d8d7",
+    "exportCommand": "Pencil MCP: Export([\"hKncV\",\"AlfRD\"], \"png\", \"<repo>/e2e/references/paf-202-home\", {scale:1})"
+  },
+  "route": "/dashboard",
+  "frames": {
+    "hKncV": {
+      "frameId": "hKncV",
+      "file": "hKncV.png",
+      "sha256": "d6ad53f9e3d3243cecb762340265dfa9a9a53e1e33aba1ea76f548d2db44c11a",
+      "pixelSize": [390, 844],
+      "theme": "light"
+    },
+    "AlfRD": {
+      "frameId": "AlfRD",
+      "file": "AlfRD.png",
+      "sha256": "e377288a1311287bab4b7c9ee83285bfaf9490822c210c2db6420dff00f1e02d",
+      "pixelSize": [390, 844],
+      "theme": "dark"
+    }
+  },
+  "frameRegions": {
+    "hKncV": {
+      "pill": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 50,
+          "width": 181,
+          "height": 44
+        },
+        "offsetY": 44,
+        "classification": "Community pill left cap and avatar tile (frame sample initial N vs the live community initial). Observed residual 0.0351 light / 0.0336 dark on the 44x44 left cap and avatar tile; 0.06 leaves margin for font raster. Initial letter differs from the frame sample (N). x and height gated exactly; width follows the community name.",
+        "geometry": ["x", "height"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 44,
+          "height": 44
+        },
+        "budget": 0.06
+      },
+      "bell": {
+        "status": "gated",
+        "reference": {
+          "x": 322,
+          "y": 48,
+          "width": 48,
+          "height": 48
+        },
+        "offsetY": 44,
+        "classification": "48px bell tile; the live unread count is masked. The live x differs by design: the bell sits left of the reserved global language/theme controls. Observed residual 0.0259 (badge count masked); 0.05 margin. Width/height gated exactly (48x48).",
+        "geometry": ["width", "height"],
+        "budget": 0.05
+      },
+      "levelCard": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 188,
+          "width": 350,
+          "height": 187
+        },
+        "offsetY": 44,
+        "classification": "Light surface level card top block (label, level figure, ball bar, rank column). Sample figures differ from the live level and no rank is seeded. Observed residual 0.0680 on the 350x98 top block; 0.095 margin. Residual is the sample level figure, rank column and ball bar versus live values. x/width gated exactly; live height is taller (My statistics link, no frame counterpart).",
+        "geometry": ["x", "width"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 350,
+          "height": 98
+        },
+        "budget": 0.095
+      },
+      "nextCard": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 425,
+          "width": 350,
+          "height": 182
+        },
+        "offsetY": 44,
+        "classification": "Green next-match tile top block (time row, Ranked chip, venue). Sample venue/time differ from the live fixture. Observed residual 0.1979 light / 0.1933 dark on the 350x100 top block; 0.23 margin. Residual is the sample venue, time and meta text versus the fixture. x/width gated exactly; live height differs (community/count meta and wrapped copy).",
+        "geometry": ["x", "width"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 350,
+          "height": 100
+        },
+        "budget": 0.23
+      },
+      "attentionRow": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 657,
+          "width": 350,
+          "height": 68
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width"],
+        "pixels": "none",
+        "pixelsReason": "The first attention row sits under the fixed bottom navigation in a 390x844 capture, so it cannot be compared as pixels; x/width stay gated.",
+        "classification": "Attention row geometry only."
+      }
+    },
+    "AlfRD": {
+      "pill": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 50,
+          "width": 181,
+          "height": 44
+        },
+        "offsetY": 44,
+        "classification": "Community pill left cap and avatar tile (frame sample initial N vs the live community initial). Observed residual 0.0351 light / 0.0336 dark on the 44x44 left cap and avatar tile; 0.06 leaves margin for font raster. Initial letter differs from the frame sample (N). x and height gated exactly; width follows the community name.",
+        "geometry": ["x", "height"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 44,
+          "height": 44
+        },
+        "budget": 0.06
+      },
+      "bell": {
+        "status": "gated",
+        "reference": {
+          "x": 322,
+          "y": 48,
+          "width": 48,
+          "height": 48
+        },
+        "offsetY": 44,
+        "classification": "48px bell tile; the live unread count is masked. The live x differs by design: the bell sits left of the reserved global language/theme controls. Observed residual 0.0259 (badge count masked); 0.05 margin. Width/height gated exactly (48x48).",
+        "geometry": ["width", "height"],
+        "budget": 0.05
+      },
+      "levelCard": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 188,
+          "width": 350,
+          "height": 187
+        },
+        "offsetY": 44,
+        "classification": "Light surface level card top block (label, level figure, ball bar, rank column). Sample figures differ from the live level and no rank is seeded. Observed residual 0.0680 on the 350x98 top block; 0.095 margin. Residual is the sample level figure, rank column and ball bar versus live values. x/width gated exactly; live height is taller (My statistics link, no frame counterpart).",
+        "geometry": ["x", "width"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 350,
+          "height": 98
+        },
+        "budget": 0.095
+      },
+      "nextCard": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 425,
+          "width": 350,
+          "height": 182
+        },
+        "offsetY": 44,
+        "classification": "Green next-match tile top block (time row, Ranked chip, venue). Sample venue/time differ from the live fixture. Observed residual 0.1979 light / 0.1933 dark on the 350x100 top block; 0.23 margin. Residual is the sample venue, time and meta text versus the fixture. x/width gated exactly; live height differs (community/count meta and wrapped copy).",
+        "geometry": ["x", "width"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 350,
+          "height": 100
+        },
+        "budget": 0.23
+      },
+      "attentionRow": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 657,
+          "width": 350,
+          "height": 68
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width"],
+        "pixels": "none",
+        "pixelsReason": "The first attention row sits under the fixed bottom navigation in a 390x844 capture, so it cannot be compared as pixels; x/width stay gated.",
+        "classification": "Attention row geometry only."
+      }
+    }
+  },
+  "switcherFrame": {
+    "OdU52": "Community switcher bottom sheet. Home keeps the Base UI Select popup (keyboard/typeahead, same switching and pending behavior). The sheet metadata rows (Public · 248 members), \"Find communities\" and \"Create a community\" actions have no Home data source or are reachable elsewhere (Community tab, Home empty state), so they are not drawn."
+  },
+  "omittedDrawnElements": {
+    "levelDelta": "'↑ 0.08' has no source (no season concept; D6).",
+    "matchesToHundred": "'4 matches to 100%' has no source (approval matrix §6).",
+    "relativeDay": "'Today · 19:00': Home shows the localized weekday, date and zoned time with the zone abbreviation instead of a relative day.",
+    "groupCourt": "'Group 1 · Court 3 · 4/4 playing' is replaced by the real community, confirmed-player and more-needed counts.",
+    "morningGreeting": "'Morning, Thiago' time-of-day greeting: the existing localized 'Hello, name' copy is kept (no viewer timezone on Home)."
+  },
+  "retainedAdaptations": {
+    "openMatches": "The 'Open matches' list is the Matches list's own available entry (same list_match_events read); it is dropped from Home and 'All matches' links to /matches.",
+    "myStatistics": "'My statistics' link stays inside the level card (not drawn): player statistics are reachable only from Home and Me.",
+    "globalControls": "Language/theme chips stay global at the top right; the header reserves their inline space so the bell never sits under them."
+  },
+  "visualBudgets": {
+    "status": "measured-chromium-viewport-pixel-difference",
+    "measurementMethod": "Viewport capture at 390x844 (deviceScaleFactor 1), cropped per region and compared with the same CSS-px region of the scale-1 Pencil export (frame-regions helper, perceptual threshold 35215 x 0.1^2). Run with PAF202_FRAME_MEASURE=1 to re-measure."
+  }
+}

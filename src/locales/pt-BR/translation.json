@@ -596,7 +596,8 @@
     "greeting": "Olá, {{name}}",
     "levelTitle": "Seu nível",
     "levelSummary": {
-      "rankUnavailable": "Sua posição não está disponível no momento."
+      "rankUnavailable": "Sua posição não está disponível no momento.",
+      "rankOf": "de {{total}}"
     },
     "switcherLabel": "Trocar de comunidade",
     "selectionUnavailable": "Essa comunidade não está disponível para você. Mostrando sua comunidade padrão.",
@@ -617,7 +618,8 @@
       "playing_one": "{{count}} jogador confirmado",
       "playing_other": "{{count}} jogadores confirmados",
       "moreNeeded_one": "falta {{count}}",
-      "moreNeeded_other": "faltam {{count}}"
+      "moreNeeded_other": "faltam {{count}}",
+      "open": "Abrir partida"
     },
     "available": {
       "title": "Partidas abertas",
@@ -627,8 +629,6 @@
       "title": "Precisa da sua atenção",
       "empty": "Nada precisa da sua atenção.",
       "partial": "Alguns itens não puderam ser verificados, então esta lista pode estar incompleta.",
-      "open": "Abrir",
-      "openVenue": "Abrir {{venue}}",
       "resultReview_one": "{{count}} resultado aguardando revisão em {{venue}}",
       "resultReview_other": "{{count}} resultados aguardando revisão em {{venue}}",
       "reconfirmation": "Reconfirme sua vaga em {{venue}}",

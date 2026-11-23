@@ -1,68 +1,121 @@
 import * as stylex from '@stylexjs/stylex';
 
 const target = 'calc(var(--space-40) + var(--space-4))';
+const bell = 'calc(var(--space-40) + var(--space-8))';
 const focusRing = {
   outline: 'var(--border-width-lg) solid var(--color-green)',
   outlineOffset: 'var(--space-1)'
+};
+const onGreenRing = {
+  outline: 'var(--border-width-lg) solid var(--color-on-green)',
+  outlineOffset: 'var(--space-2)'
 };
 
 export const homeStyles = stylex.create({
   root: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-12)',
+    gap: 'var(--space-18)',
     width: '100%',
     boxSizing: 'border-box',
     maxWidth: 'calc(var(--space-40) * 12)',
     marginInline: 'auto',
-    padding: 'var(--space-18)',
+    paddingBlock: 'var(--space-18)',
+    paddingInline: 'var(--space-20)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)'
   },
   headerRow: {
     display: 'flex',
-    flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'space-between',
     gap: 'var(--space-8)'
   },
-  titles: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', minWidth: 0 },
-  title: {
+  bellSlot: { display: 'flex', flexShrink: 0, marginInlineStart: 'auto' },
+  greeting: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', minWidth: 0 },
+  date: { margin: 0, fontSize: 'var(--font-size-15)', color: 'var(--color-muted)' },
+  greetingTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-24)',
-    fontWeight: 'var(--font-weight-bold)',
+    fontSize: 'calc(var(--font-size-28) + var(--space-2))',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-snug)',
     overflowWrap: 'anywhere'
   },
-  subtitle: { margin: 0, fontSize: 'var(--font-size-12)', color: 'var(--color-muted)' },
-  levelHero: {
+  levelCard: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-8)',
-    padding: 'var(--space-16)',
+    gap: 'var(--space-14)',
+    padding: 'var(--space-18)',
     borderRadius: 'var(--radius-20)',
-    backgroundColor: 'var(--color-green-deep)',
-    color: 'var(--color-on-hero)'
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)'
   },
-  levelValue: { fontSize: 'var(--font-size-34)', fontFamily: 'var(--font-family-heading)' },
-  heroCopy: { margin: 0, color: 'var(--color-hero-copy)', fontSize: 'var(--font-size-13)' },
-  greeting: {
+  levelTop: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 'var(--space-12)'
+  },
+  levelMain: { display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', minWidth: 0 },
+  levelLabel: {
     margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-24)',
-    fontWeight: 'var(--font-weight-bold)',
-    overflowWrap: 'anywhere'
-  },
-  heroLabel: { margin: 0, color: 'var(--color-hero-copy)', fontSize: 'var(--font-size-13)' },
-  heroLink: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    minHeight: target,
-    minWidth: target,
-    color: 'var(--color-on-hero)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-semibold)',
-    ':focus-visible': focusRing
+    color: 'var(--color-muted)'
+  },
+  levelValue: {
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'calc(var(--font-size-34) + var(--font-size-18))',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-snug)'
+  },
+  ballBar: {
+    width: 'calc(var(--space-40) + var(--space-20) + var(--space-12))',
+    height: 'var(--space-6)',
+    borderRadius: 'var(--space-3)',
+    backgroundColor: 'var(--color-lime)'
+  },
+  rank: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+    flexShrink: 0
+  },
+  rankPosition: {
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-extrabold)'
+  },
+  rankTotal: { fontSize: 'var(--font-size-14)', color: 'var(--color-muted)' },
+  reliability: {
+    margin: 0,
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  meter: {
+    display: 'block',
+    width: '100%',
+    height: 'var(--space-8)',
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderRadius: 'var(--space-4)',
+    backgroundColor: 'var(--color-surface-2)',
+    appearance: 'none',
+    overflow: 'hidden',
+    '::-webkit-meter-bar': {
+      height: 'var(--space-8)',
+      borderWidth: 0,
+      borderStyle: 'none',
+      borderRadius: 'var(--space-4)',
+      backgroundColor: 'var(--color-surface-2)'
+    },
+    '::-webkit-meter-optimum-value': {
+      borderRadius: 'var(--space-4)',
+      backgroundColor: 'var(--color-green)'
+    },
+    '::-moz-meter-bar': {
+      borderRadius: 'var(--space-4)',
+      backgroundColor: 'var(--color-green)'
+    }
   },
   link: {
     display: 'inline-flex',
@@ -74,7 +127,8 @@ export const homeStyles = stylex.create({
     fontWeight: 'var(--font-weight-semibold)',
     ':focus-visible': focusRing
   },
-  switcher: { display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' },
+  statsLink: { alignSelf: 'flex-start' },
+  switcher: { display: 'flex', flexDirection: 'column', gap: 'var(--space-4)', minWidth: 0 },
   switcherLabel: { fontSize: 'var(--font-size-12)', color: 'var(--color-muted)' },
   trigger: {
     display: 'flex',
@@ -97,6 +151,46 @@ export const homeStyles = stylex.create({
     cursor: 'pointer',
     ':focus-visible': focusRing
   },
+  pill: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-8)',
+    boxSizing: 'border-box',
+    maxWidth: '100%',
+    minHeight: target,
+    paddingBlock: 0,
+    paddingInlineStart: 'var(--space-8)',
+    paddingInlineEnd: 'var(--space-14)',
+    borderWidth: 0,
+    borderStyle: 'none',
+    borderRadius: 'var(--radius-36)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontFamily: 'inherit',
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-semibold)',
+    cursor: 'pointer',
+    ':focus-visible': focusRing
+  },
+  pillAvatar: {
+    display: 'grid',
+    placeItems: 'center',
+    flexShrink: 0,
+    width: 'calc(var(--space-20) + var(--space-8))',
+    height: 'calc(var(--space-20) + var(--space-8))',
+    borderRadius: 'var(--radius-8)',
+    backgroundColor: 'var(--color-green)',
+    color: 'var(--color-on-green)',
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-extrabold)'
+  },
+  pillName: {
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
+  },
+  pillCaret: { flexShrink: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-16)' },
   popup: {
     boxSizing: 'border-box',
     minWidth: 'var(--anchor-width)',
@@ -125,20 +219,140 @@ export const homeStyles = stylex.create({
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-8)',
+    gap: 'var(--space-10)',
     scrollMarginBlockStart: 'var(--space-12)'
   },
   sectionHeading: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 'var(--space-6)',
-    minHeight: target
+    gap: 'var(--space-6)'
   },
   sectionTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-18)'
+    fontSize: 'var(--font-size-18)',
+    fontWeight: 'var(--font-weight-extrabold)'
+  },
+  nextCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-10)',
+    padding: 'var(--space-18)',
+    borderRadius: 'var(--radius-20)',
+    backgroundColor: 'var(--color-green)',
+    color: 'var(--color-on-green)',
+    overflowWrap: 'anywhere'
+  },
+  nextTop: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 'var(--space-8)'
+  },
+  nextTime: { margin: 0, fontSize: 'var(--font-size-15)', fontWeight: 'var(--font-weight-bold)' },
+  chip: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 'var(--space-4)',
+    paddingBlock: 'var(--space-4)',
+    paddingInline: 'var(--space-10)',
+    borderRadius: 'var(--radius-36)',
+    backgroundColor: 'var(--color-lime)',
+    color: 'var(--color-green-deep)',
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  nextVenue: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-22)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-snug)'
+  },
+  nextMeta: { margin: 0, fontSize: 'var(--font-size-15)' },
+  openButton: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxSizing: 'border-box',
+    minHeight: bell,
+    marginBlockStart: 'var(--space-6)',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-bold)',
+    textDecoration: 'none',
+    ':focus-visible': onGreenRing
+  },
+  attention: {
+    display: 'flex',
+    flexDirection: 'column',
+    margin: 0,
+    padding: 0,
+    listStyle: 'none',
+    borderRadius: 'var(--radius-18)',
+    backgroundColor: 'var(--color-surface)',
+    overflow: 'hidden'
+  },
+  attentionItem: {
+    ':not(:first-child)': {
+      borderBlockStartWidth: 'var(--border-width-sm)',
+      borderBlockStartStyle: 'solid',
+      borderBlockStartColor: 'var(--color-hairline)'
+    }
+  },
+  attentionLink: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-12)',
+    boxSizing: 'border-box',
+    minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-8))',
+    paddingBlock: 'var(--space-12)',
+    paddingInline: 'var(--space-16)',
+    color: 'inherit',
+    textDecoration: 'none',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'calc(-1 * var(--space-2))'
+    }
+  },
+  glyph: {
+    display: 'grid',
+    placeItems: 'center',
+    flexShrink: 0,
+    width: 'var(--space-40)',
+    height: 'var(--space-40)',
+    borderRadius: 'var(--radius-12)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-extrabold)'
+  },
+  glyphAmber: { backgroundColor: 'var(--color-amber-soft)', color: 'var(--color-amber)' },
+  glyphGreen: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green-ink)' },
+  rowText: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-2)',
+    flex: 1,
+    minWidth: 0
+  },
+  rowTitle: {
+    margin: 0,
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-bold)',
+    overflowWrap: 'anywhere'
+  },
+  rowMeta: { margin: 0, fontSize: 'var(--font-size-14)', color: 'var(--color-muted)' },
+  chevron: { flexShrink: 0, fontSize: 'var(--font-size-20)', color: 'var(--color-muted)' },
+  list: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-8)',
+    margin: 0,
+    padding: 0,
+    listStyle: 'none'
   },
   card: {
     display: 'flex',
@@ -148,14 +362,6 @@ export const homeStyles = stylex.create({
     borderRadius: 'var(--radius-15)',
     backgroundColor: 'var(--color-surface)',
     overflowWrap: 'anywhere'
-  },
-  list: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-8)',
-    margin: 0,
-    padding: 0,
-    listStyle: 'none'
   },
   cardTitle: {
     margin: 0,

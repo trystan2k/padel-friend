@@ -47,9 +47,23 @@ export function NotificationBadge({ count }: { count: number | null }) {
   return (
     <>
       <Link to="/notifications" aria-label={badge.label} {...stylex.props(styles.badgeLink)}>
-        {t('notifications.title')}
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          focusable="false"
+          {...stylex.props(styles.bellIcon)}
+        >
+          <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
+          <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+        </svg>
+        <span {...stylex.props(styles.visuallyHidden)}>{t('notifications.title')}</span>
         {badge.visual !== null && (
-          <StatusBadge appearance="count" aria-hidden="true">
+          <StatusBadge appearance="count" aria-hidden="true" {...stylex.props(styles.bellCount)}>
             {badge.visual}
           </StatusBadge>
         )}

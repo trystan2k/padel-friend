@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { waitForHydratedPage } from './auth-helpers';
 import { watchBrowserErrors } from './browser-error-gate';
+import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
 import { copies, fixtures, sql, type Actor } from './matches-management-fixtures';
 
 const BASE_URL = 'http://127.0.0.1:4173';
@@ -359,11 +361,17 @@ test.describe('community Home', () => {
     const switcher = page.getByRole('combobox', { name: new RegExp(home.switcherLabel) });
     await expect(switcher).toContainText('Home Alpha Club');
     const next = page.getByRole('region', { name: home.nextMatch.title });
-    await expect(
-      next
-        .getByRole('heading', { level: 4 })
-        .getByRole('link', { name: 'Management court', exact: true })
-    ).toBeVisible();
+    const card = next.getByRole('article', { name: 'Management court' });
+    await expect(card.getByRole('link', { name: home.nextMatch.open })).toHaveAttribute(
+      'href',
+      /^\/matches\/[0-9a-f-]{36}$/
+    );
+    // Open matches are not repeated on Home: the Matches list stays one tap away.
+    await expect(next.getByRole('link', { name: home.available.all })).toHaveAttribute(
+      'href',
+      '/matches'
+    );
+    await expect(page.getByText(home.available.title, { exact: true })).toHaveCount(0);
 
     await switcher.focus();
     await page.keyboard.press('Enter');
@@ -371,7 +379,7 @@ test.describe('community Home', () => {
     await expect(page).toHaveURL(new RegExp(`/dashboard\\?community=${second}$`));
     await expect(switcher).toContainText('Home Beta Club');
     await expect(next.getByText(home.nextMatch.empty)).toBeVisible();
-    await expect(next.getByRole('link', { name: 'Management court' })).toHaveCount(0);
+    await expect(next.getByRole('article')).toHaveCount(0);
 
     // Deep link and reload keep the selected community.
     await page.reload();
@@ -501,6 +509,13 @@ test.describe('community Home', () => {
 //  - Removing the hero rank line in U9 moved all content below it. Old-reference residuals
 //    were 6.95%, 4.74%, 2.59%, 1.82%, 7.64% and 7.43% in the order listed above.
 //    Baselines reflect that intended removal; the 1% budget is unchanged.
+//  - Round 4 (F24) restyled Home to hKncV/AlfRD/OdU52 (community pill, 48px bell, date + 30/800
+//    greeting, surface level card with real rank and reliability meter, green next-match tile,
+//    attention rows with glyph tiles). Old-reference residuals against the new rendering were
+//    home-mobile-light 40.1%, home-mobile-dark 23.2%, home-desktop-light 13.5%, home-desktop-dark
+//    7.8%, home-mobile-pt-br 40.6% and home-mobile-es 40.4%: the intended redesign, so those
+//    baselines were regenerated and the 1% budget is unchanged. The design layer is the
+//    hash-pinned frame-region gate (e2e/references/paf-202-home), not these snapshots.
 //  - Cross-renderer (WebKit/Firefox) residuals: not measured (unavailable in the verification
 //    environment: no non-Chromium Playwright project is configured). Cross-renderer pixel equality
 //    (including Pencil vs Chromium font rasterization) is explicitly out of scope per AGENTS.md.
@@ -524,25 +539,33 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
     if (doc.scrollWidth - doc.clientWidth > 0)
       failures.push('horizontal overflow ' + (doc.scrollWidth - doc.clientWidth) + 'px');
 
-    // Header row (community switcher, date, bell) first, then the greeting h1 in the hero.
+    // Clubhouse Home (hKncV/AlfRD): header row (community pill + bell), then date + greeting h1,
+    // then the light level card, next-match tile and attention list.
     const title = document.querySelector('#home-top h1');
     if (document.querySelectorAll('#home-top h1').length !== 1) failures.push('expected one h1');
     const headerRow = document.querySelector('#home-top > div:first-child');
-    const titles = headerRow?.firstElementChild ?? null;
+    const pill = headerRow?.querySelector('button[role="combobox"]') ?? null;
     const bell = headerRow?.querySelector('a[href="/notifications"]') ?? null;
-    const dateLine = titles?.querySelector('time') ?? null;
-    const communityLine = [...(titles?.children ?? [])].find((child) => child !== dateLine) ?? null;
-    if (!visible(title) || !visible(dateLine) || !visible(communityLine) || !visible(bell))
-      failures.push('header title/date/community/bell must all be visible');
-    else if (titles && headerRow) {
+    const greeting = document.querySelector('#home-top > div:nth-child(2)');
+    const dateLine = greeting?.querySelector('time') ?? null;
+    if (!visible(title) || !visible(dateLine) || !visible(pill) || !visible(bell))
+      failures.push('header pill/bell, date and greeting must all be visible');
+    else {
+      if (greeting && rect(greeting).top < rect(headerRow!).bottom - 0.5)
+        failures.push('greeting block overlaps the header row');
       if (rect(title).top < rect(dateLine).bottom - 0.5) failures.push('greeting overlaps date');
-      if (rect(dateLine).top < rect(communityLine).bottom - 0.5)
-        failures.push('date overlaps community switcher');
-      const side = rect(bell).left >= rect(titles).right - 0.5;
-      const below = rect(bell).top >= rect(titles).bottom - 0.5;
-      if (!side && !below) failures.push('bell overlaps title block');
-      if (rect(bell).width < 44 || rect(bell).height < 44)
-        failures.push('bell target ' + rect(bell).width + 'x' + rect(bell).height);
+      if (rect(bell).left < rect(pill).right - 0.5)
+        failures.push('bell overlaps the community pill');
+      if (rect(bell).width !== 48 || rect(bell).height !== 48)
+        failures.push(
+          'bell target ' + rect(bell).width + 'x' + rect(bell).height + ' (frame 48x48)'
+        );
+      if (rect(pill).height < 44) failures.push('pill target height ' + rect(pill).height);
+      if (!pill.querySelector('[aria-hidden="true"]')) failures.push('pill avatar missing');
+      if (parseFloat(getComputedStyle(title).fontSize) !== 30)
+        failures.push('greeting font size ' + getComputedStyle(title).fontSize + ' (frame 30)');
+      if (getComputedStyle(title).fontWeight !== '800')
+        failures.push('greeting weight ' + getComputedStyle(title).fontWeight + ' (frame 800)');
     }
 
     // The app-wide language/theme chips are absolutely positioned over the page's top right; no
@@ -552,7 +575,7 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
       for (const [name, element] of [
         ['title', title],
         ['date', dateLine],
-        ['community', communityLine],
+        ['pill', pill],
         ['bell', bell]
       ] as const) {
         if (!element) continue;
@@ -567,12 +590,28 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
           failures.push(name + ' is covered by the language/theme controls');
       }
 
-    // Level hero: below the header, carries the level figure.
-    const hero = title?.closest('section') ?? null;
+    // Token surfaces: the level card is the light surface, the next match the green tile.
+    const resolve = (token: string, property: 'backgroundColor' | 'color') => {
+      const probe = document.createElement('i');
+      probe.style[property] = 'var(' + token + ')';
+      document.body.append(probe);
+      const value = getComputedStyle(probe)[property];
+      probe.remove();
+      return value;
+    };
+
+    // Level card: below the greeting, carries the level figure, the reliability meter and My statistics.
+    const hero = document.querySelector('#home-top > section');
     if (!visible(hero) || !visible(hero.querySelector('strong')))
-      failures.push('level hero with level figure must be visible');
-    else if (headerRow && rect(hero).top < rect(headerRow).bottom - 0.5)
-      failures.push('level hero overlaps header');
+      failures.push('level card with level figure must be visible');
+    else {
+      if (greeting && rect(hero).top < rect(greeting).bottom - 0.5)
+        failures.push('level card overlaps greeting');
+      if (getComputedStyle(hero).backgroundColor !== resolve('--color-surface', 'backgroundColor'))
+        failures.push('level card is not the surface token');
+      if (!visible(hero.querySelector('meter'))) failures.push('reliability meter missing');
+      if (!hero.querySelector('a[href^="/players/"]')) failures.push('My statistics link missing');
+    }
 
     // Home sections: ordered, non-overlapping, contained.
     const sectionIds = ['home-next-match', 'home-actions'];
@@ -588,18 +627,28 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
       previous = section;
     }
 
-    // Attention cards (reserve standby fixture) and next-match card.
+    // Attention rows (reserve standby fixture): one full-row link with glyph tile and chevron.
     const attention = [...document.querySelectorAll('#home-actions li')];
-    if (attention.length < 1) failures.push('no attention cards');
-    for (const card of attention) {
-      if (!visible(card)) failures.push('attention card hidden');
-      const link = card.querySelector('a');
+    if (attention.length < 1) failures.push('no attention rows');
+    for (const row of attention) {
+      if (!visible(row)) failures.push('attention row hidden');
+      const link = row.querySelector('a');
       if (!visible(link) || rect(link).width < 44 || rect(link).height < 44)
-        failures.push('attention card link under 44px');
+        failures.push('attention row link under 44px');
+      else if (link.querySelectorAll('[aria-hidden="true"]').length !== 2)
+        failures.push('attention row needs a glyph tile and a chevron');
     }
     const next = document.querySelector('#home-next-match article');
-    if (!visible(next) || !visible(next.querySelector('h3 a')))
-      failures.push('next-match card with venue link must be visible');
+    if (!visible(next) || !visible(next.querySelector('a[href^="/matches/"]')))
+      failures.push('next-match tile with open-match link must be visible');
+    else {
+      if (getComputedStyle(next).backgroundColor !== resolve('--color-green', 'backgroundColor'))
+        failures.push('next-match tile is not the green token');
+      if (getComputedStyle(next).color !== resolve('--color-on-green', 'color'))
+        failures.push('next-match text is not the on-green token');
+      if (rect(next.querySelector('a[href^="/matches/"]')!).height < 48)
+        failures.push('open-match button is shorter than the frame 48px');
+    }
 
     // Containment, text clipping and 44px links across the whole Home block.
     const home = document.getElementById('home-top');
@@ -610,7 +659,10 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
         element.tagName.toLowerCase() + '"' + (element.textContent ?? '').trim().slice(0, 24) + '"';
       if (box.right > doc.clientWidth + 0.5 || box.left < -0.5) failures.push('escaped ' + name);
       const style = getComputedStyle(element);
+      // Visually hidden labels (screen-reader text) are 1px clipped boxes by design.
       if (
+        box.width > 1 &&
+        box.height > 1 &&
         element.children.length === 0 &&
         (element.textContent ?? '').trim() !== '' &&
         ((/(hidden|clip)/.test(style.overflowX) && element.scrollWidth > element.clientWidth + 1) ||
@@ -746,7 +798,7 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
         await expect(page.locator('#home-actions li').first()).toBeVisible();
         await expect(page.locator('#home-next-match article').first()).toBeVisible();
         await expect(page.getByRole('heading', { level: 1 })).toContainText(player.name);
-        await expect(page.locator('#home-top > div:first-child time')).toContainText('UTC');
+        await expect(page.locator('#home-top > div:nth-child(2) time')).toContainText('UTC');
 
         const failures = await homeStructureFailures(page);
         expect(failures, failures.join('\n')).toEqual([]);
@@ -754,7 +806,7 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
         if (!('shot' in config)) return;
         await page.evaluate((text) => {
           // Header date and activity days follow the wall clock; fixture match times are fixed.
-          for (const time of document.querySelectorAll('#home-top > div:first-child time'))
+          for (const time of document.querySelectorAll('#home-top > div:nth-child(2) time'))
             time.textContent = text;
         }, NORMALIZED_DATE);
         await page.evaluate(() => window.scrollTo(0, 0));
@@ -768,5 +820,47 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
         await expect(page).toHaveScreenshot(name, { maxDiffPixelRatio: HOME_VISUAL_BUDGET });
       }
     );
+  }
+
+  // Pencil frame layer: hash-pinned exports of hKncV (light) and AlfRD (dark) compared region by
+  // region with the live page. Budgets are measured; structure above stays exact.
+  const references: {
+    frames: Record<string, { sha256: string }>;
+    frameRegions: Record<string, Record<string, FrameRegionRecord>>;
+  } = JSON.parse(
+    readFileSync(new URL('./references/paf-202-home/manifest.json', import.meta.url), 'utf8')
+  );
+  for (const [frame, theme] of [
+    ['hKncV', 'light'],
+    ['AlfRD', 'dark']
+  ] as const) {
+    test(`Home regions match Pencil frame ${frame} (${theme})`, async () => {
+      const page = await f.page(player, 'en', 390, theme, 844);
+      await expect(page.locator('#home-next-match article')).toBeVisible();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const source = readFileSync(
+        new URL(`./references/paf-202-home/${frame}.png`, import.meta.url)
+      );
+      expect(createHash('sha256').update(source).digest('hex')).toBe(
+        references.frames[frame]!.sha256
+      );
+      await assertFrameRegions({
+        page,
+        frame,
+        reference: source,
+        regions: references.frameRegions[frame]!,
+        locators: {
+          pill: page.locator('#home-top button[role="combobox"]'),
+          bell: page.locator('#home-top a[href="/notifications"]'),
+          levelCard: page.locator('#home-top > section').first(),
+          nextCard: page.locator('#home-next-match article'),
+          attentionRow: page.locator('#home-actions li').first()
+        },
+        mask: [
+          page.locator('#home-top a[href="/notifications"] > span[aria-hidden="true"]'),
+          page.locator('#home-top time')
+        ]
+      });
+    });
   }
 });

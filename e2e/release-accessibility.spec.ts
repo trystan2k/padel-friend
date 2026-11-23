@@ -115,7 +115,7 @@ test.describe('authorized primary-flow accessibility', () => {
           }
           if (path === '/dashboard') {
             const copy = copies[locale];
-            const date = page.locator('#home-top > div:first-child time');
+            const date = page.locator('#home-top > div:nth-child(2) time');
             await expect(date).toBeVisible();
             const asOf = await date.getAttribute('datetime');
             expect(asOf).not.toBeNull();
@@ -125,8 +125,8 @@ test.describe('authorized primary-flow accessibility', () => {
                 new Date(asOf!)
               )} · UTC`
             );
-            const hero = page.locator('#home-top section[aria-labelledby="home-greeting"]');
-            await expect(hero.getByRole('heading', { level: 1 })).toBeVisible();
+            const hero = page.locator('#home-top > section').first();
+            await expect(page.locator('#home-greeting')).toBeVisible();
             await expect(hero).toContainText(copy.home.levelTitle);
             await expect(hero.locator('strong')).toHaveText(/\d/);
             await expect(hero).toContainText(copy.profile.reliability);
@@ -135,7 +135,7 @@ test.describe('authorized primary-flow accessibility', () => {
               await hero.evaluate((element) =>
                 Boolean(
                   element.compareDocumentPosition(
-                    document.querySelector('#home-top > div:first-child time')!
+                    document.querySelector('#home-top > div:nth-child(2) time')!
                   ) & Node.DOCUMENT_POSITION_PRECEDING
                 )
               )

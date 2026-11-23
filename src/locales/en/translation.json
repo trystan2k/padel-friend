@@ -596,7 +596,8 @@
     "greeting": "Hello, {{name}}",
     "levelTitle": "Your level",
     "levelSummary": {
-      "rankUnavailable": "Your rank is not available right now."
+      "rankUnavailable": "Your rank is not available right now.",
+      "rankOf": "of {{total}}"
     },
     "switcherLabel": "Switch community",
     "selectionUnavailable": "That community is not available to you. Showing your default community instead.",
@@ -617,7 +618,8 @@
       "playing_one": "{{count}} player confirmed",
       "playing_other": "{{count}} players confirmed",
       "moreNeeded_one": "{{count}} more needed",
-      "moreNeeded_other": "{{count}} more needed"
+      "moreNeeded_other": "{{count}} more needed",
+      "open": "Open match"
     },
     "available": {
       "title": "Open matches",
@@ -627,8 +629,6 @@
       "title": "Needs your attention",
       "empty": "Nothing needs your attention.",
       "partial": "Some items could not be checked, so this list may be incomplete.",
-      "open": "Open",
-      "openVenue": "Open {{venue}}",
       "resultReview_one": "{{count}} result awaiting review at {{venue}}",
       "resultReview_other": "{{count}} results awaiting review at {{venue}}",
       "reconfirmation": "Reconfirm your spot at {{venue}}",

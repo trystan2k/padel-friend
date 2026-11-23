@@ -567,15 +567,20 @@ test('next match and League cutoff follow the community day, not the browser tim
     await page.goto(`/dashboard?community=${w.f.community}`);
     await waitForHydratedPage(page);
     const next = page.getByRole('region', { name: home.nextMatch.title });
-    await expect(next.getByRole('link', { name: 'Release Boundary A', exact: true })).toBeVisible();
-    // By instant, the League's last evening comes before the next community day, wherever the
-    // browser clock is; the earliest match leads the card.
-    const names = (await next.getByRole('link').allInnerTexts()).map((text) => text.trim());
-    const first = names.indexOf('Release Boundary A');
-    expect(first).toBeGreaterThanOrEqual(0);
-    const later = names.indexOf('Release Boundary B');
-    if (later >= 0) expect(first).toBeLessThan(later);
+    // The observer has no registration, so Home shows no next-match tile; open matches live on
+    // the Matches list, one link away. By instant, the League's last evening comes before the
+    // next community day, wherever the browser clock is.
+    await expect(next.getByRole('article')).toHaveCount(0);
     texts.push(await next.innerText());
+    await next.getByRole('link', { name: home.available.all }).click();
+    await expect(page).toHaveURL(/\/matches$/);
+    const venues = page.locator('main article');
+    await expect(venues.filter({ hasText: 'Release Boundary A' })).toHaveCount(1);
+    const listed = (await venues.allInnerTexts()).map((text) =>
+      text.includes('Release Boundary A') ? 'A' : text.includes('Release Boundary B') ? 'B' : ''
+    );
+    expect(listed.indexOf('A')).toBeGreaterThanOrEqual(0);
+    if (listed.includes('B')) expect(listed.indexOf('A')).toBeLessThan(listed.indexOf('B'));
   }
   expect(texts[0]).toBe(texts[1]);
 });

@@ -5,7 +5,11 @@ import { communityStyles } from '../community/community-surface.styles';
 import type { HomeCommunity } from './home-contracts';
 import { homeStyles as s } from './home.styles';
 
-/** Selecting only changes which community Home shows; it never grants access to anything. */
+/**
+ * Selecting only changes which community Home shows; it never grants access to anything. The
+ * `home` variant is the Home pill (avatar, name, caret); `community` keeps the heading-style
+ * trigger used by the Community surface.
+ */
 export function CommunitySwitcher({
   communities,
   value,
@@ -19,6 +23,9 @@ export function CommunitySwitcher({
 }) {
   const { t } = useTranslation();
   const items = communities.map((community) => ({ value: community.id, label: community.name }));
+  const selected = items.find((item) => item.value === value);
+  const initial = selected ? (Array.from(selected.label.trim())[0] ?? '').toUpperCase() : '';
+  const pill = variant === 'home';
   return (
     <Select.Root
       items={items}
@@ -28,16 +35,26 @@ export function CommunitySwitcher({
       }}
     >
       <div {...stylex.props(s.switcher)}>
-        <Select.Label
-          {...stylex.props(s.switcherLabel, variant === 'community' && communityStyles.srOnly)}
-        >
+        <Select.Label {...stylex.props(s.switcherLabel, communityStyles.srOnly)}>
           {t('home.switcherLabel')}
         </Select.Label>
         <Select.Trigger
-          {...stylex.props(s.trigger, variant === 'community' && communityStyles.switchTrigger)}
+          {...stylex.props(
+            pill ? s.pill : s.trigger,
+            variant === 'community' && communityStyles.switchTrigger
+          )}
         >
-          <Select.Value placeholder={t('home.switcherLabel')} />
-          <Select.Icon aria-hidden="true">▾</Select.Icon>
+          {pill && (
+            <span aria-hidden="true" {...stylex.props(s.pillAvatar)}>
+              {initial}
+            </span>
+          )}
+          <span {...stylex.props(pill && s.pillName)}>
+            <Select.Value placeholder={t('home.switcherLabel')} />
+          </span>
+          <Select.Icon aria-hidden="true" {...stylex.props(pill && s.pillCaret)}>
+            ▾
+          </Select.Icon>
         </Select.Trigger>
       </div>
       <Select.Portal>
