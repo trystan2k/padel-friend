@@ -22,10 +22,10 @@
     },
     "jQDkx": {
       "state": "Community admin — Member actions",
-      "route": "member detail",
+      "route": "member sheet (route-derived bottom sheet over the members roster)",
       "sha256": "f5a49a63bfeb7b3afdad48117627645a8ea87eaaaef1b1a62abaec9baaae1c84",
       "snapshot": "e2e/community-admin.spec.ts-snapshots/jQDkx-light.png",
-      "snapshotSha256": "64081bfc41da5a8900c471bdc396bf5ce12e2a7dd41c2b69217c3c2be3935a22"
+      "snapshotSha256": "8cb97365aec07f1bfd2cbd08f3b1984377a9aaaac433e5584366d54be10c328c"
     },
     "N18Mu4": {
       "state": "Community admin — Settings",
@@ -63,7 +63,7 @@
     "jQDkx": {
       "maxDiffPixelRatio": 0.01,
       "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
-      "justification": "The frame draws a bottom-sheet; the route is a full page, so structure follows its action rows (identity card, role panel, full-width 52px actions) with the profile card masked. Destructive actions keep their confirmation dialogs (unit + e2e). The budget absorbs font rasterization only; it is not widened to hide layout differences."
+      "justification": "The route renders the frame's bottom sheet: a Base UI modal dialog over the live roster (admin/members layout route; sheet = child route /members/$membershipId, SSR route-derived). The snapshot is the sheet element only, with member identity masked. Probed exactly: full-width bottom-anchored popup, 28px top radius, 16px inset, 20/800 name, 36px glyph tiles, 56/60px rows, roster inert behind. Recorded residuals vs the frame: (1) rows are only the permitted operations per status/role (pending: approve/deny; inactive: reactivate; active member: promote/remove; active admin: demote/remove; View profile for active members) — the frame's separate 'Make inactive' row has no distinct operation (remove already deactivates) and is not built; (2) row titles keep the existing localized action labels (Promote to admin, Remove from community…) instead of the frame's 'Make admin' copy and the descriptions are truthful rewordings (no 'Past results are kept' claim — unverified); (3) a visually hidden, focus-revealed Close button and Escape/backdrop provide the dismiss path the frame's grabber implies; (4) no 'level' in the meta line beyond the existing ratings text. Destructive/demote actions keep their AlertDialog confirmations. History-originated open closes by popping its roster entry (roster search/filter/scroll preserved, focus returns to the row); deep link/reload closes to Members with heading focus. The budget absorbs font rasterization only; it is not widened to hide layout differences."
     },
     "N18Mu4": {
       "maxDiffPixelRatio": 0.01,

@@ -411,10 +411,17 @@
     "levelLabel": "Nivel global {{level}} · fiabilidad {{reliability}}%",
     "ratingsUnavailable": "Valoraciones no disponibles",
     "levelReadOnly": "Las personas administradoras pueden ver el nivel y la fiabilidad globales, pero no editar el nivel del jugador.",
-    "memberActiveBanner": "Miembro activo",
-    "rolePanelTitle": "Rol en la comunidad",
-    "rolePanelActive": "{{role}} · promover o cambiar de rol",
-    "rolePanelInactive": "Miembro inactivo · reactivar",
+    "viewProfile": "Ver perfil",
+    "sheetClose": "Cerrar acciones del miembro",
+    "sheetAudited": "Los cambios de rol y las bajas quedan registrados.",
+    "actionHint": {
+      "approve": "Les permite unirse a partidos de esta comunidad",
+      "deny": "Rechaza esta solicitud de acceso",
+      "reactivate": "Les permite volver a unirse a partidos",
+      "promote": "Puede gestionar solicitudes, miembros, sedes y ajustes",
+      "demote": "Vuelve a ser miembro normal",
+      "remove": "Se puede reactivar más adelante"
+    },
     "status": {
       "active": "Activo",
       "pending": "Pendiente",

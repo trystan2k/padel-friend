@@ -9,6 +9,8 @@ const focus = {
   outline: 'var(--focus-width) solid var(--color-focus)',
   outlineOffset: 'var(--focus-offset)'
 };
+const sheetRadius =
+  'calc(var(--space-20) + var(--space-8)) calc(var(--space-20) + var(--space-8)) 0 0';
 const navClearance = 'calc(var(--space-20) + var(--space-40) + var(--space-16) + var(--space-40))';
 
 export const styles = stylex.create({
@@ -215,36 +217,138 @@ export const styles = stylex.create({
     fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere'
   },
-  memberProfileTitle: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-18)',
-    lineHeight: 'var(--font-line-height-snug)',
-    fontWeight: 'var(--font-weight-bold)',
-    overflowWrap: 'anywhere'
+  sheetViewport: {
+    position: 'fixed',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'center'
   },
-  memberProfileCard: { gap: 'var(--space-4)' },
-  rolePanel: {
+  sheetPopup: {
+    boxSizing: 'border-box',
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-4)',
-    padding: 'var(--space-14)',
-    borderWidth: 0,
-    borderRadius: 'var(--radius-16)',
-    backgroundColor: 'var(--color-surface-2)'
-  },
-  rolePanelTitle: {
-    margin: 0,
+    gap: 'var(--space-8)',
+    width: '100%',
+    maxWidth: 'calc(var(--space-40) * 16)',
+    maxHeight: '100%',
+    overflowY: 'auto',
+    paddingBlockStart: 'var(--space-10)',
+    paddingInlineStart: 'max(var(--space-16), env(safe-area-inset-left))',
+    paddingInlineEnd: 'max(var(--space-16), env(safe-area-inset-right))',
+    paddingBlockEnd: 'calc(var(--space-20) + var(--space-8) + env(safe-area-inset-bottom))',
+    borderRadius: sheetRadius,
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
-    fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-bold)'
+    fontFamily: 'var(--font-family-body)',
+    overflowWrap: 'anywhere'
   },
-  rolePanelCopy: {
+  sheetGrabber: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 'calc(var(--space-12) + var(--space-2))'
+  },
+  sheetGrab: {
+    width: 'var(--space-40)',
+    height: 'var(--space-5)',
+    borderRadius: 'var(--space-3)',
+    backgroundColor: 'var(--color-hairline)'
+  },
+  sheetHead: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-2)',
+    paddingBlockStart: 0,
+    paddingInline: 'var(--space-8)',
+    paddingBlockEnd: 'var(--space-6)'
+  },
+  sheetTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-snug)',
+    overflowWrap: 'anywhere',
+    ':focus-visible': focus
+  },
+  sheetMeta: {
     margin: 0,
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-14)',
     lineHeight: 'var(--font-line-height-snug)',
     overflowWrap: 'anywhere'
+  },
+  sheetRow: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-12)',
+    width: '100%',
+    minHeight: 'calc(var(--space-40) + var(--space-16))',
+    paddingBlock: 'var(--space-8)',
+    paddingInline: 'var(--space-12)',
+    borderWidth: 0,
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'transparent',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
+    textAlign: 'start',
+    textDecoration: 'none',
+    cursor: 'pointer',
+    ':focus-visible': focus,
+    '[aria-disabled="true"]': { cursor: 'default', opacity: 0.6 }
+  },
+  sheetRowDescribed: { minHeight: 'calc(var(--space-40) + var(--space-20))' },
+  sheetGlyph: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 'calc(var(--space-40) - var(--space-4))',
+    height: 'calc(var(--space-40) - var(--space-4))',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-surface-2)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 1
+  },
+  sheetRowText: {
+    display: 'flex',
+    flexDirection: 'column',
+    flexGrow: 1,
+    gap: 'var(--space-1)',
+    minWidth: 0
+  },
+  sheetRowTitle: {
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-semibold)',
+    lineHeight: 'var(--font-line-height-snug)'
+  },
+  sheetRowTitleDanger: { color: 'var(--color-red)' },
+  sheetRowHint: {
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-13)',
+    lineHeight: 'var(--font-line-height-snug)'
+  },
+  sheetClose: {
+    position: 'absolute',
+    width: 'var(--space-1)',
+    height: 'var(--space-1)',
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
+    ':focus-visible': {
+      position: 'static',
+      width: 'auto',
+      height: 'auto',
+      minHeight: tap,
+      clipPath: 'none',
+      ...focus
+    }
   },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
   requestActions: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },

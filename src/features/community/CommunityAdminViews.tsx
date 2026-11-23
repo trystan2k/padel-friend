@@ -6,10 +6,17 @@ import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Dialog } from '@base-ui/react/dialog';
 import { Select } from '@base-ui/react/select';
 import { Switch } from '@base-ui/react/switch';
-import { Link, useParams, useRouter } from '@tanstack/react-router';
+import {
+  Link,
+  Outlet,
+  useParams,
+  useRouter,
+  type ErrorComponentProps
+} from '@tanstack/react-router';
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -49,6 +56,13 @@ import { unsupportedCommunityMatchSummary } from './community-admin.types';
 import { styles } from './community-admin.styles';
 import { VenuePhotoUpload } from './VenuePhotoUpload';
 import { InviteeSearch } from './InviteeSearch';
+
+declare module '@tanstack/react-router' {
+  interface HistoryState {
+    // Set when the member sheet was opened from the mounted roster (history entry behind it).
+    adminMembersOrigin?: true;
+  }
+}
 
 type ScreenName = CommunityAdminScreenProps['screen'];
 type ViewProps<Screen extends ScreenName> = Extract<CommunityAdminScreenProps, { screen: Screen }>;
@@ -231,6 +245,8 @@ function MembersView({ community, members }: ViewProps<'members'>) {
                   <Link
                     to="/community/$communityId/admin/members/$membershipId"
                     params={{ communityId, membershipId: person.membership_id }}
+                    state={{ adminMembersOrigin: true }}
+                    data-member-link={person.membership_id}
                     {...stylex.props(styles.memberLink)}
                   >
                     <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
@@ -279,6 +295,7 @@ function MembersView({ community, members }: ViewProps<'members'>) {
           {t('communityAdmin.retry')}
         </Button>
       )}
+      <Outlet />
     </AdminViewFrame>
   );
 }
@@ -494,14 +511,12 @@ function AdminViewFrame({
   communityId,
   communityName,
   screen,
-  children,
-  headingRef
+  children
 }: {
   communityId: string;
   communityName: string;
-  screen: 'requests' | 'members' | 'member' | 'settings' | 'venues' | 'audit';
+  screen: 'requests' | 'members' | 'settings' | 'venues' | 'audit';
   children: ReactNode;
-  headingRef?: React.RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useTranslation();
   const items = [
@@ -523,12 +538,7 @@ function AdminViewFrame({
             <span aria-hidden="true">‹</span>
           </Link>
           <div {...stylex.props(styles.titleGroup)}>
-            <h1
-              ref={headingRef}
-              tabIndex={-1}
-              id="admin-screen-title"
-              {...stylex.props(styles.title)}
-            >
+            <h1 tabIndex={-1} id="admin-screen-title" {...stylex.props(styles.title)}>
               {t(`communityAdmin.title.${screen}`)}
             </h1>
             <p {...stylex.props(styles.subtitle)}>
@@ -555,13 +565,245 @@ function AdminViewFrame({
   );
 }
 
-function MemberView(props: ViewProps<'member'>) {
-  const { community, member, membershipId } = props;
-  const matchSummary = unsupportedCommunityMatchSummary();
-  const { t, i18n } = useTranslation();
+type MemberActionName = 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote';
+
+const membersPath = '/community/$communityId/admin/members';
+
+// Row glyphs follow the jQDkx frame's text glyphs; they are decorative (aria-hidden).
+const actionGlyphs: Record<MemberActionName, string> = {
+  approve: '✓',
+  deny: '✕',
+  reactivate: '↺',
+  promote: '★',
+  demote: '☆',
+  remove: '✕'
+};
+
+function memberSheetActions(member: CommunityAdminMember): MemberActionName[] {
+  if (member.status === 'pending') return ['approve', 'deny'];
+  if (member.status === 'inactive') return ['reactivate'];
+  return [member.role === 'admin' ? 'demote' : 'promote', 'remove'];
+}
+
+function MemberSheetFrame({
+  title,
+  description,
+  busy = false,
+  membershipId,
+  titleRef,
+  popupRef,
+  children
+}: {
+  title: string;
+  description?: ReactNode;
+  busy?: boolean;
+  membershipId: string;
+  titleRef: React.RefObject<HTMLHeadingElement | null>;
+  popupRef: React.RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useParams({ strict: false });
   const communityId = params.communityId ?? '';
+  const closing = useRef(false);
+  const fromRoster = useRef(Boolean(router.state.location.state.adminMembersOrigin));
+  const originId = useRef(membershipId);
+  useEffect(() => {
+    originId.current = membershipId;
+  }, [membershipId]);
+
+  // The sheet is derived from the route. Closing from a roster visit pops that history entry
+  // (the mounted roster keeps its filter, rows and scroll); a deep link or reload has no roster
+  // entry behind it, so closing replaces the route with the Members screen instead of leaving.
+  function closeSheet() {
+    if (closing.current) return;
+    closing.current = true;
+    if (router.state.location.state.adminMembersOrigin) {
+      router.history.back();
+      return;
+    }
+    void router.navigate({ to: membersPath, params: { communityId }, replace: true }).catch(() => {
+      closing.current = false;
+    });
+  }
+
+  // Every exit path (close, Escape, backdrop, browser Back) unmounts the sheet: return focus to
+  // the originating roster row; a deep link or reload has no origin row and lands on the Members
+  // heading (as does a roster origin whose row is no longer on screen).
+  useEffect(
+    () => () => {
+      // The modal layer releases its inert/focus handling after this cleanup; retry for a few
+      // frames until the target accepts focus.
+      let attempts = 0;
+      const restore = () => {
+        const row = fromRoster.current
+          ? Array.from(document.querySelectorAll<HTMLElement>('[data-member-link]')).find(
+              (element) => element.dataset.memberLink === originId.current
+            )
+          : undefined;
+        const target = row ?? document.getElementById('admin-screen-title');
+        target?.focus();
+        if (target && document.activeElement !== target && attempts++ < 10)
+          window.requestAnimationFrame(restore);
+      };
+      window.setTimeout(restore, 0);
+    },
+    []
+  );
+
+  return (
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) closeSheet();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop {...stylex.props(styles.confirmBackdrop)} />
+        <Dialog.Viewport {...stylex.props(styles.sheetViewport)}>
+          <Dialog.Popup
+            ref={popupRef}
+            data-testid="community-member-sheet"
+            initialFocus={titleRef}
+            finalFocus={false}
+            {...stylex.props(styles.sheetPopup)}
+          >
+            <div aria-hidden="true" {...stylex.props(styles.sheetGrabber)}>
+              <span {...stylex.props(styles.sheetGrab)} />
+            </div>
+            <div {...stylex.props(styles.sheetHead)}>
+              <Dialog.Title ref={titleRef} tabIndex={-1} {...stylex.props(styles.sheetTitle)}>
+                {title}
+              </Dialog.Title>
+              {description}
+            </div>
+            {children}
+            <Dialog.Close {...stylex.props(styles.sheetClose)}>
+              {t('communityAdmin.sheetClose')}
+            </Dialog.Close>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function MemberSheetRow({
+  glyph,
+  title,
+  hint,
+  destructive = false,
+  busy = false,
+  rowRef,
+  onClick
+}: {
+  glyph: string;
+  title: string;
+  hint?: string;
+  destructive?: boolean;
+  busy?: boolean;
+  rowRef?: React.Ref<HTMLButtonElement>;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const titleId = useId();
+  const hintId = useId();
+  return (
+    <button
+      ref={rowRef}
+      type="button"
+      data-sheet-row=""
+      aria-labelledby={titleId}
+      aria-describedby={hint === undefined ? undefined : hintId}
+      aria-disabled={busy || undefined}
+      aria-busy={busy || undefined}
+      onClick={(event) => {
+        if (!busy) onClick(event);
+      }}
+      {...stylex.props(styles.sheetRow, hint !== undefined && styles.sheetRowDescribed)}
+    >
+      <span aria-hidden="true" {...stylex.props(styles.sheetGlyph)}>
+        {glyph}
+      </span>
+      <span {...stylex.props(styles.sheetRowText)}>
+        <span
+          id={titleId}
+          {...stylex.props(styles.sheetRowTitle, destructive && styles.sheetRowTitleDanger)}
+        >
+          {title}
+        </span>
+        {hint !== undefined && (
+          <span id={hintId} {...stylex.props(styles.sheetRowHint)}>
+            {hint}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+export function CommunityAdminMemberError({ error, reset }: ErrorComponentProps) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const params = useParams({ strict: false });
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState(false);
+  const denied = error instanceof Error && error.message === 'NOT_COMMUNITY_ADMIN';
+  const missing = error instanceof Error && error.message === 'COMMUNITY_MEMBER_NOT_FOUND';
+  async function retry() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await router.invalidate();
+      reset();
+    } catch {
+      // Keep the error visible when the refresh fails.
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <MemberSheetFrame
+      title={t(
+        denied
+          ? 'communityAdmin.accessDeniedTitle'
+          : missing
+            ? 'communityAdmin.title.member'
+            : 'communityAdmin.errorTitle'
+      )}
+      busy={busy}
+      membershipId={params.membershipId ?? ''}
+      titleRef={titleRef}
+      popupRef={popupRef}
+      description={
+        <Dialog.Description role="alert" {...stylex.props(styles.sheetMeta)}>
+          {t(
+            denied
+              ? 'communityAdmin.accessDenied'
+              : missing
+                ? 'communityAdmin.empty.member'
+                : 'communityAdmin.error.generic'
+          )}
+        </Dialog.Description>
+      }
+    >
+      {!denied && !missing && (
+        <MemberSheetRow
+          glyph="↺"
+          title={t('communityAdmin.retry')}
+          busy={busy}
+          onClick={() => void retry()}
+        />
+      )}
+    </MemberSheetFrame>
+  );
+}
+
+function MemberView(props: ViewProps<'member'>) {
+  const { community, member, membershipId } = props;
+  const { t, i18n } = useTranslation();
+  const router = useRouter();
   const { busy, setBusy, message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
   const [confirmation, setConfirmation] = useState<'demote' | 'remove' | null>(null);
   const [completedConfirmation, setCompletedConfirmation] = useState<{
@@ -569,14 +811,24 @@ function MemberView(props: ViewProps<'member'>) {
     membershipId: string;
   } | null>(null);
   const [refreshError, setRefreshError] = useState(false);
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const locale = i18n.resolvedLanguage || i18n.language;
 
-  async function memberAction(
-    action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote'
-  ): Promise<boolean> {
+  // A refresh can remove the action row that held focus (role change, completed removal): move
+  // focus to the sheet heading instead of letting it fall to the document.
+  const actionKey = `${membershipId}:${member.status}:${member.role}:${String(completedConfirmation?.action)}`;
+  const seenActionKey = useRef(actionKey);
+  useEffect(() => {
+    if (seenActionKey.current === actionKey || confirmation) return;
+    seenActionKey.current = actionKey;
+    const active = document.activeElement;
+    if (popupRef.current && (!active || active === document.body)) titleRef.current?.focus();
+  });
+
+  async function memberAction(action: MemberActionName): Promise<boolean> {
     if (busy) return false;
     if (!navigator.onLine) {
       setErrorKey('offline');
@@ -617,7 +869,11 @@ function MemberView(props: ViewProps<'member'>) {
       ) {
         await router.navigate({
           to: '/community/$communityId/admin/members/$membershipId',
-          params: { communityId: community.id, membershipId: result.membership_id }
+          params: { communityId: community.id, membershipId: result.membership_id },
+          replace: true,
+          state: router.state.location.state.adminMembersOrigin
+            ? { adminMembersOrigin: true }
+            : undefined
         });
       }
     } catch {
@@ -628,10 +884,7 @@ function MemberView(props: ViewProps<'member'>) {
     return true;
   }
 
-  function requestMemberAction(
-    action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote',
-    trigger?: HTMLButtonElement
-  ) {
+  function requestMemberAction(action: MemberActionName, trigger?: HTMLButtonElement) {
     if (action === 'remove' || action === 'demote') {
       if (trigger) triggerRef.current = trigger;
       setConfirmation(action);
@@ -665,98 +918,58 @@ function MemberView(props: ViewProps<'member'>) {
     }
   }
 
+  const completed = (action: 'demote' | 'remove') =>
+    completedConfirmation?.membershipId === membershipId && completedConfirmation.action === action;
+  const actions = memberSheetActions(member).filter(
+    (action) => !((action === 'demote' || action === 'remove') && completed(action))
+  );
+
   return (
-    <AdminViewFrame
-      communityId={communityId}
-      communityName={community.name}
-      screen="member"
-      headingRef={headingRef}
+    <MemberSheetFrame
+      title={member.display_name}
+      busy={busy}
+      membershipId={membershipId}
+      titleRef={titleRef}
+      popupRef={popupRef}
+      description={
+        <Dialog.Description render={<div />}>
+          <p {...stylex.props(styles.sheetMeta)}>
+            {t('communityAdmin.memberMeta', {
+              status: t(`communityAdmin.status.${member.status}`),
+              role: t(`communityAdmin.role.${member.role}`),
+              date: dateLabel(member.valid_from, locale)
+            })}
+          </p>
+          <p {...stylex.props(styles.sheetMeta)}>{ratingLabel(member, t, locale)}</p>
+        </Dialog.Description>
+      }
     >
       {member.status === 'active' && (
-        <p {...stylex.props(styles.banner)}>{t('communityAdmin.memberActiveBanner')}</p>
+        <Link
+          to="/players/$playerId"
+          params={{ playerId: member.user_id }}
+          data-sheet-row=""
+          {...stylex.props(styles.sheetRow)}
+        >
+          <span aria-hidden="true" {...stylex.props(styles.sheetGlyph)}>
+            ↗
+          </span>
+          <span {...stylex.props(styles.sheetRowText)}>
+            <span {...stylex.props(styles.sheetRowTitle)}>{t('communityAdmin.viewProfile')}</span>
+          </span>
+        </Link>
       )}
-      <SurfaceCard
-        data-testid="community-member-profile"
-        xstyle={[styles.card, styles.memberProfileCard]}
-      >
-        <h3 {...stylex.props(styles.memberProfileTitle)}>
-          {member.display_level === null || member.reliability_percent === null
-            ? t('communityAdmin.memberAdminProfileMissing', { name: member.display_name })
-            : t('communityAdmin.memberAdminProfile', {
-                name: member.display_name,
-                level: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
-                  member.display_level
-                ),
-                reliability: new Intl.NumberFormat(locale).format(member.reliability_percent)
-              })}
-        </h3>
-        {matchSummary.status === 'unsupported' && (
-          <p {...stylex.props(styles.copy)}>{t('communityAdmin.matchCountUnavailable')}</p>
-        )}
-        <p {...stylex.props(styles.copy)}>
-          {t('communityAdmin.memberMeta', {
-            status: t(`communityAdmin.status.${member.status}`),
-            role: t(`communityAdmin.role.${member.role}`),
-            date: dateLabel(member.valid_from, locale)
-          })}
-        </p>
-      </SurfaceCard>
-      <SurfaceCard data-testid="community-member-role-panel" xstyle={styles.rolePanel}>
-        <p {...stylex.props(styles.rolePanelTitle)}>{t('communityAdmin.rolePanelTitle')}</p>
-        <p {...stylex.props(styles.rolePanelCopy)}>
-          {t('communityAdmin.rolePanelActive', { role: t(`communityAdmin.role.${member.role}`) })}
-        </p>
-        <p {...stylex.props(styles.rolePanelCopy)}>{t('communityAdmin.rolePanelInactive')}</p>
-      </SurfaceCard>
-      <div {...stylex.props(styles.form, styles.actions)}>
-        {member.status === 'pending' && (
-          <>
-            <Button busy={busy} onClick={() => requestMemberAction('approve')}>
-              {t('communityAdmin.action.approve')}
-            </Button>
-            <Button variant="secondary" busy={busy} onClick={() => requestMemberAction('deny')}>
-              {t('communityAdmin.action.deny')}
-            </Button>
-          </>
-        )}
-        {member.status === 'inactive' && (
-          <Button busy={busy} onClick={() => requestMemberAction('reactivate')}>
-            {t('communityAdmin.action.reactivate')}
-          </Button>
-        )}
-        {member.status === 'active' && member.role === 'member' && (
-          <Button variant="secondary" busy={busy} onClick={() => requestMemberAction('promote')}>
-            {t('communityAdmin.action.promote')}
-          </Button>
-        )}
-        {member.status === 'active' &&
-          member.role === 'admin' &&
-          !(
-            completedConfirmation?.membershipId === membershipId &&
-            completedConfirmation.action === 'demote'
-          ) && (
-            <Button
-              variant="secondary"
-              busy={busy}
-              onClick={(event) => requestMemberAction('demote', event.currentTarget)}
-            >
-              {t('communityAdmin.action.demote')}
-            </Button>
-          )}
-        {member.status === 'active' &&
-          !(
-            completedConfirmation?.membershipId === membershipId &&
-            completedConfirmation.action === 'remove'
-          ) && (
-            <Button
-              variant="destructive"
-              busy={busy}
-              onClick={(event) => requestMemberAction('remove', event.currentTarget)}
-            >
-              {t('communityAdmin.action.remove')}
-            </Button>
-          )}
-      </div>
+      {actions.map((action) => (
+        <MemberSheetRow
+          key={action}
+          glyph={actionGlyphs[action]}
+          title={t(`communityAdmin.action.${action}`)}
+          hint={t(`communityAdmin.actionHint.${action}`)}
+          destructive={action === 'remove'}
+          busy={busy}
+          onClick={(event) => requestMemberAction(action, event.currentTarget)}
+        />
+      ))}
       <AlertDialog.Root
         open={confirmation !== null}
         onOpenChange={(open) => {
@@ -769,7 +982,7 @@ function MemberView(props: ViewProps<'member'>) {
             <AlertDialog.Popup
               initialFocus={() => cancelRef.current}
               finalFocus={() =>
-                triggerRef.current?.isConnected ? triggerRef.current : headingRef.current
+                triggerRef.current?.isConnected ? triggerRef.current : titleRef.current
               }
               onKeyDown={(event) => {
                 if (event.key !== 'Tab') return;
@@ -832,7 +1045,7 @@ function MemberView(props: ViewProps<'member'>) {
           </AlertDialog.Viewport>
         </AlertDialog.Portal>
       </AlertDialog.Root>
-      <p {...stylex.props(styles.note)}>{t('communityAdmin.levelReadOnly')}</p>
+      <p {...stylex.props(styles.sheetMeta)}>{t('communityAdmin.sheetAudited')}</p>
       {message && <output {...stylex.props(styles.status)}>{message}</output>}
       {errorKey && (!confirmation || refreshError) && (
         <p role="alert" {...stylex.props(styles.error)}>
@@ -840,11 +1053,14 @@ function MemberView(props: ViewProps<'member'>) {
         </p>
       )}
       {errorKey && (!confirmation || refreshError) && (
-        <Button variant="secondary" busy={busy} onClick={() => void retryRefresh()}>
-          {t('communityAdmin.retry')}
-        </Button>
+        <MemberSheetRow
+          glyph="↺"
+          title={t('communityAdmin.retry')}
+          busy={busy}
+          onClick={() => void retryRefresh()}
+        />
       )}
-    </AdminViewFrame>
+    </MemberSheetFrame>
   );
 }
 

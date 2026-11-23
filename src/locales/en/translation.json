@@ -411,10 +411,17 @@
     "levelLabel": "App-wide level {{level}} · reliability {{reliability}}%",
     "ratingsUnavailable": "Ratings unavailable",
     "levelReadOnly": "Community admins can view app-wide level and reliability, but cannot edit player level.",
-    "memberActiveBanner": "Active member",
-    "rolePanelTitle": "Community role",
-    "rolePanelActive": "{{role}} · promote or demote",
-    "rolePanelInactive": "Inactive member · reactivate",
+    "viewProfile": "View profile",
+    "sheetClose": "Close member actions",
+    "sheetAudited": "Role changes and removals are audited.",
+    "actionHint": {
+      "approve": "Lets them join matches in this community",
+      "deny": "Declines this join request",
+      "reactivate": "Lets them join matches again",
+      "promote": "Can manage requests, members, venues and settings",
+      "demote": "Goes back to a regular member",
+      "remove": "They can be reactivated later"
+    },
     "status": {
       "active": "Active",
       "pending": "Pending",

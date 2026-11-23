@@ -38,7 +38,6 @@ import { Route as AdminIndexRoute } from '../src/routes/_protected.community.$co
 import { Route as AuditRoute } from '../src/routes/_protected.community.$communityId.admin.audit';
 import { Route as MembersRoute } from '../src/routes/_protected.community.$communityId.admin.members';
 import { Route as MemberDetailRoute } from '../src/routes/_protected.community.$communityId.admin.members.$membershipId';
-import { Route as MembersIndexRoute } from '../src/routes/_protected.community.$communityId.admin.members.index';
 import { Route as ProtectedRoute } from '../src/routes/_protected';
 import { Route as RequestsRoute } from '../src/routes/_protected.community.$communityId.admin.requests';
 import { Route as SettingsRoute } from '../src/routes/_protected.community.$communityId.admin.settings';
@@ -134,7 +133,7 @@ describe('community admin executable routes', () => {
         expected: { community_id: communityId, query: '', status: 'pending', offset: 0, limit: 50 }
       },
       {
-        route: MembersIndexRoute,
+        route: MembersRoute,
         reader: calls.members,
         resultKey: 'members',
         expected: { community_id: communityId, query: '', status: 'active', offset: 0, limit: 50 }
@@ -259,7 +258,7 @@ describe('community admin executable routes', () => {
     );
   });
 
-  it('navigates to detail without invoking the active-roster loader', async () => {
+  it('direct entry to a member sheet reads the authorized roster once for its background', async () => {
     const router = makeRouter(`/community/${communityId}/admin/members/${membershipId}`);
     await router.load();
     const matches = router.state.matches;
@@ -282,10 +281,12 @@ describe('community admin executable routes', () => {
     expect(calls.member).toHaveBeenCalledExactlyOnceWith({
       data: { community_id: communityId, membership_id: membershipId }
     });
-    expect(calls.members).not.toHaveBeenCalled();
+    expect(calls.members).toHaveBeenCalledExactlyOnceWith({
+      data: { community_id: communityId, query: '', status: 'active', offset: 0, limit: 50 }
+    });
   });
 
-  it('loads the members index through the production router before navigating to detail', async () => {
+  it('opens the member sheet through the production router over the roster route', async () => {
     const router = makeRouter(`/community/${communityId}/admin/members`);
     await router.load();
     expect(router.state.matches.every((match) => match.status === 'success')).toBe(true);
@@ -309,7 +310,13 @@ describe('community admin executable routes', () => {
     expect(calls.member).toHaveBeenCalledExactlyOnceWith({
       data: { community_id: communityId, membership_id: membershipId }
     });
-    expect(calls.members).not.toHaveBeenCalled();
+    // The sheet route is a child of the roster layout: both matches are mounted together.
+    expect(router.state.matches.map((match) => match.routeId)).toEqual(
+      expect.arrayContaining([
+        '/_protected/community/$communityId/admin/members',
+        '/_protected/community/$communityId/admin/members/$membershipId'
+      ])
+    );
   });
 
   it.each([

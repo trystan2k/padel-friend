@@ -411,10 +411,17 @@
     "levelLabel": "Nível no aplicativo {{level}} · confiabilidade {{reliability}}%",
     "ratingsUnavailable": "Avaliações indisponíveis",
     "levelReadOnly": "Administradores da comunidade podem ver o nível e a confiabilidade globais, mas não podem editar o nível do jogador.",
-    "memberActiveBanner": "Membro ativo",
-    "rolePanelTitle": "Função na comunidade",
-    "rolePanelActive": "{{role}} · promover ou rebaixar",
-    "rolePanelInactive": "Membro inativo · reativar",
+    "viewProfile": "Ver perfil",
+    "sheetClose": "Fechar ações do membro",
+    "sheetAudited": "Mudanças de função e remoções ficam registradas.",
+    "actionHint": {
+      "approve": "Permite que participe de partidas desta comunidade",
+      "deny": "Recusa esta solicitação de entrada",
+      "reactivate": "Permite que volte a participar de partidas",
+      "promote": "Pode gerenciar solicitações, membros, locais e ajustes",
+      "demote": "Volta a ser membro comum",
+      "remove": "Pode ser reativado mais tarde"
+    },
     "status": {
       "active": "Ativo",
       "pending": "Pendente",

@@ -4,9 +4,11 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
 
+const routerState = vi.hoisted(() => ({ fromRoster: false }));
 const mocks = vi.hoisted(() => ({
   invalidate: vi.fn<() => Promise<void>>(),
   navigate: vi.fn<() => Promise<void>>(),
+  historyBack: vi.fn<() => void>(),
   listVenues: vi.fn<() => Promise<unknown>>(),
   listAudit: vi.fn<() => Promise<unknown>>(),
   approve: vi.fn<() => Promise<unknown>>(),
@@ -34,11 +36,13 @@ vi.mock('@tanstack/react-router', () => ({
   Link: ({
     children,
     params: _params,
+    state: _state,
     to,
     ...props
   }: {
     children: import('react').ReactNode;
     params?: object;
+    state?: object;
     to: string;
   }) => (
     <a
@@ -50,7 +54,12 @@ vi.mock('@tanstack/react-router', () => ({
   ),
   Outlet: () => null,
   useParams: () => ({ communityId: 'community-id', membershipId: 'member-id' }),
-  useRouter: () => ({ invalidate: mocks.invalidate, navigate: mocks.navigate })
+  useRouter: () => ({
+    invalidate: mocks.invalidate,
+    navigate: mocks.navigate,
+    history: { back: mocks.historyBack },
+    state: { location: { state: routerState.fromRoster ? { adminMembersOrigin: true } : {} } }
+  })
 }));
 vi.mock('../src/features/community/community-admin.functions', () => ({
   issueInvitation: mocks.issueInvitation,
@@ -164,6 +173,8 @@ function mount(
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.invalidate.mockResolvedValue();
+  mocks.navigate.mockResolvedValue();
+  routerState.fromRoster = false;
   mocks.approve.mockResolvedValue({ status: 'active' });
   mocks.remove.mockResolvedValue({ status: 'inactive' });
   mocks.reactivate.mockResolvedValue({ membership_id: '44444444-4444-4444-8444-444444444444' });
@@ -1062,6 +1073,9 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
     const trigger = screen.getByRole('button', { name: 'Remove from community' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Alicia Ramos' }))
+    );
     trigger.focus();
     await user.keyboard('{Enter}');
     const dialog = await screen.findByRole('alertdialog');
@@ -1096,7 +1110,7 @@ describe('community admin UI', () => {
     );
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
-    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Member controls' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Alicia Ramos' }));
   });
 
   it('keeps failed confirmation open for retry and restores focus after cancel', async () => {
@@ -1114,6 +1128,9 @@ describe('community admin UI', () => {
       </I18nextProvider>
     );
     const trigger = screen.getByRole('button', { name: 'Remove from community' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Alicia Ramos' }))
+    );
     await user.click(trigger);
     const dialog = await screen.findByRole('alertdialog');
     const confirm = within(dialog).getByRole('button', { name: 'Confirm change' });
@@ -1648,7 +1665,9 @@ describe('community admin UI', () => {
         params: {
           communityId: community.id,
           membershipId: '44444444-4444-4444-8444-444444444444'
-        }
+        },
+        replace: true,
+        state: undefined
       })
     );
   });
@@ -1890,6 +1909,9 @@ describe('community admin UI', () => {
     );
     const demote = screen.getByRole('button', { name: 'Demote to member' });
     const remove = screen.getByRole('button', { name: 'Remove from community' });
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Alicia Ramos' }))
+    );
     demote.focus();
     await user.keyboard('{Enter}');
     await screen.findByRole('alertdialog');
@@ -1911,7 +1933,83 @@ describe('community admin UI', () => {
     );
     await waitFor(() => expect(mocks.demote).toHaveBeenCalledOnce());
     await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
-    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Member controls' }));
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Alicia Ramos' }));
+  });
+
+  it.each([
+    ['pending', 'member', ['Approve request', 'Deny request'], false],
+    ['inactive', 'member', ['Reactivate membership'], false],
+    ['active', 'member', ['Promote to admin', 'Remove from community'], true],
+    ['active', 'admin', ['Demote to member', 'Remove from community'], true]
+  ] as const)(
+    'member sheet offers only the permitted %s %s actions with descriptions',
+    async (status, role, labels, hasProfile) => {
+      render(
+        <I18nextProvider i18n={createI18n('en')}>
+          <CommunityAdminScreen
+            screen="member"
+            community={community}
+            member={{ ...member, status, role }}
+            membershipId={member.membership_id}
+          />
+        </I18nextProvider>
+      );
+      const dialog = await screen.findByRole('dialog', { name: 'Alicia Ramos' });
+      const rows = within(dialog)
+        .getAllByRole('button')
+        .filter((button) => button.hasAttribute('data-sheet-row'));
+      expect(rows.map((row) => row.getAttribute('aria-labelledby') && row.textContent)).toEqual(
+        labels.map((label) => expect.stringContaining(label))
+      );
+      for (const row of rows) expect(row.getAttribute('aria-describedby')).toBeTruthy();
+      expect(within(dialog).queryByRole('link', { name: 'View profile' }) !== null).toBe(
+        hasProfile
+      );
+      expect(within(dialog).getByText('Role changes and removals are audited.')).toBeTruthy();
+    }
+  );
+
+  it('closes the member sheet by popping the roster history entry when opened from the roster', async () => {
+    routerState.fromRoster = true;
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityAdminScreen
+          screen="member"
+          community={community}
+          member={member}
+          membershipId={member.membership_id}
+        />
+      </I18nextProvider>
+    );
+    await screen.findByRole('dialog');
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(mocks.historyBack).toHaveBeenCalledOnce());
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+
+  it('closes a deep-linked member sheet to the Members screen without leaving through history', async () => {
+    const user = userEvent.setup();
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityAdminScreen
+          screen="member"
+          community={community}
+          member={member}
+          membershipId={member.membership_id}
+        />
+      </I18nextProvider>
+    );
+    await screen.findByRole('dialog');
+    await user.keyboard('{Escape}');
+    await waitFor(() =>
+      expect(mocks.navigate).toHaveBeenCalledExactlyOnceWith({
+        to: '/community/$communityId/admin/members',
+        params: { communityId: 'community-id' },
+        replace: true
+      })
+    );
+    expect(mocks.historyBack).not.toHaveBeenCalled();
   });
 
   it('keeps member actions available across demote-promote and remove-reactivate lifecycles', async () => {

@@ -28,6 +28,7 @@ type Copy = {
     action: Record<string, string>;
     status: Record<string, string>;
     confirmAction: string;
+    sheetClose: string;
     search: string;
     searchLabel: string;
     loadMore: string;
@@ -1029,24 +1030,42 @@ async function assertLinkHitArea(link: Locator) {
   expect(area.height).toBe(48);
 }
 
-async function memberControlsGeometry(page: Page) {
-  // jQDkx: member identity card, role panel, then full-width 52px action buttons.
-  const profile = await page.getByTestId('community-member-profile').boundingBox();
-  expect(profile).not.toBeNull();
-  expect(Math.abs(profile!.x - pageInset)).toBeLessThanOrEqual(1);
-  expect(Math.abs(profile!.width - contentWidth)).toBeLessThanOrEqual(1);
-  const rolePanel = await page.getByTestId('community-member-role-panel').boundingBox();
-  expect(rolePanel).not.toBeNull();
-  expect(Math.abs(rolePanel!.x - pageInset)).toBeLessThanOrEqual(1);
-  expect(Math.abs(rolePanel!.width - contentWidth)).toBeLessThanOrEqual(1);
-  expect(rolePanel!.y).toBeGreaterThanOrEqual(profile!.y + profile!.height);
-  const actions = await page
-    .getByRole('button', { name: en.communityAdmin.action.promote })
-    .boundingBox();
-  expect(actions).not.toBeNull();
-  expect(actions!.y).toBeGreaterThanOrEqual(rolePanel!.y + rolePanel!.height);
-  expect(Math.abs(actions!.width - contentWidth)).toBeLessThanOrEqual(1);
-  expect(actions!.height).toBeGreaterThanOrEqual(controlHeight - 1);
+async function memberSheetGeometry(page: Page) {
+  // jQDkx: bottom sheet over the roster — full-width, bottom-anchored, 28px top radius, 16px inset,
+  // 20/800 name, 36px rounded glyph tiles and 56px (60px when described) rows.
+  const popup = page.getByTestId('community-member-sheet');
+  const box = await popup.boundingBox();
+  expect(box).not.toBeNull();
+  expect(Math.abs(box!.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box!.width - 390)).toBeLessThanOrEqual(1);
+  expect(Math.abs(box!.y + box!.height - 844)).toBeLessThanOrEqual(1);
+  const style = await popup.evaluate((element) => {
+    const computed = getComputedStyle(element);
+    return { radius: computed.borderTopLeftRadius, bottomRadius: computed.borderBottomLeftRadius };
+  });
+  expect(style).toEqual({ radius: '28px', bottomRadius: '0px' });
+  const title = await popup
+    .getByRole('heading')
+    .first()
+    .evaluate((element) => {
+      const computed = getComputedStyle(element);
+      return { size: computed.fontSize, weight: computed.fontWeight };
+    });
+  expect(title).toEqual({ size: '20px', weight: '800' });
+  const rows = await popup.locator('[data-sheet-row]').all();
+  expect(rows).toHaveLength(3);
+  for (const [index, row] of rows.entries()) {
+    const rowBox = await row.boundingBox();
+    expect(rowBox).not.toBeNull();
+    expect(rowBox!.x).toBeGreaterThanOrEqual(box!.x + 16);
+    expect(rowBox!.x).toBeLessThanOrEqual(box!.x + 18);
+    expect(Math.abs(rowBox!.width - 356)).toBeLessThanOrEqual(2);
+    expect(rowBox!.height).toBeGreaterThanOrEqual((index === 0 ? 56 : 60) - 1);
+    const glyph = await row.locator('[aria-hidden="true"]').first().boundingBox();
+    expect(glyph).not.toBeNull();
+    expect(Math.abs(glyph!.width - 36)).toBeLessThanOrEqual(1);
+    expect(Math.abs(glyph!.height - 36)).toBeLessThanOrEqual(1);
+  }
 }
 
 async function backLinkGeometry(page: Page) {
@@ -1256,18 +1275,56 @@ test(
       page.locator('#admin-screen-title + p'),
       page.getByTestId('community-member-card').locator('p')
     ]);
+    // Roster state (search) must survive opening and closing the sheet over it.
+    await page.locator('#admin-member-search').fill('Backup');
+    await expect(page.getByTestId('community-member-card')).toHaveCount(1);
     await page.getByRole('link', { name: 'Backup Admin' }).click();
     await expect(page).toHaveURL(new RegExp(`/admin/members/${backupRow.membership_id}$`));
-    await geometry(page);
-    await memberControlsGeometry(page);
-    // Mask only dynamic member identity/metrics and community name; card/action geometry stays probed.
-    // Pixel gate: Chromium baseline (masks: random community name, fixture-dependent dates).
-    await visualDiff(page, 'jQDkx.png', screenshotRatio, [
-      page.locator('#admin-screen-title + p'),
-      page.getByTestId('community-member-profile')
-    ]);
+    const sheet = page.getByRole('dialog', { name: 'Backup Admin' });
+    await expect(sheet).toBeVisible();
+    await memberSheetGeometry(page);
+    // The live roster stays mounted behind the sheet but is inert to assistive tech and focus.
+    await expect(page.getByTestId('community-member-card')).toBeAttached();
+    await expect(page.getByRole('link', { name: 'Backup Admin' })).toHaveCount(0);
+    // Pixel gate: Chromium baseline of the sheet (masks: member identity and metrics).
+    await page.evaluate(() => document.fonts.ready);
+    await expect(page.getByTestId('community-member-sheet')).toHaveScreenshot('jQDkx-light.png', {
+      animations: 'disabled',
+      caret: 'hide',
+      maxDiffPixelRatio: screenshotRatio,
+      mask: [page.getByTestId('community-member-sheet').locator('h2, p').first()]
+    });
+    const reference = readFileSync(
+      new URL('./references/paf-202-community-admin/jQDkx.png', import.meta.url)
+    );
+    expect(createHash('sha256').update(reference).digest('hex')).toBe(references['jQDkx.png']);
+    // History-originated close: Back semantics, roster state and focus restored to the row.
+    await page.keyboard.press('Escape');
+    await expect(page).toHaveURL(/\/admin\/members$/);
+    await expect(sheet).toHaveCount(0);
+    await expect(page.locator('#admin-member-search')).toHaveValue('Backup');
+    await expect(page.getByRole('link', { name: 'Backup Admin' })).toBeFocused();
+    await page.getByRole('link', { name: 'Backup Admin' }).click();
+    await expect(sheet).toBeVisible();
     await page.getByRole('button', { name: en.communityAdmin.action.promote }).click();
     await expect(page.getByText('Admin role granted.')).toBeVisible();
+    // Role change refreshes the sheet's role-based rows (and the live roster behind it).
+    await expect(page.getByRole('button', { name: en.communityAdmin.action.demote })).toBeVisible();
+    // Reload keeps the route-derived sheet open (SSR + hydration).
+    await page.reload();
+    await waitForHydratedPage(page);
+    await expect(sheet).toBeVisible();
+    // Deep link without a roster history entry: close falls back to Members with heading focus.
+    await page.goto(`${route}/audit`);
+    await page.goto(`${route}/members/${backupRow.membership_id}`);
+    await waitForHydratedPage(page);
+    await expect(sheet).toBeVisible();
+    await page.getByRole('button', { name: en.communityAdmin.sheetClose }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/admin\/members$/);
+    await expect(
+      page.getByRole('heading', { name: en.communityAdmin.title.members })
+    ).toBeFocused();
 
     const memberContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const memberPage = await memberContext.newPage();
@@ -1396,8 +1453,11 @@ test(
 
     await page.goto(`${route}/members/${crypto.randomUUID()}`);
     await waitForHydratedPage(page);
-    await expect(page.getByRole('heading', { name: en.communityAdmin.title.member })).toBeVisible();
-    await expect(page.getByRole('main')).toHaveCount(1);
+    // The missing member renders as an error sheet over the live roster (one page main behind it).
+    await expect(
+      page.getByRole('dialog').getByRole('heading', { name: en.communityAdmin.title.member })
+    ).toBeVisible();
+    await expect(page.locator('main')).toHaveCount(1);
 
     await page.goto(`${route}/members/${ownerRow.membership_id}`);
     await waitForHydratedPage(page);
@@ -1619,6 +1679,31 @@ test.describe('community admin 320px locale matrix', () => {
         await page.goto(path);
         await waitForHydratedPage(page);
         const localeCopy = locale === 'pt-BR' ? pt : locale === 'es' ? es : en;
+        if (destination === 'member') {
+          // The member screen is a bottom sheet: the page behind it (locale select, roster) is inert.
+          const sheet = page.getByRole('dialog', {
+            name: `Narrow applicant ${destination} ${locale}`
+          });
+          await expect(sheet).toBeVisible();
+          await expect(page.locator('html')).toHaveAttribute('lang', locale);
+          await expect(
+            sheet.getByRole('button', { name: localeCopy.communityAdmin.action.promote })
+          ).toBeVisible();
+          const popup = await page.getByTestId('community-member-sheet').boundingBox();
+          expect(popup).not.toBeNull();
+          expect(popup!.x).toBeGreaterThanOrEqual(0);
+          expect(popup!.x + popup!.width).toBeLessThanOrEqual(320);
+          for (const control of await sheet.locator('[data-sheet-row]').all()) {
+            const box = await control.boundingBox();
+            expect(box).not.toBeNull();
+            expect(box!.height).toBeGreaterThanOrEqual(44);
+            expect(box!.x + box!.width).toBeLessThanOrEqual(320);
+          }
+          expect(
+            await page.evaluate(() => document.documentElement.scrollWidth)
+          ).toBeLessThanOrEqual(320);
+          return;
+        }
         const localeControl = page.locator('#locale');
         await expect(localeControl).toBeVisible();
         await assertLocaleControlSizing(page, localeCopy, 320);
@@ -1630,7 +1715,7 @@ test.describe('community admin 320px locale matrix', () => {
               .then((cookies) => cookies.find((cookie) => cookie.name === 'locale')?.value)
           )
           .toBe(locale);
-        const titleKey = destination === 'member' ? 'member' : destination;
+        const titleKey = destination;
         const screenHeading = page.getByRole('heading', {
           name: localeCopy.communityAdmin.title[titleKey],
           exact: true
