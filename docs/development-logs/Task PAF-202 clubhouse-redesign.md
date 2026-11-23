@@ -154,3 +154,98 @@ The issue owner ran the supplied Pencil-agent prompt; all 10 previously-D1-block
 - **invite-confirmation default state** — confirmation form is the default (truthful: nothing is accepted before the one-use POST).
 - **profile-edit sticky bar 148px vs frame 88px** — documented adaptation (touch-target/safe-area sizing).
 - **D1 round full gate pending** — `pnpm complete-check` re-run pending on commit `62b4d23`.
+
+---
+
+## Round 4 — Pre-merge design-fidelity remediation (2026-11-23)
+
+### Metadata (Round 4)
+
+- Task ID: PAF-202 (round 4 addendum; original epic + D1 round above)
+- Date (UTC): 2026-11-23T17:26:53Z
+- Project: padel-friend
+- Branch: `feature/PAF-202-clubhouse-redesign`
+- Commits (9, one per unit + fix round, chronological):
+  1. `0efc998` — U1 (design-token defects F30/F31/F32 + systemic token guard F7)
+  2. `b01ea0c` — U2 (F24 Home recomposition)
+  3. `71675dd` — U3 (F25 match detail restyle + F27 route chrome)
+  4. `04330d2` — U4 (F26 wizard steps 1–2 + F8 re-anchor)
+  5. `41abefa` — U5 (F28/F5/F29/F42 statistics + meeting surfaces)
+  6. `9ba254b` — U6 (F33 admin member actions bottom sheet)
+  7. `8e9782a` — U7 (F34/F35/F36/F37/F38/F39/F40/F41/F45 batch)
+  8. `2412272` — U8 (F46 orphan baseline cleanup)
+  9. `735f14a` — fix round (F47/F48/F49/F50)
+- Related: pre-merge audit findings ledger `docs/plan/PAF-202-findings.md` (F24–F50)
+
+### Objective (Round 4)
+
+- Owner-directed pre-merge design-fidelity audit (model: Opus 5.5 via `claude-agent/opus`, user-named model override) reviewed every app screen against its frame in `docs/design/padel-friend-clubhouse.pen`; verdict: rework-required, 23 new findings F24–F46 seeded in the ledger. Remediate to frame fidelity before merge, honoring owner interview decisions, without regressing behavior contracts, i18n, a11y, or truthful-data rules (D6).
+
+### Implementation Summary (Round 4)
+
+Trigger + owner decisions (interview):
+
+- Decisions: RESTYLE F25/F26/F33; SUPPRESS F36 bottom nav; ADOPT F39 Me tiles; CONFIRM ADOPT F28/F5; execution approved.
+
+Units (one commit each):
+
+- **U1 (`0efc998`)** — F30 collapsed visibility radio (undefined `--space-22`), F31 undefined `--color-amber-ink`, F32 default fieldset borders (league + level-review styles), F7 systemic guard: `test/design-tokens.inventory.test.ts` scans every `var(--…)` in `src` vs `tokens.css` (allowlist: exact `--anchor-width` only). Red-before/green-after proven.
+- **U2 (`b01ea0c`)** — F24 Home recomposed to hKncV/AlfRD: pill switcher, 48px bell + real unread badge, light level card with true rank (`rankedMembers` denominator, never fabricated), green next-match tile, attention rows; OdU52 sheet variant recorded as manifest adaptation.
+- **U3 (`71675dd`)** — F25 match detail restyled to eYIgj family (TopBar, 132px photo, chips, 28/800 venue, stats strip, roster order, one sticky CTA per eligible state, no invented CTAs) + F27 chip-overlap fixed via `data-route-chrome` on wizard/edit/statistics + shared TopBar foundation + `e2e/route-chrome.ts`. Gap-closer: matches-results family 84/84.
+- **U4 (`04330d2`)** — F26 wizard steps 1–2 rebuilt (Base UI segmented/RadioGroup, Ranked switch, weekend date presets, vAxZh format/registration/level-range from REAL fields; false "no source" manifest claim corrected; validation routing to first-invalid-owning-step) + F8 measured re-anchor (0.19 was a stale comment). Gap-closer: wizard-adjacent 107/107.
+- **U5 (`41abefa`)** — F28/F5 statistics frame hierarchy ADOPT (o9iaC1), F29 player tiles + W/L squares (real draw semantics), F42 meeting rows as cards (no h-scroll table); D6-honest (competitive share validated by server invariant; unavailable on zero).
+- **U6 (`9ba254b`)** — F33 admin member actions as route-driven Base UI bottom sheet over live list (layout-route background, `shouldReload: false`, per-role rows from existing ops only, history vs deep-link close semantics).
+- **U7 (`8e9782a`)** — F34/F40 truthful counts (no page-size-as-total, admin-gated pending read), F35 leave-dialog treatment, F36 bottom-nav suppressed on 7 nested routes, F37 border token, F38 TopBar on 15+ hosts, F39 Me tiles (one `getPlayerStatistics` read), F41 fused card meta + ENn8Q budget corrected (mask artifact, signed off), F45 discovery back + Finish; U6 residual proven (52-row load-more + scroll survive sheet open; no background roster re-read).
+- **U8 (`2412272`)** — F46: 9 orphan baselines verified + deleted (audit's count of 4 was low), owning specs 53/53 green.
+
+Delta review (3 reviewers parallel, range `60a649b..2412272`):
+
+- Architecture + code both found F47 (reload retains roster-origin history flag → `back()` instead of Members replace-nav); UX found F48 (match-detail hero had no rendered-vs-Pencil gates — "screenshots: none") + F49 (missing 320px pt-BR "Compartilhar" probe).
+
+Fix round (`735f14a`):
+
+- F47 module-scoped origin flag (red by revert-proving, both paths E2E-covered).
+- F48 gated fo8Zn regions (topBar 0.0314/0.045, stats 0.0833/0.10, actionBar 0.0919/0.11, measured budgets).
+- F49 320px pt-BR probe (bounds/non-overlap/≥44px/no-overflow).
+- F50 NEW product defect caught by the F48 gate: MatchCompetitionBadge `<p>` default margins inflated hero chips row (~51px vs 24px) AND MatchCard badge rows (~32px) — root-fixed via shared `s.chips` margin reset, ENn8Q re-baselined scoped, heroChip/heroTitle flipped to gated (y=0 / −1.06px).
+- Stats-strip 65.3-vs-76px documented as token-based density adaptation (owner-informable).
+
+### Files Changed (Round 4)
+
+- Findings ledger: `docs/plan/PAF-202-findings.md` (F24–F46 seeded by audit; F47–F50 added via delta review/fix round; ledger state at log time: all fixed/closed except F43/F44 optional-observed + F10/F21 legacy observations).
+- Test infrastructure: `test/design-tokens.inventory.test.ts` (U1 systemic `var(--…)` guard); `e2e/route-chrome.ts` (U3 shared route-chrome helper); F48 gated fo8Zn regions + measured budgets; F49 320px pt-BR probe spec; F46 nine orphan baselines deleted after verification.
+- Visual manifests: ENn8Q budget corrected (F41 mask artifact, signed off) then re-baselined scoped (F50); OdU52 sheet variant recorded as manifest adaptation (U2); false "no source" claim corrected (U4).
+- Surfaces per unit (enumerated in the 9 commits): home (U2); match detail + shared TopBar foundation + wizard/edit/statistics route chrome (U3); create-wizard steps 1–2 (U4); statistics hierarchy + player tiles + meeting rows (U5); admin member-actions route-driven bottom sheet (U6); counts/leave-dialog/border token/TopBar hosts/Me tiles/discovery back+Finish (U7); fix round F47–F50 changes.
+
+### Key Decisions (Round 4)
+
+- Owner adjudications applied: RESTYLE F25/F26/F33; SUPPRESS F36 (bottom nav suppressed on 7 nested routes); ADOPT F39 (Me tiles, one `getPlayerStatistics` read); CONFIRM ADOPT F28/F5 (statistics frame hierarchy o9iaC1).
+- D6-honest statistics: competitive share validated by server invariant; rendered as unavailable on zero — never fabricated.
+- Truthful data throughout: Home true rank uses `rankedMembers` denominator (never fabricated); wizard vAxZh sections built from REAL fields with the false "no source" manifest claim corrected; F34/F40 counts never use page-size-as-total (admin-gated pending read).
+- F47 root cause: `history.state` survives reload — SPA origin/mode flags must live in module memory when close behavior must distinguish fresh entry vs reloaded entry.
+- F48 closed the match-detail hero gate gap with measured budgets; the new gate immediately caught F50, validating the rendered-vs-Pencil gate approach.
+- F50 root-fixed (shared `s.chips` margin reset on reused styled `<p>`), not masked; ENn8Q re-baselined scoped; heroChip/heroTitle flipped to gated (y=0 / −1.06px).
+- Stats-strip 65.3-vs-76px documented as token-based density adaptation (owner-informable), not treated as a defect.
+- F46 deletions only after verification: 9 orphan baselines (audit's count of 4 was low), owning specs re-run green.
+
+### Validation Performed (Round 4)
+
+- U1 token inventory guard proven red-before/green-after.
+- Gap-closer lanes: matches-results family 84/84 (U3); wizard-adjacent 107/107 (U4); U8 owning specs 53/53 after baseline deletion.
+- U6 residual proof: 52-row load-more + scroll survive sheet open; no background roster re-read.
+- F47 red by revert-proving; both paths E2E-covered. F49 probe asserts bounds/non-overlap/≥44px/no-overflow at 320px pt-BR.
+- Delta review: 3 parallel reviewers (architecture / code / UX) over `60a649b..2412272`.
+- All git hooks green per commit (9 commits).
+- Environment note (not a regression): scoped `vitest related` pulled DB-touching integration files that failed while the test stack was mid-restart; verified 5/5 with stack up.
+- Pending at log time: final `pnpm complete-check` on the push state.
+
+### Risks and Follow-ups (Round 4)
+
+- Final gate pending: branch ahead 9 commits (`0efc998`…`735f14a`); `pnpm complete-check` on the push state still to run.
+- Open ledger items carried: F43/F44 (optional, observed); F10/F21 (legacy observations).
+- Learnings (standing guidance):
+  - `history.state` survives reload — SPA origin/mode flags must live in module memory when close behavior must distinguish fresh entry vs reloaded entry.
+  - Browser-default margins on reused styled `<p>` elements silently inflate layout rows — the token guard catches undefined vars but not default-margin bugs; frame-relative pixel gates do.
+  - Scoped `vitest related` can pull DB-touching integration files that fail when the test stack is mid-restart — environment, not regression.
+  - Serena MCP availability fluctuated across sessions (some sessions: output uncapturable or `execute` missing) — native fallback used with disclosure; file-mutation deviations disclosed per round.
+- Stats-strip density adaptation (65.3 vs 76px) — inform owner.
