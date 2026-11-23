@@ -152,7 +152,13 @@ export const matchListStyles = stylex.create({
       outlineOffset: 'var(--focus-offset)'
     }
   },
-  chips: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-6)', alignItems: 'center' },
+  chips: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 'var(--space-6)',
+    alignItems: 'center',
+    margin: 0
+  },
   // Lime is a fixed-light fill in both themes (frames ENn8Q, uePpj), so its label keeps the fixed
   // dark primitive ink rather than the theme-swapped text role.
   accentChip: { backgroundColor: 'var(--color-lime)', color: 'var(--palette-text)' },

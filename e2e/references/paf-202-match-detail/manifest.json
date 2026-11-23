@@ -76,6 +76,107 @@
       "sha256": "48b190fad35e96534207ca8c5f66b3e7e1fcf7efd7e2072e3b313fa2973ede79"
     }
   },
+  "frameRegions": {
+    "fo8Zn": {
+      "topBar": {
+        "status": "gated",
+        "reference": {
+          "x": 0,
+          "y": 44,
+          "width": 390,
+          "height": 56
+        },
+        "offsetY": 44,
+        "budget": 0.045,
+        "classification": "Match top bar (48px back, centered 17/700 Match title, Share 15/700 green on the end) against the fo8Zn bar under the 44px status bar. Text and icons are identical; the residual is font raster only. Observed residual 0.0314 on the full 390x56 bar; 0.045 margin. All four geometry axes gated exactly (measured delta 0)."
+      },
+      "heroPhoto": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 104,
+          "width": 350,
+          "height": 132
+        },
+        "offsetY": 44,
+        "geometry": ["x", "y", "width", "height"],
+        "pixels": "none",
+        "pixelsReason": "The fixture photo is a 1x1 stub PNG stretched to the 350x132 frame, while the frame draws a labelled placeholder tile, so pixels carry no design signal; the rect itself is gated.",
+        "classification": "132px hero photo rect: x, y, width and height gated exactly (measured delta 0). Pixels intentionally not compared (real-data difference: fixture stub photo vs the frame placeholder)."
+      },
+      "heroChip": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 250,
+          "width": 110,
+          "height": 24
+        },
+        "offsetY": 44,
+        "geometry": ["x", "y"],
+        "budget": 0.245,
+        "classification": "First chip (Competitive) vs the frame chip. F50 fixed: MatchCompetitionBadge rendered its Ranked/Unranked chip inside a <p> that kept the UA 1em block margins (shared s.chips had no margin reset), so the nested chips row grew to about 51px (frame 24px) and the first chip sat 14px low (raw residual 0.2269 at y +14, heroTitle y +26.94). s.chips now sets margin 0. Gated: x and y exact (measured delta 0). Residual 0.2269 on the 110x24 crop, budget 0.245: the remainder is the real-data chip difference, not layout (no leading dot glyph so width -16.14, height -1.06 from the app badge line box, font raster); width and height are not gated."
+      },
+      "heroTitle": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 288,
+          "width": 350,
+          "height": 60
+        },
+        "offsetY": 44,
+        "geometry": ["x", "y", "width"],
+        "geometryTolerance": 1.5,
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 350,
+          "height": 60
+        },
+        "budget": 0.31,
+        "classification": "28/800 venue title + date line block. Real-data adaptation: the frame shows a match name and an end time; the app renders the venue and a localized start date (masked: 38% of the crop). F50 fixed: y was +26.94 because the inflated chips row pushed the body down; it is now -1.06 (22.94px app chip row vs the 24px frame chip), gated at 1.5px tolerance together with x and width (measured 0). Height 47.38 vs 60 is not gated: the frame block draws a match name plus a time line, the app renders venue plus date. Residual 0.2898 on the 350x60 crop (venue text vs frame sample text under the date mask), budget 0.31. Title typography/size stays asserted structurally."
+      },
+      "stats": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 444,
+          "width": 350,
+          "height": 76
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 350,
+          "height": 64
+        },
+        "budget": 0.1,
+        "classification": "Playing / level / price strip, top 64px (white surface, 16px radius, three centered columns). Real-data adaptation: fixture counts and price (EUR 12) differ from the frame sample (6/8, EUR 8.50), and the level reads the fixture range. Observed residual 0.0833 on the 350x64 crop; 0.10 margin. x/width gated exactly. Documented divergences, not gated: y -7.69 because the frame venue card is not drawn (recorded deviation F25), and live height 65.3 vs frame 76 (-10.7). F50 adjudication: not a default-style bug. The strip is authored on tokens (paddingBlock --space-12, value 18/800 per U3 spec, 13px label, gap --space-2); the frame measures about 16px block padding plus a 1px hairline stroke around the same content. Left as a deliberate density adaptation (no frame stroke or 16px padding is drawn), pending an owner decision; not gated on height."
+      },
+      "actionBar": {
+        "status": "gated",
+        "reference": {
+          "x": 0,
+          "y": 730,
+          "width": 390,
+          "height": 142
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 390,
+          "height": 110
+        },
+        "budget": 0.11,
+        "classification": "Sticky action bar top 110px (hairline edge, capacity pill, 52px Join match button) for the direct-join open state. Real-data adaptation: capacity copy wording and the join CTA text come from the app copy. Observed residual 0.0919 on the 390x110 crop; 0.11 margin. x/width gated exactly (full-bleed 390). y +19.75 and height -3.75 are not gated: the live capture is 390x844 (bar sits on the viewport bottom) while the frame is 872 tall under a 44px status bar; bar position at the viewport bottom is asserted structurally."
+      }
+    }
+  },
   "decisions": {
     "D3": "JLqMT shows anonymous 'public guest' access. Not approved: visuals apply to AUTHORIZED states only; /matches/$eventId stays under _protected (no anonymous route, no onboarding bypass, no auth/RLS change).",
     "D6": "Hero metrics render real event data: playing/maximum, level range or 'Any', price when present, reserve count. Group average levels (frames) have no source for non-roster viewers and are not rendered.",
@@ -89,6 +190,6 @@
     ]
   },
   "toleranceEvidence": {
-    "screenshots": "none. Detail screens are structural-probe gated (top bar geometry, hero order, 14px rhythm, gutter, sticky action bar, token fills, hit targets); fixture venues, dates, photo and roster names differ from the frame samples, so no per-screen pixel budget is claimed and none is widened to mask a defect."
+    "screenshots": "Frame-relative regions (frameRegions.fo8Zn, direct-join open state at 390x844, light/en) gate what pixels can prove: topBar (residual 0.0314, budget 0.045), heroChip (0.2269, budget 0.245), heroTitle (0.2898, budget 0.31), stats strip top 64px (0.0833, budget 0.10) and the sticky actionBar top 110px (0.0919, budget 0.11). heroPhoto geometry is gated exactly with pixels 'none' (fixture stub photo) and stays a documented finding. F50: the competition badge <p> margin (+14px chip, +26.94px title) is fixed by margin 0 on the shared chips style; hero chip and title y axes are gated. Real-data differences (venue name, localized date, fixture counts/price, missing chip dot) stay inside the measured budgets; Structural probes (top bar geometry, hero order, 14px rhythm, gutter, sticky bar, token fills, hit targets) stay authoritative; no budget is widened to mask a defect. eYIgj's request state has the same hero/bar composition and is covered by the same structural probes. 320px pt-BR top bar and hero is asserted by the narrow translated probe in matches-registration-visual.spec.ts."
   }
 }

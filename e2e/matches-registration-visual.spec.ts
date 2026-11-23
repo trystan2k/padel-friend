@@ -17,6 +17,7 @@ import {
   runCleanupInOrder,
   runMatchFixtureCleanup
 } from './match-fixture-cleanup';
+import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
 
 // Pixel baselines superseded by the PAF-6 frame-driven redesign; re-baselining requires product approval.
 // PAF-5.6 structural gate (PAF-83). Companion to e2e/matches-registration.spec.ts — the
@@ -68,6 +69,8 @@ type Copy = {
       participants: string;
       accepted: string;
       registrationClosed: string;
+      share: string;
+      hero: { shareHeader: string };
     };
     counts: Record<string, string>;
   };
@@ -1584,6 +1587,15 @@ async function ensureNotificationFixtures(): Promise<void> {
 // Screens
 // ---------------------------------------------------------------------------
 
+/** Pencil-region layer (manifest.frameRegions.fo8Zn): measured frame-relative gates for the match
+ * detail top bar, hero and sticky action bar. Structural probes elsewhere stay authoritative. */
+const detailReferences: {
+  frames: Record<string, { sha256: string }>;
+  frameRegions: Record<string, Record<string, FrameRegionRecord>>;
+} = JSON.parse(
+  readFileSync(new URL('./references/paf-202-match-detail/manifest.json', import.meta.url), 'utf8')
+);
+
 test('PAF-202 match detail references are hash-pinned and cover all twelve frames', () => {
   const manifest: unknown = JSON.parse(
     readFileSync(
@@ -1733,6 +1745,45 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await assertGutterAxis(page, 'fo8Zn detail 390x872');
     await assertNoHorizontalOverflow(page, 'fo8Zn detail 390x872');
     await assertPrimaryHitTargets(page, 'fo8Zn detail 390x872');
+  });
+
+  test('Match detail — direct join top bar, hero and action bar are gated against fo8Zn regions', async ({
+    browser
+  }) => {
+    test.setTimeout(480_000);
+    await ensureVisualFixtures();
+    // 390x844: the frame regions compare in the same 844px capture the other Clubhouse lanes use.
+    const context = await newContext(browser, { viewport: { width: 390, height: 844 } });
+    family.contexts.push(context);
+    const page = await context.newPage();
+    await signIn(page, family.joinViewer!);
+    await page.goto(`/matches/${family.joinEventId}`);
+    await ready(page);
+    await expect(page.locator('[data-match-action-bar]')).toBeVisible();
+
+    const source = readFileSync(
+      new URL('./references/paf-202-match-detail/fo8Zn.png', import.meta.url)
+    );
+    expect(createHash('sha256').update(source).digest('hex'), 'fo8Zn export digest').toBe(
+      detailReferences.frames['fo8Zn']!.sha256
+    );
+    const hero = page.locator('section[aria-labelledby="match-overview-heading"]');
+    await assertFrameRegions({
+      page,
+      frame: 'fo8Zn',
+      reference: source,
+      regions: detailReferences.frameRegions['fo8Zn']!,
+      locators: {
+        topBar: page.locator('main > header'),
+        heroPhoto: hero.locator('img'),
+        heroChip: hero.locator('> div').first().locator('> *').first(),
+        heroTitle: hero.locator('> div').nth(1),
+        stats: hero.locator('xpath=following-sibling::div[1]'),
+        actionBar: page.locator('[data-match-action-bar]')
+      },
+      // The fixture date follows the run date; the frame sample date is event copy.
+      mask: [hero.locator('h2 + p')]
+    });
   });
 
   test('Match detail — registration full state replays the approved SYMLa frame', async ({
@@ -2369,6 +2420,130 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await assertNoHorizontalOverflow(cutoffPage, 'Z0gRd notifications');
     await assertPrimaryHitTargets(cutoffPage, 'Z0gRd notifications');
     await cutoffContext.close();
+  });
+
+  test('Match detail — 320px pt-BR top bar and hero stay readable without collisions', async ({
+    browser
+  }) => {
+    test.setTimeout(480_000);
+    await ensureVisualFixtures();
+    const context = await newContext(browser, {
+      viewport: { width: 320, height: 844 },
+      locale: 'pt-BR'
+    });
+    family.contexts.push(context);
+    const page = await context.newPage();
+    await signIn(page, family.joinViewer!, ptBr);
+    await page.goto(`/matches/${family.joinEventId}`);
+    await ready(page);
+
+    const header = page.locator('main > header');
+    const back = header.getByRole('link', { name: ptBr.matches.back, exact: true });
+    const title = header.getByRole('heading', { level: 1, name: ptBr.matches.detail.barTitle });
+    const share = header.getByRole('button', { name: ptBr.matches.detail.share, exact: true });
+    // The long visible label ("Compartilhar") is the End slot content the 72px minimum must tolerate.
+    await expect(share).toHaveText(ptBr.matches.detail.hero.shareHeader);
+    await expect(title).toBeVisible();
+
+    const measure = (locator: Locator) =>
+      locator.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        return {
+          left: box.left,
+          right: box.right,
+          top: box.top,
+          bottom: box.bottom,
+          width: box.width,
+          height: box.height,
+          clipped: node.scrollWidth > node.clientWidth + 1
+        };
+      });
+    const [backBox, titleBox, shareBox, headerBox] = await Promise.all([
+      measure(back),
+      measure(title),
+      measure(share),
+      measure(header)
+    ]);
+    expect(backBox.right, '320 pt-BR: back must not touch the title').toBeLessThanOrEqual(
+      titleBox.left
+    );
+    expect(
+      titleBox.right,
+      '320 pt-BR: Compartilhar must not collide with the title'
+    ).toBeLessThanOrEqual(shareBox.left);
+    expect(shareBox.left, '320 pt-BR: Share stays right of the back target').toBeGreaterThanOrEqual(
+      backBox.right
+    );
+    expect(shareBox.right, '320 pt-BR: Share stays inside the viewport').toBeLessThanOrEqual(320);
+    expect(shareBox.left, '320 pt-BR: Share stays inside the bar').toBeGreaterThanOrEqual(
+      headerBox.left
+    );
+    expect(shareBox.clipped, '320 pt-BR: Compartilhar is wrapped or fits, never clipped').toBe(
+      false
+    );
+    expect(titleBox.clipped, '320 pt-BR: title is never clipped').toBe(false);
+    expect(
+      Math.min(backBox.height, shareBox.height),
+      '320 pt-BR: back and Share keep ≥44px height'
+    ).toBeGreaterThanOrEqual(44);
+    expect(
+      Math.min(backBox.width, shareBox.width),
+      '320 pt-BR: back and Share keep ≥44px width'
+    ).toBeGreaterThanOrEqual(44);
+    for (const box of [backBox, titleBox, shareBox])
+      expect(
+        box.bottom <= headerBox.bottom + 1 && box.top >= headerBox.top - 1,
+        '320 pt-BR: top bar items stay inside the bar row'
+      ).toBe(true);
+
+    // Hero stats strip: three columns, translated labels fully readable, no column collision.
+    const hero = page.locator('section[aria-labelledby="match-overview-heading"]');
+    await expect(hero.getByRole('heading', { level: 2, name: VENUES.join })).toBeVisible();
+    const strip = hero.locator('xpath=following-sibling::div[1]');
+    const metrics = await strip.evaluate((node) => {
+      const stripBox = node.getBoundingClientRect();
+      return {
+        strip: { left: stripBox.left, right: stripBox.right },
+        columns: Array.from(node.children, (column) => {
+          const box = column.getBoundingClientRect();
+          return {
+            left: box.left,
+            right: box.right,
+            clipped: Array.from(column.querySelectorAll('p')).some(
+              (text) => text.scrollWidth > text.clientWidth + 1
+            ),
+            smallestFont: Math.min(
+              ...Array.from(column.querySelectorAll('p'), (text) =>
+                Number.parseFloat(getComputedStyle(text).fontSize)
+              )
+            )
+          };
+        })
+      };
+    });
+    expect(metrics.columns, '320 pt-BR: playing, level and price columns').toHaveLength(3);
+    for (const [index, column] of metrics.columns.entries()) {
+      expect(column.clipped, `320 pt-BR: stats column ${index} text is not clipped`).toBe(false);
+      expect(
+        column.smallestFont,
+        `320 pt-BR: stats column ${index} stays readable`
+      ).toBeGreaterThanOrEqual(13);
+      expect(
+        column.left,
+        `320 pt-BR: stats column ${index} inside the strip`
+      ).toBeGreaterThanOrEqual(metrics.strip.left - 1);
+      expect(column.right, `320 pt-BR: stats column ${index} inside the strip`).toBeLessThanOrEqual(
+        metrics.strip.right + 1
+      );
+      if (index > 0)
+        expect(
+          column.left,
+          `320 pt-BR: stats column ${index} does not overlap the previous`
+        ).toBeGreaterThanOrEqual(metrics.columns[index - 1]!.right - 1);
+    }
+
+    await assertNoHorizontalOverflow(page, '320 pt-BR match detail');
+    await assertPrimaryHitTargets(page, '320 pt-BR match detail');
   });
 
   test('Variant invariants — 320 / desktop / dark / pt-BR / es (no approved frames: invariants only)', async ({

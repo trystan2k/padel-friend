@@ -138,3 +138,59 @@ test('member sheet keeps the loaded roster, scroll position and focus, with no r
   console.info(`server calls while closing the member sheet: ${JSON.stringify(closeCalls)}`);
   expect(closeCalls.filter((call) => /%22(query|offset|limit)%22/.test(call))).toEqual([]);
 });
+
+// F47: the close path depends on in-memory roster origin, never on history.state (which survives
+// a reload). Roster-open closes back to the roster row; a reloaded sheet closes through the
+// explicit Members route and lands on the Members heading.
+test('member sheet close uses the roster path, and the Members fallback after a reload', async ({
+  page
+}) => {
+  test.setTimeout(120_000);
+  const owner = await createActor('Origin Owner');
+  const created = await owner.client.rpc('create_community', {
+    p_name: `Origin ${crypto.randomUUID().slice(0, 6)}`,
+    p_visibility: 'public',
+    p_join_policy: 'instant'
+  });
+  if (created.error || typeof created.data !== 'string')
+    throw created.error ?? new Error('Community creation failed');
+  const communityId = created.data;
+  const member = await createActor('Origin Member');
+  const inserted = await trustedClient()
+    .from('community_members')
+    .insert({ community_id: communityId, user_id: member.id, role: 'member', status: 'active' });
+  if (inserted.error) throw inserted.error;
+
+  await signIn(page, owner);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const membersUrl = new RegExp(`/community/${communityId}/admin/members$`);
+  await page.goto(`/community/${communityId}/admin/members`);
+  await waitForHydratedPage(page);
+
+  const link = page.locator('[data-member-link]').first();
+  const membershipId = await link.getAttribute('data-member-link');
+  const sheet = page.getByTestId('community-member-sheet');
+  const activeMemberLink = () =>
+    page.evaluate(() => document.activeElement?.getAttribute('data-member-link'));
+  const activeId = () => page.evaluate(() => document.activeElement?.id);
+
+  // Roster origin: close returns to the roster with the row focused.
+  await link.click();
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(page).toHaveURL(membersUrl);
+  await expect.poll(activeMemberLink).toBe(membershipId);
+
+  // Reload with the sheet open: the history entry still carries its state, the document does not.
+  await link.click();
+  await expect(sheet).toBeVisible();
+  await page.reload();
+  await waitForHydratedPage(page);
+  await expect(sheet).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(sheet).toHaveCount(0);
+  await expect(page).toHaveURL(membersUrl);
+  await expect.poll(activeId).toBe('admin-screen-title');
+  expect(await activeMemberLink()).toBeNull();
+});

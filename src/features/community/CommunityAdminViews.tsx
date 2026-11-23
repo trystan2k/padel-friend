@@ -57,12 +57,10 @@ import { styles } from './community-admin.styles';
 import { VenuePhotoUpload } from './VenuePhotoUpload';
 import { InviteeSearch } from './InviteeSearch';
 
-declare module '@tanstack/react-router' {
-  interface HistoryState {
-    // Set when the member sheet was opened from the mounted roster (history entry behind it).
-    adminMembersOrigin?: true;
-  }
-}
+// Set when the member sheet is opened from the mounted roster (history entry behind it). Kept in
+// memory, not in history.state: history.state survives a document reload, which must fall back
+// to the explicit Members route instead of popping an arbitrary entry.
+let rosterOriginOpen = false;
 
 type ScreenName = CommunityAdminScreenProps['screen'];
 type ViewProps<Screen extends ScreenName> = Extract<CommunityAdminScreenProps, { screen: Screen }>;
@@ -264,7 +262,16 @@ function MembersView({ community, members }: ViewProps<'members'>) {
                   <Link
                     to="/community/$communityId/admin/members/$membershipId"
                     params={{ communityId, membershipId: person.membership_id }}
-                    state={{ adminMembersOrigin: true }}
+                    onClick={(event) => {
+                      if (
+                        event.button === 0 &&
+                        !event.metaKey &&
+                        !event.ctrlKey &&
+                        !event.shiftKey &&
+                        !event.altKey
+                      )
+                        rosterOriginOpen = true;
+                    }}
                     data-member-link={person.membership_id}
                     {...stylex.props(styles.memberLink)}
                   >
@@ -634,7 +641,7 @@ function MemberSheetFrame({
   const params = useParams({ strict: false });
   const communityId = params.communityId ?? '';
   const closing = useRef(false);
-  const fromRoster = useRef(Boolean(router.state.location.state.adminMembersOrigin));
+  const fromRoster = useRef(rosterOriginOpen);
   const originId = useRef(membershipId);
   useEffect(() => {
     originId.current = membershipId;
@@ -646,7 +653,7 @@ function MemberSheetFrame({
   function closeSheet() {
     if (closing.current) return;
     closing.current = true;
-    if (router.state.location.state.adminMembersOrigin) {
+    if (fromRoster.current) {
       router.history.back();
       return;
     }
@@ -660,6 +667,7 @@ function MemberSheetFrame({
   // heading (as does a roster origin whose row is no longer on screen).
   useEffect(
     () => () => {
+      rosterOriginOpen = false;
       // The modal layer releases its inert/focus handling after this cleanup; retry for a few
       // frames until the target accepts focus.
       let attempts = 0;
@@ -897,10 +905,7 @@ function MemberView(props: ViewProps<'member'>) {
         await router.navigate({
           to: '/community/$communityId/admin/members/$membershipId',
           params: { communityId: community.id, membershipId: result.membership_id },
-          replace: true,
-          state: router.state.location.state.adminMembersOrigin
-            ? { adminMembersOrigin: true }
-            : undefined
+          replace: true
         });
       }
     } catch {
