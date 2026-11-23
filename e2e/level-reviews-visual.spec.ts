@@ -363,6 +363,27 @@ test('reference provenance pins the Clubhouse design source and the two exported
   }
 });
 
+for (const theme of ['light', 'dark'] as const) {
+  test(`request form fieldsets render no UA border (${theme})`, async () => {
+    const page = await f.page(requester, 'en', WIDTH, theme, HEIGHT);
+    await open(page, '/level-reviews/new');
+    const borders = await page.locator('main fieldset').evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const style = getComputedStyle(node);
+        return {
+          legend: node.querySelector('legend')?.textContent ?? '',
+          width: style.borderTopWidth,
+          style: style.borderTopStyle
+        };
+      })
+    );
+    expect(borders.length).toBeGreaterThan(0);
+    for (const border of borders) {
+      expect(border, border.legend).toMatchObject({ width: '0px', style: 'none' });
+    }
+  });
+}
+
 test('request form keeps the qWosG order, geometry and reviewed raster budgets (mobile light)', async ({
   browserName
 }, info) => {

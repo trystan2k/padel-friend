@@ -26,6 +26,7 @@ type LocaleCopy = {
     createEntry: string;
     nameLabel: string;
     visibilityLegend: string;
+    private: string;
     cityLabel: string;
     createSubmit: string;
     adminNote: string;
@@ -445,6 +446,85 @@ test(
     await visualDiff(page, 'JO4DC', testInfo);
   }
 );
+
+async function tokenColor(page: Page, name: string) {
+  return page.evaluate((token) => {
+    const probe = document.createElement('span');
+    probe.style.color = `var(${token})`;
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  }, name);
+}
+
+for (const theme of ['light', 'dark'] as const) {
+  test(`JO4DC visibility radios keep a 22px ring and selected card border (${theme})`, async ({
+    page
+  }) => {
+    await player(page);
+    await page
+      .context()
+      .addCookies([{ name: 'theme', value: theme, url: 'http://127.0.0.1:4173' }]);
+    await page.goto('/onboarding/community?view=create');
+    await waitForHydratedPage(page);
+    await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+    const group = page.getByRole('radiogroup', { name: en.communityOnboarding.visibilityLegend });
+    const radios = group.getByRole('radio');
+    const read = (radio: Locator) =>
+      radio.evaluate((node) => {
+        const style = getComputedStyle(node);
+        const label = node.closest('label')!;
+        const labelStyle = getComputedStyle(label);
+        const box = node.getBoundingClientRect();
+        return {
+          width: box.width,
+          height: box.height,
+          ringWidth: style.borderTopWidth,
+          ringColor: style.borderTopColor,
+          labelWidth: labelStyle.borderTopWidth,
+          labelColor: labelStyle.borderTopColor
+        };
+      });
+    const green = await tokenColor(page, '--color-green');
+    const muted = await tokenColor(page, '--color-muted');
+    const line = await tokenColor(page, '--color-line');
+
+    const checked = await read(radios.nth(0));
+    const unchecked = await read(radios.nth(1));
+    expect(checked).toMatchObject({ width: 22, height: 22, ringColor: green, labelColor: green });
+    expect(Number.parseFloat(checked.ringWidth)).toBeGreaterThan(2);
+    expect(unchecked).toMatchObject({
+      width: 22,
+      height: 22,
+      ringWidth: '2px',
+      ringColor: muted,
+      labelWidth: '1px',
+      labelColor: line
+    });
+
+    await group.getByText(en.communityOnboarding.private, { exact: true }).click();
+    await expect(radios.nth(1)).toBeChecked();
+    const swappedChecked = await read(radios.nth(1));
+    const swappedUnchecked = await read(radios.nth(0));
+    expect(swappedChecked).toMatchObject({
+      width: 22,
+      height: 22,
+      ringColor: green,
+      labelColor: green
+    });
+    expect(Number.parseFloat(swappedChecked.ringWidth)).toBeGreaterThan(2);
+    expect(swappedUnchecked).toMatchObject({
+      ringWidth: '2px',
+      ringColor: muted,
+      labelColor: line
+    });
+
+    await radios.nth(1).focus();
+    await page.keyboard.press('ArrowUp');
+    await expect(radios.nth(0)).toBeChecked();
+  });
+}
 
 test('wide dark creation keeps its controls centered and keyboard accessible', async ({ page }) => {
   await player(page);

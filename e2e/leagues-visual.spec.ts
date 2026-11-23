@@ -330,6 +330,39 @@ test('ik5JC League creation: Pencil frame budget and structure', async ({
   await assertTouchTargets(page.locator('main'), 'ik5JC');
 });
 
+// ik5JC lays the end-mode group directly on the page: the UA fieldset border must not render.
+for (const theme of ['light', 'dark'] as const) {
+  test(`ik5JC League creation fieldsets render no border (${theme})`, async () => {
+    const page = await f.page(member, 'en', 390, theme, 844);
+    await openCreateLeague(page);
+    const borders = await page.locator('main fieldset').evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const style = getComputedStyle(node);
+        return {
+          legend: node.querySelector('legend')?.textContent ?? '',
+          widths: [
+            style.borderTopWidth,
+            style.borderRightWidth,
+            style.borderBottomWidth,
+            style.borderLeftWidth
+          ],
+          styles: [
+            style.borderTopStyle,
+            style.borderRightStyle,
+            style.borderBottomStyle,
+            style.borderLeftStyle
+          ]
+        };
+      })
+    );
+    expect(borders.length).toBeGreaterThan(0);
+    for (const border of borders) {
+      expect(border.widths, border.legend).toEqual(['0px', '0px', '0px', '0px']);
+      expect(border.styles, border.legend).toEqual(['none', 'none', 'none', 'none']);
+    }
+  });
+}
+
 /** Create-match details step with a Competitive draft and the League selector ready. */
 async function openRankedSelector(page: Page, locale: Locale) {
   const m = copies[locale].matchCreate;

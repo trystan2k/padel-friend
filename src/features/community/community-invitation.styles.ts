@@ -32,7 +32,7 @@ export const invitationStyles = stylex.create({
     backgroundColor: 'var(--color-green-soft)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  pendingGlyph: { color: 'var(--color-amber-ink)', backgroundColor: 'var(--color-amber-soft)' },
+  pendingGlyph: { color: 'var(--color-amber)', backgroundColor: 'var(--color-amber-soft)' },
   body: {
     margin: 0,
     color: 'var(--color-muted)',

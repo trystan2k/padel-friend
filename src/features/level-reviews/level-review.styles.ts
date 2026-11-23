@@ -91,7 +91,8 @@ export const levelReview = stylex.create({
   fieldset: {
     margin: 0,
     padding: 0,
-    border: 0,
+    borderWidth: 0,
+    borderStyle: 'none',
     minWidth: 0,
     display: 'flex',
     flexDirection: 'column',

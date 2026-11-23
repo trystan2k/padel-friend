@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 // Token inventory contract for the Clubhouse language (frame c1TsP): sources and the generated
@@ -66,6 +66,95 @@ describe('Clubhouse colour roles', () => {
       const references = used.split(`{palette.${name}}`).length - 1;
       expect(references, `palette.${name}`).toBeGreaterThanOrEqual(1);
     }
+  });
+});
+
+// Every var(--token) reference in src must name a generated token: an undefined variable makes
+// the declaration invalid at computed-value time and silently drops the style (F30 --space-22,
+// F31 --color-amber-ink). Only variables injected at runtime by a vendor are allowlisted, by exact name.
+const VENDOR_VARIABLES: Record<string, string> = {
+  // Base UI sets the trigger width on the popup (Positioner) at runtime.
+  '--anchor-width': 'Base UI popup positioner'
+};
+const definedTokens = new Set(Object.keys(declarations(css)));
+
+function stripComments(source: string) {
+  // Keep newlines so reported line numbers stay accurate.
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
+    .replace(/(^|[^:\w'"`])\/\/.*$/gm, '$1');
+}
+
+function findUndefinedTokens(
+  source: string,
+  file: string,
+  defined: ReadonlySet<string>,
+  allowed: Record<string, string>
+) {
+  const found: string[] = [];
+  stripComments(source)
+    .split('\n')
+    .forEach((line, index) => {
+      for (const match of line.matchAll(/var\(\s*(--[\w-]+)/g)) {
+        const name = match[1]!;
+        if (!defined.has(name) && !(name in allowed)) {
+          found.push(`${file}:${index + 1} ${name}`);
+        }
+      }
+    });
+  return found;
+}
+
+function sourceFiles(dir: URL): URL[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const child = new URL(entry.name + (entry.isDirectory() ? '/' : ''), dir);
+    if (entry.isDirectory()) return sourceFiles(child);
+    return /\.(tsx?|css)$/.test(entry.name) ? [child] : [];
+  });
+}
+
+describe('CSS variable references', () => {
+  it('only reference tokens defined in design-tokens/dist/tokens.css', () => {
+    const root = new URL('../src/', import.meta.url);
+    const missing = sourceFiles(root).flatMap((file) =>
+      findUndefinedTokens(
+        readFileSync(file, 'utf8'),
+        `src/${file.pathname.slice(root.pathname.length)}`,
+        definedTokens,
+        VENDOR_VARIABLES
+      )
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it('reports the missing name with file and line, including nested fallbacks', () => {
+    const source = [
+      "const a = { color: 'var(--color-text)' };",
+      "const b = { width: 'var(--space-22)' };",
+      "const c = { color: 'var(--color-text, var(--color-amber-ink))' };"
+    ].join('\n');
+    expect(findUndefinedTokens(source, 'x.ts', definedTokens, {})).toEqual([
+      'x.ts:2 --space-22',
+      'x.ts:3 --color-amber-ink'
+    ]);
+  });
+
+  it('ignores references in line and block comments', () => {
+    const source =
+      '// var(--space-22)\n/* var(--space-22)\n var(--space-22) */\nconst a = 1; // var(--space-22)';
+    expect(findUndefinedTokens(source, 'x.ts', definedTokens, {})).toEqual([]);
+  });
+
+  it('allows only the exact allowlisted vendor names', () => {
+    const source = "a: 'var(--anchor-width)', b: 'var(--anchor-widthx)'";
+    expect(findUndefinedTokens(source, 'x.ts', definedTokens, VENDOR_VARIABLES)).toEqual([
+      'x.ts:1 --anchor-widthx'
+    ]);
+    expect(findUndefinedTokens(source, 'x.ts', definedTokens, {})).toHaveLength(2);
+  });
+
+  it('does not allowlist a name that tokens.css already defines', () => {
+    expect(definedTokens.has('--anchor-width')).toBe(false);
   });
 });
 
