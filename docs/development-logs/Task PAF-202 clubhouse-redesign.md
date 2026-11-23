@@ -249,3 +249,11 @@ Fix round (`735f14a`):
   - Scoped `vitest related` can pull DB-touching integration files that fail when the test stack is mid-restart — environment, not regression.
   - Serena MCP availability fluctuated across sessions (some sessions: output uncapturable or `execute` missing) — native fallback used with disclosure; file-mutation deviations disclosed per round.
 - Stats-strip density adaptation (65.3 vs 76px) — inform owner.
+
+### CI validation round (2026-11-23, post-remediation)
+
+- Re-certification gate on repair commit `976119d` PASS (12/12 stages, 656/656 e2e; 4 previously-failing tests green).
+- Push `976119d` → CI run 45241566522 red on `e2e (visual-1)` ONLY: 5 deterministic matches-management breaches (~0.005 ratio), everything else green including all functional lanes.
+- Forensics (with CI artifacts) found THREE layered causes → findings F51/F52: (1) 3 stale mac baselines still showed pre-U3 chrome; (2) datetime-local text is browser-locale dependent (mac vs Linux formats from identical DOM — root-fixed with `locale: 'en-US'` in playwright.config, same class as the earlier focus-ring fix); (3) proven glyph-only FreeType/CoreText rounding residue on structurally-identical DOM → per-frame `-linux` baselines from CI actuals + `baselineName()` fallback (global platform template rejected — would orphan hundreds of snapshots). F3-era "text rasterizes identically" claim corrected: false for long text runs.
+- Fix commit `d8ca8fb` → full local gate PASS (5091 unit + 1296 integration + 656 e2e, zero locale fallout, mac lane correct on non-linux variants). Learnings: browser-default margins and locale-dependent native controls are renderer-divergence classes the token guard cannot catch; frame-relative gates + CI artifacts (actual/diff downloads) are the diagnostic loop that works.
+- Board: PAF-202 + 14 round-4 children → In Review. Copilot re-request unverifiable (3 attempts, known repo quirk; Codex connector is the working reviewer).
