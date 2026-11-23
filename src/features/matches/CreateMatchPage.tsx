@@ -7,6 +7,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useTranslation } from 'react-i18next';
 import { MatchDetailsForm } from './MatchDetailsForm';
 import { MatchInviteePicker } from './MatchInviteePicker';
+import { MatchPlayersForm } from './MatchPlayersForm';
 import { MatchPhotoUpload } from './MatchPhotoUpload';
 import { MatchReview } from './MatchReview';
 import { createMatchStyles as s } from './create-match.styles';
@@ -64,6 +65,20 @@ const emptyOptions: MatchCreationOptions = {
 };
 type LeagueOptionsState = { key: string; status: 'ready' | 'error'; leagues: MatchLeagueOption[] };
 type FrozenRequest = { id: string; input: MatchPublishInput; inviteeIds: string[] };
+// Visible, focusable wizard controls: Base UI renders a hidden `aria-hidden` input beside each radio and
+// switch, so those inputs are skipped in favor of the radio/switch element itself.
+const firstControl =
+  'input:not([aria-hidden="true"]), select, button, [role="radio"], [role="switch"]';
+function focusFirstControl(root: HTMLElement | null) {
+  const first = root?.querySelector<HTMLElement>(firstControl);
+  // Within a radio group the checked radio is the one in the tab order.
+  const checked = first
+    ?.closest('[role="radiogroup"]')
+    ?.querySelector<HTMLElement>('[aria-checked="true"]');
+  (checked ?? first)?.focus();
+}
+// Draft fields whose control lives on the Players step; every other validated field is on Details.
+const playersStepErrors = ['minLevel', 'maximumRegistrations'];
 
 export function CreateMatchPage() {
   const { t, i18n } = useTranslation();
@@ -190,7 +205,7 @@ export function CreateMatchPage() {
   const retryLeagueOptions = useCallback(() => setLeagueReload((current) => current + 1), []);
 
   useLayoutEffect(() => {
-    if (step >= 0) formRef.current?.querySelector<HTMLElement>('input, select, button')?.focus();
+    if (step >= 0) focusFirstControl(formRef.current);
   }, [step]);
   useLayoutEffect(() => {
     if (step >= 0 && Object.keys(fieldErrors).length)
@@ -456,7 +471,10 @@ export function CreateMatchPage() {
     )
       next.maximumRegistrations = 'invalidCapacity';
     setFieldErrors(next);
-    if (Object.keys(next).length && step !== 0) setStep(0);
+    // Return to the step that owns the first invalid field; the layout effect focuses its control
+    // once that step has mounted. Already on that step, focus the control directly.
+    const owner = Object.keys(next).some((key) => !playersStepErrors.includes(key)) ? 0 : 1;
+    if (Object.keys(next).length && step !== owner) setStep(owner);
     else formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
     return Object.keys(next).length === 0;
   }
@@ -662,14 +680,27 @@ export function CreateMatchPage() {
             </>
           )}
           {step === 1 && (
-            <MatchInviteePicker
-              communityId={communityId}
-              selected={invitees}
-              onChange={(next) => {
-                if (frozen.current) frozen.current = null;
-                setInvitees(next);
-              }}
-            />
+            <>
+              <MatchPlayersForm
+                value={value}
+                levelDefaults={options.level_defaults}
+                errors={activeErrors}
+                change={change}
+              />
+              <section aria-labelledby="match-invite-heading" {...stylex.props(s.fields)}>
+                <span id="match-invite-heading" {...stylex.props(s.choiceLabel)}>
+                  {t('matchCreate.fields.invitePlayers')}
+                </span>
+                <MatchInviteePicker
+                  communityId={communityId}
+                  selected={invitees}
+                  onChange={(next) => {
+                    if (frozen.current) frozen.current = null;
+                    setInvitees(next);
+                  }}
+                />
+              </section>
+            </>
           )}
           {step === 2 && (
             <fieldset {...stylex.props(s.group)}>

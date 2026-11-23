@@ -185,13 +185,10 @@ afterEach(() => {
 });
 
 describe('create match wizard', () => {
-  it('makes level restriction and court booked labels clickable, styled, and keyboard operable', async () => {
+  it('makes the court booked label clickable, styled, and keyboard operable', async () => {
     const user = userEvent.setup();
     await mount();
-    for (const [labelText, initial] of [
-      [en.matchCreate.fields.levelRestriction, true],
-      [en.matchCreate.fields.courtBooked, false]
-    ] as const) {
+    for (const [labelText, initial] of [[en.matchCreate.fields.courtBooked, false]] as const) {
       const control = input(labelText);
       const label = control.closest('label');
       expect(label).not.toBeNull();
@@ -209,7 +206,8 @@ describe('create match wizard', () => {
     const user = userEvent.setup();
     await mount();
     await user.click(screen.getByRole('button', { name: en.matchCreate.next }));
-    expect(document.activeElement).toBe(screen.getByLabelText(en.matchCreate.invitees.search));
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: oneGroup }));
+    expect(screen.getByLabelText(en.matchCreate.invitees.search)).toBeTruthy();
     expect(screen.getByText(en.matchCreate.steps.players)).toBeTruthy();
     await user.click(screen.getByRole('button', { name: en.matchCreate.previous }));
     expect(document.activeElement).toBe(screen.getByLabelText(en.matchCreate.fields.community));
@@ -240,18 +238,21 @@ describe('create match wizard', () => {
       .mockResolvedValueOnce(options())
       .mockReturnValueOnce(refreshed.promise);
     await mount();
+    await user.click(button(en.matchCreate.next));
     const min = input(en.matchCreate.fields.minLevel);
     expect(min.value).toBe('2');
     await user.clear(min);
     await user.type(min, '2.5');
+    await user.click(button(en.matchCreate.previous));
     await user.selectOptions(select(en.matchCreate.fields.community), idB);
+    await user.click(button(en.matchCreate.next));
     const changedMin = input(en.matchCreate.fields.minLevel);
     await user.clear(changedMin);
     await user.type(changedMin, '3.5');
     refreshed.resolve(options(undefined, 1, 5));
     await waitFor(() => expect(input(en.matchCreate.fields.maxLevel).value).toBe('5'));
     expect(input(en.matchCreate.fields.minLevel).value).toBe('3.5');
-    await user.click(screen.getByLabelText(en.matchCreate.fields.levelRestriction));
+    await user.click(screen.getByRole('radio', { name: en.matchCreate.players.anyLevel }));
     expect(screen.queryByLabelText(en.matchCreate.fields.minLevel)).toBeNull();
   });
 
@@ -277,6 +278,7 @@ describe('create match wizard', () => {
     await mount();
     await user.selectOptions(select(en.matchCreate.fields.community), idB);
     await user.selectOptions(select(en.matchCreate.fields.community), idA);
+    await user.click(button(en.matchCreate.next));
     current.resolve({
       ...options(),
       level_defaults: { min: 5, max: 6, level: 5.5 },
@@ -317,8 +319,8 @@ describe('create match wizard', () => {
     );
     expect(select(en.matchCreate.fields.savedVenue).value).toBe('');
     expect(screen.queryByRole('img')).toBeNull();
-    expect(input(en.matchCreate.fields.minLevel).value).toBe('2');
     await user.click(screen.getByRole('button', { name: en.matchCreate.next }));
+    expect(input(en.matchCreate.fields.minLevel).value).toBe('2');
     expect(screen.queryByText('Pat Player')).toBeNull();
   });
 
@@ -501,10 +503,12 @@ describe('create match wizard', () => {
     await user.clear(input(en.matchCreate.fields.price));
     await user.type(input(en.matchCreate.fields.price), '0');
     await user.selectOptions(select(en.matchCreate.fields.currency), 'BRL');
-    await user.click(screen.getByLabelText(en.matchCreate.fields.levelRestriction));
     await fillRequired(user);
     await attachPhoto(user);
-    await goReview(user);
+    await user.click(button(en.matchCreate.next));
+    await user.click(screen.getByRole('radio', { name: en.matchCreate.players.anyLevel }));
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.next));
     await user.click(button(en.matchCreate.publish));
     await waitFor(() => expect(mocks.publish).toHaveBeenCalledOnce());
     expect(mocks.publish.mock.calls[0]?.[0].data.input.price).toBe('0');
@@ -777,13 +781,17 @@ describe('create match wizard', () => {
   });
 });
 
+const copies = { en, 'pt-BR': pt, es } as const;
+const stepText = (locale: keyof typeof copies, current: number, label: string) =>
+  `${copies[locale].matchCreate.stepOf
+    .replace('{{current}}', String(current))
+    .replace('{{total}}', '4')} · ${label}`;
+const stepLabel = () => document.querySelector('main ol + p')?.textContent;
+const oneGroup = en.matchCreate.players.formatGroups_one
+  .replace('{{count}}', '1')
+  .replace('{{places}}', '4');
+
 describe('create match wizard — Clubhouse structure (wHaAb, vAxZh, b5RR4, RDV2r)', () => {
-  const copies = { en, 'pt-BR': pt, es } as const;
-  const stepText = (locale: keyof typeof copies, current: number, label: string) =>
-    `${copies[locale].matchCreate.stepOf
-      .replace('{{current}}', String(current))
-      .replace('{{total}}', '4')} · ${label}`;
-  const stepLabel = () => document.querySelector('main ol + p')?.textContent;
   const actionBar = () => {
     const bar = document.querySelector('main ol')?.parentElement?.nextElementSibling;
     if (!bar) throw new Error('Missing action bar');
@@ -870,7 +878,7 @@ describe('create match wizard — Clubhouse structure (wHaAb, vAxZh, b5RR4, RDV2
     expect(screen.getByRole('heading', { level: 1, name: en.matchCreate.title })).toBeTruthy();
   });
 
-  it('keeps Details field order: community, schedule, type, venue, level, price, cutoff, photo', async () => {
+  it('keeps Details field order: community, schedule, time and price, currency, venue, notes, cutoff, photo', async () => {
     await mount();
     const captions = Array.from(document.querySelectorAll('main label'), (label) =>
       Array.from(label.childNodes)
@@ -882,22 +890,16 @@ describe('create match wizard — Clubhouse structure (wHaAb, vAxZh, b5RR4, RDV2
       f.community,
       f.date,
       f.startTime,
-      f.type,
-      f.visibility,
+      f.price,
+      f.currency,
       f.savedVenue,
       f.venueName,
       f.mapsUrl,
       f.courtNotes,
       f.duration,
       f.notes,
-      f.levelRestriction,
-      f.minLevel,
-      f.maxLevel,
       f.courtBooked,
-      f.price,
-      f.currency,
       f.paymentNote,
-      f.maximumRegistrations,
       f.cutoff,
       f.photo
     ]);
@@ -959,5 +961,149 @@ describe('create match wizard — Clubhouse structure (wHaAb, vAxZh, b5RR4, RDV2
     expect(within(list).getByText('AM')).toBeTruthy();
     await user.click(within(list).getByRole('button', { name: en.matchCreate.invitees.remove }));
     expect(screen.queryAllByRole('listitem')).toHaveLength(0);
+  });
+});
+
+describe('create match wizard — Base UI controls (wHaAb, vAxZh)', () => {
+  const radio = (name: string) => screen.getByRole('radio', { name });
+  const checked = (name: string) => radio(name).getAttribute('aria-checked') === 'true';
+
+  it('selects the match type with a keyboard-operable segmented control, Friendly first', async () => {
+    const user = userEvent.setup();
+    await mount();
+    const group = screen.getByRole('radiogroup', { name: en.matchCreate.fields.type });
+    expect(
+      within(group)
+        .getAllByRole('radio')
+        .map((item) => item.textContent)
+    ).toEqual([en.matches.type.friendly, en.matches.type.competitive]);
+    expect(checked(en.matches.type.friendly)).toBe(true);
+    radio(en.matches.type.friendly).focus();
+    await user.keyboard('{ArrowRight}');
+    expect(checked(en.matches.type.competitive)).toBe(true);
+    expect(screen.getByRole('switch', { name: en.matches.competition.ranked })).toBeTruthy();
+  });
+
+  it('keeps suggested days and the date input in sync as one date field', async () => {
+    const user = userEvent.setup();
+    await mount();
+    const days = within(
+      screen.getByRole('radiogroup', { name: en.matchCreate.helpers.suggestedDays })
+    ).getAllByRole('radio');
+    expect(days).toHaveLength(3);
+    expect(days.every((day) => day.getAttribute('aria-checked') === 'false')).toBe(true);
+    await user.click(days[1]!);
+    const date = input(en.matchCreate.fields.date);
+    expect(date.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(days[1]!.getAttribute('aria-checked')).toBe('true');
+    await user.clear(date);
+    await user.type(date, '2030-05-20');
+    expect(days.every((day) => day.getAttribute('aria-checked') === 'false')).toBe(true);
+  });
+
+  it('keeps Format presets and the maximum registrations input as one synchronized field', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await user.click(button(en.matchCreate.next));
+    const maximum = input(en.matchCreate.fields.maximumRegistrations);
+    const twoGroups = en.matchCreate.players.formatGroups_other
+      .replace('{{count}}', '2')
+      .replace('{{places}}', '8');
+    expect(checked(oneGroup)).toBe(false);
+    await user.click(radio(twoGroups));
+    expect(maximum.value).toBe('8');
+    await user.clear(maximum);
+    await user.type(maximum, '10');
+    expect(radio(twoGroups).getAttribute('aria-checked')).toBe('false');
+    for (const label of [oneGroup, twoGroups])
+      expect(radio(label).getAttribute('aria-checked')).toBe('false');
+    await user.clear(maximum);
+    expect(maximum.value).toBe('');
+  });
+
+  it('maps Registration to the real visibility values and publishes them with the cap', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await fillRequired(user);
+    await attachPhoto(user);
+    await user.click(button(en.matchCreate.next));
+    const registration = screen.getByRole('radiogroup', {
+      name: en.matchCreate.players.registration
+    });
+    expect(
+      within(registration)
+        .getAllByRole('radio')
+        .map((item) => item.textContent)
+    ).toEqual([
+      en.matchCreate.players.registrationOptions.community_open,
+      en.matchCreate.players.registrationOptions.invite_only
+    ]);
+    await user.click(radio(en.matchCreate.players.registrationOptions.invite_only));
+    expect(screen.getByText(en.matchCreate.players.registrationHelp.invite_only)).toBeTruthy();
+    await user.click(
+      radio(
+        en.matchCreate.players.formatGroups_one.replace('{{count}}', '1').replace('{{places}}', '4')
+      )
+    );
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.publish));
+    await waitFor(() => expect(mocks.publish).toHaveBeenCalledOnce());
+    expect(mocks.publish.mock.calls[0]?.[0].data.input).toMatchObject({
+      visibility: 'invite_only',
+      maximum_registrations: 4,
+      min_level: 2,
+      max_level: 4
+    });
+  });
+
+  it('switches level range between any, the suggested range and a custom range', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await user.click(button(en.matchCreate.next));
+    expect(checked('2.0–4.0')).toBe(true);
+    await user.click(radio(en.matchCreate.players.customRange));
+    expect(checked(en.matchCreate.players.customRange)).toBe(true);
+    expect(input(en.matchCreate.fields.minLevel).value).toBe('2');
+    await user.click(radio(en.matchCreate.players.anyLevel));
+    expect(screen.queryByLabelText(en.matchCreate.fields.minLevel)).toBeNull();
+    await user.click(radio('2.0–4.0'));
+    expect(input(en.matchCreate.fields.minLevel).value).toBe('2');
+    expect(input(en.matchCreate.fields.maxLevel).value).toBe('4');
+  });
+
+  it('returns a publish-time level error to the Players step and focuses its control', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await fillRequired(user);
+    await attachPhoto(user);
+    await user.click(button(en.matchCreate.next));
+    const min = input(en.matchCreate.fields.minLevel);
+    await user.clear(min);
+    await user.type(min, '6');
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.publish));
+    await waitFor(() => expect(stepLabel()).toBe(stepText('en', 2, en.matchCreate.steps.players)));
+    expect(mocks.publish).not.toHaveBeenCalled();
+    const invalidMin = input(new RegExp(`^${en.matchCreate.fields.minLevel}`));
+    expect(document.activeElement).toBe(invalidMin);
+    expect(invalidMin.getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByText(en.matchCreate.errors.invalidLevelRange)).toBeTruthy();
+  });
+
+  it('goes to Details first when both steps own invalid fields', async () => {
+    const user = userEvent.setup();
+    await mount();
+    await attachPhoto(user);
+    await user.click(button(en.matchCreate.next));
+    const min = input(en.matchCreate.fields.minLevel);
+    await user.clear(min);
+    await user.type(min, '6');
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.next));
+    await user.click(button(en.matchCreate.publish));
+    await waitFor(() => expect(stepLabel()).toBe(stepText('en', 1, en.matchCreate.steps.details)));
+    expect(document.activeElement).toBe(input(new RegExp(`^${en.matchCreate.fields.date}`)));
   });
 });

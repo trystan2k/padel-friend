@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { waitForHydratedPage } from './auth-helpers';
+import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
 import { copies, day, fill, leagueFixtures, sql, type Actor } from './leagues-fixtures';
 import manifest from './references/paf-202-leagues/manifest.json' with { type: 'json' };
 
@@ -8,6 +10,14 @@ import manifest from './references/paf-202-leagues/manifest.json' with { type: '
 // exports (paf-202-leagues); U13 owns the wHaAb wizard raster comparator. Exact layout, association,
 // keyboard, target-size and locale probes (never relaxed by the budgets) gate the structure.
 type Frame = 'ik5JC' | 'MYsDp';
+
+// wHaAb is owned by the create wizard: its Pencil export and measured regions live with the wizard.
+const wizardReferences: {
+  frames: Record<string, { sha256: string }>;
+  frameRegions: Record<string, Record<string, FrameRegionRecord>>;
+} = JSON.parse(
+  readFileSync(new URL('./references/paf-202-create-wizard/manifest.json', import.meta.url), 'utf8')
+);
 type Locale = keyof typeof copies;
 
 const sizes: Record<Frame, { width: number; height: number }> = {
@@ -124,7 +134,7 @@ async function assertColumn(
 async function assertTouchTargets(root: Locator, label: string) {
   const targets = await root
     .locator(
-      'a:visible, button:visible, input:visible:not([type=radio]):not([type=checkbox]), select:visible, textarea:visible, label:has(input[type=radio]), label:has([role=radio])'
+      'a:visible, button:visible, input:visible:not([type=radio]):not([type=checkbox]), select:visible, textarea:visible, label:has(input[type=radio]), label:has([role=radio]), [role=switch]:visible'
     )
     .evaluateAll((nodes) =>
       nodes.map((node) => {
@@ -156,10 +166,10 @@ async function assertTouchTargets(root: Locator, label: string) {
  *    composition (the frame's route adaptation), within ANCHOR_TOLERANCE (12px, just over one
  *    10px reference gap: any section-sized displacement fails, sub-pixel font metrics do not).
  */
-// wHaAb is the create-match Ranked selector, restyled by the Clubhouse create wizard (U10) after
-// its PAF-11 reference was exported: its rhythm anchors below were re-measured on that page and
-// the legacy raster budget (0.18) moves to the measured 0.1836 + <0.01 headroom. The wizard unit
-// owns the replacement Clubhouse reference; no league surface is involved.
+// wHaAb is the create-match Ranked selector, restyled by the Clubhouse create wizard after its PAF-11
+// reference was exported. Its raster is wizard-owned: the Match type control and Ranked switch card are
+// compared with aligned Pencil crops (paf-202-create-wizard frameRegions; measured 0.0442 / 0.0591) and
+// the vertical anchors below were re-measured on the Switch layout. No league surface is involved.
 const RHYTHM_TOLERANCE = 4;
 const ANCHOR_TOLERANCE = 12;
 
@@ -371,8 +381,8 @@ async function openRankedSelector(page: Page, locale: Locale) {
   await page.getByLabel(m.fields.date, { exact: true }).fill(day(3));
   await page.getByLabel(m.fields.startTime, { exact: true }).fill('10:30');
   await page
-    .getByRole('combobox', { name: m.fields.type, exact: true })
-    .selectOption('competitive');
+    .getByRole('radio', { name: copies[locale].matches.type.competitive, exact: true })
+    .click();
   const group = page.getByRole('group', { name: m.competition.legend });
   await expect(group.getByRole('combobox')).toBeVisible();
   return group;
@@ -384,9 +394,32 @@ test('wHaAb Create match Ranked selector: structure and keyboard', async ({ brow
   const page = await f.page(member, 'en', 390, 'light', 916);
   const t = copies.en;
   const group = await openRankedSelector(page, 'en');
+  const ranked = group.getByRole('switch', { name: t.matches.competition.ranked, exact: true });
+  await expect(ranked).toBeChecked();
+
+  // Frame regions: the Competitive segmented control and the Ranked switch card (state wHaAb draws:
+  // Competitive selected, Ranked on, "Counts for levels and <League>") against the pinned Pencil export.
+  const frame = readFileSync(
+    new URL('./references/paf-202-create-wizard/wHaAb.png', import.meta.url)
+  );
+  expect(createHash('sha256').update(frame).digest('hex')).toBe(
+    wizardReferences.frames.wHaAb!.sha256
+  );
   await expect(
-    group.getByRole('radio', { name: t.matches.competition.ranked, exact: true })
-  ).toBeChecked();
+    group.getByText(
+      t.matchCreate.competition.switchMetaLeague.replace('{{league}}', 'Autumn League')
+    )
+  ).toBeVisible();
+  await assertFrameRegions({
+    page,
+    frame: 'wHaAb',
+    reference: frame,
+    regions: wizardReferences.frameRegions.wHaAb!,
+    locators: {
+      matchType: page.getByRole('radiogroup', { name: t.matchCreate.fields.type, exact: true }),
+      rankedCard: ranked
+    }
+  });
 
   // Several covering Leagues → explicit selection; selector, guidance and error stay associated.
   const select = group.getByRole('combobox', {
@@ -398,11 +431,10 @@ test('wHaAb Create match Ranked selector: structure and keyboard', async ({ brow
   await expect(page.locator(`[id="${guidance!.split(' ')[0]}"]`)).toContainText(
     t.matchCreate.competition.guidance.defaultOne
   );
-  // Section order: type, competition status radios, League selector, guidance.
+  // Section order: type segments, Ranked switch, League selector, guidance.
   const order = [
-    page.getByRole('combobox', { name: t.matchCreate.fields.type, exact: true }),
-    group.getByRole('radio', { name: t.matches.competition.ranked, exact: true }),
-    group.getByRole('radio', { name: t.matches.competition.unranked, exact: true }),
+    page.getByRole('radiogroup', { name: t.matchCreate.fields.type, exact: true }),
+    ranked,
     select,
     group.getByText(t.matchCreate.competition.members)
   ];
@@ -412,22 +444,21 @@ test('wHaAb Create match Ranked selector: structure and keyboard', async ({ brow
       boxes[index - 1]!.y - 1
     );
 
-  // Keyboard: arrows move between Ranked and Unranked; the League selector follows.
-  await group.getByRole('radio', { name: t.matches.competition.ranked, exact: true }).focus();
-  await page.keyboard.press('ArrowDown');
-  await expect(
-    group.getByRole('radio', { name: t.matches.competition.unranked, exact: true })
-  ).toBeChecked();
+  // Keyboard: Space toggles Ranked off (Unranked) and back on; the League selector follows.
+  await ranked.focus();
+  await page.keyboard.press('Space');
+  await expect(ranked).not.toBeChecked();
   await expect(select).toHaveCount(0);
-  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Space');
+  await expect(ranked).toBeChecked();
   await expect(select).toBeVisible();
 
   // Exact geometry: competition group and League selector stay inside the reference column, the
-  // radios sit inside the group, and the guidance is a child of the group (association by box).
+  // switch sits inside the group, and the guidance is a child of the group (association by box).
   const groupBox = await assertColumn(group, 'wHaAb competition group', { fullWidth: false });
   const selectBox = await assertColumn(select, 'wHaAb League selector', { fullWidth: false });
   expect.soft(selectBox.width, 'wHaAb League selector is a full-row control').toBeGreaterThan(200);
-  for (const part of [boxes[1]!, boxes[2]!, selectBox, boxes[4]!]) {
+  for (const part of [boxes[1]!, selectBox, boxes[3]!]) {
     expect.soft(part.x, 'wHaAb part inside group left').toBeGreaterThanOrEqual(groupBox.x - 1);
     expect
       .soft(part.right, 'wHaAb part inside group right')
@@ -437,18 +468,17 @@ test('wHaAb Create match Ranked selector: structure and keyboard', async ({ brow
       .soft(part.bottom, 'wHaAb part inside group bottom')
       .toBeLessThanOrEqual(groupBox.bottom + 1);
   }
-  // Vertical: type select, status group, radios, League selector and guidance keep their approved
-  // positions; selector -> guidance copy is the reference ~8px gap plus one 15px text line of leading.
+  // Vertical: type segments, status group, Ranked switch, League selector and guidance keep their
+  // approved positions; selector -> guidance copy is the reference ~8px gap (the wizard group gap).
   assertVertical(
     {
       type: await docBox(order[0]!),
       group: await docBox(group),
       ranked: await docBox(order[1]!),
-      unranked: await docBox(order[2]!),
       select: await docBox(select),
-      guidance: await docBox(order[4]!)
+      guidance: await docBox(order[3]!)
     },
-    { type: 469, group: 516, ranked: 559, unranked: 563, select: 653, guidance: 714 },
+    { type: 240, group: 310, ranked: 310, select: 414.5, guidance: 474.5 },
     [
       ['type', 'group', 14, RHYTHM_TOLERANCE],
       ['select', 'guidance', 8, RHYTHM_TOLERANCE]
@@ -457,10 +487,10 @@ test('wHaAb Create match Ranked selector: structure and keyboard', async ({ brow
   );
   await assertNoOverflow(page, 'wHaAb');
   await assertTouchTargets(group, 'wHaAb competition');
-  const radioLabels = await group
-    .locator('label:has(input[type=radio])')
-    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
-  for (const height of radioLabels) expect(height).toBeGreaterThanOrEqual(44);
+  expect(
+    (await box(ranked)).height,
+    'wHaAb Ranked switch card is the 68px hit area'
+  ).toBeGreaterThanOrEqual(64);
 });
 
 test('MYsDp validation and conflict variants: association, live errors, focus', async ({

@@ -450,14 +450,11 @@ async function publishMatchViaUi(
   await openCreateWizard(page);
   await page.getByLabel(en.matchCreate.fields.date).fill(options.date ?? ymd(3));
   await page.getByLabel(en.matchCreate.fields.startTime).fill(options.startTime ?? '19:30');
-  await page.getByLabel(en.matchCreate.fields.visibility).selectOption('community_open');
   await page.getByLabel(en.matchCreate.fields.venueName).fill(options.venue);
   await page
     .getByLabel(en.matchCreate.fields.mapsUrl)
     .fill(`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(options.venue)}`);
   if (options.price) await page.getByLabel(en.matchCreate.fields.price).fill(options.price);
-  if (options.maximum)
-    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill(options.maximum);
   await page
     .getByLabel(en.matchCreate.fields.photo)
     .setInputFiles({ name: 'venue.png', mimeType: 'image/png', buffer: matchPhoto() });
@@ -466,6 +463,8 @@ async function publishMatchViaUi(
   });
   await page.getByRole('button', { name: en.matchCreate.next }).click();
   await expect(page.getByText(en.matchCreate.steps.players, { exact: true })).toBeVisible();
+  if (options.maximum)
+    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill(options.maximum);
   await page.getByRole('button', { name: en.matchCreate.next }).click();
   await expect(page.getByText(en.matchCreate.steps.teams, { exact: true })).toBeVisible();
   await page

@@ -80,7 +80,7 @@ async function startWizard(page: Page, options: { name: string; date?: string; t
   await expect(page.getByRole('heading', { name: mc.title })).toBeVisible();
   await page.getByLabel(mc.fields.date).fill(options.date ?? day(3));
   await page.getByLabel(mc.fields.startTime).fill(options.time ?? '19:00');
-  await page.getByLabel(mc.fields.type).selectOption('competitive');
+  await page.getByRole('radio', { name: m.type.competitive, exact: true }).click();
   await page.getByLabel(mc.fields.venueName).fill(venue(options.name));
   await page
     .getByLabel(mc.fields.mapsUrl)
@@ -94,10 +94,8 @@ async function startWizard(page: Page, options: { name: string; date?: string; t
 }
 
 const competition = (page: Page) => page.getByRole('group', { name: comp.legend });
-const rankedRadio = (page: Page) =>
-  competition(page).getByRole('radio', { name: m.competition.ranked, exact: true });
-const unrankedRadio = (page: Page) =>
-  competition(page).getByRole('radio', { name: m.competition.unranked, exact: true });
+const rankedSwitch = (page: Page) =>
+  competition(page).getByRole('switch', { name: m.competition.ranked, exact: true });
 
 async function continueToReview(page: Page) {
   await page.getByRole('button', { name: mc.next }).click();
@@ -143,7 +141,7 @@ test('Competitive event defaults to Ranked in the one eligible Upcoming League (
   const page = await f.page(f.creator);
   await startWizard(page, { name: 'default' });
   await expect(competition(page)).toBeVisible();
-  await expect(rankedRadio(page)).toBeChecked();
+  await expect(rankedSwitch(page)).toBeChecked();
   const select = competition(page).getByRole('combobox', { name: comp.league, exact: true });
   await expect(select).toHaveValue(spring);
   await expect(competition(page)).toContainText(comp.guidance.defaultOne);
@@ -166,7 +164,7 @@ test('overlapping Upcoming Leagues need an explicit choice; explicit Unranked pe
   });
   const page = await f.page(f.creator);
   await startWizard(page, { name: 'choose' });
-  await expect(rankedRadio(page)).toBeChecked();
+  await expect(rankedSwitch(page)).toBeChecked();
   await expect(competition(page)).toContainText(comp.guidance.chooseOne);
   const select = competition(page).getByRole('combobox', { name: comp.league, exact: true });
   await expect(select).toHaveValue('');
@@ -186,10 +184,10 @@ test('overlapping Upcoming Leagues need an explicit choice; explicit Unranked pe
 
   // Explicit opt-out survives a schedule change and option reloads.
   await startWizard(page, { name: 'optout' });
-  await unrankedRadio(page).check();
+  await rankedSwitch(page).uncheck();
   await page.getByLabel(mc.fields.startTime).fill('20:30');
   await page.getByLabel(mc.fields.date).fill(day(4));
-  await expect(unrankedRadio(page)).toBeChecked();
+  await expect(rankedSwitch(page)).not.toBeChecked();
   await expect(
     competition(page).getByRole('combobox', { name: comp.league, exact: true })
   ).toHaveCount(0);

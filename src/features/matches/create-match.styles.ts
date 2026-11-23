@@ -131,7 +131,8 @@ export const createMatchStyles = stylex.create({
     minWidth: 0,
     color: 'var(--color-text)',
     fontSize: 'var(--font-size-15)',
-    fontWeight: 'var(--font-weight-semibold)'
+    fontWeight: 'var(--font-weight-semibold)',
+    lineHeight: 'var(--font-line-height-snug)'
   },
   input: {
     boxSizing: 'border-box',
@@ -281,6 +282,131 @@ export const createMatchStyles = stylex.create({
     margin: 0,
     opacity: 0,
     cursor: 'inherit'
+  },
+  // Base UI single-choice groups (frames wHaAb/vAxZh): segmented options and pill chips use the
+  // checked state attribute, so the visible state always follows the radio state.
+  choiceGroup: { display: 'grid', gap: 'var(--space-8)', minWidth: 0 },
+  choiceLabel: {
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  choiceSegment: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    minHeight: 'calc(var(--space-40) + var(--space-8))',
+    paddingInline: 'var(--space-8)',
+    paddingBlock: 'var(--space-4)',
+    borderRadius: 'var(--radius-11)',
+    backgroundColor: { default: 'transparent', '[data-checked]': 'var(--color-surface)' },
+    color: { default: 'var(--color-muted)', '[data-checked]': 'var(--color-text)' },
+    boxShadow: {
+      default: 'none',
+      '[data-checked]':
+        '0 var(--space-1) var(--space-3) color-mix(in srgb, var(--color-text) 14%, transparent)'
+    },
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-bold)',
+    lineHeight: 'var(--font-line-height-snug)',
+    textAlign: 'center',
+    overflowWrap: 'anywhere',
+    cursor: 'pointer',
+    ':focus-visible': focusRing
+  },
+  chips: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
+  choiceChip: {
+    boxSizing: 'border-box',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 'var(--space-4)',
+    minWidth: target,
+    minHeight: target,
+    paddingInline: 'var(--space-16)',
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: { default: 'var(--color-line)', '[data-checked]': 'var(--color-text)' },
+    borderRadius: 'var(--radius-36)',
+    backgroundColor: { default: 'var(--color-surface)', '[data-checked]': 'var(--color-text)' },
+    color: { default: 'var(--color-text)', '[data-checked]': 'var(--color-bg)' },
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-semibold)',
+    lineHeight: 'var(--font-line-height-snug)',
+    textAlign: 'center',
+    cursor: 'pointer',
+    ':focus-visible': focusRing
+  },
+  choiceCheck: { flexShrink: 0 },
+  // Two fields that share a row while the width allows and stack once it does not.
+  pair: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(calc(var(--space-40) * 4), 1fr))',
+    gap: 'var(--space-12)',
+    minWidth: 0
+  },
+  // Ranked switch (frame Switch · Ranked): the whole 68-unit card is the switch, so the hit area is the
+  // card; the track and thumb are presentational and follow the switch state.
+  switchCard: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-12)',
+    width: '100%',
+    minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-8))',
+    // The frame stroke sits inside the 16-unit inset, so the border width comes off the padding.
+    paddingInline: 'calc(var(--space-16) - var(--border-width-sm))',
+    paddingBlock: 'var(--space-8)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-18)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
+    textAlign: 'start',
+    opacity: { default: 1, '[data-disabled]': 0.5 },
+    cursor: 'pointer',
+    ':focus-visible': focusRing
+  },
+  switchText: { display: 'grid', gap: 'var(--space-2)', flexGrow: 1, minWidth: 0 },
+  switchTitle: {
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-bold)'
+  },
+  switchMeta: {
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-14)',
+    lineHeight: 'var(--font-line-height-comfortable)'
+  },
+  switchTrack: {
+    boxSizing: 'border-box',
+    display: 'inline-flex',
+    alignItems: 'center',
+    flexShrink: 0,
+    width: 'calc(var(--space-40) + var(--space-8))',
+    height: 'calc(var(--space-20) + var(--space-8))',
+    padding: 'var(--space-4)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: {
+      default: 'var(--color-line)',
+      [stylex.when.ancestor('[data-checked]')]: 'var(--color-green)'
+    }
+  },
+  switchThumb: {
+    width: 'var(--space-20)',
+    height: 'var(--space-20)',
+    borderRadius: 'var(--radius-10)',
+    backgroundColor: 'var(--color-on-green)',
+    transform: {
+      default: 'translateX(0)',
+      '[data-checked]': 'translateX(var(--space-20))'
+    }
   },
   fileInput: {
     boxSizing: 'border-box',

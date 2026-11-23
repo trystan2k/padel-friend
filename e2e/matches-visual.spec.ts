@@ -93,10 +93,19 @@ type Copy = {
       notes: string;
       minLevel: string;
       maxLevel: string;
-      levelRestriction: string;
       courtBooked: string;
     };
-    helpers: { defaultCutoff: string };
+    helpers: { defaultCutoff: string; suggestedDays: string };
+    players: {
+      format: string;
+      formatGroups_one: string;
+      formatGroups_other: string;
+      registration: string;
+      registrationOptions: { community_open: string; invite_only: string };
+      levelRange: string;
+      anyLevel: string;
+      customRange: string;
+    };
     invitees: { search: string; selected: string };
     photo: { remove: string; unavailable: string };
   };
@@ -409,7 +418,7 @@ async function assertPrimaryHitTargets(
 // the label's own text nodes) and the implicit label↔input association.
 type TouchLabelKey = (typeof TOUCH_LABEL_KEYS)[number];
 
-const TOUCH_LABEL_KEYS = ['levelRestriction', 'courtBooked'] as const;
+const TOUCH_LABEL_KEYS = ['courtBooked'] as const;
 
 type TouchLabelReading = {
   width: number;
@@ -783,13 +792,21 @@ async function assertPrimaryActionTokens(
 
 type WizardReferences = {
   frames: Record<string, { sha256: string }>;
+  frameRegions: Record<string, Record<string, FrameRegionRecord>>;
   toleranceEvidence: Record<string, { maxDiffPixelRatio: number }>;
 };
 const wizardReferences: WizardReferences = JSON.parse(
   readFileSync(new URL('./references/paf-202-create-wizard/manifest.json', import.meta.url), 'utf8')
 );
 
-async function assertWizardFrame(page: Page, frame: string, mask: Locator[]): Promise<void> {
+/** Pencil-region layer (manifest.frameRegions[regionKey]) when the frame has live controls to compare,
+ * then the Chromium regression snapshot (browser-to-browser stability only). */
+async function assertWizardFrame(
+  page: Page,
+  frame: string,
+  mask: Locator[],
+  regions?: { key: string; locators: Record<string, Locator> }
+): Promise<void> {
   const source = readFileSync(
     new URL(`./references/paf-202-create-wizard/${frame}.png`, import.meta.url)
   );
@@ -798,6 +815,15 @@ async function assertWizardFrame(page: Page, frame: string, mask: Locator[]): Pr
   );
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.evaluate(() => document.fonts.ready);
+  if (regions)
+    await assertFrameRegions({
+      page,
+      frame: regions.key,
+      reference: source,
+      regions: wizardReferences.frameRegions[regions.key]!,
+      locators: regions.locators,
+      mask
+    });
   await expect(page).toHaveScreenshot(`${frame}-light.png`, {
     animations: 'disabled',
     caret: 'hide',
@@ -1879,44 +1905,34 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     // Top bar → progress → step label order, four progress segments (frame wHaAb).
     await assertWizardChrome(page, 'create details 390', 0, en.matchCreate.steps.details);
 
-    // Exactly the two scoped enums; no Ranked/League state anywhere.
-    const enumOptions = (label: string): Promise<string[]> =>
-      page
-        .getByLabel(label)
-        .evaluate((select) =>
-          select instanceof HTMLSelectElement ? Array.from(select.options, (o) => o.value) : []
-        );
-    expect(await enumOptions(en.matchCreate.fields.type)).toEqual(['competitive', 'friendly']);
-    expect(await enumOptions(en.matchCreate.fields.visibility)).toEqual([
-      'community_open',
-      'invite_only'
+    // Exactly the two scoped types as the frame segmented control (Friendly first, selected);
+    // no Ranked/League state while Friendly.
+    const typeGroup = page.getByRole('radiogroup', { name: en.matchCreate.fields.type });
+    await expect(typeGroup.getByRole('radio')).toHaveText([
+      en.matches.type.friendly,
+      en.matches.type.competitive
     ]);
+    await expect(typeGroup.getByRole('radio', { name: en.matches.type.friendly })).toBeChecked();
     await expect(page.getByText(/ranked|league/i)).toHaveCount(0);
 
-    // Field order: community → date → start time → type → visibility → saved venue →
-    // venue name → Maps → court notes → duration → notes → level restriction → min/max
-    // level → booked → price → currency → payment note → maximum → cutoff, then the
-    // photo upload. The sequence of rendered label captions is asserted exactly.
+    // Field order: community → date → start time → price → currency → saved venue → venue name →
+    // Maps → court notes → duration → notes → booked → payment note → cutoff, then the photo
+    // upload (visibility, maximum registrations and level range moved to the Players step). The
+    // sequence of rendered label captions is asserted exactly.
     const expectedLabelOrder = [
       en.matchCreate.fields.community,
       en.matchCreate.fields.date,
       en.matchCreate.fields.startTime,
-      en.matchCreate.fields.type,
-      en.matchCreate.fields.visibility,
+      en.matchCreate.fields.price,
+      en.matchCreate.fields.currency,
       en.matchCreate.fields.savedVenue,
       en.matchCreate.fields.venueName,
       en.matchCreate.fields.mapsUrl,
       en.matchCreate.fields.courtNotes,
       en.matchCreate.fields.duration,
       en.matchCreate.fields.notes,
-      en.matchCreate.fields.levelRestriction,
-      en.matchCreate.fields.minLevel,
-      en.matchCreate.fields.maxLevel,
       en.matchCreate.fields.courtBooked,
-      en.matchCreate.fields.price,
-      en.matchCreate.fields.currency,
       en.matchCreate.fields.paymentNote,
-      en.matchCreate.fields.maximumRegistrations,
       en.matchCreate.fields.cutoff,
       en.matchCreate.fields.photo
     ];
@@ -1940,10 +1956,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       page.getByText(`${en.matchCreate.fields.timezone}: UTC`, { exact: false })
     ).toBeVisible();
 
-    // Suggested level range comes from the creator rating (3.2 → 2.7–4.7); the community
-    // select carries the fixture community (first select in the form).
-    await expect(page.getByLabel(en.matchCreate.fields.minLevel)).toHaveValue('2.7');
-    await expect(page.getByLabel(en.matchCreate.fields.maxLevel)).toHaveValue('4.7');
+    // The community select carries the fixture community (first select in the form).
     const communityName = await page
       .locator('main label select')
       .first()
@@ -1959,7 +1972,21 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       en.matchCreate.next
     );
     await assertNoHorizontalOverflow(page, 'create details 390');
-    await assertWizardFrame(page, 'wHaAb', []);
+    // The suggested days are weekend dates relative to today, so the chips are masked in the
+    // Chromium snapshot; the Pencil-region layer below still records their raw geometry.
+    const suggestedDays = page.getByRole('radiogroup', {
+      name: en.matchCreate.helpers.suggestedDays
+    });
+    await assertWizardFrame(page, 'wHaAb', [suggestedDays], {
+      key: 'wHaAb:details',
+      locators: {
+        dateChips: suggestedDays,
+        timePrice: page
+          .locator('main label')
+          .filter({ has: page.locator('input[type="time"]') })
+          .locator('xpath=..')
+      }
+    });
     await assertCheckboxLabelTargets(page, en, 'create details 390');
     await assertPrimaryHitTargets(page, 'create details 390');
 
@@ -1977,8 +2004,35 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await page.getByRole('button', { name: en.matchCreate.next }).click();
     await ready(page);
     await assertWizardChrome(page, 'create players 390', 1, en.matchCreate.steps.players);
+    // Wizard navigation moves focus into the form for keyboard users: the first Format radio (no
+    // maximum yet, so none is checked).
+    await expect(
+      page
+        .getByRole('radiogroup', { name: en.matchCreate.players.format })
+        .getByRole('radio')
+        .first()
+    ).toBeFocused();
+    // The frame draws the first Format preset selected; select it so the region compares that state.
+    await page
+      .getByRole('radio', {
+        name: en.matchCreate.players.formatGroups_one
+          .replace('{{count}}', '1')
+          .replace('{{places}}', '4')
+      })
+      .click();
     await expect(page.getByLabel(en.matchCreate.invitees.search)).toBeVisible();
     await expect(page.getByRole('listitem')).toHaveCount(0);
+    // Suggested level range comes from the creator rating (3.2 → 2.7–4.7) as the checked chip
+    // with its minimum/maximum inputs filled; Registration offers the two real visibilities.
+    await expect(page.getByRole('radio', { name: '2.7–4.7' })).toBeChecked();
+    await expect(page.getByLabel(en.matchCreate.fields.minLevel)).toHaveValue('2.7');
+    await expect(page.getByLabel(en.matchCreate.fields.maxLevel)).toHaveValue('4.7');
+    await expect(
+      page.getByRole('radiogroup', { name: en.matchCreate.players.registration }).getByRole('radio')
+    ).toHaveText([
+      en.matchCreate.players.registrationOptions.community_open,
+      en.matchCreate.players.registrationOptions.invite_only
+    ]);
     await assertWizardActions(
       page,
       'create players 390',
@@ -1986,16 +2040,15 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       en.matchCreate.next
     );
     await assertNoHorizontalOverflow(page, 'create players 390');
-    await assertWizardFrame(page, 'vAxZh', []);
+    await assertWizardFrame(page, 'vAxZh', [], {
+      key: 'vAxZh',
+      locators: {
+        format: page.getByRole('radiogroup', { name: en.matchCreate.players.format }),
+        registration: page.getByRole('radiogroup', { name: en.matchCreate.players.registration }),
+        levelChips: page.getByRole('radiogroup', { name: en.matchCreate.players.levelRange })
+      }
+    });
     await assertPrimaryHitTargets(page, 'create players 390');
-    // Wizard navigation moves focus into the form for keyboard users.
-    expect(
-      await page.evaluate(
-        () =>
-          document.activeElement instanceof HTMLElement &&
-          document.activeElement.tagName === 'INPUT'
-      )
-    ).toBe(true);
 
     // Team-mode step: exactly the two scoped assignment modes, POST_MATCH_TEAMS default.
     await page.getByRole('button', { name: en.matchCreate.next }).click();
@@ -2267,14 +2320,15 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       .getByLabel(en.matchCreate.fields.mapsUrl)
       .fill('https://maps.google.com/maps/place/corte-luminosa');
     await page.getByLabel(en.matchCreate.fields.price).fill('12');
-    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill('16');
     await page
       .getByLabel(en.matchCreate.fields.photo)
       .setInputFiles({ name: 'venue.png', mimeType: 'image/png', buffer: matchPhoto() });
     await expect(page.getByRole('button', { name: en.matchCreate.photo.remove })).toBeVisible({
       timeout: 15_000
     });
-    for (let step = 0; step < 3; step += 1)
+    await page.getByRole('button', { name: en.matchCreate.next }).click();
+    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill('16');
+    for (let step = 0; step < 2; step += 1)
       await page.getByRole('button', { name: en.matchCreate.next }).click();
     await ready(page);
     await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();

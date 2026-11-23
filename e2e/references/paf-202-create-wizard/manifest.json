@@ -9,7 +9,7 @@
       "exportHeight": 916,
       "sha256": "5eefbf2b991a4722dfc9eb557161084bd8e1c2d2ef74bfa4905176a570f39a02",
       "snapshot": "e2e/matches-visual.spec.ts-snapshots/wHaAb-light.png",
-      "snapshotSha256": "fc821c43adb09557b1dd9ba549e89a9ffa86dd82f4cef11d7ef5125b79f1443f"
+      "snapshotSha256": "b161ea87745c38f5a937ba68b6a5fde8507617e5ab792ebfdcea78925c1c7095"
     },
     "vAxZh": {
       "state": "Create match — step 2 Players",
@@ -17,7 +17,7 @@
       "exportHeight": 844,
       "sha256": "80ef7e1a33fd7dbb0fb6008dd0d1f68ba764697156925d52e478b314a1261524",
       "snapshot": "e2e/matches-visual.spec.ts-snapshots/vAxZh-light.png",
-      "snapshotSha256": "ac1a2d6023c4b6602c96f4dff7f06cf7f07072ed857519745a4c1e92cb99f770"
+      "snapshotSha256": "6725cb29c71f43290efe577d83bc6f45bec2252265a059e6ea2924bb1108d980"
     },
     "b5RR4": {
       "state": "Create match — step 3 Teams",
@@ -36,26 +36,123 @@
       "snapshotSha256": "5faf5f17a1aff006915475d01905d99e05799d235aed71c3e7ed1beb7f571c5f"
     }
   },
+  "frameRegions": {
+    "wHaAb": {
+      "matchType": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 187,
+          "width": 350,
+          "height": 56
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width", "height"],
+        "budget": 0.06,
+        "classification": "Match type segmented control (Friendly / Competitive with Competitive selected), Base UI radiogroup. Same copy as the frame; residual is Pencil-vs-Chromium font rasterization plus the 1px soft shadow. Observed 0.0442 on the full 350x56 control; 0.06 leaves margin for font raster only. x/width/height gated exactly (live y differs: the Community select and field label sit above the type control)."
+      },
+      "rankedCard": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 257,
+          "width": 350,
+          "height": 68
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width", "height"],
+        "budget": 0.08,
+        "classification": "Ranked switch card (title, \"Counts for levels and <League>\", green switch, hairline card). Same copy as the frame with the seeded Autumn League; Base UI Switch with the whole 68px card as the hit area. Observed 0.0591 on the full 350x68 card; 0.08 leaves margin for font raster only (aligned crop measured 2026-11-23, replaces the legacy full-frame 0.19 wHaAb Ranked budget). x/width/height gated exactly."
+      }
+    },
+    "wHaAb:details": {
+      "dateChips": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 371,
+          "width": 350,
+          "height": 44
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width", "height"],
+        "classification": "Suggested days chips (frame: Sat 5 Oct, Sun 6 Oct, Sat 12 Oct with the first selected). The live chips are the next three weekend days of the community timezone, so their text moves with the clock and nothing is selected until a day is chosen; the Chromium snapshot masks them. Raw unmasked residual 0.4323 on the 350x44 row (text and selected state, not geometry). x/width/height gated exactly: pill height 44, 8px gap, full-width row. The Date input stays below as the custom-date path and is the same draft field."
+      },
+      "timePrice": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 429,
+          "width": 350,
+          "height": 76
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width", "height"],
+        "classification": "Start time and Price side by side (frame: \"Price / player (€)\" with 10:30 and 8.50). The live labels are the real field names (Start time, Price; the currency select follows), the native time input renders the browser locale and the fixture leaves both empty. Raw unmasked residual 0.1176 on the 350x76 pair. x/width gated exactly; height -0.75 (17.25px snug label line vs the frame 18px) is inside the 1px tolerance."
+      }
+    },
+    "vAxZh": {
+      "format": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 187,
+          "width": 350,
+          "height": 56
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width", "height"],
+        "budget": 0.08,
+        "classification": "Format segmented control (frame: 1 group · 4 selected, 2 groups · 8, 3 groups · 12). The three presets are real maximum registrations values (one group plays four players) over the same draft field as the Maximum registrations input below; \"1 group · 4\" is selected for the capture, exactly the frame state. Residual is Pencil-vs-Chromium font rasterization plus the 1px soft shadow: observed 0.061 on the 350x56 control; 0.08 leaves margin for font raster only. x/width/height gated exactly."
+      },
+      "registration": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 289,
+          "width": 350,
+          "height": 56
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width", "height"],
+        "classification": "Registration segmented control (frame: Open selected, Approval, Invite only). Only Open (community_open) and Invite only (invite_only) exist as visibility values, so the control renders two segments and no Approval segment (no alias, no new enum); the two live segments are wider than the frame thirds. Raw unmasked residual 0.0771 on the 350x56 control. x/width/height gated exactly."
+      },
+      "levelChips": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 425,
+          "width": 350,
+          "height": 44
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width", "height"],
+        "classification": "Level range chips (frame: Any level, 2.5–4.0, 3.0–4.5 selected). Live chips are Any level, the suggested range from the creator rating (2.7–4.7, selected) and Custom range, with the minimum/maximum inputs below; the sample ranges are not real values. Raw unmasked residual 0.5547 on the 350x44 row (chip text and widths, not row geometry). x/width/height gated exactly."
+      }
+    }
+  },
   "decisions": {
     "D6": "b5RR4 draws predefined-team pair pickers (Pair 1 / Pair 2 / Open spot). No stored pair fields or data source exist: only the team_assignment_mode radios do. The Teams step renders those two radios as the frame segmented control; no picker, select or text input is invented.",
     "D9": "The wizard suppresses the bottom navigation (shell isSuppressed) and owns a sticky action bar that carries the bottom safe-area inset.",
     "deviations": [
-      "wHaAb draws a Ranked switch, date chips, a time+price row and a single venue select. The form keeps its existing fields and order (venue, Maps URL, photo, timezone, currency, cutoff, level restriction, league control) as native selects/inputs on 52px controls; Ranked/Unranked is the existing competition radio pair rendered as the segmented control.",
-      "vAxZh draws Format (1/2/3 groups), Registration and Level range segments and a seeded invite list. None of these has a source in the wizard; the Players step keeps the member search, with results as full-row buttons and selected invitees as an avatar row with a Remove chip.",
+      "wHaAb draws a Match type segmented control, a Ranked switch card, date chips, a time+price row and a single venue select. The wizard renders Friendly/Competitive as a Base UI radio segmented control (Friendly first, as drawn), the Ranked switch from the existing competition resolver (on = Ranked with the League named in the meta line, off = the deliberate Unranked choice; the league control, a select, still picks the eligible League when several cover the date), suggested-day chips over the same date field as the native Date input (the custom-date path) and Start time + Price side by side. The existing fields and order (community, venue, Maps URL, photo, timezone, currency, cutoff) stay native selects/inputs on 52px controls; the venue is the saved-venue select plus the venue name and Maps URL inputs.",
+      "vAxZh draws Format (1/2/3 groups), Registration (Open/Approval/Invite only), Level range chips and a seeded invite list. The earlier claim that none of these has a source was wrong (corrected 2026-11-23): visibility (community_open | invite_only), maximum registrations and the level restriction with its minimum/maximum are real wizard fields that the Review step renders. They moved to this step: Format presets are the real maximum registrations values 4/8/12 (one group plays four players) over the same draft field as the exact Maximum registrations input (one synchronized field; empty means no limit), Registration is the visibility with two segments, and Level range chips (Any level / suggested range / Custom range) drive the existing level restriction and range inputs. Frame-only remainder, not implemented: the Approval segment (no such value exists, no alias or new enum), the sample ranges 2.5–4.0 and 3.0–4.5 and the seeded invite list (the step keeps the member search with real results and the selected-invitee Remove row).",
       "b5RR4 and the segmented controls keep frame order after play → predefined; the Details step keeps Cancel + Continue, later steps Back + Continue, and Publish & send invites replaces the frame Publish match copy because invitations are sent on publish.",
       "The frames draw Back top-left. The global language/theme chips still float top-right, so the top bar reserves their width; on steps 2-4 the chevron steps back and the sticky Back keeps the visible label."
-    ]
+    ],
+    "validationRouting": "Next and Back never validate. Publish validates every field and returns to the step that owns the first invalid one (Details for community, date, time, venue, Maps URL, photo, competition, price, currency, cutoff and duration; Players for minimum/maximum level and maximum registrations), then focuses the first aria-invalid control of that step after it mounts (DOM order is the cross-field precedence). The cutoff error also shows on Review; the competition error stays tied to the Ranked switch or the League select.",
+    "F8": "The legacy wHaAb Ranked-selector raster (full-frame budget raised to 0.19 against a measured 0.1836, paf-11) no longer exists: the wizard owns the wHaAb raster. It is re-anchored on aligned Pencil crops of the Match type control (measured 0.0442, budget 0.06) and the Ranked switch card (measured 0.0591, budget 0.08), both gated exactly on x/width/height, with the Ranked keyboard/layout probe retained in leagues-visual.spec.ts. No budget was widened to fit; the previous coarse region is replaced by crops that match the frame layout."
   },
   "toleranceEvidence": {
     "wHaAb": {
       "maxDiffPixelRatio": 0.01,
       "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
-      "justification": "The Details frame is a 916px board with a Ranked switch, date chips and a venue select; the wizard keeps its real field set (see deviations), so below the progress the sample copy differs. Top bar, progress, step label, 20px gutter, 14px rhythm, 52px controls and the sticky Cancel + Continue bar are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+      "justification": "Browser regression layer only (Chromium snapshot of en/light 390×844, suggested-day chips masked because they follow today's date). Design truth is the frameRegions layer: the Match type control and Ranked switch card (leagues-visual.spec.ts, Ranked state) and the date chips / time and price row (this spec) are measured against the Pencil export with exact x/width/height gates. Top bar, progress, step label, 20px gutter, 14px rhythm, 52px controls and the sticky Cancel + Continue bar are probed exactly. The 0.01 budget absorbs font rasterization only; it is not widened to hide layout differences."
     },
     "vAxZh": {
       "maxDiffPixelRatio": 0.01,
       "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
-      "justification": "The frame seeds Format/Registration/Level segments and invited players that have no source. The step renders the empty member search (no fake participants). Chrome, progress and the sticky Back + Continue bar are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+      "justification": "Browser regression layer only (Chromium snapshot of en/light 390×844 with Format '1 group · 4' selected, as the frame draws it). Design truth is the frameRegions layer: Format (gated 0.08), Registration and Level range (recorded findings with exact x/width/height) against the Pencil export. Chrome, progress and the sticky Back + Continue bar are probed exactly; the empty member search below the Level range shows no fake participants. The 0.01 budget absorbs font rasterization only; it is not widened to hide layout differences."
     },
     "b5RR4": {
       "maxDiffPixelRatio": 0.01,

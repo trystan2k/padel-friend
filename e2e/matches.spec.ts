@@ -42,6 +42,7 @@ type Copy = {
       viewCourtLocationFor: string;
     };
     teamMode: { PREDEFINED_TEAMS: string; POST_MATCH_TEAMS: string };
+    type: { friendly: string; competitive: string };
   };
   matchCreate: {
     title: string;
@@ -63,6 +64,10 @@ type Copy = {
       cutoff: string;
     };
     invitees: { search: string };
+    players: {
+      registration: string;
+      registrationOptions: { community_open: string; invite_only: string };
+    };
     photo: { remove: string };
     errors: {
       invalidInput: string;
@@ -336,14 +341,11 @@ async function publishMatchViaUi(
   const visibility = options.visibility ?? 'community_open';
   await page.getByLabel(en.matchCreate.fields.date).fill(options.date ?? ymd(3));
   await page.getByLabel(en.matchCreate.fields.startTime).fill(options.startTime ?? '19:30');
-  await page.getByLabel(en.matchCreate.fields.visibility).selectOption(visibility);
   await page.getByLabel(en.matchCreate.fields.venueName).fill(options.venue);
   await page
     .getByLabel(en.matchCreate.fields.mapsUrl)
     .fill(`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(options.venue)}`);
   if (options.price) await page.getByLabel(en.matchCreate.fields.price).fill(options.price);
-  if (options.maximum)
-    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill(options.maximum);
   await page
     .getByLabel(en.matchCreate.fields.photo)
     .setInputFiles({ name: 'venue.png', mimeType: 'image/png', buffer: matchPhoto() });
@@ -352,6 +354,11 @@ async function publishMatchViaUi(
   });
   await page.getByRole('button', { name: en.matchCreate.next }).click();
   await expect(page.getByText(en.matchCreate.steps.players, { exact: true })).toBeVisible();
+  await page
+    .getByRole('radio', { name: en.matchCreate.players.registrationOptions[visibility] })
+    .click();
+  if (options.maximum)
+    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill(options.maximum);
   if (options.inviteeName) {
     await page.getByLabel(en.matchCreate.invitees.search).fill(options.inviteeName);
     await page.getByRole('button', { name: options.inviteeName }).click();
@@ -722,22 +729,9 @@ test.describe.serial('public community_open lifecycle', () => {
     // The create wizard offers exactly the two scoped enums and no Ranked/League state.
     await openCreateWizard(creatorPage);
     await expect(creatorPage.getByText(/ranked|league/i)).toHaveCount(0);
-    const typeOptions = await creatorPage
-      .getByLabel(en.matchCreate.fields.type)
-      .evaluate((select) =>
-        select instanceof HTMLSelectElement
-          ? Array.from(select.options).map((option) => option.value)
-          : []
-      );
-    expect(typeOptions).toEqual(['competitive', 'friendly']);
-    const visibilityOptions = await creatorPage
-      .getByLabel(en.matchCreate.fields.visibility)
-      .evaluate((select) =>
-        select instanceof HTMLSelectElement
-          ? Array.from(select.options).map((option) => option.value)
-          : []
-      );
-    expect(visibilityOptions).toEqual(['community_open', 'invite_only']);
+    await expect(
+      creatorPage.getByRole('radiogroup', { name: en.matchCreate.fields.type }).getByRole('radio')
+    ).toHaveText([en.matches.type.friendly, en.matches.type.competitive]);
     await expect(
       creatorPage.getByRole('button', { name: /ranked|league|book|pay|purchase/i })
     ).toHaveCount(0);
@@ -745,6 +739,14 @@ test.describe.serial('public community_open lifecycle', () => {
     await expect(
       creatorPage.getByText(en.matchCreate.steps.players, { exact: true })
     ).toBeVisible();
+    await expect(
+      creatorPage
+        .getByRole('radiogroup', { name: en.matchCreate.players.registration })
+        .getByRole('radio')
+    ).toHaveText([
+      en.matchCreate.players.registrationOptions.community_open,
+      en.matchCreate.players.registrationOptions.invite_only
+    ]);
     await creatorPage.getByRole('button', { name: en.matchCreate.next }).click();
     await expect(creatorPage.getByText(en.matchCreate.steps.teams, { exact: true })).toBeVisible();
     await expect(creatorPage.getByRole('radio')).toHaveCount(2);

@@ -1763,8 +1763,28 @@
     }
   },
   "matchCreate": {
+    "players": {
+      "format": "Format",
+      "formatGroups_one": "{{count}} group · {{places}}",
+      "formatGroups_other": "{{count}} groups · {{places}}",
+      "formatHelp": "Sets the maximum registrations. Each group plays as four players. Leave the maximum empty for no limit.",
+      "registration": "Registration",
+      "registrationOptions": {
+        "community_open": "Open",
+        "invite_only": "Invite only"
+      },
+      "registrationHelp": {
+        "community_open": "Anyone in the community can join directly until the match is full.",
+        "invite_only": "Only players you invite can join."
+      },
+      "levelRange": "Level range",
+      "anyLevel": "Any level",
+      "customRange": "Custom range"
+    },
     "competition": {
       "legend": "Competition",
+      "switchMeta": "Counts for levels and the selected League",
+      "switchMetaLeague": "Counts for levels and {{league}}",
       "league": "League",
       "choose": "Choose a League",
       "members": "Ranked matches are for active community members only.",
@@ -1819,7 +1839,6 @@
       "courtNotes": "Court notes",
       "duration": "Expected duration",
       "notes": "Notes",
-      "levelRestriction": "Level restriction",
       "minLevel": "Minimum level",
       "maxLevel": "Maximum level",
       "invitePlayers": "Invite players",
@@ -1840,7 +1859,8 @@
       "noBooking": "No booking is made.",
       "noPayment": "No payment is collected.",
       "teamMode": "Choose team assignment mode.",
-      "invitesOnPublish": "Invitations are sent when you publish."
+      "invitesOnPublish": "Invitations are sent when you publish.",
+      "suggestedDays": "Suggested days"
     },
     "invitees": {
       "search": "Search players",

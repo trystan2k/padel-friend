@@ -1763,8 +1763,28 @@
     }
   },
   "matchCreate": {
+    "players": {
+      "format": "Formato",
+      "formatGroups_one": "{{count}} grupo · {{places}}",
+      "formatGroups_other": "{{count}} grupos · {{places}}",
+      "formatHelp": "Define o máximo de inscrições. Cada grupo joga com quatro jogadores. Deixe o máximo vazio para não ter limite.",
+      "registration": "Inscrição",
+      "registrationOptions": {
+        "community_open": "Aberta",
+        "invite_only": "Só por convite"
+      },
+      "registrationHelp": {
+        "community_open": "Qualquer pessoa da comunidade pode entrar direto até a partida lotar.",
+        "invite_only": "Só jogadores que você convidar podem entrar."
+      },
+      "levelRange": "Faixa de nível",
+      "anyLevel": "Qualquer nível",
+      "customRange": "Faixa personalizada"
+    },
     "competition": {
       "legend": "Competição",
+      "switchMeta": "Conta para os níveis e para a Liga escolhida",
+      "switchMetaLeague": "Conta para os níveis e para {{league}}",
       "league": "Liga",
       "choose": "Escolha uma Liga",
       "members": "Partidas ranqueadas são só para membros ativos da comunidade.",
@@ -1819,7 +1839,6 @@
       "courtNotes": "Observações da quadra",
       "duration": "Duração esperada",
       "notes": "Observações",
-      "levelRestriction": "Restrição de nível",
       "minLevel": "Nível mínimo",
       "maxLevel": "Nível máximo",
       "invitePlayers": "Convidar jogadores",
@@ -1840,7 +1859,8 @@
       "noBooking": "Não haverá reserva.",
       "noPayment": "Nenhum pagamento será cobrado.",
       "teamMode": "Escolha o modo de equipes.",
-      "invitesOnPublish": "Os convites serão enviados ao publicar."
+      "invitesOnPublish": "Os convites serão enviados ao publicar.",
+      "suggestedDays": "Dias sugeridos"
     },
     "invitees": {
       "search": "Buscar jogadores",

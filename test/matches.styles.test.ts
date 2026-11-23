@@ -224,8 +224,9 @@ describe('match styles', () => {
     expect(
       styles.match(/backgroundColor: 'var\(--color-green\)',\s*color: 'var\(--color-bg\)'/g)
     ).toHaveLength(2);
-    // The wizard's primary action is the shared Button primitive (green fill, on-green label).
-    expect(createStyles).not.toContain('var(--color-bg)');
+    // The wizard's primary action is the shared Button primitive (green fill, on-green label); the
+    // background foreground is only used for the inverted selected chip (text fill), never on green.
+    expect(createStyles).not.toMatch(/color-green\)',\s*color: 'var\(--color-bg\)'/);
     expect(readFileSync('design-tokens/dist/tokens.css', 'utf8')).toContain(
       '--color-bg: var(--palette-bg-dark)'
     );
