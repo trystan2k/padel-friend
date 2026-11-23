@@ -40,7 +40,11 @@ export default defineConfig({
       ]
     },
     deviceScaleFactor: 1,
-    colorScheme: 'light'
+    colorScheme: 'light',
+    // Native date/time controls (datetime-local) format by the browser locale, not the page lang:
+    // macOS rendered "01/11/2030, 22:00:00" and Linux "11/01/2030, 10:00:00 PM" on the same DOM.
+    // Pin the locale so both platforms (and CI) draw the same field text.
+    locale: 'en-US'
   },
   expect: {
     // Repo convergence budget (15s), matching the per-assertion fixes. Playwright's 5s default

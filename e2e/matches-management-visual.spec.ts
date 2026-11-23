@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   copies,
@@ -22,6 +22,18 @@ const frameRegions: Record<string, Record<string, FrameRegionRecord>> = JSON.par
   )
 ).frameRegions;
 const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
+// Frames whose long text runs rasterize differently on Linux carry a CI-captured "-linux" baseline
+// next to the macOS one. Chromium's Linux (FreeType) and macOS (CoreText) glyph rasterizers round
+// per-line baselines and antialias glyph edges differently, which the font flags in
+// playwright.config.ts cannot unify; the diff is glyphs only, on a DOM whose structural probes
+// pass. Frames without a variant keep the shared baseline.
+const baselineName = (frame: string) => {
+  const linux = `${frame}-light-linux.png`;
+  return process.platform === 'linux' &&
+    existsSync(new URL(`./matches-management-visual.spec.ts-snapshots/${linux}`, import.meta.url))
+    ? linux
+    : `${frame}-light.png`;
+};
 
 let f: Awaited<ReturnType<typeof fixtures>>;
 test.use({ viewport: { width: 390, height: 844 }, colorScheme: 'light', serviceWorkers: 'block' });
@@ -693,7 +705,7 @@ for (const [state, frame] of frames) {
     }
     const budget = budgets[frame];
     if (!budget) throw new Error(`Missing Clubhouse browser budget: ${frame}`);
-    await expect(page).toHaveScreenshot(`${frame}-light.png`, {
+    await expect(page).toHaveScreenshot(baselineName(frame), {
       ...capture,
       maxDiffPixelRatio: budget.maxDiffPixelRatio
     });
