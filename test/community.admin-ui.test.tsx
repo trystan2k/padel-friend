@@ -4,7 +4,6 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
 
-const routerState = vi.hoisted(() => ({ fromRoster: false }));
 const mocks = vi.hoisted(() => ({
   invalidate: vi.fn<() => Promise<void>>(),
   navigate: vi.fn<() => Promise<void>>(),
@@ -57,8 +56,7 @@ vi.mock('@tanstack/react-router', () => ({
   useRouter: () => ({
     invalidate: mocks.invalidate,
     navigate: mocks.navigate,
-    history: { back: mocks.historyBack },
-    state: { location: { state: routerState.fromRoster ? { adminMembersOrigin: true } : {} } }
+    history: { back: mocks.historyBack }
   })
 }));
 vi.mock('../src/features/community/community-admin.functions', () => ({
@@ -174,7 +172,6 @@ beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockReset();
   mocks.invalidate.mockResolvedValue();
   mocks.navigate.mockResolvedValue();
-  routerState.fromRoster = false;
   mocks.approve.mockResolvedValue({ status: 'active' });
   mocks.remove.mockResolvedValue({ status: 'inactive' });
   mocks.reactivate.mockResolvedValue({ membership_id: '44444444-4444-4444-8444-444444444444' });
@@ -1969,9 +1966,13 @@ describe('community admin UI', () => {
   );
 
   it('closes the member sheet by popping the roster history entry when opened from the roster', async () => {
-    routerState.fromRoster = true;
     const user = userEvent.setup();
-    render(
+    const view = mount('members');
+    const rosterLink = screen.getByRole('link', { name: 'Alicia Ramos' });
+    rosterLink.addEventListener('click', (event) => event.preventDefault());
+    await user.click(rosterLink);
+    // The route change mounts the sheet; the roster click set the in-memory origin flag.
+    view.rerender(
       <I18nextProvider i18n={createI18n('en')}>
         <CommunityAdminScreen
           screen="member"
@@ -1985,6 +1986,15 @@ describe('community admin UI', () => {
     await user.keyboard('{Escape}');
     await waitFor(() => expect(mocks.historyBack).toHaveBeenCalledOnce());
     expect(mocks.navigate).not.toHaveBeenCalled();
+    // history.back() returns to the mounted roster; the sheet unmounts and focus returns to the row.
+    view.rerender(
+      <I18nextProvider i18n={createI18n('en')}>
+        <CommunityAdminScreen screen="members" community={community} members={[member]} />
+      </I18nextProvider>
+    );
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Alicia Ramos' }))
+    );
   });
 
   it('closes a deep-linked member sheet to the Members screen without leaving through history', async () => {
