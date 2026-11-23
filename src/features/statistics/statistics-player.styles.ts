@@ -288,14 +288,6 @@ export const playerStyles = stylex.create({
     color: 'var(--color-muted)',
     overflowWrap: 'anywhere'
   },
-  outcomes: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: 'var(--space-4)',
-    margin: 0,
-    padding: 0,
-    listStyle: 'none'
-  },
   chart: { width: '100%', height: 'auto', maxHeight: '160px' },
   bar: { fill: 'var(--color-green)' },
   table: {
@@ -357,5 +349,110 @@ export const playerStyles = stylex.create({
     fontWeight: 'var(--font-weight-bold)',
     cursor: 'pointer',
     ':focus-visible': focusRing
+  },
+  // Tile and row definitions stay in the markup for assistive tech without a paragraph under every figure.
+  visuallyHidden: {
+    position: 'absolute',
+    width: 'var(--space-1)',
+    height: 'var(--space-1)',
+    padding: 0,
+    margin: 'calc(-1 * var(--space-1))',
+    overflow: 'hidden',
+    clip: 'rect(0, 0, 0, 0)',
+    whiteSpace: 'nowrap',
+    borderWidth: 0,
+    borderStyle: 'none'
+  },
+  // Row card (o9iaC1): hairline 20px card of label-left / value-right rows.
+  rowCard: {
+    display: 'grid',
+    margin: 0,
+    padding: 'var(--space-4) var(--space-16)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-20)',
+    backgroundColor: 'var(--color-surface)'
+  },
+  rowStat: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    justifyContent: 'space-between',
+    columnGap: 'var(--space-12)',
+    rowGap: 'var(--space-2)',
+    minHeight: CONTROL,
+    paddingBlock: 'var(--space-8)'
+  },
+  rowValue: { textAlign: 'end', marginInlineStart: 'auto' },
+  // Recent form (RN0yw): chronological W/L/D squares, oldest first; letter plus hidden full word.
+  formLead: {
+    display: 'grid',
+    gap: 'var(--space-8)',
+    minWidth: 0,
+    marginBlockEnd: 'var(--space-14)'
+  },
+  formSquares: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: 'var(--space-6)',
+    margin: 0,
+    padding: 0,
+    listStyle: 'none'
+  },
+  square: {
+    boxSizing: 'border-box',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 'calc(var(--space-40) - var(--space-4))',
+    height: 'calc(var(--space-40) - var(--space-4))',
+    borderRadius: 'var(--radius-12)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-extrabold)'
+  },
+  squareWin: { backgroundColor: 'var(--color-green)', color: 'var(--color-on-green)' },
+  squareLoss: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-muted)' },
+  squareDraw: { backgroundColor: 'var(--color-amber-soft)', color: 'var(--color-amber)' },
+  // Meeting rows (GrkSH / khmeK): one row per match inside the card instead of a scrolling table.
+  meetingList: {
+    display: 'grid',
+    gap: 'var(--space-8)',
+    margin: 0,
+    padding: 0,
+    listStyle: 'none'
+  },
+  meetingRow: {
+    display: 'grid',
+    gap: 'var(--space-6)',
+    paddingBlock: 'var(--space-8)',
+    minWidth: 0
+  },
+  meetingHead: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: 'var(--space-10)',
+    rowGap: 'var(--space-4)'
+  },
+  meetingLead: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 'var(--space-10)',
+    rowGap: 'var(--space-4)',
+    minWidth: 0
+  },
+  meetingDate: {
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    color: 'var(--color-text)'
+  },
+  meetingScore: {
+    fontSize: 'var(--font-size-17)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    color: 'var(--color-text)',
+    fontVariantNumeric: 'tabular-nums'
   }
 });

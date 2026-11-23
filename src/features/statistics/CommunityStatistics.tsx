@@ -1,6 +1,8 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import { CountStat, MetricStat, Section, Stat } from './PlayerMetric';
 import { StatisticsChart } from './StatisticsChart';
 import { StatisticsEmpty, ReasonText } from './StatisticsStates';
@@ -219,19 +221,34 @@ export function CommunityStatistics({
   const { filters } = stats;
   const community = stats.communities.find((item) => item.id === filters.communityId);
   const thresholds = stats.config.thresholds;
-  const empty = stats.matches.played === 0;
+  const { played, competitive } = stats.matches;
+  const empty = played === 0;
 
   return (
     <main data-route-chrome="navigation" {...stylex.props(s.page)}>
-      <header {...stylex.props(s.header)}>
-        <h1 {...stylex.props(s.title)}>
-          {community
+      <TopBar
+        xstyle={c.bar}
+        title={
+          community
             ? t('statistics.community.titleCommunity', { name: community.name })
-            : t('statistics.community.title')}
-        </h1>
-        <p {...stylex.props(s.copy)}>{t('statistics.community.subtitle')}</p>
+            : t('statistics.community.title')
+        }
+        back={
+          community
+            ? {
+                to: '/community/$communityId',
+                params: { communityId: community.id },
+                label: t('statistics.community.back')
+              }
+            : { to: '/community', label: t('statistics.community.back') }
+        }
+      />
+      <div {...stylex.props(c.chipRow)}>
         <FilterContext filters={filters} />
-      </header>
+        <a href="#community-filters" {...stylex.props(s.filterAccess)}>
+          {t('statistics.filters.title')}
+        </a>
+      </div>
 
       {stats.league && (
         <p {...stylex.props(c.notice)}>
@@ -245,28 +262,77 @@ export function CommunityStatistics({
           {t(`statistics.community.notice.${stats.notice}`)}
         </output>
       )}
+      {empty && !stats.notice && (
+        <StatisticsEmpty>{t('statistics.community.empty')}</StatisticsEmpty>
+      )}
+
+      <section aria-label={t('statistics.community.matches.title')} {...stylex.props(s.section)}>
+        <dl {...stylex.props(s.hero)}>
+          <CountStat
+            tile
+            id="community.matches.played"
+            label={t('statistics.community.matches.played')}
+            value={played}
+          />
+          <CountStat
+            tile
+            id="community.activePlayers"
+            label={t('statistics.community.activePlayers.label')}
+            value={stats.activePlayers}
+          />
+        </dl>
+      </section>
+
+      {stats.months.length > 0 && (
+        <SurfaceCard>
+          <StatisticsChart
+            headingLevel="h2"
+            title={t('statistics.community.frequency.monthCaption')}
+            headerLabel={t('statistics.community.frequency.month')}
+            valueLabel={t('statistics.community.frequency.groups')}
+            points={stats.months.map((month) => ({
+              key: month.month,
+              label: f.month(month.month),
+              value: month.groups
+            }))}
+            plotLimit={MONTH_PLOT_LIMIT}
+            formatValue={f.count}
+          />
+        </SurfaceCard>
+      )}
+
+      <dl {...stylex.props(s.rowCard)}>
+        <Stat
+          row
+          id="community.matches.competitiveShare"
+          label={t('statistics.community.matches.competitiveShare')}
+        >
+          {empty ? (
+            <strong {...stylex.props(s.value, s.valueMuted)}>
+              {t('statistics.player.noValue')}
+            </strong>
+          ) : (
+            <strong {...stylex.props(s.value)}>{f.ratio(competitive / played)}</strong>
+          )}
+        </Stat>
+        <CountStat
+          row
+          id="community.matches.competitive"
+          label={t('statistics.community.matches.competitive')}
+          value={competitive}
+        />
+        <CountStat
+          row
+          id="community.matches.friendly"
+          label={t('statistics.community.matches.friendly')}
+          value={stats.matches.friendly}
+        />
+      </dl>
+      <p {...stylex.props(s.copy)}>{t('statistics.community.subtitle')}</p>
 
       <Section id="community-matches" title={t('statistics.community.matches.title')}>
         <p {...stylex.props(s.copy)}>{t('statistics.community.matches.help')}</p>
-        {empty && !stats.notice && (
-          <StatisticsEmpty>{t('statistics.community.empty')}</StatisticsEmpty>
-        )}
         <dl {...stylex.props(s.stats)}>
-          <CountStat
-            id="community.matches.played"
-            label={t('statistics.community.matches.played')}
-            value={stats.matches.played}
-          />
-          <CountStat
-            id="community.matches.competitive"
-            label={t('statistics.community.matches.competitive')}
-            value={stats.matches.competitive}
-          />
-          <CountStat
-            id="community.matches.friendly"
-            label={t('statistics.community.matches.friendly')}
-            value={stats.matches.friendly}
-          />
           <CountStat
             id="community.matches.decided"
             label={t('statistics.community.matches.decided')}
@@ -287,11 +353,6 @@ export function CommunityStatistics({
             label={t('statistics.community.ranking.label')}
             metric={stats.rankingMatches}
             format={(value) => f.count(value.groups)}
-          />
-          <CountStat
-            id="community.activePlayers"
-            label={t('statistics.community.activePlayers.label')}
-            value={stats.activePlayers}
           />
           <CountStat
             id="community.totals.sets"
@@ -423,18 +484,6 @@ export function CommunityStatistics({
             value: week.groups
           }))}
           plotLimit={WEEK_PLOT_LIMIT}
-          formatValue={f.count}
-        />
-        <StatisticsChart
-          title={t('statistics.community.frequency.monthCaption')}
-          headerLabel={t('statistics.community.frequency.month')}
-          valueLabel={t('statistics.community.frequency.groups')}
-          points={stats.months.map((month) => ({
-            key: month.month,
-            label: f.month(month.month),
-            value: month.groups
-          }))}
-          plotLimit={MONTH_PLOT_LIMIT}
           formatValue={f.count}
         />
       </Section>

@@ -59,7 +59,18 @@ describe('player statistics core surface', () => {
     const last5 = figure('Last 5 matches');
     expect(last5.textContent).toContain('1W 1L 1D');
     expect(last5.textContent).toContain('Based on 3 of the last 5 matches');
-    expect(within(last5).getByRole('list', { name: 'Results, oldest first' })).toBeTruthy();
+    // One chronological strip (RN0yw): every square carries its full word, oldest first.
+    const squares = screen.getByRole('list', { name: 'Results, oldest first' });
+    expect(
+      within(squares)
+        .getAllByRole('listitem')
+        .map((square) => square.textContent)
+    ).toEqual(['WWin', 'LLoss', 'DDraw']);
+    expect(
+      screen.getByText(
+        'Oldest to newest · W win, L loss, D draw. Incomplete matches have no result and are not shown.'
+      )
+    ).toBeTruthy();
     expect(figure('Current streak').textContent).toContain('2');
     expect(figure('Current streak').textContent).toContain('Wins in a row');
     expect(figure('Longest loss streak').textContent).toContain('2');

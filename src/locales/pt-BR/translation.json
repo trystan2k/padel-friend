@@ -2471,6 +2471,7 @@
     "community": {
       "title": "Estatísticas da comunidade",
       "titleCommunity": "Estatísticas de {{name}}",
+      "back": "Voltar para a comunidade",
       "subtitle": "Cada número conta cada partida uma única vez, independentemente de quem jogou.",
       "open": "Estatísticas da comunidade",
       "empty": "Ainda não há partidas confirmadas nesta seleção.",
@@ -2494,6 +2495,7 @@
         "played": "Partidas jogadas",
         "competitive": "Competitivas",
         "friendly": "Amistosas",
+        "competitiveShare": "Proporção competitiva",
         "decided": "Com vencedor",
         "draws": "Empates",
         "incomplete": "Incompletas"
@@ -2593,12 +2595,9 @@
       "showMore": "Mostrar mais",
       "noRating": "Sem nível",
       "columns": {
-        "date": "Data",
-        "result": "Resultado",
         "sets": "Sets",
         "games": "Games",
         "rating": "Variação de nível",
-        "match": "Partida",
         "player": "Jogador",
         "played": "Partidas",
         "record": "Retrospecto",
@@ -2867,6 +2866,12 @@
       },
       "form": {
         "outcomes": "Resultados, do mais antigo ao mais recente",
+        "legend": "Da mais antiga à mais recente · V vitória, D derrota, E empate. Partidas incompletas não têm resultado e não aparecem.",
+        "short": {
+          "W": "V",
+          "L": "D",
+          "D": "E"
+        },
         "outcome": {
           "W": "Vitória",
           "L": "Derrota",
@@ -2987,6 +2992,9 @@
         "matches": {
           "played": {
             "help": "Conta cada partida confirmada uma única vez. Partidas incompletas contam como jogadas, mas não têm vencedor."
+          },
+          "competitiveShare": {
+            "help": "Partidas competitivas como proporção de todas as partidas jogadas nesta seleção. Indisponível quando nenhuma partida foi jogada."
           },
           "competitive": {
             "help": "Partidas confirmadas do tipo competitivo."

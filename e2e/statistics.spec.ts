@@ -249,13 +249,16 @@ test('2-1 with an unfinished third set stays a draw and never becomes a win or a
   await expect(row.getByText(t.history.outcome.win, { exact: true })).toHaveCount(0);
 
   await visit(page, `${playerPath('A')}/partners/${w.idOf('B')}`);
-  const pairRow = page.getByRole('row').filter({ hasText: '11–11' });
-  await expect(pairRow.getByRole('cell').nth(0)).toHaveText(/draw/i);
-  await expect(pairRow.getByRole('cell').nth(1)).toHaveText('1–1');
+  const meetings = page.getByRole('list', { name: t.relationships.recentCaption });
+  const pairRow = meetings.getByRole('listitem').filter({ hasText: 'Games 11–11' });
+  await expect(pairRow).toHaveCount(1);
+  await expect(pairRow).toContainText(t.relationships.outcome.D);
+  await expect(pairRow).toContainText(`${t.relationships.columns.sets} 1–1`);
   await visit(page, `${playerPath('A')}/opponents/${w.idOf('C')}`);
-  const h2hRow = page.getByRole('row').filter({ hasText: '11–11' });
-  await expect(h2hRow.getByRole('cell').nth(0)).toHaveText(/draw/i);
-  await expect(h2hRow.getByRole('cell').nth(1)).toHaveText('1–1');
+  const h2hRow = meetings.getByRole('listitem').filter({ hasText: 'Games 11–11' });
+  await expect(h2hRow).toHaveCount(1);
+  await expect(h2hRow).toContainText(t.relationships.outcome.D);
+  await expect(h2hRow).toContainText(`${t.relationships.columns.sets} 1–1`);
   expectNoBrowserErrors(page);
 });
 
@@ -446,6 +449,53 @@ test('Friendly with a League explains the empty selection instead of coercing th
     playerPath('A', query({ community: 'main', league: 'active', type: 'friendly' }))
   );
   await expectPlayerTotals(page, { community: 'main', league: 'active', type: 'friendly' });
+  expectNoBrowserErrors(page);
+});
+
+// o9iaC1: the overview leads with the back link, scope chips, matches/players tiles and month chart.
+test('community overview keeps the frame hierarchy with real counts, share and back link', async () => {
+  const page = await pageOf('A');
+  const base = `/community/${w.f.community}/statistics`;
+  await visit(page, base);
+  const main = page.getByRole('main');
+  await expect(main.getByRole('link', { name: t.community.back })).toHaveAttribute(
+    'href',
+    `/community/${w.f.community}`
+  );
+  const groups = groupsOf({ community: 'main' });
+  const competitive = groups.filter((g) => g.type === 'competitive').length;
+  await expectStat(page, 'Matches played', groups.length);
+  await expectStat(page, 'Competitive share', percent(competitive / groups.length));
+  // The competitive share definition stays readable for assistive tech without a visible paragraph.
+  await expect(stat(page, 'Competitive share')).toContainText(/share of all matches played/);
+  // The scope chips lead to the real filter form, whose state lives in the URL.
+  await main.getByRole('link', { name: t.filters.title }).click();
+  await expect(page).toHaveURL(/#community-filters$/);
+
+  // Zero denominator: the share is unavailable, never NaN, and the empty reason stays visible.
+  await visit(page, `${base}?leagueId=${w.leagues.active.id}&type=friendly`);
+  await expectStat(page, 'Competitive share', t.player.noValue);
+  await expect(page.getByRole('main')).not.toContainText(/NaN|Infinity/);
+  expectNoBrowserErrors(page);
+});
+
+// RN0yw: recent form is one chronological strip of squares with a readable word per result.
+test('recent form shows chronological result squares with their legend', async () => {
+  const page = await pageOf('A');
+  await visit(page, playerPath('A'));
+  const strip = page.getByRole('list', { name: t.player.form.outcomes });
+  await expect(strip).toHaveCount(1);
+  const squares = strip.getByRole('listitem');
+  expect(await squares.count()).toBeGreaterThan(0);
+  const words = await squares.evaluateAll((items) => items.map((item) => item.textContent ?? ''));
+  const known = new Map([
+    ['W', t.player.form.outcome.W],
+    ['L', t.player.form.outcome.L],
+    ['D', t.player.form.outcome.D]
+  ]);
+  for (const word of words)
+    expect([...known.entries()].some(([key, label]) => word === `${key}${label}`)).toBe(true);
+  await expect(page.getByText(t.player.form.legend)).toBeVisible();
   expectNoBrowserErrors(page);
 });
 

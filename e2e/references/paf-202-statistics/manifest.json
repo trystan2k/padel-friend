@@ -84,12 +84,12 @@
   "surfaces": {
     "PlayerStatistics": {
       "frames": ["RN0yw", "RRuhH", "m8Loju"],
-      "note": "Page background with 20px gutters and 14px rhythm; 21/800 title with the real subtitle and filter context chips; three 20px hairline tiles (24/800 values), 20px W-L-D strip, 17/800 section titles, sections in 20px hairline cards. The metric inventory (rating, activity chart, records) stays: all real data. The real URL form remains inline after highlights, recent form and recent matches so the first viewport leads with results.",
+      "note": "Page background with 20px gutters and 14px rhythm; 21/800 title with the real subtitle and filter context chips; three compact 20px hairline tiles (24/800 value above its label; the metric definition stays in the markup for assistive tech, the sample basis stays visible), 20px W-L-D strip, recent form as chronological W/L/D squares (letter plus a hidden full word, legend below; the sample only holds decided results, incomplete matches are not part of it), 17/800 section titles, sections in 20px hairline cards. The metric inventory (rating, activity chart, records) stays: all real data. The real URL form remains inline after highlights, recent form and recent matches so the first viewport leads with results.",
       "route": "/players/$playerId"
     },
     "CommunityStatistics": {
       "frames": ["o9iaC1", "m8Loju"],
-      "note": "Same page and card treatment; match totals precede the real inline form, with filter chips and 48px controls. Frame figures \"Avg. level\" and \"Most active venue\" have no source (D6) and are omitted; Competitive and played counts, active players and the month/week charts remain. A share is derivable from the counts, but this pass does not add that figure.",
+      "note": "F28/F5 bounded ADOPT: shared top bar (back to the community overview, or the community list without a scope), real scope chips with a jump to the unchanged filter form, matches-played and active-players tiles, the Matches per month chart card (shared StatisticsChart, summary and data table), then a row card with competitive share, competitive and friendly counts. Competitive share = competitive / played, validated by the server partition (competitive + friendly = played) and unavailable when nothing was played. Frame figures \"Avg. level\" and \"Most active venue\" have no source (D6) and are omitted. Decided, draws, incomplete, ranking, sets and games, filters, leaders, pairings and the weekly chart stay as secondary content.",
       "route": "/community/$communityId/statistics"
     },
     "PlayerMetric": {
@@ -134,15 +134,15 @@
     },
     "RelationshipList": {
       "frames": ["GrkSH", "khmeK"],
-      "note": "Recent meetings: hairline 20px cards with Won/Lost chip text, date and set scores; Show more is a 48px outlined control."
+      "note": "Recent meetings: one row per match inside the section card (outcome chip, date, sets, then games and rating change, then the match link); no horizontal scrolling table. Show more is a 48px outlined control."
     },
     "RelationshipMeetings": {
       "frames": ["GrkSH", "khmeK"],
-      "note": "Meeting rows in the same card; link to the confirmed group detail unchanged."
+      "note": "Meeting rows in the same card; outcome comes from the stored result (Win, Loss, Draw, Incomplete), never inferred from the score; link to the confirmed group detail unchanged; URL-offset paging and retry unchanged."
     },
     "RelationshipRecordView": {
       "frames": ["GrkSH", "khmeK", "QVLTH"],
-      "note": "Shared record sections (record, scores, streaks, rating, leagues) as 20px hairline cards with 14px muted labels and 17/800 values."
+      "note": "Shared record sections (record, scores, streaks, rating, leagues) as 20px hairline cards with 14px muted labels and 17/800 values. Recent matches are scoped row cards (GrkSH, khmeK) instead of a table."
     }
   },
   "visualBudgets": {
@@ -154,29 +154,29 @@
         "cardEdge": 0,
         "viewport": 0.1448,
         "header": 0.1436,
-        "primary": 0.1743,
-        "followUp": 0.1293
+        "primary": 0.1579,
+        "followUp": 0.1557
       },
       "GrkSH": {
         "cardEdge": 0,
-        "header": 0.1044,
-        "primary": 0.2072,
-        "followUp": 0.1345,
+        "header": 0.1018,
+        "primary": 0.1825,
+        "followUp": 0.065,
         "note": "Re-measured after the two-person composition and three tiles were restored. Bands realigned to the frame regions (header 0-104, composition+tiles 104-257, rest 257-844); they are not comparable to the earlier 104-355 band. The remaining primary residual is the live breadcrumb/title/filter chips/back link above the composition, which push it below the frame's single top bar."
       },
       "khmeK": {
         "cardEdge": 0,
-        "header": 0.1335,
-        "primary": 0.2033,
-        "followUp": 0.0687,
+        "header": 0.0988,
+        "primary": 0.1821,
+        "followUp": 0.0771,
         "note": "Re-measured after the two-person composition and three tiles were restored. Bands realigned to the frame regions (header 0-104, composition+tiles 104-257, rest 257-844); they are not comparable to the earlier 104-473 band. The remaining primary residual is the live breadcrumb/title/filter chips/back link above the composition."
       },
       "o9iaC1": {
         "cardEdge": 0,
         "viewport": 0.1578,
-        "header": 0.1692,
-        "primary": 0.2332,
-        "followUp": 0.104
+        "header": 0.1179,
+        "primary": 0.2454,
+        "followUp": 0.119
       },
       "BcpYH": {
         "cardEdge": 0,
@@ -264,13 +264,13 @@
             "name": "follow-up",
             "top": 257,
             "bottom": 844,
-            "classification": "Layout: recent meetings follow the tiles as in the frame (table with date, result, sets, games, rating and match link versus the frame's chip rows); exact date/league filters and real detailed evidence have no equivalent in this frame."
+            "classification": "Layout: recent meetings follow the tiles as row cards with outcome chip, date, sets, games, rating change and a match link (the frame shows Won/Lost chips and per-set scores; the DTO has set and game totals only); exact date/league filters and real detailed evidence have no equivalent in this frame."
           }
         ]
       },
       "o9iaC1": {
         "surface": "community",
-        "cardSelector": "section[aria-labelledby=\"community-matches\"] > div",
+        "cardSelector": "main > section[aria-label] > dl > div",
         "referenceTop": 160,
         "previousViewportResidual": 0.1983,
         "budget": 0.015,
@@ -279,19 +279,19 @@
             "name": "header",
             "top": 0,
             "bottom": 104,
-            "classification": "Layout: persistent application shell and live community heading differ from the centered mock header."
+            "classification": "Layout: the shared centered top bar with back chevron now matches the frame; the live community name in the title and the 44px-plus back target differ from the mock's fixed copy. Not fixture noise."
           },
           {
             "name": "primary",
             "top": 104,
             "bottom": 403,
-            "classification": "Fixture: scope and counts differ. Layout: match totals now precede filters; additional real metrics still share one card instead of two hero tiles. Compare the first Pencil tile edge with the live matches card."
+            "classification": "Fixture: scope and counts differ. Layout: scope chips are the real read-only filter chips plus a Filters jump link (the frame shows two static chips); matches and active-players tiles lead; tile labels are the localized sentence-case metric names. The first Pencil tile edge is compared with the first live tile."
           },
           {
             "name": "follow-up",
             "top": 403,
             "bottom": 844,
-            "classification": "Layout: real filters and leader records remain; unsourced level/venue values are omitted (D6). The chart and table semantics are gated separately."
+            "classification": "Fixture: months and values differ. Layout: the shared StatisticsChart has no on-bar value or month labels (values live in its summary and data table); the row card carries competitive share, competitive and friendly rows; average level and most active venue are unavailable (D6) and omitted; the remaining real metrics, filters and leaders follow as secondary content."
           }
         ]
       },

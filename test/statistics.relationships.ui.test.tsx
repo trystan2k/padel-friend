@@ -147,14 +147,16 @@ describe('PairStatistics', () => {
 
   it('lists recent matches with result text, scores and a labelled link', () => {
     render(wrap(<PairStatistics pair={makePair()} />));
-    const table = screen.getByRole('table', { name: 'Most recent matches, newest first' });
-    const rows = within(table).getAllByRole('row').slice(1);
+    const list = screen.getByRole('list', { name: 'Most recent matches, newest first' });
+    expect(screen.queryByRole('table')).toBeNull();
+    const rows = within(list).getAllByRole('listitem');
     expect(rows).toHaveLength(2);
     expect(within(rows[0]!).getByText('Win')).toBeTruthy();
     expect(within(rows[1]!).getByText('Incomplete')).toBeTruthy();
-    expect(within(rows[0]!).getByText('2–1')).toBeTruthy();
-    expect(within(rows[0]!).getByText('14–11')).toBeTruthy();
-    expect(within(table).queryByRole('columnheader', { name: 'Rating change' })).toBeNull();
+    expect(rows[0]!.textContent).toContain('Sets 2–1');
+    expect(rows[0]!.textContent).toContain('Games 14–11');
+    expect(within(rows[0]!).getByRole('link', { name: /View match played on/ })).toBeTruthy();
+    expect(rows[0]!.textContent).not.toContain('Rating change');
   });
 });
 
@@ -166,11 +168,12 @@ describe('OpponentStatistics', () => {
     expect(figure('Toughest loss').textContent).toContain('80% expected');
     expect(figure('Biggest rating gain').textContent).toContain('+0.4');
     expect(figure('Biggest rating loss').textContent).toContain('-0.3');
-    const table = screen.getByRole('table');
-    const cells = within(table).getAllByRole('row').slice(1);
-    expect(within(cells[0]!).getByText('-0.2')).toBeTruthy();
-    expect(within(cells[1]!).getByText('+0.3')).toBeTruthy();
-    expect(within(cells[2]!).getByText('No rating')).toBeTruthy();
+    const cells = within(screen.getByRole('list', { name: /Most recent matches/ })).getAllByRole(
+      'listitem'
+    );
+    expect(cells[0]!.textContent).toContain('Rating change -0.2');
+    expect(cells[1]!.textContent).toContain('Rating change +0.3');
+    expect(cells[2]!.textContent).toContain('Rating change No rating');
     expect(screen.queryByText('Average opponent level')).toBeNull();
   });
 

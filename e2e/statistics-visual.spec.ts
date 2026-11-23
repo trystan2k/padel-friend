@@ -109,6 +109,8 @@ async function probe(page: Page, historyLabel?: string): Promise<Probe> {
       if (rect.width === 0 || rect.height === 0) continue;
       const style = getComputedStyle(element);
       if (style.visibility === 'hidden' || style.display === 'none') continue;
+      // Visually hidden text (definitions, full result words) is for assistive tech, not painted.
+      if (style.clip === 'rect(0px, 0px, 0px, 0px)') continue;
       // Containment: nothing sticks out of the viewport unless a horizontal scroller owns it.
       // The history section is contained by its own box (the legacy Matches shell widens the page).
       const limitRight = scoped ? scoped.getBoundingClientRect().right : doc.clientWidth;
@@ -363,16 +365,22 @@ const OPPONENT_REGIONS: Region[] = [
   SCOPE_NAME('opponent-stats-rating')
 ];
 
-/** o9iaC1: scope, volume, player leaders, team and matchup records, activity by month and week. */
+/**
+ * o9iaC1: top bar, scope chips, matches + active-players tiles, month chart card and row card lead;
+ * the remaining real metrics, filter form, leaders, pairings and weekly frequency follow.
+ */
 const COMMUNITY_REGIONS: Region[] = [
   { name: 'title', selector: 'main > header h1', count: 1 },
-  FILTER_BADGES,
+  { name: 'scope chips', selector: 'main > div > ul[aria-label]' },
+  { name: 'overview tiles', selector: 'main > section[aria-label] > dl > div', count: 2 },
+  { name: 'month chart card', selector: 'main > div > figure', count: 1 },
+  { name: 'row card', selector: 'main > dl > div', count: 3 },
   SCOPE_NAME('community-matches'),
   SCOPE_NAME('community-filters'),
   SCOPE_NAME('community-leaders'),
   SCOPE_NAME('community-pairings'),
   SCOPE_NAME('community-frequency'),
-  { name: 'frequency charts', selector: '#community-frequency ~ * figure', count: 2 }
+  { name: 'weekly chart', selector: '#community-frequency ~ * figure', count: 1 }
 ];
 
 /**
@@ -527,6 +535,53 @@ test('community selectors and recent-match cards keep 44px targets without overl
       expect(failures, `${locale} ${width}: ${failures.join('\n')}`).toEqual([]);
       await page.context().close();
     }
+  }
+});
+
+// GrkSH / khmeK: meetings are row cards (chip, date, sets, games, link), never a scrolling table,
+// and every row keeps its link inside the viewport at the narrowest widths.
+test('meeting rows are cards with visible links and newest-first order', async () => {
+  for (const width of [320, 390]) {
+    const page = await w.f.page(w.actors[A], 'en', width, 'light', 844);
+    const failures: string[] = [];
+    for (const name of ['pair', 'opponent']) {
+      const surface = surfaces().find((candidate) => candidate.name === name)!;
+      await page.goto(surface.path);
+      await waitForHydratedPage(page);
+      const rows = await page.evaluate(() => {
+        const section = document.querySelector('#relationship-recent')!.closest('section')!;
+        const scrollers = [...section.querySelectorAll('*')].filter(
+          (element) => element.clientWidth > 2 && element.scrollWidth > element.clientWidth + 1
+        ).length;
+        const items = [...section.querySelectorAll('ol > li')].map((item) => {
+          const link = item.querySelector('a')!.getBoundingClientRect();
+          return {
+            right: link.right,
+            width: link.width,
+            height: link.height,
+            at: item.querySelector('time')!.getAttribute('datetime')!,
+            top: item.getBoundingClientRect().top,
+            bottom: item.getBoundingClientRect().bottom
+          };
+        });
+        return { tables: section.querySelectorAll('table').length, scrollers, items };
+      });
+      if (rows.tables !== 0) failures.push(`${name}@${width}: meetings still render a table`);
+      if (rows.scrollers !== 0) failures.push(`${name}@${width}: horizontal scroller in meetings`);
+      if (rows.items.length === 0) failures.push(`${name}@${width}: no meeting rows`);
+      rows.items.forEach((item, index) => {
+        if (item.width < 44 || item.height < 44)
+          failures.push(`${name}@${width}: row ${index} link ${item.width}x${item.height}`);
+        if (item.right > width + 0.5) failures.push(`${name}@${width}: row ${index} link clipped`);
+        const previous = rows.items[index - 1];
+        if (previous && item.at > previous.at)
+          failures.push(`${name}@${width}: row ${index} is newer than row ${index - 1}`);
+        if (previous && item.top < previous.bottom - 0.5)
+          failures.push(`${name}@${width}: rows ${index - 1}/${index} overlap`);
+      });
+    }
+    expect(failures, failures.join('\n')).toEqual([]);
+    await page.context().close();
   }
 });
 

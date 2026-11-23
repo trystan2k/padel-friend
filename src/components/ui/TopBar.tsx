@@ -10,7 +10,12 @@ type TopBarProps = {
   /** Set when the heading must be focusable (restoring focus after a nested view closes). */
   headingId?: string;
   /** Localized, already-translated accessible name; the chevron itself is decorative. */
-  back?: { to: LinkProps['to']; label: string };
+  back?: {
+    to: LinkProps['to'];
+    params?: LinkProps['params'];
+    search?: LinkProps['search'];
+    label: string;
+  };
   /** End slot content, usually a TopBarAction. The start slot mirrors its minimum width. */
   trailing?: ReactNode;
   xstyle?: StyleXStyles;
@@ -28,6 +33,8 @@ export function TopBar({ title, headingId, back, trailing, xstyle }: TopBarProps
         {back && (
           <Link
             to={back.to}
+            params={back.params}
+            search={back.search}
             aria-label={back.label}
             {...stylex.props(styles.back, controlStyles.focusRing)}
           >

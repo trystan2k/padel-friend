@@ -80,7 +80,7 @@ describe('relationship meetings', () => {
     await user.click(screen.getByRole('button', { name: 'Show more' }));
     await waitFor(() => expect(screen.getByText('Showing 21 of 21')).toBeTruthy());
     expect(screen.getByTestId('offset').textContent).toBe('20');
-    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(22);
+    expect(within(screen.getByRole('list')).getAllByRole('listitem')).toHaveLength(21);
     expect(mocks.read).toHaveBeenCalledTimes(1);
     expect(mocks.read).toHaveBeenCalledWith({
       data: {

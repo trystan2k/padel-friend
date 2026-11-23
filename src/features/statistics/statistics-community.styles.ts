@@ -10,6 +10,17 @@ const focusRing = {
 };
 
 export const communityStyles = stylex.create({
+  // The page gutter is 20px; the shared top bar brings its own 8px inset, so it bleeds to the edges.
+  bar: { marginInline: 'calc(-1 * var(--space-20))' },
+  // Scope chips (o9iaC1) with the jump to the real filter form that keeps the URL state actionable.
+  chipRow: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: 'var(--space-12)',
+    rowGap: 'var(--space-4)',
+    minWidth: 0
+  },
   form: { display: 'grid', gap: 'var(--space-10)', minWidth: 0 },
   fields: {
     display: 'grid',

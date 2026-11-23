@@ -308,76 +308,54 @@ export function RecentMatches({
       {matches.length === 0 ? (
         <StatisticsEmpty>{t('statistics.relationships.noRecent')}</StatisticsEmpty>
       ) : (
-        <div {...stylex.props(s.tableScroll)}>
-          <table {...stylex.props(s.table)}>
-            <caption {...stylex.props(s.caption)}>
-              {t('statistics.relationships.recentCaption')}
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col" {...stylex.props(s.cell)}>
-                  {t('statistics.relationships.columns.date')}
-                </th>
-                <th scope="col" {...stylex.props(s.cell)}>
-                  {t('statistics.relationships.columns.result')}
-                </th>
-                <th scope="col" {...stylex.props(s.cell)}>
-                  {t('statistics.relationships.columns.sets')}
-                </th>
-                <th scope="col" {...stylex.props(s.cell)}>
-                  {t('statistics.relationships.columns.games')}
-                </th>
-                {showRating && (
-                  <th scope="col" {...stylex.props(s.cell)}>
-                    {t('statistics.relationships.columns.rating')}
-                  </th>
-                )}
-                <th scope="col" {...stylex.props(s.cell)}>
-                  {t('statistics.relationships.columns.match')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {matches.map((match) => (
-                <tr key={match.groupId}>
-                  <th scope="row" {...stylex.props(s.cell)}>
+        <ol
+          aria-label={t('statistics.relationships.recentCaption')}
+          {...stylex.props(s.meetingList)}
+        >
+          {matches.map((match) => (
+            <li key={match.groupId} {...stylex.props(s.meetingRow)}>
+              <div {...stylex.props(s.meetingHead)}>
+                <div {...stylex.props(s.meetingLead)}>
+                  <StatusBadge tone={OUTCOME_TONE[match.outcome]}>
+                    {t(`statistics.relationships.outcome.${match.outcome}`)}
+                  </StatusBadge>
+                  <time dateTime={match.playedAt} {...stylex.props(s.meetingDate)}>
                     {f.date(match.playedAt)}
-                  </th>
-                  <td {...stylex.props(s.cell)}>
-                    <StatusBadge tone={OUTCOME_TONE[match.outcome]}>
-                      {t(`statistics.relationships.outcome.${match.outcome}`)}
-                    </StatusBadge>
-                  </td>
-                  <td {...stylex.props(s.cell)}>
-                    {f.count(match.setsFor)}–{f.count(match.setsAgainst)}
-                  </td>
-                  <td {...stylex.props(s.cell)}>
-                    {f.count(match.gamesFor)}–{f.count(match.gamesAgainst)}
-                  </td>
-                  {showRating && (
-                    <td {...stylex.props(s.cell)}>
-                      {match.ratingDelta === null
-                        ? t('statistics.relationships.noRating')
-                        : f.signed(match.ratingDelta)}
-                    </td>
-                  )}
-                  <td {...stylex.props(s.cell)}>
-                    <Link
-                      to="/matches/$eventId/groups/$groupId"
-                      params={{ eventId: match.eventId, groupId: match.groupId }}
-                      aria-label={t('statistics.relationships.matchLabel', {
-                        date: f.date(match.playedAt)
-                      })}
-                      {...stylex.props(s.link)}
-                    >
-                      {t('statistics.relationships.viewMatch')}
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </time>
+                </div>
+                <span {...stylex.props(s.meetingScore)}>
+                  <span {...stylex.props(s.visuallyHidden)}>
+                    {t('statistics.relationships.columns.sets')}{' '}
+                  </span>
+                  {f.count(match.setsFor)}–{f.count(match.setsAgainst)}
+                </span>
+              </div>
+              <p {...stylex.props(s.copy)}>
+                {t('statistics.relationships.columns.games')} {f.count(match.gamesFor)}–
+                {f.count(match.gamesAgainst)}
+                {showRating && (
+                  <>
+                    {' · '}
+                    {t('statistics.relationships.columns.rating')}{' '}
+                    {match.ratingDelta === null
+                      ? t('statistics.relationships.noRating')
+                      : f.signed(match.ratingDelta)}
+                  </>
+                )}
+              </p>
+              <Link
+                to="/matches/$eventId/groups/$groupId"
+                params={{ eventId: match.eventId, groupId: match.groupId }}
+                aria-label={t('statistics.relationships.matchLabel', {
+                  date: f.date(match.playedAt)
+                })}
+                {...stylex.props(s.link)}
+              >
+                {t('statistics.relationships.viewMatch')}
+              </Link>
+            </li>
+          ))}
+        </ol>
       )}
       {children}
     </Section>

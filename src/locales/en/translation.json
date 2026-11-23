@@ -2471,6 +2471,7 @@
     "community": {
       "title": "Community statistics",
       "titleCommunity": "{{name}} statistics",
+      "back": "Back to community",
       "subtitle": "Every figure counts each match once, whoever played it.",
       "open": "Community statistics",
       "empty": "No confirmed matches in this selection yet.",
@@ -2494,6 +2495,7 @@
         "played": "Matches played",
         "competitive": "Competitive",
         "friendly": "Friendly",
+        "competitiveShare": "Competitive share",
         "decided": "With a winner",
         "draws": "Draws",
         "incomplete": "Incomplete"
@@ -2593,12 +2595,9 @@
       "showMore": "Show more",
       "noRating": "No rating",
       "columns": {
-        "date": "Date",
-        "result": "Result",
         "sets": "Sets",
         "games": "Games",
         "rating": "Rating change",
-        "match": "Match",
         "player": "Player",
         "played": "Matches",
         "record": "Record",
@@ -2867,6 +2866,12 @@
       },
       "form": {
         "outcomes": "Results, oldest first",
+        "legend": "Oldest to newest · W win, L loss, D draw. Incomplete matches have no result and are not shown.",
+        "short": {
+          "W": "W",
+          "L": "L",
+          "D": "D"
+        },
         "outcome": {
           "W": "Win",
           "L": "Loss",
@@ -2987,6 +2992,9 @@
         "matches": {
           "played": {
             "help": "Counts every confirmed match once. Incomplete matches are counted as played but have no winner."
+          },
+          "competitiveShare": {
+            "help": "Competitive matches as a share of all matches played in this selection. Not available when no match was played."
           },
           "competitive": {
             "help": "Confirmed matches of the competitive type."
