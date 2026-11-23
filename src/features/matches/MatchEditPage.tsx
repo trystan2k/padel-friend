@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
+import { TopBar } from '../../components/ui/TopBar';
 import type { MatchEventDetail, MatchLeagueOption } from './match-contracts';
 import { MatchDetailTextField, MatchDetailCurrencyField } from './MatchDetailsForm';
 import { matchEditDraft, type MatchEditDraft } from './match-management-edit';
@@ -160,29 +161,12 @@ export function MatchEditPage({
   const blocked = busy || action.conflict || saved || !!action.unavailable || competitionUnresolved;
   return (
     <main data-route-chrome="navigation" {...stylex.props(page.page)}>
-      <header {...stylex.props(page.topBar)}>
-        <button
-          type="button"
-          aria-label={t('matches.management.close')}
-          disabled={busy}
-          onClick={onClose}
-          {...stylex.props(page.back)}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-            {...stylex.props(page.backIcon)}
-          >
-            <path d="m14 6-6 6 6 6" />
-          </svg>
-        </button>
-        <h1 id="match-edit-heading" ref={heading} tabIndex={-1} {...stylex.props(page.title)}>
-          {t('matches.management.edit.title')}
-        </h1>
-      </header>
+      <TopBar
+        headingId="match-edit-heading"
+        headingRef={heading}
+        title={t('matches.management.edit.title')}
+        backAction={{ label: t('matches.management.close'), onClick: onClose, disabled: busy }}
+      />
       <form
         ref={form}
         noValidate

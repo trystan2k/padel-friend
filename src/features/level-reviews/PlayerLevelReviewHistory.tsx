@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import type {
   LevelReviewCursor,
   LevelReviewDto,
@@ -14,7 +15,6 @@ import { formatRequestedRange, formatReviewDate } from './level-review-format';
 import { isActiveLevelReview, levelReviewErrorKind } from './level-review-form';
 import { LEVEL_REVIEW_HISTORY_PAGE_SIZE } from './level-review-view';
 import { listMyLevelReviewRequests } from './level-review.functions';
-import { LevelReviewBackLink } from './LevelReviewBackLink';
 import { LevelReviewLinkIcon, LevelReviewStatusChip } from './LevelReviewParts';
 
 /**
@@ -54,11 +54,13 @@ export function PlayerLevelReviewHistory({
   }
 
   return (
-    <main {...stylex.props(c.page)}>
-      <header {...stylex.props(c.topBar, c.topBarFrame)}>
-        <LevelReviewBackLink to="/me" label={t('levelReview.request.backLabel')} />
-        <p {...stylex.props(c.navTitle)}>{t('levelReview.entry.title')}</p>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(c.page)}>
+      <TopBar
+        xstyle={c.barFrame}
+        titleAs="p"
+        title={t('levelReview.entry.title')}
+        back={{ to: '/me', label: t('levelReview.request.backLabel') }}
+      />
       <div {...stylex.props(c.heading)}>
         <h1 {...stylex.props(c.pageTitle)}>{t('levelReview.history.title')}</h1>
         <p {...stylex.props(c.body)}>{t('levelReview.history.subtitle')}</p>

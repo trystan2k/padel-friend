@@ -22,7 +22,7 @@
     "Ex7RD": {
       "maxDiffPixelRatio": 0.01,
       "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1",
-      "justification": "Use a browser baseline because attendees, member count and unavailable states deliberately differ from Pencil sample data. Header, navigation, summary and upcoming sections have independent order and touch-target probes."
+      "justification": "Use a browser baseline because attendees, member count and unavailable states deliberately differ from Pencil sample data. Header, navigation, summary and upcoming sections have independent order and touch-target probes. F40: the join-request count is read once, only for the selected community's admins (exact zero or N / N+ from one authorized page, linked to Requests); members and failed reads keep the unavailable line and trigger no read. Upcoming rows lead with a time column over a day column in the event time zone."
     },
     "y4Zeg": {
       "maxDiffPixelRatio": 0.01,

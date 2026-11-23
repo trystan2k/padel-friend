@@ -411,10 +411,10 @@
         "status": "gated",
         "reference": { "x": 0, "y": 528, "width": 390, "height": 316 },
         "offsetY": 0,
-        "crop": { "dx": 20, "dy": 22, "width": 100, "height": 8 },
+        "crop": { "dx": 260, "dy": 36, "width": 80, "height": 10 },
         "geometry": [],
         "budget": 0.01,
-        "classification": "Deferred comparison completed: the live centered Leave match dialog (350x258) and the frame's 390x316 bottom sheet differ in surface and size (see dialog), so only the comparable part is gated: a text-free 100x8 band of the white surface 22px below the top edge, clear of the sheet handle and the rounded corners, has residual 0 against the Pencil export (surface token); budget 0.01. Geometry is not gated because the surfaces differ by design."
+        "classification": "Deferred comparison completed: the live centered Leave match dialog (350 wide, Ht2Oq/q2TCnQ title, description and stacked full-width actions) and the frame's 390x316 bottom sheet differ in surface and size (see dialog), so only the comparable part is gated: a text-free 80x10 band of the white surface 36px below the top edge and 260px from the left, to the right of the sheet title and the 24px dialog title and clear of the sheet handle and the rounded corners, has residual 0 against the Pencil export (surface token); budget 0.01 unchanged. The band moved from dy 22 (now crossing the dialog title glyphs after the F35 title treatment) to a title-row band that stays text-free in both. Geometry is not gated because the surfaces differ by design."
       },
       "dialog": {
         "status": "finding",

@@ -48,10 +48,10 @@ test.beforeEach(() => test.setTimeout(120_000));
 
 const FRAME = 'vARtQ';
 const WIDTH = 390;
-// Clubhouse vARtQ regions (CSS px at scale 1, frame coordinates). The frame's stats tiles, season
-// trend, bar chart and link list have no real source or differ per row, so only the identity
-// header and the level card heading/value are compared as raster; each region aligns on its own
-// DOM anchor. The rating journey is not drawn in vARtQ: it is covered by structural probes.
+// Clubhouse vARtQ regions (CSS px at scale 1, frame coordinates). The frame's stats tiles are exact
+// structural probes (real own-profile statistics read, F39); the season trend, bar chart and link
+// list have no real source or differ per row, so only the identity header and the level card
+// heading/value are compared as raster; each region aligns on its own DOM anchor. The rating journey is not drawn in vARtQ: it is covered by structural probes.
 const REGIONS = {
   identity: { name: 'identity', y: 48, height: 72, budgetKey: `${FRAME}:identity` },
   level: { name: 'level', y: 212, height: 78, budgetKey: `${FRAME}:level` }
@@ -223,9 +223,41 @@ test('Me keeps the vARtQ order, geometry and reviewed raster budgets (mobile lig
   );
   await expect(title).toHaveCount(1);
 
-  // Exact structural order of the frame: identity → level card → shortcut list → journey.
+  // Exact structural order of the frame: identity → stats tiles → level card → shortcuts → journey.
   expect(a!.right).toBeLessThanOrEqual(n!.x + 1);
   expect(n!.bottom).toBeLessThanOrEqual(l!.y);
+
+  // vARtQ tiles (F39): matches, W–L–D and win rate from the one own-profile statistics read. The
+  // fixture host has three confirmed groups (win, loss, draw); the win rate is the contract metric.
+  const tiles = page.locator('main dl[aria-label] > [data-stat]');
+  await expect(tiles).toHaveCount(3);
+  const statCopy = copies.en.profile.stats;
+  const tileBoxes = await Promise.all((await tiles.all()).map(box));
+  const identityBox = await box(page.locator('main > header').first());
+  expect(tileBoxes[0]!.y).toBeGreaterThanOrEqual(identityBox.bottom);
+  expect(tileBoxes[0]!.bottom).toBeLessThanOrEqual(l!.y);
+  for (const tile of tileBoxes) {
+    expect(Math.abs(tile.y - tileBoxes[0]!.y), 'tiles share one row').toBeLessThanOrEqual(1);
+    expect(Math.abs(tile.width - tileBoxes[0]!.width), 'tiles are equal width').toBeLessThanOrEqual(
+      1
+    );
+    expect(tile.height).toBeGreaterThanOrEqual(60);
+  }
+  for (const [key, label] of [
+    ['matches', statCopy.matches],
+    ['record', statCopy.record],
+    ['winRate', statCopy.winRate]
+  ] as const)
+    await expect(page.locator(`main [data-stat="${key}"] dt`)).toHaveText(label);
+  await expect(page.locator('main [data-stat="matches"] dd')).toHaveText('3');
+  await expect(page.locator('main [data-stat="record"] dd')).toHaveText('1–1–1');
+  await expect(page.locator('main [data-stat="winRate"] dd')).toHaveText(
+    new RegExp(`^(\\d+%|—${statCopy.notAvailable})$`)
+  );
+  // Value above label (frame), value is the heading-font figure.
+  const tileValue = await box(page.locator('main [data-stat="matches"] dd'));
+  const tileLabel = await box(page.locator('main [data-stat="matches"] dt'));
+  expect(tileValue.bottom).toBeLessThanOrEqual(tileLabel.y + 1);
   expect(l!.bottom).toBeLessThanOrEqual(sc!.y);
   expect(sc!.bottom).toBeLessThanOrEqual(j!.y);
   // Avatar is the frame's 72px circle.

@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { TopBar } from '../../components/ui/TopBar';
 import type { StatisticsFilters } from './statistics-contracts';
 import type {
   PlayerFormSample,
@@ -218,12 +219,18 @@ export function PlayerStatistics({
   const f = usePlayerFormat();
   const { matches, sets, games, rating, form, activity } = stats;
   return (
-    <main {...stylex.props(s.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(s.page)}>
+      <TopBar
+        xstyle={s.barFrame}
+        title={t('statistics.player.title')}
+        back={
+          recentIsOwn
+            ? { to: '/me', label: t('statistics.player.backToProfile') }
+            : { to: '/community', label: t('statistics.player.backToCommunity') }
+        }
+      />
       <header {...stylex.props(s.header)}>
-        <div {...stylex.props(s.lead)}>
-          <h1 {...stylex.props(s.title)}>{t('statistics.player.title')}</h1>
-          <p {...stylex.props(s.copy)}>{t('statistics.player.subtitle')}</p>
-        </div>
+        <p {...stylex.props(s.copy)}>{t('statistics.player.subtitle')}</p>
         <FilterContext filters={stats.filters} />
         {!stats.config.rating_aligned && (
           <output {...stylex.props(s.copy)}>{t('statistics.player.ratingLagging')}</output>

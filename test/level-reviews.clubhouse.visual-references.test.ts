@@ -97,7 +97,9 @@ describe('level review Clubhouse visual references', () => {
       expect(text).toContain('level-review-clubhouse.styles');
       expect(text).not.toContain("from './level-review.styles'");
     }
-    for (const file of D1_PAGES) expect(source(file)).toContain('LevelReviewBackLink');
+    // The shared TopBar (48px back target) replaced the page-local back link (F38).
+    for (const file of [...D1_PAGES, 'PlayerLevelReviewRequest.tsx', 'PlayerLevelReviewStatus.tsx'])
+      expect(source(file)).toContain('<TopBar');
   });
 });
 
@@ -113,12 +115,10 @@ describe('level review link destinations', () => {
   });
 
   it('points the profile back links at /me and the status back link at the request list', () => {
-    expect(source('PlayerLevelReviewRequest.tsx')).toContain('<LevelReviewBackLink to="/me"');
-    expect(source('PlayerLevelReviewHistory.tsx')).toContain('to="/me"');
+    expect(source('PlayerLevelReviewRequest.tsx')).toContain("back={{ to: '/me'");
+    expect(source('PlayerLevelReviewHistory.tsx')).toContain("to: '/me'");
     expect(source('LevelReviewStates.tsx')).toContain("backTo = '/me'");
-    expect(source('PlayerLevelReviewStatus.tsx')).toContain(
-      '<LevelReviewBackLink to="/level-reviews"'
-    );
+    expect(source('PlayerLevelReviewStatus.tsx')).toContain("back={{ to: '/level-reviews'");
     expect(source('PlayerLevelReviewStatus.tsx')).toContain('<Link to="/me"');
   });
 });

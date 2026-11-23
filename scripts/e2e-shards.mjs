@@ -22,6 +22,7 @@ export const SPEC_WEIGHTS = {
   'e2e/auth-password-reset.spec.ts': 6,
   'e2e/auth-return.spec.ts': 13,
   'e2e/community-admin-expansion.spec.ts': 11,
+  'e2e/community-admin-members-sheet.spec.ts': 15,
   'e2e/community-admin.spec.ts': 107,
   'e2e/community-lifecycle.spec.ts': 7,
   'e2e/community-onboarding.spec.ts': 30,

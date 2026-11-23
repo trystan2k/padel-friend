@@ -26,15 +26,9 @@ export const playerStyles = stylex.create({
     fontFamily: 'var(--font-family-body)',
     minWidth: 0
   },
+  // The shared top bar bleeds out of the page gutter (RN0yw).
+  barFrame: { marginInline: 'calc(-1 * var(--space-20))' },
   header: { display: 'grid', gap: 'var(--space-4)' },
-  // The app's global language/theme chips float over the top-right corner (two 44px targets plus
-  // their gap and the page inset), so title and subtitle reserve that width instead of running under it.
-  lead: {
-    display: 'grid',
-    gap: 'var(--space-4)',
-    minWidth: 0,
-    paddingInlineEnd: `calc(${TOUCH} * 2 + var(--space-8) + var(--space-8))`
-  },
   // Highlight tiles: three fluid columns where they fit, wrapping at 320px instead of shrinking text.
   hero: {
     display: 'grid',

@@ -41,6 +41,43 @@ export const me = stylex.create({
     gap: 'var(--space-14)',
     minWidth: 0
   },
+  // vARtQ: three equal tiles (matches, W–L–D, win rate) between identity and the level card.
+  stats: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gap: 'var(--space-8)',
+    margin: 0
+  },
+  statTile: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    // The definition term precedes its value in the DOM; the frame shows the value on top.
+    flexDirection: 'column-reverse',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 'var(--space-2)',
+    minWidth: 0,
+    minHeight: ROW,
+    paddingBlock: 'var(--space-12)',
+    paddingInline: 'var(--space-4)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
+    textAlign: 'center'
+  },
+  statValue: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 1.2,
+    overflowWrap: 'anywhere'
+  },
+  statLabel: {
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
+  statsUnavailable: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-14)' },
   identityText: { display: 'grid', gap: 'var(--space-2)', minWidth: 0, flex: 1 },
   name: {
     margin: 0,

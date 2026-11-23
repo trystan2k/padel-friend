@@ -35,14 +35,9 @@ export const styles = stylex.create({
     // well as the fixed navigation when native Tab focus scrolls.
     scrollPaddingBottom: `calc(${navClearance} + var(--space-40))`
   },
-  header: { display: 'flex', flexDirection: 'column', gap: 0 },
-  screenHeading: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-4)',
-    minHeight: 'calc(var(--space-40) + var(--space-16))'
-  },
-  titleGroup: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', minWidth: 0 },
+  // The shared top bar sits inside the page gutter and top inset, so it bleeds back out to the edges
+  // and leaves the inset to the page.
+  topBar: { marginInline: 'calc(-1 * var(--space-20))', paddingBlockStart: 0 },
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
@@ -55,27 +50,8 @@ export const styles = stylex.create({
     margin: 0,
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-13)',
+    textAlign: 'center',
     overflowWrap: 'anywhere'
-  },
-  backLink: {
-    boxSizing: 'border-box',
-    flexShrink: 0,
-    width: tap,
-    minWidth: tap,
-    minHeight: tap,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginInlineStart: 'calc(0px - var(--space-8))',
-    color: 'var(--color-text)',
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-24)',
-    fontWeight: 'var(--font-weight-bold)',
-    // Decorative aria-hidden chevron: unitless single-em line box centres the glyph; the 48px hit
-    // box is independent of line-height.
-    lineHeight: 1,
-    textDecoration: 'none',
-    ':focus-visible': focus
   },
   content: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)', minWidth: 0 },
   confirmBackdrop: {
@@ -360,7 +336,6 @@ export const styles = stylex.create({
     overflow: 'hidden',
     clipPath: 'inset(50%)'
   },
-  unavailableInvite: { color: 'var(--color-muted)', ':disabled': { opacity: 1 } },
   listSurface: {
     boxSizing: 'border-box',
     display: 'flex',
@@ -488,8 +463,29 @@ export const styles = stylex.create({
     textDecoration: 'underline',
     textUnderlineOffset: 'var(--space-2)'
   },
-  venueActions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-8)' },
-  venueCard: { gap: 'var(--space-10)', padding: 'var(--space-10)' },
+  plainList: { listStyle: 'none', margin: 0, paddingInline: 0 },
+  // A5Vio: venues are hairline-separated rows inside one surface, not a card per venue.
+  venueRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-8)',
+    padding: 'var(--space-12) var(--space-16)',
+    borderBlockEndWidth: { default: 'var(--border-width-sm)', ':last-child': 0 },
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: 'var(--color-hairline)'
+  },
+  venueActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 'var(--space-8)'
+  },
+  venueAction: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: tap,
+    paddingInline: 'var(--space-4)'
+  },
   venueHead: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)', minWidth: 0 },
   venuePhoto: {
     flexShrink: 0,
@@ -499,13 +495,6 @@ export const styles = stylex.create({
     objectFit: 'cover',
     borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-green-soft)'
-  },
-  venueMeta: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 'var(--space-8)',
-    flexWrap: 'wrap'
   },
   form: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)', minWidth: 0 },
   searchField: { flex: 1, minWidth: 0 },

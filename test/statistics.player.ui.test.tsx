@@ -16,6 +16,15 @@ import {
   ready
 } from './helpers/player-statistics-fixtures';
 
+type LinkProps = { children: ReactNode; to: string };
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, ...rest }: LinkProps) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  )
+}));
+
 afterEach(cleanup);
 const wrap = (node: ReactNode, locale: 'en' | 'pt-BR' | 'es' = 'en') => (
   <I18nextProvider i18n={createI18n(locale)}>{node}</I18nextProvider>
@@ -151,7 +160,10 @@ describe('player statistics core surface', () => {
     expect(rows).toHaveLength(4);
     expect(within(rows[2]!).getByRole('cell').textContent).toContain('5');
     expect(within(rows[2]!).getByRole('rowheader').textContent).toContain('Feb 2030');
-    const chart = container.querySelector('svg');
+    // The top bar's back chevron is also a decorative svg; the chart is the one with bars.
+    const chart = Array.from(container.querySelectorAll('svg')).find((svg) =>
+      svg.querySelector('rect')
+    );
     expect(chart?.getAttribute('aria-hidden')).toBe('true');
     expect(chart?.querySelectorAll('rect')).toHaveLength(3);
     expect(screen.getByRole('button', { name: 'Hide data table' })).toBeTruthy();
@@ -450,13 +462,24 @@ describe('player statistics composition (Pencil RN0yw / RRuhH)', () => {
     });
   });
 
-  it('keeps title and subtitle together in their own block ahead of the filter badges', () => {
-    render(wrap(<PlayerStatistics stats={makePlayerStatistics()} />));
+  it('leads with the shared top bar (back to profile), then the subtitle ahead of the filter badges', () => {
+    render(wrap(<PlayerStatistics stats={makePlayerStatistics()} recentIsOwn={false} />));
     const title = screen.getByRole('heading', { level: 1 });
-    const lead = title.parentElement!;
-    expect(lead.tagName).toBe('DIV');
-    expect(within(lead).getByText(en.statistics.player.subtitle)).toBeTruthy();
-    expect(lead.contains(screen.getByRole('list', { name: 'Active filters' }))).toBe(false);
+    const bar = title.closest('header')!;
+    expect(title.textContent).toBe(en.statistics.player.title);
+    expect(
+      within(bar).getByRole('link', { name: en.statistics.player.backToCommunity })
+    ).toBeTruthy();
+    const header = bar.nextElementSibling;
+    if (!(header instanceof HTMLElement)) throw new Error('missing page header');
+    expect(within(header).getByText(en.statistics.player.subtitle)).toBeTruthy();
+    expect(header.contains(screen.getByRole('list', { name: 'Active filters' }))).toBe(true);
+  });
+
+  it('points the top bar back at the own profile for the own statistics', () => {
+    render(wrap(<PlayerStatistics stats={makePlayerStatistics()} recentIsOwn />));
+    const back = screen.getByRole('link', { name: en.statistics.player.backToProfile });
+    expect(back.getAttribute('href')).toBe('/me');
   });
 });
 
@@ -469,12 +492,10 @@ describe('player statistics header and highlights geometry (390px / 320px)', () 
   const INSET = 18;
   const reserved = TOUCH * 2 + GAP + GAP;
 
-  it('reserves the floating controls width on the title and subtitle block', () => {
-    expect(source).toMatch(
-      /lead: \{[^}]*paddingInlineEnd: `calc\(\$\{TOUCH\} \* 2 \+ var\(--space-8\) \+ var\(--space-8\)\)`/s
-    );
+  it('lets the shared top bar own the chrome so the page reserves no floating-controls width', () => {
+    expect(source).not.toMatch(/lead: \{/);
     expect(source).toContain("const TOUCH = 'calc(var(--space-40) + var(--space-4))'");
-    expect(source).toContain("gap: 'var(--space-4)',\n    minWidth: 0,");
+    expect(source).toMatch(/barFrame: \{ marginInline: 'calc\(-1 \* var\(--space-20\)\)' \}/);
   });
 
   it.each([390, 320])('leaves a readable title column at %ipx', (viewport) => {

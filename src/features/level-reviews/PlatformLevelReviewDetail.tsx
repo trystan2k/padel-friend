@@ -5,6 +5,7 @@ import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import { TextField } from '../../components/ui/TextField';
 import { formatLevel } from '../player/rating-format';
 import {
@@ -24,7 +25,6 @@ import {
   resolveLevelReviewRequest
 } from './level-review.functions';
 import { levelReviewClubhouse as c } from './level-review-clubhouse.styles';
-import { LevelReviewBackLink } from './LevelReviewBackLink';
 import { LevelReviewAvatar, LevelReviewStatusChip } from './LevelReviewParts';
 
 type Decision = 'approve' | 'reject';
@@ -317,16 +317,13 @@ export function PlatformLevelReviewDetail({
   }
 
   return (
-    <main {...stylex.props(c.page)}>
-      <header {...stylex.props(c.topBar, c.topBarFrame)}>
-        <LevelReviewBackLink
-          to="/platform-admin/level-reviews"
-          label={t('levelReview.admin.back')}
-        />
-        <h1 ref={heading} tabIndex={-1} {...stylex.props(c.navTitle)}>
-          {t('levelReview.admin.detail')}
-        </h1>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(c.page)}>
+      <TopBar
+        xstyle={c.barFrame}
+        headingRef={heading}
+        title={t('levelReview.admin.detail')}
+        back={{ to: '/platform-admin/level-reviews', label: t('levelReview.admin.back') }}
+      />
       <SurfaceCard xstyle={c.card}>
         <div {...stylex.props(c.cardHeader)}>
           <LevelReviewAvatar

@@ -3,6 +3,7 @@ import { Dialog } from '@base-ui/react/dialog';
 import * as stylex from '@stylexjs/stylex';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
 import { MatchRemovalDialog } from './MatchRemovalDialog';
 import { useMatchManagement } from './use-match-management';
 import { matchManagementStyles as s } from './match-management.styles';
@@ -26,6 +27,7 @@ export function MatchParticipantActions({
   const controller = useMatchManagement(eventId);
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
+  const keepOpen = useRef<HTMLButtonElement>(null);
   if (controller.unavailable)
     return <MatchManagementUnavailable reason={controller.unavailable} focus />;
   if (!targetUserId)
@@ -48,31 +50,39 @@ export function MatchParticipantActions({
           <Dialog.Portal>
             <Dialog.Backdrop {...stylex.props(s.backdrop)} />
             <Dialog.Popup
+              initialFocus={keepOpen}
               finalFocus={() =>
                 trigger.current ?? document.getElementById('match-registration-heading')
               }
               {...stylex.props(s.popup)}
             >
-              <Dialog.Title>{t('matches.management.leaveTitle')}</Dialog.Title>
-              <Dialog.Description>{t('matches.management.leaveDescription')}</Dialog.Description>
+              <Dialog.Title {...stylex.props(s.dialogTitle)}>
+                {t('matches.management.leaveTitle')}
+              </Dialog.Title>
+              <Dialog.Description {...stylex.props(s.copy)}>
+                {t('matches.management.leaveDescription')}
+              </Dialog.Description>
               <output aria-live="polite">
                 {controller.feedback ? t(controller.feedback) : null}
               </output>
-              <div {...stylex.props(s.row)}>
-                <Dialog.Close disabled={controller.pending} {...stylex.props(s.button)}>
-                  {t('matches.management.cancel')}
-                </Dialog.Close>
-                <button
-                  type="button"
-                  disabled={controller.pending}
-                  aria-busy={controller.pending}
-                  {...stylex.props(s.button)}
+              <div {...stylex.props(s.dialogActions)}>
+                <Button
+                  variant="destructive"
+                  xstyle={s.destructive}
+                  busy={controller.pending}
                   onClick={async () => {
                     if (await controller.depart(attemptId)) setOpen(false);
                   }}
                 >
                   {t('matches.management.confirm')}
-                </button>
+                </Button>
+                <Dialog.Close
+                  ref={keepOpen}
+                  disabled={controller.pending}
+                  render={<Button variant="secondary" />}
+                >
+                  {t('matches.management.cancel')}
+                </Dialog.Close>
               </div>
             </Dialog.Popup>
           </Dialog.Portal>

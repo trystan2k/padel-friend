@@ -9,7 +9,6 @@ import { waitForHydratedPage } from './auth-helpers';
 const en: {
   auth: { loginEmailLabel: string; loginPasswordLabel: string; loginSubmit: string };
   communityAdmin: {
-    inviteUnavailable: string;
     requestMessage: { action: string; title: string; label: string; send: string; sent: string };
     venue: { edit: string; photo: { label: string; upload: string; previewAlt: string } };
   };

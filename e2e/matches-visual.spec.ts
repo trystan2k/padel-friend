@@ -1077,6 +1077,11 @@ async function assertListChrome(
       color: h1Style.color,
       actionBackground: actionStyle.backgroundColor,
       actionColor: actionStyle.color,
+      actionBorder: [
+        actionStyle.borderTopWidth,
+        actionStyle.borderTopStyle,
+        actionStyle.borderTopColor
+      ],
       actionHeight: action.getBoundingClientRect().height,
       actionHref: action.getAttribute('href'),
       actionRight: action.getBoundingClientRect().right,
@@ -1121,6 +1126,13 @@ async function assertListChrome(
   expect(chrome.actionColor, `${label}: New action copy`).toBe(
     await tokenColor(page, '--color-text')
   );
+  expect(chrome.actionBorder[0], `${label}: New action has the frame stroke width`).toBe(
+    await tokenValue(page, '--border-width-sm')
+  );
+  expect(chrome.actionBorder[1], `${label}: New action stroke is solid`).toBe('solid');
+  expect(normColor(chrome.actionBorder[2]!), `${label}: New action stroke is --color-line`).toBe(
+    await tokenColor(page, '--color-line')
+  );
   expect(chrome.actionHeight, `${label}: New action is the 44px frame button`).toBeCloseTo(44, 0);
   await assertRhythm(page, label, 'main', '--space-12');
   if (options.grouped) {
@@ -1151,7 +1163,9 @@ const matchesReferences: MatchesReferences = JSON.parse(
 /** Fixture instants move with the clock, so times and day rows are masked in baselines. */
 function dynamicMask(page: Page): Locator[] {
   return [
-    page.locator('main time'),
+    // Times covered by the opaque bottom bar are tagged by assertMatchesFrame and not masked: the
+    // mask rectangle would otherwise paint into the bar band the design layer compares.
+    page.locator('main time:not([data-behind-nav])'),
     page.locator('main section[aria-labelledby^="matches-day-"] > div:first-child')
   ];
 }
@@ -1183,6 +1197,15 @@ async function assertMatchesFrame(page: Page, frame: string, mask: Locator[]): P
     matchesReferences.frames[frame]!.sha256
   );
   await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => {
+    const navTop =
+      document.querySelector('nav[data-app-nav]')?.getBoundingClientRect().top ?? Infinity;
+    for (const time of document.querySelectorAll('main time')) {
+      const behind = time.getBoundingClientRect().bottom > navTop;
+      time.toggleAttribute('data-behind-nav', behind);
+      if (behind) time.textContent = '00:00 AM';
+    }
+  });
   await assertFrameRegions({
     page,
     frame,
@@ -1513,7 +1536,8 @@ async function assertLocalizedCountText(
     plural('groups', Math.floor(accepted / 4)),
     plural('moreNeeded', 4 - (accepted % 4))
   ].join(' · ');
-  await expect(scope.getByText(expected, { exact: true })).toBeVisible();
+  // Participation, level range and creator share one wrapping meta line, so match the fragment.
+  await expect(scope.getByText(expected).first()).toBeVisible();
 }
 
 // ---------------------------------------------------------------------------

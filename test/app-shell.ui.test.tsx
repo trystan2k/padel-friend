@@ -69,8 +69,7 @@ describe('AppShell', () => {
     ['/matches/my', 'Matches'],
     ['/matches/past', 'Matches'],
     ['/me', 'Me'],
-    ['/players/p1', 'Me'],
-    ['/community/c1/statistics', 'Community']
+    ['/community/c1/ranking', 'Community']
   ])('marks only the owning destination current on %s', async (entry, label) => {
     await mount(entry);
     const current = screen
@@ -101,7 +100,15 @@ describe('AppShell', () => {
     '/community/c1/leagues/create',
     '/community/c1/admin/members',
     '/level-reviews/new',
-    '/notifications/n1'
+    '/notifications/n1',
+    // Audited nested index screens whose frames draw a top bar and no tab bar (F36)
+    '/level-reviews',
+    '/platform-admin/level-reviews',
+    '/notifications',
+    '/notifications/preferences',
+    '/players/p1',
+    '/community/c1/statistics',
+    '/community/c1/leagues'
   ])('suppresses the bar on wizard, result and nested screen %s', async (entry) => {
     await mount(entry);
     expect(screen.queryByRole('navigation')).toBeNull();

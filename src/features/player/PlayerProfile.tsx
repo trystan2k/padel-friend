@@ -6,6 +6,7 @@ import { getBrowserClient } from '../../lib/supabase/client';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { PlatformAdminEntry } from '../level-reviews/PlatformAdminEntry';
 import { cleanupPushDeviceForLogout } from '../notifications/push-browser';
+import type { MeStatistics } from './me-statistics';
 import type { updateMyPlayerProfile } from './player.functions';
 import { ProfileEditForm } from './ProfileEditForm';
 import { playerInitials } from './player-initials';
@@ -42,17 +43,62 @@ function RowIcon({ d }: { d: string }) {
   );
 }
 
+function MeStatisticsTiles({ statistics, locale }: { statistics: MeStatistics; locale: string }) {
+  const { t } = useTranslation();
+  if (statistics.status === 'unavailable')
+    return <p {...stylex.props(s.statsUnavailable)}>{t('profile.stats.unavailable')}</p>;
+  const count = new Intl.NumberFormat(locale);
+  const tiles = [
+    { key: 'matches', value: count.format(statistics.played) },
+    {
+      key: 'record',
+      value: [statistics.wins, statistics.losses, statistics.draws]
+        .map((value) => count.format(value))
+        .join('–')
+    },
+    {
+      key: 'winRate',
+      value:
+        statistics.winRate === null
+          ? null
+          : new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 }).format(
+              statistics.winRate
+            )
+    }
+  ] as const;
+  return (
+    <dl aria-label={t('profile.stats.label')} {...stylex.props(s.stats)}>
+      {tiles.map(({ key, value }) => (
+        <div key={key} data-stat={key} {...stylex.props(s.statTile)}>
+          <dt {...stylex.props(s.statLabel)}>{t(`profile.stats.${key}`)}</dt>
+          <dd {...stylex.props(s.statValue)}>
+            {value ?? (
+              <>
+                <span aria-hidden="true">—</span>
+                <span {...stylex.props(s.srOnly)}>{t('profile.stats.notAvailable')}</span>
+              </>
+            )}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
 export function PlayerProfile({
   initialProfile,
   initialRating,
   onRatingReload,
-  platformAdmin = false
+  platformAdmin = false,
+  statistics
 }: {
   initialProfile: Profile;
   initialRating: RatingLoad;
   onRatingReload: () => void;
   /** Server-reported platform-admin access (`get_level_review_access`), never a client guess. */
   platformAdmin?: boolean;
+  /** The one own-profile statistics read (default scope); absent hides the tiles. */
+  statistics?: MeStatistics;
 }) {
   const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState(initialProfile);
@@ -137,6 +183,7 @@ export function PlayerProfile({
           </svg>
         </button>
       </header>
+      {statistics && <MeStatisticsTiles statistics={statistics} locale={i18n.language} />}
       <SurfaceCard>
         <div {...stylex.props(s.levelTop)}>
           <div {...stylex.props(s.levelHeader)}>

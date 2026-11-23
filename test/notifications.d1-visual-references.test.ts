@@ -101,7 +101,7 @@ describe('D1 implementation stays on the frame structure', () => {
       const text = source(`level-reviews/${file}`);
       expect(text).toContain('level-review-clubhouse.styles');
       expect(text).not.toContain("from './level-review.styles'");
-      expect(text).toContain('LevelReviewBackLink');
+      expect(text).toContain('<TopBar');
     }
   });
 

@@ -158,6 +158,24 @@ test.describe('Community overview and ranking', () => {
     }
   );
 
+  test('admins see the real join-request count and a link to Requests; members never read it', async () => {
+    test.setTimeout(90_000);
+    const admin = await f.page(f.creator);
+    await admin.goto(path());
+    await waitForHydratedPage(admin);
+    // No pending requests: an exact zero (one authorized page proves it), linked to the queue.
+    const zero = admin.getByRole('link', { name: en.communitySurface.joinRequestsNone });
+    await expect(zero).toHaveAttribute('href', path() + '/admin/requests');
+    await expect(admin.getByText(en.communitySurface.joinCountUnavailable)).toHaveCount(0);
+    const member = await f.page(f.members[0]!);
+    await member.goto(path());
+    await waitForHydratedPage(member);
+    await expect(member.getByText(en.communitySurface.joinCountUnavailable)).toBeVisible();
+    await expect(
+      member.getByRole('link', { name: en.communitySurface.joinRequestsNone })
+    ).toHaveCount(0);
+  });
+
   for (const [locale, width] of [
     ['pt-BR', 320],
     ['es', 1280]

@@ -10,22 +10,24 @@ export type ShellState = {
 const detailSections = new Set(['my', 'past']);
 
 function isSuppressed(segments: string[]): boolean {
-  const [root, second, third, fourth] = segments;
+  const [root, second, third] = segments;
   switch (root) {
     // Create wizard, match detail, result recording and groups; only the lists keep the bar.
     case 'matches':
       return second !== undefined && !detailSections.has(second);
     // Admin frames draw no app bar; the admin section navigation is its one bar (never two).
+    // Statistics (o9iaC1) and the league index (Fj5bc) draw a top bar and no tab bar.
     case 'community':
-      return third === 'admin' || (third === 'leagues' && fourth !== undefined);
+      return third === 'admin' || third === 'statistics' || third === 'leagues';
+    // Index, preferences (y8ErQ) and detail frames all carry a top bar instead of the tab bar (cAqsQ).
     case 'notifications':
-      return second !== undefined && second !== 'preferences';
+    // Level reviews (A9f626) and the player statistics index (RN0yw) are nested screens too.
     case 'level-reviews':
-      return second !== undefined;
-    case 'platform-admin':
-      return third !== undefined;
     case 'players':
-      return third !== undefined;
+      return true;
+    // The platform review queue (SCPeI) and its detail hide the bar; repairs keep it.
+    case 'platform-admin':
+      return second === 'level-reviews' || third !== undefined;
     default:
       return false;
   }

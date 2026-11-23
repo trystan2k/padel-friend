@@ -25,34 +25,8 @@ export const levelReviewClubhouse = stylex.create({
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)'
   },
-  topBar: { display: 'flex', alignItems: 'center', gap: 'var(--space-4)', minWidth: 0 },
-  // History, queue and detail top bars sit on the frames' 8px inset: the 48px target at x8.
-  topBarFrame: { marginInline: 'calc(-1 * var(--space-12))' },
-  backLink: {
-    boxSizing: 'border-box',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    width: 'calc(var(--space-40) + var(--space-8))',
-    height: 'calc(var(--space-40) + var(--space-8))',
-    borderRadius: 'var(--radius-14)',
-    color: 'var(--color-text)',
-    textDecoration: 'none',
-    ':focus-visible': focusRing
-  },
-  backIcon: {
-    width: 'calc(var(--space-20) + var(--space-4))',
-    height: 'calc(var(--space-20) + var(--space-4))'
-  },
-  title: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-17)',
-    fontWeight: 'var(--font-weight-bold)',
-    lineHeight: 'var(--font-line-height-tight)',
-    overflowWrap: 'anywhere'
-  },
+  // The shared top bar sits on the frames' 8px inset: it bleeds out of the 20px page gutter.
+  barFrame: { marginInline: 'calc(-1 * var(--space-20))' },
   body: {
     margin: 0,
     color: 'var(--color-muted)',
@@ -399,14 +373,6 @@ export const levelReviewClubhouse = stylex.create({
     lineHeight: 'var(--font-line-height-tight)',
     overflowWrap: 'anywhere',
     ':focus-visible': focusRing
-  },
-  navTitle: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-17)',
-    fontWeight: 'var(--font-weight-bold)',
-    lineHeight: 'var(--font-line-height-tight)',
-    overflowWrap: 'anywhere'
   },
   chip: {
     display: 'inline-flex',

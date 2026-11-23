@@ -56,6 +56,14 @@ export const styles = stylex.create({
     fontSize: 'var(--font-size-14)',
     overflowWrap: 'anywhere'
   },
+  // The shared top bar bleeds out of the page gutter; its context line centers under the title.
+  barFrame: { marginInline: 'calc(-1 * var(--space-20))' },
+  // The page gap would separate the line from the bar; tuck it up under the centered title.
+  contextCenter: {
+    paddingInlineStart: 0,
+    marginBlockStart: 'calc(-1 * var(--space-8))',
+    textAlign: 'center'
+  },
   content: { display: 'flex', flexDirection: 'column', gap: 'var(--space-14)', minWidth: 0 },
   card: {
     display: 'flex',

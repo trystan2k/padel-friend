@@ -108,7 +108,14 @@ describe('community onboarding', () => {
       expect(screen.getByText(t('communityOnboarding.step')).getAttribute('aria-current')).toBe(
         'step'
       );
-      expect(screen.queryByRole('button', { name: t('communityOnboarding.done') })).toBeNull();
+      // dSEX3: the sticky footer always carries Finish (once) beside the skip action, and the top
+      // bar a Back target that leaves for the validated return path.
+      expect(screen.getAllByRole('button', { name: t('communityOnboarding.done') })).toHaveLength(
+        1
+      );
+      expect(
+        screen.getByRole('button', { name: t('communityOnboarding.discoveryBack') })
+      ).toBeTruthy();
       discovery.unmount();
       mount('create', undefined, undefined, locale);
       expect(screen.getByRole('main').dataset.communityScreen).toBe('creation');

@@ -4,12 +4,31 @@ import type { HomeData } from '../home/home-contracts';
 import { listMyLeagueCommunities } from '../leagues/league.functions';
 import { getMyPlayerProfile } from '../player/player.functions';
 import { loadRatingView } from '../player/rating-view';
-import { getCommunityAdminContext, listMyAdminCommunities } from './community-admin.functions';
+import {
+  getCommunityAdminContext,
+  listMyAdminCommunities,
+  searchCommunityMembers
+} from './community-admin.functions';
 import { listMyCommunityNotifications } from './community-request.functions';
 import { getPublicCommunity } from './community.functions';
 
 export type CommunityView = 'overview' | 'ranking';
 export type RankingKind = 'skill' | 'league';
+
+/** Same page size the admin lists read, so one page proves a count only when it is not full. */
+export const JOIN_REQUEST_PAGE_SIZE = 50;
+
+/**
+ * Pending join requests as far as one authorized page proves: exact when the page is not full,
+ * otherwise a lower bound (the search has no total). Non-admins and failed reads are unavailable.
+ */
+export type JoinRequestCount =
+  | { status: 'ok'; total: number; exact: boolean }
+  | { status: 'unavailable' };
+
+export function joinRequestCount(rows: readonly unknown[]): JoinRequestCount {
+  return { status: 'ok', total: rows.length, exact: rows.length < JOIN_REQUEST_PAGE_SIZE };
+}
 
 export function parseRankingSearch(search: Record<string, unknown>): { by?: 'league' } {
   return search.by === 'league' ? { by: 'league' } : {};
@@ -58,11 +77,27 @@ export async function loadCommunitySurface(communityId: string | null, view: Com
     selection.status === 'ready' && adminCommunities.some(({ id }) => id === selection.selected.id)
       ? selection.selected.id
       : null;
-  const [metadata, adminContext, leagueCommunities, inbox] = await Promise.all([
+  const unavailable: JoinRequestCount = { status: 'unavailable' };
+  const [metadata, adminContext, joinRequests, leagueCommunities, inbox] = await Promise.all([
     selection.status === 'ready'
       ? optional(getPublicCommunity({ data: { community_id: selection.selected.id } }), undefined)
       : null,
     adminId ? optional(getCommunityAdminContext({ data: { community_id: adminId } }), null) : null,
+    // Read only for the selected community's admins; everyone else never triggers the request.
+    adminId
+      ? optional(
+          searchCommunityMembers({
+            data: {
+              community_id: adminId,
+              query: '',
+              status: 'pending',
+              offset: 0,
+              limit: JOIN_REQUEST_PAGE_SIZE
+            }
+          }).then(joinRequestCount),
+          unavailable
+        )
+      : unavailable,
     optional(listMyLeagueCommunities(), []),
     optional(
       listMyCommunityNotifications({ data: { offset: 0, limit: 20 } }).then((items) => ({
@@ -78,6 +113,7 @@ export async function loadCommunitySurface(communityId: string | null, view: Com
     adminCommunities,
     metadata,
     adminContext,
+    joinRequests,
     leagueCommunities,
     inbox,
     matches: home.matches,

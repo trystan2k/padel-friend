@@ -194,6 +194,23 @@ export function CommunityOnboarding({
     <main {...stylex.props(ui.page)} data-community-screen={create ? 'creation' : 'discovery'}>
       {!create && (
         <header {...stylex.props(ui.top)}>
+          {/* Back leaves discovery for the validated return path (default dashboard), never history. */}
+          <Button
+            variant="secondary"
+            xstyle={ui.back}
+            onClick={finish}
+            aria-label={t('communityOnboarding.discoveryBack')}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none">
+              <path
+                d="m15 6-6 6 6 6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Button>
           <p {...stylex.props(ui.topTitle, ui.discoveryTopTitle)}>
             {t('communityOnboarding.title')}
           </p>
@@ -368,9 +385,8 @@ export function CommunityOnboarding({
             {t('communityOnboarding.createEntry')}
           </Button>
           <footer {...stylex.props(ui.actions)} data-community-actions>
-            {Object.values(results).some(
-              (result) => result === 'joined' || result === 'requestPending'
-            ) && <Button onClick={finish}>{t('communityOnboarding.done')}</Button>}
+            {/* One Finish with the same finish/return semantics as skip; skip stays available. */}
+            <Button onClick={finish}>{t('communityOnboarding.done')}</Button>
             <Button variant="secondary" xstyle={ui.transparentAction} onClick={finish}>
               {t('communityOnboarding.skip')}
             </Button>

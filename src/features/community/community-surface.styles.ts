@@ -134,5 +134,18 @@ export const communityStyles = stylex.create({
     textAlign: 'start',
     justifyContent: 'space-between'
   },
+  // Ex7RD upcoming rows: a time column over a day column, then venue and participation.
+  when: {
+    display: 'grid',
+    gap: 'var(--space-2)',
+    justifyItems: 'start',
+    minWidth: 'calc(var(--space-40) + var(--space-8))'
+  },
+  whenTime: { fontSize: 'var(--font-size-16)', fontWeight: 'var(--font-weight-extrabold)' },
+  whenDay: {
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   gear: { backgroundColor: 'var(--color-surface)', width: tap, flexShrink: 0 }
 });

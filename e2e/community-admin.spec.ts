@@ -32,7 +32,6 @@ type Copy = {
     search: string;
     searchLabel: string;
     loadMore: string;
-    inviteUnavailable: string;
     levelReadOnly: string;
     settingsAdminNote: string;
     settings: {
@@ -213,116 +212,6 @@ async function openCommunityTab(page: Page) {
   await expect(page.locator('[data-community-entries]')).toBeVisible();
 }
 
-async function mainOffset(page: Page) {
-  const main = await page.locator('main').boundingBox();
-  expect(main).not.toBeNull();
-  return main!.y;
-}
-
-/** Requires the browser's real keyboard-focus indicator on the currently focused locale select. */
-async function assertVisibleKeyboardFocus(page: Page) {
-  const evidence = await page.evaluate(() => {
-    const element = document.activeElement;
-    if (!(element instanceof HTMLElement)) return null;
-    const style = getComputedStyle(element);
-    return {
-      id: element.id,
-      focusVisible: element.matches(':focus-visible'),
-      outlineStyle: style.outlineStyle,
-      outlineWidth: style.outlineWidth,
-      outlineColor: style.outlineColor,
-      background: style.backgroundColor,
-      pageBackground: getComputedStyle(document.documentElement).backgroundColor
-    };
-  });
-  expect(evidence, 'keyboard focus must rest on a focusable element').not.toBeNull();
-  expect(evidence!.id, 'focused element must be the locale select').toBe('locale');
-  assertFocusIndicator(
-    evidence!,
-    [evidence!.background, evidence!.pageBackground],
-    'locale select'
-  );
-  console.info(`locale keyboard focus evidence: ${JSON.stringify(evidence)}`);
-}
-
-/** Reaches #locale with sequential-focus navigation only (blur, then Tab from document start). */
-async function keyboardFocusLocale(page: Page) {
-  await page.evaluate(() => {
-    const active = document.activeElement;
-    if (active instanceof HTMLElement) active.blur();
-  });
-  for (let tabStops = 1; tabStops <= 25; tabStops++) {
-    await page.keyboard.press('Tab');
-    if ((await page.evaluate(() => document.activeElement?.id)) === 'locale') {
-      await expect(page.locator('#locale')).toBeFocused();
-      await assertVisibleKeyboardFocus(page);
-      return;
-    }
-  }
-  const focused = await page.evaluate(
-    () =>
-      `${document.activeElement?.tagName.toLowerCase() ?? 'none'}#${document.activeElement?.id ?? ''}`
-  );
-  throw new Error(`Sequential Tab navigation never reached #locale (landed on ${focused})`);
-}
-
-/**
- * Changes the locale with native select type-ahead only (real keyboard events; no selectOption).
- * macOS headless Chromium swallows ArrowUp/ArrowDown/Home/End on the closed select, so keys are
- * derived from the rendered option labels: a unique first letter jumps straight to the option,
- * while a shared first letter cycles to the next matching option on every press. A leading wait
- * lets any earlier type-ahead buffer expire so letters from previous switches cannot concatenate.
- * Asserts full agreement: selector value, html[lang] and the persisted locale cookie.
- */
-async function switchLocaleWithKeyboard(page: Page, target: string) {
-  const locale = page.locator('#locale');
-  await keyboardFocusLocale(page);
-  const options = await locale.evaluate((element) => {
-    if (!(element instanceof HTMLSelectElement)) throw new Error('#locale must be a select');
-    return Array.from(element.options).map((option) => ({
-      value: option.value,
-      letter: option.text.trim().charAt(0).toLowerCase()
-    }));
-  });
-  const targetIndex = options.findIndex((option) => option.value === target);
-  expect(targetIndex, `locale option ${target} must exist`).toBeGreaterThanOrEqual(0);
-  const currentIndex = await locale.evaluate((element) => {
-    if (!(element instanceof HTMLSelectElement)) throw new Error('#locale must be a select');
-    return element.selectedIndex;
-  });
-  expect(currentIndex, 'locale select must report a selected option').toBeGreaterThanOrEqual(0);
-  const targetLetter = options[targetIndex]!.letter;
-  const letterMatches = options.reduce<number[]>(
-    (matches, option, index) => (option.letter === targetLetter ? [...matches, index] : matches),
-    []
-  );
-  const keys: string[] = [];
-  if (letterMatches.length === 1) {
-    if (currentIndex !== targetIndex) keys.push(targetLetter);
-  } else {
-    let scan = currentIndex;
-    while (scan !== targetIndex) {
-      scan = (scan + 1) % options.length;
-      if (letterMatches.includes(scan)) keys.push(targetLetter);
-    }
-  }
-  await page.waitForTimeout(1_200);
-  for (const key of keys) {
-    await page.keyboard.press(key);
-    await page.waitForTimeout(120);
-  }
-  await expect(locale).toHaveValue(target);
-  await expect(page.locator('html')).toHaveAttribute('lang', target);
-  await expect
-    .poll(() =>
-      page
-        .context()
-        .cookies()
-        .then((cookies) => cookies.find((cookie) => cookie.name === 'locale')?.value)
-    )
-    .toBe(target);
-}
-
 // ---------------------------------------------------------------------------
 // 320px sequential keyboard traversal (PAF-93): every enabled admin control
 // must be reachable by Tab alone, keep a visible :focus-visible indicator,
@@ -437,7 +326,8 @@ function adminTraversalPlan(
         return [
           back,
           { kind: 'textbox', name: admin.searchLabel },
-          { kind: 'button', name: admin.status.active! },
+          // The loaded active list is one complete page (owner + applicant): an exact count.
+          { kind: 'button', name: `${admin.status.active!} · 2` },
           { kind: 'button', name: admin.status.pending! },
           { kind: 'button', name: admin.status.inactive! },
           { kind: 'link', name: fixture.applicantName },
@@ -455,6 +345,7 @@ function adminTraversalPlan(
         // Accessible-name computation separates the summary's block-level text spans.
         return [
           back,
+          { kind: 'textbox', name: admin.settings.name },
           { kind: 'combobox', name: admin.settings.visibility },
           { kind: 'combobox', name: admin.settings.joinPolicy },
           { kind: 'combobox', name: admin.settings.timezone },
@@ -466,10 +357,14 @@ function adminTraversalPlan(
         // One seeded venue card with a maps link, edit and archive action.
         return [
           back,
-          { kind: 'button', name: admin.venue.add },
           { kind: 'link', name: admin.venue.openMap },
           { kind: 'button', name: admin.venue.edit },
-          { kind: 'button', name: admin.venue.archive }
+          { kind: 'button', name: admin.venue.archive },
+          // A5Vio: the add form is inline below the rows.
+          { kind: 'textbox', name: admin.venue.name },
+          { kind: 'textbox', name: admin.venue.address },
+          { kind: 'textbox', name: admin.venue.mapsUrl },
+          { kind: 'button', name: admin.save }
         ];
       case 'audit':
         // Four seeded audit events; three shown with two member links and a load-more control.
@@ -488,7 +383,6 @@ function adminTraversalPlan(
     expandedOnly:
       destination === 'settings'
         ? [
-            { kind: 'textbox', name: admin.settings.name },
             { kind: 'textbox', name: admin.settings.city },
             { kind: 'textbox', name: admin.settings.description },
             { kind: 'combobox', name: admin.settings.visibility },
@@ -717,8 +611,8 @@ function assertFocusedAdminControl(evidence: FocusEvidence, label: string) {
  * exclusively with Tab (the settings disclosure opens with Enter at its summary stop). Every
  * visited control is compared against the explicit expected inventory, and every enabled admin
  * control must receive focus with a visible indicator, an accessible name, a ≥44px box fully in
- * the viewport and no overlap with the fixed bottom navigation (center-point hit test). Global
- * #locale/#theme Tab stops are validated for keyboard focus but never counted as admin controls.
+ * the viewport and no overlap with the fixed bottom navigation (center-point hit test). The shared
+ * top bar owns the chrome on admin screens, so the global #locale/#theme chips are not Tab stops here.
  * Base UI roving popups (timezone select options) are arrow-key stops by design, not Tab stops,
  * so the traversal requires their trigger but not the popup items. Destructive actions are only
  * focused, never activated.
@@ -733,26 +627,21 @@ async function traverseEnabledAdminControls(
     label: string;
   }
 ) {
-  const globalStops: ExpectedControl[] = [
-    { kind: 'combobox', name: copy.language },
-    { kind: 'combobox', name: copy.theme }
-  ];
   const expandedOnly = plan.expandedOnly ?? [];
   const adminControls = [...plan.content, ...navControls(copy)];
 
   // The document inventory may neither shrink (a control lost) nor grow (an extra Tab stop).
   const collapsedInventory = await collectFocusableInventory(
     page,
-    [...globalStops, ...adminControls],
+    adminControls,
     `${plan.label}: document inventory before traversal`
   );
   let inventory = collapsedInventory;
 
   // Programmatic blur leaves Chromium's sequential-focus resume point unreliable on this page
   // (Tab can resume mid-document, e.g. at the bottom navigation). Blur once, then walk forward
-  // with Tab only until the first global stop (#locale) is focused — the same bounded walk the
-  // locale helper already proves always terminates (through the ring end and back to the top).
-  // From that anchor the ring order is canonical, so the whole traversal becomes an order proof.
+  // with Tab only until the first admin control (the top bar's back link) is focused. From that
+  // anchor the ring order is canonical, so the whole traversal becomes an order proof.
   await page.evaluate(() => {
     const active = document.activeElement;
     if (active instanceof HTMLElement) active.blur();
@@ -763,7 +652,7 @@ async function traverseEnabledAdminControls(
     await page.keyboard.press('Tab');
     const probe = await readFocusEvidence(page);
     if (!probe) continue;
-    if (probe.id === 'locale') {
+    if (probe.identity === inventory[0]!.identity) {
       anchored = true;
       break;
     }
@@ -771,13 +660,12 @@ async function traverseEnabledAdminControls(
   }
   expect(
     anchored,
-    `${plan.label}: sequential Tab never reached the #locale anchor (walked ${anchorTrace.join(' → ')})`
+    `${plan.label}: sequential Tab never reached the first admin control (walked ${anchorTrace.join(' → ')})`
   ).toBe(true);
-  await expect(page.locator('#locale')).toBeFocused();
 
   // From the anchor, the ring must visit every expected control exactly once, in DOM order:
-  // #locale (already focused), #theme, then the admin content controls and the bottom nav.
-  // Hitting #locale again or leaving to <body> before completion means skipped controls.
+  // the back link (already focused), the admin content controls, then the bottom nav.
+  // Leaving to <body> before completion means skipped controls.
   let pending = [...inventory];
   let disclosureOpened = false;
   const trace: string[] = [];
@@ -814,10 +702,6 @@ async function traverseEnabledAdminControls(
     visitedControls.push(expected!);
     pending = pending.filter((control) => control.identity !== focused.identity);
 
-    if (focused.id === 'locale' || focused.id === 'theme') {
-      assertFocusIndicator(focused, [focused.background, focused.pageBackground], context);
-      continue;
-    }
     assertFocusedAdminControl(focused, context);
 
     if (plan.revealedDescriptionId && focused.kind === 'summary' && !disclosureOpened) {
@@ -828,7 +712,7 @@ async function traverseEnabledAdminControls(
       await expect(page.locator(`#${plan.revealedDescriptionId}`)).toBeVisible();
       inventory = await collectFocusableInventory(
         page,
-        [...globalStops, ...plan.content, ...expandedOnly, ...navControls(copy)],
+        [...plan.content, ...expandedOnly, ...navControls(copy)],
         `${plan.label}: document inventory after opening the disclosure`
       );
       pending = inventory.filter((control) => !visited.has(control.identity));
@@ -858,47 +742,6 @@ async function traverseEnabledAdminControls(
     `${plan.label}: visited identities must equal final inventory; trace ${trace.join(' → ')}`
   ).toEqual(new Set(inventory.map((control) => control.identity)));
   expectInventory(visitedControls, inventory, `${plan.label}: visited kind/name multiset`);
-}
-
-async function assertLocaleControlSizing(page: Page, copy: Copy, viewport: number) {
-  const locale = page.locator('#locale');
-  await expect(locale).toHaveAccessibleName(copy.language);
-  // Measure only after the bundled webfonts are loaded: fallback font metrics differ between
-  // macOS and Linux and skewed the 320px box measurements (PAF-87 F4).
-  await page.evaluate(() => document.fonts.ready);
-  const box = await locale.boundingBox();
-  const themeBox = await page.locator('#theme').boundingBox();
-  expect(box).not.toBeNull();
-  expect(themeBox).not.toBeNull();
-  expect(box!.width).toBeGreaterThanOrEqual(44);
-  expect(box!.height).toBeGreaterThanOrEqual(44);
-  // Anti-overlap oracle in both axes: side-by-side and stacked (wrapped) layouts are both
-  // acceptable; only a true rectangle intersection fails.
-  const separatedHorizontally =
-    box!.x + box!.width <= themeBox!.x || themeBox!.x + themeBox!.width <= box!.x;
-  const separatedVertically =
-    box!.y + box!.height <= themeBox!.y || themeBox!.y + themeBox!.height <= box!.y;
-  expect(
-    separatedHorizontally || separatedVertically,
-    `locale and theme controls must not overlap (locale ${JSON.stringify(box)}, theme ${JSON.stringify(themeBox)})`
-  ).toBe(true);
-  await keyboardFocusLocale(page);
-  const dimensions = await page.evaluate(() => ({
-    document: document.documentElement.scrollWidth,
-    main: document.querySelector('main')?.scrollWidth ?? 0,
-    viewport: document.documentElement.clientWidth
-  }));
-  expect(dimensions.document).toBeLessThanOrEqual(viewport);
-  expect(dimensions.main).toBeLessThanOrEqual(viewport);
-  const styledMainTop = await mainOffset(page);
-  const styleClass = await locale.getAttribute('class');
-  await locale.evaluate((element) => element.removeAttribute('class'));
-  const unstyledMainTop = await mainOffset(page);
-  if (styleClass !== null)
-    await locale.evaluate((element, value) => element.setAttribute('class', value), styleClass);
-  console.info(
-    `locale box ${viewport}px ${copy.language}: ${box!.width}x${box!.height}; main top before/after ${unstyledMainTop}/${styledMainTop}`
-  );
 }
 
 async function bottomNavGeometry(page: Page) {
@@ -997,11 +840,8 @@ async function memberCardGeometry(page: Page) {
   expect(avatar).not.toBeNull();
   expect(Math.abs(avatar!.width - 36)).toBeLessThanOrEqual(1);
   expect(Math.abs(avatar!.height - 36)).toBeLessThanOrEqual(1);
-  const invite = await page
-    .getByRole('button', { name: en.communityAdmin.inviteUnavailable })
-    .boundingBox();
-  expect(invite).not.toBeNull();
-  expect(invite!.height).toBeGreaterThanOrEqual(controlHeight - 1);
+  // The dead disabled invite button is gone from Members (F34); the private invite path remains.
+  await expect(page.getByRole('button', { name: /Invite member/ })).toHaveCount(0);
   const search = await page.locator('#admin-member-search').boundingBox();
   expect(search).not.toBeNull();
   expect(Math.abs(search!.x - pageInset)).toBeLessThanOrEqual(1);
@@ -1009,7 +849,8 @@ async function memberCardGeometry(page: Page) {
   expect(search!.height).toBeGreaterThanOrEqual(controlHeight - 1);
   for (const status of ['active', 'pending', 'inactive'] as const) {
     const chip = await page
-      .getByRole('button', { name: en.communityAdmin.status[status]!, exact: true })
+      // Visited filters append a truthful count ("Active · 2"), so match the label as a prefix.
+      .getByRole('button', { name: new RegExp(`^${en.communityAdmin.status[status]!}`) })
       .boundingBox();
     expect(chip).not.toBeNull();
     expect(chip!.height).toBeGreaterThanOrEqual(44);
@@ -1112,13 +953,13 @@ async function venueGeometry(page: Page) {
   const cards = await page.getByTestId('community-venue-card').all();
   expect(cards).toHaveLength(2);
   const boxes = await Promise.all(cards.map((card) => card.boundingBox()));
-  // A5Vio: cards with a 64×52 photo slot, 12px apart.
+  // A5Vio: hairline rows in one surface with a 64×52 photo slot, stacked without a gap.
   for (const box of boxes) {
     expect(box).not.toBeNull();
-    expect(Math.abs(box!.x - pageInset)).toBeLessThanOrEqual(1);
-    expect(Math.abs(box!.width - contentWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(box!.x - pageInset)).toBeLessThanOrEqual(2);
+    expect(Math.abs(box!.width - contentWidth)).toBeLessThanOrEqual(2);
   }
-  expect(Math.abs(boxes[1]!.y - (boxes[0]!.y + boxes[0]!.height) - 12)).toBeLessThanOrEqual(1);
+  expect(Math.abs(boxes[1]!.y - (boxes[0]!.y + boxes[0]!.height))).toBeLessThanOrEqual(2);
   const photo = await cards[0]!.locator('[aria-hidden="true"], img').first().boundingBox();
   expect(photo).not.toBeNull();
   expect(Math.abs(photo!.width - 64)).toBeLessThanOrEqual(1);
@@ -1128,9 +969,15 @@ async function venueGeometry(page: Page) {
   expect(Math.abs(note!.x - pageInset)).toBeLessThanOrEqual(1);
   expect(Math.abs(note!.width - contentWidth)).toBeLessThanOrEqual(1);
   expect(note!.y).toBeGreaterThanOrEqual(boxes[1]!.y + boxes[1]!.height);
-  const add = await page.getByRole('button', { name: en.communityAdmin.venue.add }).boundingBox();
+  // Inline Add (A5Vio): the heading and the save control sit below the rows.
+  const add = await page
+    .getByRole('heading', { level: 3, name: en.communityAdmin.venue.add })
+    .boundingBox();
   expect(add).not.toBeNull();
-  expect(add!.height).toBeGreaterThanOrEqual(controlHeight - 1);
+  expect(add!.y).toBeGreaterThanOrEqual(boxes[1]!.y + boxes[1]!.height);
+  const save = await page.getByRole('button', { name: en.communityAdmin.save }).boundingBox();
+  expect(save).not.toBeNull();
+  expect(save!.height).toBeGreaterThanOrEqual(controlHeight - 1);
   const archive = await cards[0]!
     .getByRole('button', { name: en.communityAdmin.venue.archive })
     .boundingBox();
@@ -1238,7 +1085,7 @@ test(
     await geometry(page, 'Pending Player');
     // Mask the random community name and fixture-dependent request date; geometry is probed exactly.
     await visualDiff(page, 'RgqPq.png', screenshotRatio, [
-      page.locator('#admin-screen-title + p'),
+      page.locator('section[aria-labelledby="admin-screen-title"] > header + p'),
       page.getByTestId('community-request-card').locator('p').last()
     ]);
     for (const name of ['Pending Player']) {
@@ -1272,7 +1119,7 @@ test(
     // card layout, search and geometry stay exact and unmasked.
     // Pixel gate: Chromium baseline (masks: random community name, fixture-dependent dates).
     await visualDiff(page, 'wFqGR.png', screenshotRatio, [
-      page.locator('#admin-screen-title + p'),
+      page.locator('section[aria-labelledby="admin-screen-title"] > header + p'),
       page.getByTestId('community-member-card').locator('p')
     ]);
     // Roster state (search) must survive opening and closing the sheet over it.
@@ -1345,21 +1192,31 @@ test(
     await settingsGeometry(page);
     // Pixel gate: Chromium baseline (masks: random community name, fixture-dependent dates).
     await visualDiff(page, 'N18Mu4.png', screenshotRatio, [
-      page.locator('#admin-screen-title + p')
+      page.locator('section[aria-labelledby="admin-screen-title"] > header + p')
     ]);
     await page.getByText(en.communityAdmin.settings.details).click();
     await page.getByLabel(en.communityAdmin.settings.city).fill('Madrid');
     await page.getByRole('button', { name: en.communityAdmin.save }).click();
     await expect(page.getByText('Community settings saved.')).toBeVisible();
+    // The shared top bar owns the admin chrome (F38): the floating locale/theme chips step aside, so
+    // the persisted locale cookie (set through the chips on unmarked routes) drives the language.
+    await expect(page.locator('#locale')).toBeHidden();
+    const switchLocale = async (locale: string) => {
+      await page
+        .context()
+        .addCookies([{ name: 'locale', value: locale, url: 'http://127.0.0.1:4173' }]);
+      await page.reload();
+      await waitForHydratedPage(page);
+      await expect(page.locator('html')).toHaveAttribute('lang', locale);
+    };
     for (const [locale, copy] of [
       ['es', es],
       ['pt-BR', pt]
     ] as const) {
-      await switchLocaleWithKeyboard(page, locale);
+      await switchLocale(locale);
       await expect(
         page.getByRole('heading', { name: copy.communityAdmin.title.settings })
       ).toBeVisible();
-      await assertLocaleControlSizing(page, copy, 390);
     }
     await page.setViewportSize({ width: 1280, height: 900 });
     for (const [locale, copy] of [
@@ -1367,28 +1224,13 @@ test(
       ['pt-BR', pt],
       ['es', es]
     ] as const) {
-      await switchLocaleWithKeyboard(page, locale);
+      await switchLocale(locale);
       await expect(
         page.getByRole('heading', { name: copy.communityAdmin.title.settings })
       ).toBeVisible();
-      await assertLocaleControlSizing(page, copy, 1280);
     }
-    await page.locator('#locale').selectOption('es');
-    await expect(page.context().cookies()).resolves.toContainEqual(
-      expect.objectContaining({ name: 'locale', value: 'es', path: '/' })
-    );
-    await page.reload();
-    await waitForHydratedPage(page);
-    await expect(page.locator('#locale')).toHaveValue('es');
-    await expect(page.locator('#locale')).toHaveAccessibleName(es.language);
-    await expect(page.locator('html')).toHaveAttribute('lang', 'es');
-    await expect(
-      page.getByRole('heading', { name: es.communityAdmin.title.settings })
-    ).toBeVisible();
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.locator('#locale').selectOption('en');
-    await expect(page.locator('html')).toHaveAttribute('lang', 'en');
-    await assertLocaleControlSizing(page, en, 390);
+    await switchLocale('en');
     await page
       .context()
       .addCookies([{ name: 'locale', value: 'en', url: 'http://127.0.0.1:4173' }]);
@@ -1410,7 +1252,6 @@ test(
     await waitForHydratedPage(page);
     await expect(page.locator('html')).toHaveAttribute('lang', 'en');
     await geometry(page);
-    await page.getByRole('button', { name: en.communityAdmin.venue.add }).click();
     await page.getByLabel(en.communityAdmin.venue.name).fill('North Court');
     await page.getByLabel(en.communityAdmin.venue.address).fill('Madrid');
     await page.getByLabel(en.communityAdmin.venue.mapsUrl).fill('https://maps.example.test/court');
@@ -1425,7 +1266,9 @@ test(
     // Mask fixture venue names and dynamic/unsupported detail copy only; card edges, action labels,
     // and the supported Open map links remain part of the pixel comparison.
     // Pixel gate: Chromium baseline (masks: random community name, fixture-dependent dates).
-    await visualDiff(page, 'A5Vio.png', screenshotRatio, [page.locator('#admin-screen-title + p')]);
+    await visualDiff(page, 'A5Vio.png', screenshotRatio, [
+      page.locator('section[aria-labelledby="admin-screen-title"] > header + p')
+    ]);
     await page
       .getByTestId('community-venue-card')
       .first()
@@ -1443,7 +1286,7 @@ test(
     // approved unsupported/adapted region, so the band below the third event stays masked.
     // Pixel gate: Chromium baseline (masks: random community name, fixture-dependent dates).
     await visualDiff(page, 'E5CS5K.png', screenshotRatio, [
-      page.locator('#admin-screen-title + p'),
+      page.locator('section[aria-labelledby="admin-screen-title"] > header + p'),
       page.getByTestId('community-audit-event').locator('p')
     ]);
     await page.getByRole('button', { name: en.communityAdmin.loadMore }).click();
@@ -1617,7 +1460,7 @@ test.describe('community admin 320px locale matrix', () => {
   test.use({ viewport: { width: 320, height: 844 } });
 
   for (const destination of narrowDestinations) {
-    for (const [localeIndex, [locale]] of narrowLocales.entries()) {
+    for (const [locale] of narrowLocales) {
       test(`${destination} heading and controls fit at 320px (${locale})`, async ({ page }) => {
         test.setTimeout(120_000);
         const owner = await createActor(`Narrow ${destination} ${locale}`);
@@ -1704,9 +1547,9 @@ test.describe('community admin 320px locale matrix', () => {
           ).toBeLessThanOrEqual(320);
           return;
         }
-        const localeControl = page.locator('#locale');
-        await expect(localeControl).toBeVisible();
-        await assertLocaleControlSizing(page, localeCopy, 320);
+        // The shared top bar owns the admin chrome (F38): the floating locale/theme chips step
+        // aside (preferences stay reachable through Me) and the bar reserves no width for them.
+        await expect(page.locator('#locale')).toBeHidden();
         await expect
           .poll(() =>
             page
@@ -1831,17 +1674,6 @@ test.describe('community admin 320px locale matrix', () => {
         const finalControl = await lastControl.boundingBox();
         expect(finalControl, 'last interactive action must remain visible').not.toBeNull();
         expect(finalControl!.y + finalControl!.height).toBeLessThanOrEqual(navBox!.y);
-
-        // Keyboard operability: one real type-ahead locale switch per matrix run, cycling
-        // en → pt-BR → es → en so every locale is reached by keyboard across the matrix.
-        const [nextLocale, nextCopy] = narrowLocales[(localeIndex + 1) % narrowLocales.length]!;
-        await switchLocaleWithKeyboard(page, nextLocale);
-        await expect(
-          page.getByRole('heading', {
-            name: nextCopy.communityAdmin.title[titleKey],
-            exact: true
-          })
-        ).toBeVisible();
       });
     }
   }

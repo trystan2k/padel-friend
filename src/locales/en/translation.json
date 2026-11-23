@@ -20,6 +20,10 @@
     "invite": "Invite players",
     "inviteUnavailable": "Invitations are not available here.",
     "joinCountUnavailable": "Join request count unavailable.",
+    "joinRequests_one": "{{count}} person wants to join",
+    "joinRequests_other": "{{count}} people want to join",
+    "joinRequestsAtLeast_other": "{{count}}+ people want to join",
+    "joinRequestsNone": "No one is waiting to join",
     "upcoming": "Upcoming matches",
     "noUpcoming": "No upcoming matches to show.",
     "skillDescription": "Your app-wide level and rank in this community. Reliability below 50% is shown as provisional.",
@@ -109,6 +113,7 @@
     "created": "Your community is ready.",
     "finish": "Go to dashboard",
     "done": "Finish",
+    "discoveryBack": "Back",
     "createFailed": "Could not create community. Please try again.",
     "createRateLimited": "You have created too many communities recently. Try again later.",
     "createOwnedLimit": "You have reached the maximum number of communities you can own.",
@@ -293,6 +298,14 @@
     }
   },
   "profile": {
+    "stats": {
+      "label": "Match statistics",
+      "matches": "matches",
+      "record": "W–L–D",
+      "winRate": "win rate",
+      "notAvailable": "Not available",
+      "unavailable": "Match statistics are unavailable right now."
+    },
     "title": "Player profile",
     "links": {
       "label": "Profile shortcuts",
@@ -378,6 +391,11 @@
     "errorTitle": "Couldn’t load community administration",
     "backToDashboard": "Back to dashboard",
     "requestBanner": "Community admin actions",
+    "filterCount": "{{label}} · {{total}}",
+    "filterCountAtLeast": "{{label}} · {{total}}+",
+    "requestsWaiting_one": "{{community}} · {{count}} waiting",
+    "requestsWaiting_other": "{{community}} · {{count}} waiting",
+    "requestsWaitingAtLeast_other": "{{community}} · {{count}}+ waiting",
     "requestPrivacy": "Admin review only",
     "requestHistoryUnavailable": "Resolved request and invitation delivery history is unavailable.",
     "cityUnavailable": "City not listed",
@@ -403,7 +421,6 @@
     "memberFilters": "Filter community members",
     "memberJoined": "Member since {{date}}",
     "search": "Search",
-    "inviteUnavailable": "Invite member · unavailable",
     "requestMeta": "Requested {{date}} · {{privacy}}",
     "memberMeta": "{{status}} · {{role}} · since {{date}}",
     "memberAdminProfile": "{{name}} · Level {{level}} · {{reliability}}% reliability",
@@ -540,7 +557,6 @@
       "unconfirmed": "Could not confirm this change. Your fields are preserved. Refresh before retrying."
     },
     "matchCountUnavailable": "Match count unavailable — match history is not supported yet",
-    "inviteeSearchPrivateOnly": "Invitee search is available only in private communities.",
     "requestMessage": {
       "action": "Send update",
       "title": "Message pending applicant",
@@ -2767,6 +2783,8 @@
     },
     "player": {
       "title": "Player statistics",
+      "backToProfile": "Back to profile",
+      "backToCommunity": "Back to community",
       "subtitle": "Sporting results from confirmed matches. Figures that cannot be calculated yet explain why instead of showing zero.",
       "myStatistics": "My statistics",
       "hero": {

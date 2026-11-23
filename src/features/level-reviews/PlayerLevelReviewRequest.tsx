@@ -6,6 +6,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import { TextField } from '../../components/ui/TextField';
 import { MAX_LEVEL, MIN_LEVEL } from '../player/rating-config';
 import { formatLevel, formatPercentPoints } from '../player/rating-format';
@@ -28,7 +29,6 @@ import {
 import { listMyLevelReviewRequests, submitLevelReviewRequest } from './level-review.functions';
 import { type CurrentLevelLoad } from './level-review-view';
 import { levelReviewClubhouse as c } from './level-review-clubhouse.styles';
-import { LevelReviewBackLink } from './LevelReviewBackLink';
 
 type Failure = {
   kind: LevelReviewErrorKind | 'offline' | 'unconfirmed';
@@ -182,11 +182,12 @@ export function PlayerLevelReviewRequest({
   const evidenceCount = codePointLength(values.evidence);
 
   return (
-    <main {...stylex.props(c.page)}>
-      <header {...stylex.props(c.topBar)}>
-        <LevelReviewBackLink to="/me" label={t('levelReview.request.backLabel')} />
-        <h1 {...stylex.props(c.title)}>{t('levelReview.request.title')}</h1>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(c.page)}>
+      <TopBar
+        xstyle={c.barFrame}
+        title={t('levelReview.request.title')}
+        back={{ to: '/me', label: t('levelReview.request.backLabel') }}
+      />
       {current.status === 'ok' && current.current && (
         <p {...stylex.props(c.body)}>{t('levelReview.request.intro')}</p>
       )}

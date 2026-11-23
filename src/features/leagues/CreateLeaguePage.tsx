@@ -2,15 +2,14 @@ import * as stylex from '@stylexjs/stylex';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { rootStyles } from '../../root.styles';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import type { LeagueListResult } from './league-contracts';
 import { isOffline } from '../../lib/connectivity';
 import { leagueErrorCode } from './league-errors';
 import { defaultLeagueFormValues, type LeagueFormInput } from './league-form';
 import { createLeague } from './league.functions';
 import { LeagueForm } from './LeagueForm';
-import { LeagueBackIcon } from './LeagueSummary';
 import { styles } from './league.styles';
 
 export function CreateLeaguePage({ data, today }: { data: LeagueListResult; today: string }) {
@@ -41,23 +40,19 @@ export function CreateLeaguePage({ data, today }: { data: LeagueListResult; toda
   };
 
   return (
-    <main {...stylex.props(styles.page)}>
-      <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
-        <div {...stylex.props(styles.headingRow)}>
-          <Link
-            to="/community/$communityId/leagues"
-            params={{ communityId: community.id }}
-            aria-label={t('leagues.back')}
-            {...stylex.props(styles.backLink)}
-          >
-            <LeagueBackIcon />
-          </Link>
-          <h1 {...stylex.props(styles.title)}>{t('leagues.form.title')}</h1>
-        </div>
-        <p {...stylex.props(styles.context)}>
-          {t('leagues.communityContext', { community: community.name })}
-        </p>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(styles.page)}>
+      <TopBar
+        xstyle={styles.barFrame}
+        title={t('leagues.form.title')}
+        back={{
+          to: '/community/$communityId/leagues',
+          params: { communityId: community.id },
+          label: t('leagues.back')
+        }}
+      />
+      <p {...stylex.props(styles.context, styles.contextCenter)}>
+        {t('leagues.communityContext', { community: community.name })}
+      </p>
       {community.can_create ? (
         <>
           {active && (

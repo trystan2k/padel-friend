@@ -1,7 +1,6 @@
 import { useUpdateGuard } from '../pwa/update-guard';
 import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import * as stylex from '@stylexjs/stylex';
-import { rootStyles } from '../../root.styles';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Dialog } from '@base-ui/react/dialog';
 import { Select } from '@base-ui/react/select';
@@ -27,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
+import { TopBar } from '../../components/ui/TopBar';
 import {
   addCommunityVenue,
   archiveCommunityVenue,
@@ -67,6 +67,10 @@ declare module '@tanstack/react-router' {
 type ScreenName = CommunityAdminScreenProps['screen'];
 type ViewProps<Screen extends ScreenName> = Extract<CommunityAdminScreenProps, { screen: Screen }>;
 
+type MemberCounts = Partial<
+  Record<CommunityAdminMember['status'], { total: number; exact: boolean }>
+>;
+
 function MembersView({ community, members }: ViewProps<'members'>) {
   const matchSummary = unsupportedCommunityMatchSummary();
   const { t, i18n } = useTranslation();
@@ -83,6 +87,9 @@ function MembersView({ community, members }: ViewProps<'members'>) {
   } | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasLoadedMoreMembers, setHasLoadedMoreMembers] = useState(false);
+  // Counts come only from unfiltered result sets already read (exact when the list is complete,
+  // a lower bound while more pages exist); a filter that was never opened has no count.
+  const [knownCounts, setKnownCounts] = useState<MemberCounts>({});
   const searchRequest = useRef(0);
   const membersSourceRef = useRef(members);
   const hasSearchedMembers = useRef(false);
@@ -104,6 +111,14 @@ function MembersView({ community, members }: ViewProps<'members'>) {
     (submittedQuery !== '' && !currentSearch) ||
     (memberFilter !== 'active' && !currentSearch);
 
+  const currentCount =
+    submittedQuery === '' && !searchingMembers && (currentSearch || initialActiveResults)
+      ? { total: visibleMembers.length, exact: !canLoadMore }
+      : null;
+  const counts: MemberCounts = currentCount
+    ? { ...knownCounts, [memberFilter]: currentCount }
+    : knownCounts;
+
   useEffect(() => {
     if (membersSourceRef.current === members) return;
     membersSourceRef.current = members;
@@ -111,6 +126,7 @@ function MembersView({ community, members }: ViewProps<'members'>) {
     setSearchResults(null);
     setSearchLoading(false);
     setHasLoadedMoreMembers(false);
+    setKnownCounts({});
   }, [members]);
 
   const fetchMembers = useCallback(
@@ -181,18 +197,8 @@ function MembersView({ community, members }: ViewProps<'members'>) {
 
   return (
     <AdminViewFrame communityId={communityId} communityName={community.name} screen="members">
-      {community.visibility === 'private' ? (
+      {community.visibility === 'private' && (
         <InviteeSearch key={communityId} communityId={communityId} />
-      ) : (
-        <Button
-          disabled
-          variant="secondary"
-          aria-label={t('communityAdmin.inviteUnavailable')}
-          title={t('communityAdmin.inviteeSearchPrivateOnly')}
-          xstyle={styles.unavailableInvite}
-        >
-          {t('communityAdmin.inviteUnavailable')}
-        </Button>
       )}
       <form onSubmit={(event) => event.preventDefault()} {...stylex.props(styles.searchForm)}>
         <div {...stylex.props(styles.searchField)}>
@@ -216,11 +222,24 @@ function MembersView({ community, members }: ViewProps<'members'>) {
             key={status}
             type="button"
             aria-pressed={memberFilter === status}
-            onClick={() => setMemberFilter(status)}
+            onClick={() => {
+              setKnownCounts(counts);
+              setMemberFilter(status);
+            }}
             {...stylex.props(styles.filterTab, memberFilter === status && styles.filterTabSelected)}
           >
             {memberFilter === status && <span aria-hidden="true">✓ </span>}
-            {t(`communityAdmin.status.${status}`)}
+            {counts[status]
+              ? t(
+                  counts[status].exact
+                    ? 'communityAdmin.filterCount'
+                    : 'communityAdmin.filterCountAtLeast',
+                  {
+                    label: t(`communityAdmin.status.${status}`),
+                    total: new Intl.NumberFormat(locale).format(counts[status].total)
+                  }
+                )
+              : t(`communityAdmin.status.${status}`)}
           </button>
         ))}
       </fieldset>
@@ -409,8 +428,19 @@ function RequestsView(props: ViewProps<'requests'>) {
     }
   }
 
+  const waiting = members.length + additionalRequests.length;
+  const waitingLabel = t(
+    hasMoreRequests ? 'communityAdmin.requestsWaitingAtLeast' : 'communityAdmin.requestsWaiting',
+    { community: community.name, count: waiting }
+  );
+
   return (
-    <AdminViewFrame communityId={communityId} communityName={community.name} screen="requests">
+    <AdminViewFrame
+      communityId={communityId}
+      communityName={community.name}
+      screen="requests"
+      subtitle={waitingLabel}
+    >
       <p {...stylex.props(styles.banner)}>{t('communityAdmin.requestBanner')}</p>
       <div {...stylex.props(styles.list)}>
         {[...members, ...additionalRequests].map((person) => (
@@ -511,11 +541,14 @@ function AdminViewFrame({
   communityId,
   communityName,
   screen,
+  subtitle,
   children
 }: {
   communityId: string;
   communityName: string;
   screen: 'requests' | 'members' | 'settings' | 'venues' | 'audit';
+  /** Replaces the default "community · Admin only" line (e.g. with the real waiting count). */
+  subtitle?: string;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -527,26 +560,20 @@ function AdminViewFrame({
     { key: 'audit', to: '/community/$communityId/admin/audit' }
   ] as const;
   return (
-    <section aria-labelledby="admin-screen-title" {...stylex.props(styles.content)}>
-      <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
-        <div {...stylex.props(styles.screenHeading)}>
-          <Link
-            to="/dashboard"
-            aria-label={t('communityAdmin.backToDashboard')}
-            {...stylex.props(styles.backLink)}
-          >
-            <span aria-hidden="true">‹</span>
-          </Link>
-          <div {...stylex.props(styles.titleGroup)}>
-            <h1 tabIndex={-1} id="admin-screen-title" {...stylex.props(styles.title)}>
-              {t(`communityAdmin.title.${screen}`)}
-            </h1>
-            <p {...stylex.props(styles.subtitle)}>
-              {t('communityAdmin.communityAdminSubtitle', { community: communityName })}
-            </p>
-          </div>
-        </div>
-      </header>
+    <section
+      aria-labelledby="admin-screen-title"
+      data-route-chrome="navigation"
+      {...stylex.props(styles.content)}
+    >
+      <TopBar
+        xstyle={styles.topBar}
+        headingId="admin-screen-title"
+        title={t(`communityAdmin.title.${screen}`)}
+        back={{ to: '/dashboard', label: t('communityAdmin.backToDashboard') }}
+      />
+      <p {...stylex.props(styles.subtitle)}>
+        {subtitle ?? t('communityAdmin.communityAdminSubtitle', { community: communityName })}
+      </p>
       {children}
       <nav aria-label={t('communityAdmin.navigation')} {...stylex.props(styles.bottomNav)}>
         {items.map((item) => (
@@ -1115,6 +1142,14 @@ function SettingsView(props: ViewProps<'settings'>) {
         onSubmit={(event) => void saveSettings(event)}
         {...stylex.props(styles.form, styles.settingsForm)}
       >
+        <TextField
+          id="community-admin-name"
+          label={t('communityAdmin.settings.name')}
+          value={settings.name}
+          maxLength={80}
+          onChange={(event) => setSettings({ ...settings, name: event.target.value })}
+          required
+        />
         <SurfaceCard data-testid="settings-visibility-label" xstyle={styles.settingsCard}>
           <span {...stylex.props(styles.fieldLabel)}>
             {t('communityAdmin.settings.visibility')}
@@ -1256,14 +1291,6 @@ function SettingsView(props: ViewProps<'settings'>) {
           </summary>
           <div {...stylex.props(styles.form)}>
             <TextField
-              id="community-admin-name"
-              label={t('communityAdmin.settings.name')}
-              value={settings.name}
-              maxLength={80}
-              onChange={(event) => setSettings({ ...settings, name: event.target.value })}
-              required
-            />
-            <TextField
               id="community-admin-city"
               label={t('communityAdmin.settings.city')}
               value={settings.city_label}
@@ -1339,11 +1366,11 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
   const [hasLoadedMoreVenues, setHasLoadedMoreVenues] = useState(false);
   const [hasMoreVenues, setHasMoreVenues] = useState(venues.length === 50);
   const [venueDraft, setVenueDraft] = useState({ id: '', name: '', address: '', maps_url: '' });
-  const [venueFormOpen, setVenueFormOpen] = useState(false);
   const [paginationPending, setPaginationPending] = useState(false);
   const sourceRef = useRef(venues);
   const requestGeneration = useRef(0);
   const { busy, setBusy, message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
+  const resetDraft = () => setVenueDraft({ id: '', name: '', address: '', maps_url: '' });
 
   useEffect(() => {
     if (sourceRef.current === venues) return;
@@ -1399,10 +1426,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
           : addCommunityVenue({ data }),
       t(venueDraft.id ? 'communityAdmin.result.venueUpdated' : 'communityAdmin.result.venueAdded')
     );
-    if (saved) {
-      setVenueFormOpen(false);
-      setVenueDraft({ id: '', name: '', address: '', maps_url: '' });
-    }
+    if (saved) resetDraft();
   }
 
   async function loadMoreVenues() {
@@ -1430,141 +1454,127 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
     }
   }
 
+  const venueRows = [...venues, ...additionalVenues];
+  const editing = venueDraft.id !== '';
   return (
     <AdminViewFrame communityId={communityId} communityName={community.name} screen="venues">
-      {!venueFormOpen && (
-        <Button busy={busy || paginationPending} onClick={() => setVenueFormOpen(true)}>
-          {t('communityAdmin.venue.add')}
-        </Button>
+      {venueRows.length > 0 ? (
+        <ul {...stylex.props(styles.listSurface, styles.plainList)}>
+          {venueRows.map((venue) => (
+            <li
+              key={venue.id}
+              data-testid="community-venue-card"
+              {...stylex.props(styles.venueRow)}
+            >
+              <div {...stylex.props(styles.venueHead)}>
+                {venue.photo_signed_url ? (
+                  <img src={venue.photo_signed_url} alt="" {...stylex.props(styles.venuePhoto)} />
+                ) : (
+                  <span aria-hidden="true" {...stylex.props(styles.venuePhoto)} />
+                )}
+                <div {...stylex.props(styles.memberDetails)}>
+                  <h3 {...stylex.props(styles.cardCompactTitle)}>{venue.name}</h3>
+                  <p {...stylex.props(styles.copy)}>
+                    {venue.address || community.city_label || t('communityAdmin.cityUnavailable')}
+                  </p>
+                </div>
+              </div>
+              <div {...stylex.props(styles.venueActions)}>
+                {venue.maps_url && (
+                  <a
+                    href={venue.maps_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    {...stylex.props(styles.memberLink, styles.inlineLink, styles.venueAction)}
+                  >
+                    {t('communityAdmin.venue.openMap')}
+                  </a>
+                )}
+                <Button
+                  variant="secondary"
+                  busy={busy || paginationPending}
+                  onClick={() => {
+                    setVenueDraft({
+                      id: venue.id,
+                      name: venue.name,
+                      address: venue.address ?? '',
+                      maps_url: venue.maps_url ?? ''
+                    });
+                  }}
+                >
+                  {t('communityAdmin.venue.edit')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  busy={busy || paginationPending}
+                  onClick={() =>
+                    void run(
+                      () =>
+                        archiveCommunityVenue({
+                          data: { community_id: community.id, venue_id: venue.id }
+                        }),
+                      t('communityAdmin.result.venueArchived')
+                    )
+                  }
+                >
+                  {t('communityAdmin.venue.archive')}
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p {...stylex.props(styles.copy, styles.emptyState)}>{t('communityAdmin.empty.venues')}</p>
       )}
-      {venueFormOpen && (
-        <SurfaceCard xstyle={styles.card}>
-          <h3 {...stylex.props(styles.cardTitle)}>
-            {t(venueDraft.id ? 'communityAdmin.venue.edit' : 'communityAdmin.venue.add')}
-          </h3>
-          <form onSubmit={(event) => void saveVenue(event)} {...stylex.props(styles.form)}>
-            <TextField
-              id="venue-name"
-              label={t('communityAdmin.venue.name')}
-              value={venueDraft.name}
-              maxLength={120}
-              required
-              onChange={(event) => setVenueDraft({ ...venueDraft, name: event.target.value })}
+      <SurfaceCard xstyle={styles.card}>
+        <h3 {...stylex.props(styles.cardTitle)}>
+          {t(editing ? 'communityAdmin.venue.edit' : 'communityAdmin.venue.add')}
+        </h3>
+        <form onSubmit={(event) => void saveVenue(event)} {...stylex.props(styles.form)}>
+          <TextField
+            id="venue-name"
+            label={t('communityAdmin.venue.name')}
+            value={venueDraft.name}
+            maxLength={120}
+            required
+            onChange={(event) => setVenueDraft({ ...venueDraft, name: event.target.value })}
+          />
+          <TextField
+            id="venue-address"
+            label={t('communityAdmin.venue.address')}
+            value={venueDraft.address}
+            maxLength={300}
+            onChange={(event) => setVenueDraft({ ...venueDraft, address: event.target.value })}
+          />
+          <TextField
+            id="venue-map"
+            label={t('communityAdmin.venue.mapsUrl')}
+            value={venueDraft.maps_url}
+            maxLength={2048}
+            type="url"
+            onChange={(event) => setVenueDraft({ ...venueDraft, maps_url: event.target.value })}
+          />
+          {editing && (
+            <VenuePhotoUpload
+              key={venueDraft.id}
+              communityId={community.id}
+              venueId={venueDraft.id}
+              photoUrl={
+                venueRows.find((venue) => venue.id === venueDraft.id)?.photo_signed_url ?? null
+              }
+              onUploaded={() => void router.invalidate()}
             />
-            <TextField
-              id="venue-address"
-              label={t('communityAdmin.venue.address')}
-              value={venueDraft.address}
-              maxLength={300}
-              onChange={(event) => setVenueDraft({ ...venueDraft, address: event.target.value })}
-            />
-            <TextField
-              id="venue-map"
-              label={t('communityAdmin.venue.mapsUrl')}
-              value={venueDraft.maps_url}
-              maxLength={2048}
-              type="url"
-              onChange={(event) => setVenueDraft({ ...venueDraft, maps_url: event.target.value })}
-            />
-            {venueDraft.id && (
-              <VenuePhotoUpload
-                key={venueDraft.id}
-                communityId={community.id}
-                venueId={venueDraft.id}
-                photoUrl={
-                  [...venues, ...additionalVenues].find((venue) => venue.id === venueDraft.id)
-                    ?.photo_signed_url ?? null
-                }
-                onUploaded={() => void router.invalidate()}
-              />
-            )}
-            <Button type="submit" busy={busy || paginationPending}>
-              {t('communityAdmin.save')}
-            </Button>
-          </form>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setVenueFormOpen(false);
-              setVenueDraft({ id: '', name: '', address: '', maps_url: '' });
-            }}
-          >
+          )}
+          <Button type="submit" busy={busy || paginationPending}>
+            {t('communityAdmin.save')}
+          </Button>
+        </form>
+        {editing && (
+          <Button variant="secondary" onClick={resetDraft}>
             {t('communityAdmin.cancel')}
           </Button>
-        </SurfaceCard>
-      )}
-      <div {...stylex.props(styles.list)}>
-        {[...venues, ...additionalVenues].map((venue) => (
-          <SurfaceCard
-            key={venue.id}
-            data-testid="community-venue-card"
-            xstyle={[styles.card, styles.venueCard]}
-          >
-            <div {...stylex.props(styles.venueHead)}>
-              {venue.photo_signed_url ? (
-                <img src={venue.photo_signed_url} alt="" {...stylex.props(styles.venuePhoto)} />
-              ) : (
-                <span aria-hidden="true" {...stylex.props(styles.venuePhoto)} />
-              )}
-              <div {...stylex.props(styles.memberDetails)}>
-                <h3 {...stylex.props(styles.cardCompactTitle)}>{venue.name}</h3>
-                <p {...stylex.props(styles.copy)}>
-                  {venue.address || community.city_label || t('communityAdmin.cityUnavailable')}
-                </p>
-              </div>
-            </div>
-            {venue.maps_url && (
-              <div {...stylex.props(styles.venueMeta)}>
-                <a
-                  href={venue.maps_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  {...stylex.props(styles.memberLink, styles.inlineLink)}
-                >
-                  {t('communityAdmin.venue.openMap')}
-                </a>
-              </div>
-            )}
-            <div {...stylex.props(styles.venueActions)}>
-              <Button
-                variant="secondary"
-                busy={busy || paginationPending}
-                onClick={() => {
-                  setVenueDraft({
-                    id: venue.id,
-                    name: venue.name,
-                    address: venue.address ?? '',
-                    maps_url: venue.maps_url ?? ''
-                  });
-                  setVenueFormOpen(true);
-                }}
-              >
-                {t('communityAdmin.venue.edit')}
-              </Button>
-              <Button
-                variant="secondary"
-                busy={busy || paginationPending}
-                onClick={() =>
-                  void run(
-                    () =>
-                      archiveCommunityVenue({
-                        data: { community_id: community.id, venue_id: venue.id }
-                      }),
-                    t('communityAdmin.result.venueArchived')
-                  )
-                }
-              >
-                {t('communityAdmin.venue.archive')}
-              </Button>
-            </div>
-          </SurfaceCard>
-        ))}
-        {!venues.length && !additionalVenues.length && (
-          <p {...stylex.props(styles.copy, styles.emptyState)}>
-            {t('communityAdmin.empty.venues')}
-          </p>
         )}
-      </div>
+      </SurfaceCard>
       {hasMoreVenues ? (
         <Button
           variant="secondary"

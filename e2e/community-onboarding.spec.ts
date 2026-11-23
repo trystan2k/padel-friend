@@ -403,6 +403,13 @@ test(
     const actions = main.locator('[data-community-actions]');
     await expect(actions.getByRole('button', { name: en.communityOnboarding.skip })).toBeVisible();
     await expect(actions).toHaveCSS('position', 'sticky');
+    // F45: one sticky Finish with the skip action, and an accessible 48px Back chevron in the bar.
+    await expect(actions.getByRole('button', { name: en.communityOnboarding.done })).toHaveCount(1);
+    const back = main.getByRole('button', { name: en.communityOnboarding.discoveryBack });
+    const backBox = await back.boundingBox();
+    expect(backBox!.width).toBeGreaterThanOrEqual(44);
+    expect(backBox!.height).toBeGreaterThanOrEqual(44);
+    expect(backBox!.x).toBeLessThanOrEqual(24);
     await page.evaluate(() => document.fonts.ready);
     await visualDiff(page, 'dSEX3', testInfo);
   }
@@ -701,6 +708,27 @@ test('profile save reaches discovery, skip makes no membership and direct access
   await expect(
     page.getByRole('heading', { name: en.communityOnboarding.createLead })
   ).toBeVisible();
+});
+
+test('discovery Back and Finish use the validated return path, never history', async ({ page }) => {
+  await player(page);
+  // Default: the dashboard; deep link: the validated next; unsafe next: back to the default.
+  for (const [search, destination, control] of [
+    ['', /\/dashboard$/, 'back'],
+    ['?next=%2Fmatches%2Fmy', /\/matches\/my$/, 'back'],
+    ['?next=%2F%2Fevil.example', /\/dashboard$/, 'back'],
+    ['?next=%2Fmatches%2Fmy', /\/matches\/my$/, 'finish']
+  ] as const) {
+    await page.goto(`/onboarding/community${search}`);
+    await waitForHydratedPage(page);
+    await page
+      .getByRole('button', {
+        name:
+          control === 'back' ? en.communityOnboarding.discoveryBack : en.communityOnboarding.done
+      })
+      .click();
+    await expect(page).toHaveURL(destination);
+  }
 });
 
 test('SSR and hydration preserve locale across both views at 320px', async ({ page }) => {

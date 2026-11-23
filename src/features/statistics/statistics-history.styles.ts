@@ -139,6 +139,8 @@ export const historyStyles = stylex.create({
     fontFamily: 'var(--font-family-body)',
     minWidth: 0
   },
+  // The shared top bar bleeds out of the page gutter (group detail).
+  barFrame: { marginInline: 'calc(-1 * var(--space-20))' },
   pageHeader: { display: 'grid', gap: 'var(--space-8)' },
   title: {
     margin: 0,

@@ -430,13 +430,11 @@ describe('community admin UI', () => {
   it('sends no venue write offline and reports an unconfirmed lost response', async () => {
     const user = userEvent.setup();
     mount('venues');
-    await user.click(screen.getByRole('button', { name: 'Add a venue' }));
     await user.type(document.querySelector<HTMLInputElement>('#venue-name')!, 'Court One');
     mocks.addVenue.mockResolvedValueOnce({});
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(await screen.findByText('Venue added.')).toBeTruthy();
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
-    await user.click(screen.getByRole('button', { name: 'Add a venue' }));
     await user.type(document.querySelector<HTMLInputElement>('#venue-name')!, 'Court Two');
     await user.click(screen.getByRole('button', { name: 'Save changes' }));
     expect(screen.getByText(/Offline. Nothing sent/)).toBeTruthy();
@@ -1713,7 +1711,8 @@ describe('community admin UI', () => {
     expect(screen.getByTestId('settings-currency-control').textContent).toContain('Euro (EUR)');
     settingsView.unmount();
     mount('venues');
-    await userEvent.click(screen.getByRole('button', { name: 'Add a venue' }));
+    // The add form is inline (A5Vio): no button reveals it.
+    expect(screen.getByRole('heading', { level: 3, name: 'Add a venue' })).toBeTruthy();
     expect(screen.queryByText('Venue photo upload is unavailable.')).toBeNull();
   });
 
@@ -2257,11 +2256,28 @@ describe('community admin UI', () => {
     mount('members');
     const row = screen.getByTestId('community-member-card');
     expect(row.parentElement?.children).toHaveLength(1);
-    const active = screen.getByRole('button', { name: 'Active' });
+    // The loaded active list is one complete page, so its count is exact; unopened filters have none.
+    const active = screen.getByRole('button', { name: 'Active · 1' });
     expect(active.getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByRole('button', { name: 'Inactive' }).getAttribute('aria-pressed')).toBe(
       'false'
     );
+  });
+
+  it('has no dead disabled invite button in Members (public or private)', () => {
+    mount('members');
+    expect(screen.queryByRole('button', { name: /Invite member/ })).toBeNull();
+  });
+
+  it('shows the real waiting count under the Requests title (one complete page is exact)', () => {
+    mount('requests');
+    expect(screen.getByText(/ · 1 waiting$/)).toBeTruthy();
+  });
+
+  it('keeps the community name field in Settings itself, not inside Details', () => {
+    mount('settings');
+    const name = screen.getByRole('textbox', { name: 'Community name' });
+    expect(name.closest('details')).toBeNull();
   });
 
   it('empty venues and audit render truthful empty states without a list surface', () => {

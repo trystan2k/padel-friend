@@ -4,21 +4,22 @@
   "width": 390,
   "height": 844,
   "statusBarHeight": 44,
-  "barTreatment": "Frames draw a 56px back/title bar and no app bottom navigation or admin section tabs. Admin routes keep the app shell suppressed (app-shell.ts) and render the admin section navigation as the single bar; the probe asserts exactly one navigation bar.",
+  "barTreatment": "Frames draw a 56px back/title bar and no app bottom navigation or admin section tabs. Admin routes keep the app shell suppressed (app-shell.ts) and render the admin section navigation as the single bar; the probe asserts exactly one navigation bar. The title bar is the shared centered TopBar (F38; back to the dashboard, focusable heading) with the community/Admin-only line (or the real waiting count on Requests) under it; the floating locale/theme chips step aside on these routes.",
+  "f34Presentation": "wFqGR: filter chips show a count only from an unfiltered result set already read (exact when the list is complete, 'N+' while a next page exists; a filter never opened has none); no page-size-as-total, no extra reads; the frame's Admins chip has no list source and is not drawn. The disabled 'Invite member · unavailable' button is removed (the private invite search stays). RgqPq: 'N waiting' subtitle from the loaded pending pages (exact when the list is complete, 'N+' otherwise, '0' exact). A5Vio: venues are hairline rows in one surface with Open map, Edit and Archive per row and an always-visible inline add/edit form (photo upload on edit; confirmation unchanged). N18Mu4: the existing community-name field moved out of Details to the top of Settings (same state and save payload).",
   "frames": {
     "RgqPq": {
       "state": "Community admin — Access requests",
       "route": "requests",
       "sha256": "4c176932b525a659559c326bd997079df416b115fe41bc2bdf001cf8af733051",
       "snapshot": "e2e/community-admin.spec.ts-snapshots/RgqPq-light.png",
-      "snapshotSha256": "5859030393d3a6eabd95dae950e0d6f374a7c10085ac06baabb4c14592e57e07"
+      "snapshotSha256": "49fefec1b0d3cdf713d94c01e1ac9ab9c477caa02295fb6c22ca8b34dbb4bfa7"
     },
     "wFqGR": {
       "state": "Community admin — Members",
       "route": "members",
       "sha256": "56dd69f5103303f01345062f9b6dfa9c5122c33a656a8f3eb946ecacfe8fcda6",
       "snapshot": "e2e/community-admin.spec.ts-snapshots/wFqGR-light.png",
-      "snapshotSha256": "0d42884e7576afd879c934a99e0a55f705e3385b743d52e06aec932e6fde8233"
+      "snapshotSha256": "6b313c7702178af001c11b2d6b1dc6697f506a25114ea70b6bb4a7d48531a7f0"
     },
     "jQDkx": {
       "state": "Community admin — Member actions",
@@ -32,21 +33,21 @@
       "route": "settings",
       "sha256": "a18f8f6383d2c6bc29a0670073772250d151935d748c3637bcbc55d75466c0b2",
       "snapshot": "e2e/community-admin.spec.ts-snapshots/N18Mu4-light.png",
-      "snapshotSha256": "5749d44317c142ee194ef41fd6aff94ada7513f08f5102451a4e6a4ed5830d7b"
+      "snapshotSha256": "fc4ba1c5b54b73ca9b293ba653797b8ca4299fc56e5b924b3ba6d8cfc4fb1789"
     },
     "A5Vio": {
       "state": "Community admin — Saved venues",
       "route": "venues",
       "sha256": "6025c007cd6e97071fbcbb2bc6ca777397959bd2640b584d76107d0ce00d2e1e",
       "snapshot": "e2e/community-admin.spec.ts-snapshots/A5Vio-light.png",
-      "snapshotSha256": "e5adf1cdea607bff993e71773145f2a18a5917b8a35b6be5bd4f7abf47f49787"
+      "snapshotSha256": "99ced4c3e14b1d7ac99af35988ab938e60ef4a1f170381806ad98107389cead8"
     },
     "E5CS5K": {
       "state": "Community admin — Audit log",
       "route": "audit",
       "sha256": "62459bcb662e4820d08cdbc104f40ccd741567ce6723630dfa16ffedb559c767",
       "snapshot": "e2e/community-admin.spec.ts-snapshots/E5CS5K-light.png",
-      "snapshotSha256": "739364f70777b357f1827037c0cb6f945c659c948fc7ca7e97f700a429c8c4e6"
+      "snapshotSha256": "b3adfefdf0b091a8fff3ad2c2ad7666da44702a935d02b72624962d1fcf0ead4"
     }
   },
   "toleranceEvidence": {

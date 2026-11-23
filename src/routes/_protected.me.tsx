@@ -1,6 +1,7 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { PlayerProfile } from '../features/player/PlayerProfile';
 import { getLevelReviewAccess } from '../features/level-reviews/level-review.functions';
+import { loadMeStatistics } from '../features/player/me-statistics';
 import { getMyPlayerProfile } from '../features/player/player.functions';
 import { loadRatingView } from '../features/player/rating-view';
 import { LoadingProfile, ProfileError } from '../features/player/ProfileStates';
@@ -19,12 +20,15 @@ async function loadPlatformAdmin(): Promise<boolean> {
 }
 
 export async function loadMeData() {
-  const [profile, rating, platformAdmin] = await Promise.all([
-    getMyPlayerProfile(),
+  const profileRead = getMyPlayerProfile();
+  // One statistics read keyed by the authenticated profile; unavailable never blocks the page.
+  const [profile, rating, platformAdmin, statistics] = await Promise.all([
+    profileRead,
     loadRatingView(),
-    loadPlatformAdmin()
+    loadPlatformAdmin(),
+    profileRead.then(({ user_id: userId }) => loadMeStatistics(userId))
   ]);
-  return { profile, rating, platformAdmin };
+  return { profile, rating, platformAdmin, statistics };
 }
 
 export const Route = createFileRoute('/_protected/me')({
@@ -39,13 +43,14 @@ export const Route = createFileRoute('/_protected/me')({
 // statistics role and is reached through the Statistics row.
 function Me() {
   const router = useRouter();
-  const { profile, rating, platformAdmin } = Route.useLoaderData();
+  const { profile, rating, platformAdmin, statistics } = Route.useLoaderData();
   return (
     <PlayerProfile
       initialProfile={profile}
       initialRating={rating}
       onRatingReload={() => void router.invalidate()}
       platformAdmin={platformAdmin}
+      statistics={statistics}
     />
   );
 }

@@ -40,14 +40,9 @@ describe('resolveAppShell visibility', () => {
     '/matches',
     '/matches/my',
     '/matches/past',
-    '/notifications',
-    '/notifications/preferences',
-    `/community/${community}/statistics`,
-    `/community/${community}/leagues`,
+    `/community/${community}`,
+    `/community/${community}/ranking`,
     `/community/${community}/repairs`,
-    '/level-reviews',
-    '/players/p1',
-    '/platform-admin/level-reviews',
     '/platform-admin/result-repairs'
   ])('keeps the bar on %s', (path) => {
     expect(resolveAppShell(path).visible).toBe(true);
@@ -59,6 +54,14 @@ describe('resolveAppShell visibility', () => {
     `/matches/${event}`,
     `/matches/${event}/record`,
     `/matches/${event}/groups/g1`,
+    // Audited nested index screens whose frames draw a top bar and no tab bar
+    '/level-reviews', // A9f626
+    '/platform-admin/level-reviews', // SCPeI
+    '/notifications', // cAqsQ
+    '/notifications/preferences', // y8ErQ
+    '/players/p1', // RN0yw
+    `/community/${community}/statistics`, // o9iaC1
+    `/community/${community}/leagues`, // Fj5bc
     // Nested and wizard screens elsewhere
     `/community/${community}/leagues/create`,
     `/community/${community}/leagues/l1`,

@@ -20,6 +20,10 @@
     "invite": "Invitar jugadores",
     "inviteUnavailable": "Las invitaciones no están disponibles aquí.",
     "joinCountUnavailable": "Número de solicitudes de ingreso no disponible.",
+    "joinRequests_one": "{{count}} persona quiere unirse",
+    "joinRequests_other": "{{count}} personas quieren unirse",
+    "joinRequestsAtLeast_other": "{{count}}+ personas quieren unirse",
+    "joinRequestsNone": "Nadie espera para unirse",
     "upcoming": "Próximos partidos",
     "noUpcoming": "No hay próximos partidos para mostrar.",
     "skillDescription": "Tu nivel en la app y tu posición en esta comunidad. Una fiabilidad inferior al 50 % indica un nivel provisional.",
@@ -109,6 +113,7 @@
     "created": "Tu comunidad está lista.",
     "finish": "Ir al panel",
     "done": "Finalizar",
+    "discoveryBack": "Atrás",
     "createFailed": "No se pudo crear la comunidad. Inténtalo de nuevo.",
     "createRateLimited": "Has creado demasiadas comunidades recientemente. Inténtalo de nuevo más tarde.",
     "createOwnedLimit": "Has alcanzado el máximo de comunidades que puedes tener como propietario.",
@@ -293,6 +298,14 @@
     }
   },
   "profile": {
+    "stats": {
+      "label": "Estadísticas de partidos",
+      "matches": "partidos",
+      "record": "G–P–E",
+      "winRate": "% de victorias",
+      "notAvailable": "No disponible",
+      "unavailable": "Las estadísticas de partidos no están disponibles ahora."
+    },
     "title": "Perfil del jugador",
     "links": {
       "label": "Accesos del perfil",
@@ -378,6 +391,11 @@
     "errorTitle": "No se pudo cargar la administración de la comunidad",
     "backToDashboard": "Volver al panel",
     "requestBanner": "Acciones de administración de la comunidad",
+    "filterCount": "{{label}} · {{total}}",
+    "filterCountAtLeast": "{{label}} · {{total}}+",
+    "requestsWaiting_one": "{{community}} · {{count}} en espera",
+    "requestsWaiting_other": "{{community}} · {{count}} en espera",
+    "requestsWaitingAtLeast_other": "{{community}} · {{count}}+ en espera",
     "requestPrivacy": "Solo admins revisan la solicitud",
     "requestHistoryUnavailable": "El historial de solicitudes resueltas y entrega de invitaciones no está disponible.",
     "cityUnavailable": "Ciudad no indicada",
@@ -403,7 +421,6 @@
     "memberFilters": "Filtrar miembros de la comunidad",
     "memberJoined": "Miembro desde {{date}}",
     "search": "Buscar",
-    "inviteUnavailable": "Invitar miembro · no disponible",
     "requestMeta": "Solicitada el {{date}} · {{privacy}}",
     "memberMeta": "{{status}} · {{role}} · desde {{date}}",
     "memberAdminProfile": "{{name}} · nivel {{level}} · {{reliability}}% de fiabilidad",
@@ -540,7 +557,6 @@
       "unconfirmed": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo."
     },
     "matchCountUnavailable": "Recuento de partidos no disponible — el historial de partidos aún no está disponible",
-    "inviteeSearchPrivateOnly": "La búsqueda de invitados solo está disponible en comunidades privadas.",
     "requestMessage": {
       "action": "Enviar actualización",
       "title": "Mensaje para solicitante pendiente",
@@ -2767,6 +2783,8 @@
     },
     "player": {
       "title": "Estadísticas del jugador",
+      "backToProfile": "Volver al perfil",
+      "backToCommunity": "Volver a la comunidad",
       "subtitle": "Resultados deportivos de partidos confirmados. Las cifras que aún no se pueden calcular explican el motivo en lugar de mostrar cero.",
       "myStatistics": "Mis estadísticas",
       "hero": {

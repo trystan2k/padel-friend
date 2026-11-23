@@ -85,7 +85,24 @@ function CommunityOverview({ data }: { data: OverviewData }) {
             </div>
           </SurfaceCard>
           <SurfaceCard xstyle={s.card}>
-            <p {...stylex.props(s.body)}>{t('communitySurface.joinCountUnavailable')}</p>
+            {data.joinRequests.status === 'ok' ? (
+              <Link
+                to="/community/$communityId/admin/requests"
+                params={{ communityId }}
+                {...stylex.props(s.link)}
+              >
+                {data.joinRequests.total === 0
+                  ? t('communitySurface.joinRequestsNone')
+                  : t(
+                      data.joinRequests.exact
+                        ? 'communitySurface.joinRequests'
+                        : 'communitySurface.joinRequestsAtLeast',
+                      { count: data.joinRequests.total }
+                    )}
+              </Link>
+            ) : (
+              <p {...stylex.props(s.body)}>{t('communitySurface.joinCountUnavailable')}</p>
+            )}
           </SurfaceCard>
           <section aria-labelledby="community-upcoming" {...stylex.props(s.stack)}>
             <h2 id="community-upcoming" {...stylex.props(s.heading)}>
@@ -105,12 +122,20 @@ function CommunityOverview({ data }: { data: OverviewData }) {
                         params={{ eventId: event.event_id }}
                         {...stylex.props(s.link, s.match)}
                       >
-                        <time dateTime={event.starts_at}>
-                          {new Intl.DateTimeFormat(i18n.language, {
-                            dateStyle: 'medium',
-                            timeStyle: 'short',
-                            timeZone: event.timezone
-                          }).format(new Date(event.starts_at))}
+                        <time dateTime={event.starts_at} {...stylex.props(s.when)}>
+                          <span {...stylex.props(s.whenTime)}>
+                            {new Intl.DateTimeFormat(i18n.language, {
+                              timeStyle: 'short',
+                              timeZone: event.timezone
+                            }).format(new Date(event.starts_at))}
+                          </span>
+                          <span {...stylex.props(s.whenDay)}>
+                            {new Intl.DateTimeFormat(i18n.language, {
+                              weekday: 'short',
+                              day: 'numeric',
+                              timeZone: event.timezone
+                            }).format(new Date(event.starts_at))}
+                          </span>
                         </time>
                         <span>
                           {event.venue_name}

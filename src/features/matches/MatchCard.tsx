@@ -50,15 +50,24 @@ export function MatchCard({
         }).format(event.price_minor / 100)
       : null;
   const Heading = grouped ? 'h3' : 'h2';
-  const details = [
+  const metaItems = [
+    ...(cancelled
+      ? []
+      : [
+          `${counts.playing} ${t('matches.counts.playing', { count: counts.playing })}`,
+          `${counts.reserve} ${t('matches.counts.reserve', { count: counts.reserve })}`,
+          `${counts.groups} ${t('matches.counts.groups', { count: counts.groups })}`,
+          `${counts.moreNeeded} ${t('matches.counts.moreNeeded', { count: counts.moreNeeded })}`
+        ]),
     event.restriction_enabled && event.min_level !== null && event.max_level !== null
       ? `${t('matches.card.levelRange')}: ${event.min_level}–${event.max_level}`
       : t('matches.card.noLevelRestriction'),
     t(`matches.teamMode.${event.team_assignment_mode}`),
     event.maximum_registrations == null
       ? t('matches.card.unlimited')
-      : `${t('matches.card.maximum')}: ${event.maximum_registrations}`
-  ].join(' · ');
+      : `${t('matches.card.maximum')}: ${event.maximum_registrations}`,
+    `${event.creator_name ?? ''} (${t('matches.card.approximateLevel')}: ${String(event.creator_level ?? '')})`
+  ];
   return (
     <article {...stylex.props(s.card)}>
       <div {...stylex.props(s.top)}>
@@ -121,19 +130,7 @@ export function MatchCard({
           </StatusBadge>
         )}
       </div>
-      {!cancelled && (
-        <p {...stylex.props(s.meta)}>
-          {counts.playing} {t('matches.counts.playing', { count: counts.playing })} ·{' '}
-          {counts.reserve} {t('matches.counts.reserve', { count: counts.reserve })} ·{' '}
-          {counts.groups} {t('matches.counts.groups', { count: counts.groups })} ·{' '}
-          {counts.moreNeeded} {t('matches.counts.moreNeeded', { count: counts.moreNeeded })}
-        </p>
-      )}
-      <p {...stylex.props(s.meta)}>{details}</p>
-      <p {...stylex.props(s.meta)}>
-        {event.creator_name ?? ''} ({t('matches.card.approximateLevel')}:{' '}
-        {String(event.creator_level ?? '')})
-      </p>
+      <p {...stylex.props(s.meta)}>{metaItems.join(' · ')}</p>
       {!cancelled && event.caller_is_invited && (
         <p {...stylex.props(s.note)}>{t('matches.detail.invitationInfo')}</p>
       )}

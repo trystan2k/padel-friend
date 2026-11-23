@@ -41,6 +41,12 @@ export const topBarStyles = stylex.create({
     borderRadius: 'var(--radius-14)',
     color: 'var(--color-text)'
   },
+  backButton: {
+    padding: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
+    cursor: { default: 'pointer', ':disabled': 'not-allowed' }
+  },
   icon: {
     width: 'calc(var(--space-20) + var(--space-4))',
     height: 'calc(var(--space-20) + var(--space-4))'

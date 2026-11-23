@@ -5,7 +5,8 @@ import { createI18n } from '../src/i18n/config';
 const mocks = vi.hoisted(() => ({
   getMyPlayerProfile: vi.fn<() => Promise<unknown>>(),
   loadRatingView: vi.fn<() => Promise<unknown>>(),
-  getLevelReviewAccess: vi.fn<() => Promise<unknown>>()
+  getLevelReviewAccess: vi.fn<() => Promise<unknown>>(),
+  getPlayerStatistics: vi.fn<(request: { data: { playerId: string } }) => Promise<unknown>>()
 }));
 
 vi.mock('../src/features/player/player.functions', () => ({
@@ -14,6 +15,9 @@ vi.mock('../src/features/player/player.functions', () => ({
 vi.mock('../src/features/player/rating-view', () => ({ loadRatingView: mocks.loadRatingView }));
 vi.mock('../src/features/level-reviews/level-review.functions', () => ({
   getLevelReviewAccess: mocks.getLevelReviewAccess
+}));
+vi.mock('../src/features/statistics/statistics-player.functions', () => ({
+  getPlayerStatistics: mocks.getPlayerStatistics
 }));
 vi.mock('../src/features/player/PlayerProfile', () => ({ PlayerProfile: () => null }));
 vi.mock('../src/features/player/ProfileStates', () => ({
@@ -29,6 +33,9 @@ beforeEach(() => {
   mocks.getMyPlayerProfile.mockReset().mockResolvedValue({ user_id: 'u1' });
   mocks.loadRatingView.mockReset().mockResolvedValue({ status: 'error', code: 'X' });
   mocks.getLevelReviewAccess.mockReset();
+  mocks.getPlayerStatistics
+    .mockReset()
+    .mockResolvedValue({ status: 'error', code: 'STATISTICS_UNAVAILABLE' });
 });
 
 describe('Me loader (D5)', () => {
@@ -49,6 +56,31 @@ describe('Me loader (D5)', () => {
 
   it('propagates a lost session', async () => {
     mocks.getLevelReviewAccess.mockRejectedValue(new Error('UNAUTHENTICATED'));
+    await expect(loadMeData()).rejects.toThrow('UNAUTHENTICATED');
+  });
+
+  it('reads the own statistics once, keyed by the authenticated profile, in the default scope', async () => {
+    mocks.getLevelReviewAccess.mockResolvedValue({ is_platform_admin: false });
+    await loadMeData();
+    expect(mocks.getPlayerStatistics).toHaveBeenCalledTimes(1);
+    expect(mocks.getPlayerStatistics).toHaveBeenCalledWith({ data: { playerId: 'u1' } });
+  });
+
+  it('keeps the page available when the statistics read fails for a non-auth reason', async () => {
+    mocks.getLevelReviewAccess.mockResolvedValue({ is_platform_admin: false });
+    mocks.getPlayerStatistics.mockRejectedValue(new Error('boom'));
+    await expect(loadMeData()).resolves.toMatchObject({
+      profile: { user_id: 'u1' },
+      statistics: { status: 'unavailable' }
+    });
+  });
+
+  it('propagates a lost session from the statistics read', async () => {
+    mocks.getLevelReviewAccess.mockResolvedValue({ is_platform_admin: false });
+    mocks.getPlayerStatistics.mockResolvedValue({
+      status: 'error',
+      code: 'STATISTICS_UNAUTHENTICATED'
+    });
     await expect(loadMeData()).rejects.toThrow('UNAUTHENTICATED');
   });
 });
@@ -92,8 +124,15 @@ describe('Me composition sources', () => {
     expect(read('src/features/player/profile-edit.styles.ts')).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 
-  it('does not fabricate level trends or statistics tiles the frame draws (D6)', () => {
-    expect(profile).not.toMatch(/this season|win rate|W–L–D/i);
+  it('renders the vARtQ statistics tiles from the one read and no fabricated level trend (D6)', () => {
+    expect(profile).toContain('<MeStatisticsTiles');
+    expect(profile.indexOf('<MeStatisticsTiles')).toBeGreaterThan(
+      profile.indexOf('<header {...stylex.props(s.identity)}')
+    );
+    expect(profile.indexOf('<MeStatisticsTiles')).toBeLessThan(
+      profile.indexOf('profile.globalLevel')
+    );
+    expect(profile).not.toMatch(/this season/i);
   });
 
   it('uses tokens only: no literal colors or pixel sizes in the Me styles', () => {

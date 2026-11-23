@@ -3,6 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import {
   LEVEL_REVIEW_STATUSES,
   type LevelReviewErrorCode,
@@ -14,7 +15,6 @@ import { levelReviewErrorCode } from './level-review-errors';
 import { formatRequestedRange, formatReviewDate } from './level-review-format';
 import { levelReviewErrorKind } from './level-review-form';
 import { listLevelReviewQueueRequests } from './level-review.functions';
-import { LevelReviewBackLink } from './LevelReviewBackLink';
 import { LevelReviewAvatar, LevelReviewLinkIcon, LevelReviewStatusChip } from './LevelReviewParts';
 import { formatLevel } from '../player/rating-format';
 
@@ -60,11 +60,13 @@ export function PlatformLevelReviewQueue({ initial }: { initial: LevelReviewQueu
   }
 
   return (
-    <main {...stylex.props(c.page)}>
-      <header {...stylex.props(c.topBar, c.topBarFrame)}>
-        <LevelReviewBackLink to="/me" label={t('levelReview.request.backLabel')} />
-        <p {...stylex.props(c.navTitle)}>{t('levelReview.admin.entryTitle')}</p>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(c.page)}>
+      <TopBar
+        xstyle={c.barFrame}
+        titleAs="p"
+        title={t('levelReview.admin.entryTitle')}
+        back={{ to: '/me', label: t('levelReview.request.backLabel') }}
+      />
       <div {...stylex.props(c.heading)}>
         <h1 {...stylex.props(c.pageTitle)}>{t('levelReview.admin.title')}</h1>
       </div>

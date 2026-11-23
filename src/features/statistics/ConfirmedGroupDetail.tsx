@@ -1,9 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
-import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import {
   formatFraction,
   formatLevel,
@@ -47,16 +47,17 @@ export function ConfirmedGroupDetail({ detail }: { detail: GroupDetail }) {
   const teamNames = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' });
 
   return (
-    <main {...stylex.props(s.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(s.page)}>
+      <TopBar
+        xstyle={s.barFrame}
+        title={t('statistics.detail.title')}
+        back={{
+          to: '/matches/$eventId',
+          params: { eventId: detail.event_id },
+          label: t('statistics.detail.back')
+        }}
+      />
       <header {...stylex.props(s.pageHeader)}>
-        <Link
-          to="/matches/$eventId"
-          params={{ eventId: detail.event_id }}
-          {...stylex.props(s.link)}
-        >
-          {t('statistics.detail.back')}
-        </Link>
-        <h1 {...stylex.props(s.title)}>{t('statistics.detail.title')}</h1>
         <div {...stylex.props(s.badges)}>
           <StatusBadge tone={incomplete ? 'neutral' : 'positive'}>
             {t(`statistics.history.status.${incomplete ? 'incomplete' : 'played'}`)}

@@ -5,6 +5,7 @@ import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { Button } from '../../components/ui/Button';
+import { TopBar } from '../../components/ui/TopBar';
 import { formatLevel, formatPercentPoints } from '../player/rating-format';
 import { RatingError } from '../player/RatingError';
 import type { LevelReviewDto, LevelReviewStatus } from './level-review-contracts';
@@ -12,7 +13,6 @@ import { formatRequestedRange, formatReviewDate } from './level-review-format';
 import { isActiveLevelReview, levelReviewErrorKind, levelReviewShortId } from './level-review-form';
 import { cancelLevelReview, type CurrentLevelLoad } from './level-review-view';
 import { levelReviewClubhouse as c } from './level-review-clubhouse.styles';
-import { LevelReviewBackLink } from './LevelReviewBackLink';
 
 const TONE = {
   pending: c.toneAmber,
@@ -98,11 +98,12 @@ export function PlayerLevelReviewStatus({
   const marks = { pending: '◷', under_review: '◷', approved: '✓', rejected: '✕', canceled: '✕' };
 
   return (
-    <main {...stylex.props(c.page)}>
-      <header {...stylex.props(c.topBar)}>
-        <LevelReviewBackLink to="/level-reviews" label={t('levelReview.detail.back')} />
-        <h1 {...stylex.props(c.title)}>{t('levelReview.detail.title')}</h1>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(c.page)}>
+      <TopBar
+        xstyle={c.barFrame}
+        title={t('levelReview.detail.title')}
+        back={{ to: '/level-reviews', label: t('levelReview.detail.back') }}
+      />
       <section aria-labelledby={headingId} {...stylex.props(c.statusNotice, TONE[request.status])}>
         <span aria-hidden="true" {...stylex.props(c.noticeGlyph)}>
           {marks[request.status]}

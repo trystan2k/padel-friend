@@ -13,7 +13,7 @@
       "route": "/matches",
       "sha256": "3ce5772923d9b5eb7531be43f88d09d4fff23ef387ced0c305e29283dcb389c7",
       "snapshot": "e2e/matches-visual.spec.ts-snapshots/ENn8Q-light.png",
-      "snapshotSha256": "883e4f553de7111683a08cf3cdcb42e9095d3c9fb8c825fe033b6992eb3127a0"
+      "snapshotSha256": "7b705e27eb4e82f5c86789639800360cd461638ea1e85ffd548a8b560b707487"
     },
     "kYI9H": {
       "state": "Available matches — empty",
@@ -27,14 +27,14 @@
       "route": "/matches/my",
       "sha256": "de64ad23d480e7243d8d6d72fd889a1f8ef8f209939688fdee3a9918ebe2dafd",
       "snapshot": "e2e/matches-visual.spec.ts-snapshots/uePpj-light.png",
-      "snapshotSha256": "5f4c47d6798f72a23ddd8aecc5e3f5880265878becbca703ac9d29ebc8f52317"
+      "snapshotSha256": "231b34dd04dc57c21cb271addedf7ed26e35d2c3e93a353c4062bb1e6ae5b508"
     },
     "w25dY": {
       "state": "Past matches",
       "route": "/matches/past",
       "sha256": "f6902e226df26876e8cfb26d31eb60fe180c9c98af7d97c1314309840ddc7452",
       "snapshot": "e2e/matches-visual.spec.ts-snapshots/w25dY-light.png",
-      "snapshotSha256": "384c95a1363a51b5c0a0062785b15c06af77bb2d5b502c24714d8787ddeeec0a"
+      "snapshotSha256": "459ae4b2ddf1d5150c850757a7e87b53f7442f57f1cdf927a83b2d5850ff175d"
     }
   },
   "frameRegions": {
@@ -86,8 +86,8 @@
         },
         "offsetY": 76,
         "geometryTolerance": 1,
-        "budget": 0.05,
-        "classification": "Bottom navigation: exact box (390x81) and position. Measured residual 0.0432; budget = measured + margin for font and icon rasterization (Pencil vs Chromium). The live label row sits 2px above the frame label row; reported here, not widened into the budget."
+        "budget": 0.075,
+        "classification": "Bottom navigation: exact box (390x81) and position. Measured residual 0.0678, identical to the same unmasked bar on kYI9H, uePpj and w25dY (budget = measured + margin for font and icon rasterization, Pencil vs Chromium). The earlier 0.0432 was measured while the dynamic-time mask of a card scrolled behind the bar painted over the label row; times covered by the bar are now excluded from the mask (data-behind-nav) so the band compares the bar itself, which is why this frame now carries the same budget as its siblings rather than a lower mask-dependent one. The live label row sits 2px above the frame label row; reported here, not widened into the budget."
       },
       "card": {
         "status": "finding",
@@ -99,7 +99,7 @@
         },
         "offsetY": 0,
         "geometry": ["x", "width"],
-        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card renders level range, creator and Map as separate lines (D6, list_match_events has no filters; see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
+        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card groups participation, level range and creator into one wrapping meta line and keeps the Map link as its own row (see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
       },
       "cardEdge": {
         "status": "gated",
@@ -183,7 +183,7 @@
         },
         "offsetY": 0,
         "geometry": ["x", "width"],
-        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card renders level range, creator and Map as separate lines (D6, list_match_events has no filters; see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
+        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card groups participation, level range and creator into one wrapping meta line and keeps the Map link as its own row (see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
       },
       "cardEdge": {
         "status": "gated",
@@ -267,7 +267,7 @@
         },
         "offsetY": 0,
         "geometry": ["x", "width"],
-        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card renders level range, creator and Map as separate lines (D6, list_match_events has no filters; see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
+        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card groups participation, level range and creator into one wrapping meta line and keeps the Map link as its own row (see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
       },
       "cardEdge": {
         "status": "gated",
@@ -351,7 +351,7 @@
         },
         "offsetY": 0,
         "geometry": ["x", "width"],
-        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card renders level range, creator and Map as separate lines (D6, list_match_events has no filters; see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
+        "classification": "Content: the frame card draws one fused meta line and no Map link; the live card groups participation, level range and creator into one wrapping meta line and keeps the Map link as its own row (see toleranceEvidence). Gutter and width stay gated, height and vertical position are reported, not budgeted."
       },
       "cardEdge": {
         "status": "gated",
@@ -379,7 +379,7 @@
     "ENn8Q": {
       "maxDiffPixelRatio": 0.01,
       "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, clip 0,0,390,844",
-      "justification": "The frame draws filter chips (This week, Competitive, Friendly, My level) and one fused meta line. list_match_events has no filter arguments (D6), so the chips are omitted and participation, level range and creator render as separate muted lines. Card order (time/price, venue, chips, participation), day headings, segment track, 20px gutter and 44px/48px controls are probed exactly. Times and day rows are masked because fixture instants move with the clock. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+      "justification": "The frame draws filter chips (This week, Competitive, Friendly, My level) and one fused meta line. list_match_events has no filter arguments (D6), so the chips are omitted. Participation, level range and creator group into one wrapping meta line (the card keeps the real Map link row). Card order (time/price, venue, chips, participation), day headings, segment track, 20px gutter and 44px/48px controls are probed exactly. Times and day rows are masked because fixture instants move with the clock. The budget absorbs font rasterization only; it is not widened to hide layout differences."
     },
     "kYI9H": {
       "maxDiffPixelRatio": 0.01,

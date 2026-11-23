@@ -2,16 +2,20 @@ import { describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
 import type { HomeData } from '../src/features/home/home-contracts';
 
-const { getHome } = vi.hoisted(() => ({
-  getHome: vi.fn<(request: { data: { community_id: string | null } }) => Promise<HomeData>>()
+const { getHome, listMyAdminCommunities, searchCommunityMembers } = vi.hoisted(() => ({
+  getHome: vi.fn<(request: { data: { community_id: string | null } }) => Promise<HomeData>>(),
+  listMyAdminCommunities: vi.fn<() => Promise<{ id: string; name: string }[]>>(async () => []),
+  searchCommunityMembers:
+    vi.fn<(request: { data: Record<string, unknown> }) => Promise<unknown[]>>()
 }));
 vi.mock('../src/features/home/home.functions', () => ({ getHome }));
 vi.mock('../src/features/community/community-admin.functions', () => ({
-  listMyAdminCommunities: async () => [],
-  getCommunityAdminContext: vi.fn<() => Promise<null>>()
+  listMyAdminCommunities,
+  getCommunityAdminContext: vi.fn<() => Promise<null>>(async () => null),
+  searchCommunityMembers
 }));
 vi.mock('../src/features/community/community.functions', () => ({
-  getPublicCommunity: vi.fn<() => Promise<null>>()
+  getPublicCommunity: vi.fn<() => Promise<null>>(async () => null)
 }));
 vi.mock('../src/features/leagues/league.functions', () => ({
   listMyLeagueCommunities: async () => []
@@ -34,6 +38,8 @@ vi.mock('../src/features/community/community-request.functions', () => ({
 }));
 
 import {
+  JOIN_REQUEST_PAGE_SIZE,
+  joinRequestCount,
   loadCommunitySurface,
   parseRankingSearch,
   resolveCommunitySurface
@@ -70,6 +76,65 @@ describe('community surface loader', () => {
       status: 'denied',
       communities: [selected]
     });
+  });
+
+  it('reads join requests once for the selected community admin and proves exact counts only from a short page', async () => {
+    listMyAdminCommunities.mockResolvedValueOnce([selected]);
+    searchCommunityMembers.mockResolvedValueOnce([{}, {}, {}]);
+    getHome.mockResolvedValueOnce(home);
+    await expect(loadCommunitySurface(id, 'overview')).resolves.toMatchObject({
+      joinRequests: { status: 'ok', total: 3, exact: true }
+    });
+    expect(searchCommunityMembers).toHaveBeenCalledTimes(1);
+    expect(searchCommunityMembers).toHaveBeenLastCalledWith({
+      data: {
+        community_id: id,
+        query: '',
+        status: 'pending',
+        offset: 0,
+        limit: JOIN_REQUEST_PAGE_SIZE
+      }
+    });
+  });
+
+  it('presents an exact zero and a full page as a lower bound', () => {
+    expect(joinRequestCount([])).toEqual({ status: 'ok', total: 0, exact: true });
+    expect(joinRequestCount(Array.from({ length: JOIN_REQUEST_PAGE_SIZE }))).toEqual({
+      status: 'ok',
+      total: JOIN_REQUEST_PAGE_SIZE,
+      exact: false
+    });
+  });
+
+  it('never reads join requests for a non-admin or an admin of another community', async () => {
+    searchCommunityMembers.mockClear();
+    listMyAdminCommunities.mockResolvedValueOnce([]);
+    getHome.mockResolvedValueOnce(home);
+    await expect(loadCommunitySurface(id, 'overview')).resolves.toMatchObject({
+      joinRequests: { status: 'unavailable' }
+    });
+    listMyAdminCommunities.mockResolvedValueOnce([
+      { id: '00000000-0000-4000-8000-00000000000b', name: 'Other' }
+    ]);
+    getHome.mockResolvedValueOnce(home);
+    await expect(loadCommunitySurface(id, 'overview')).resolves.toMatchObject({
+      joinRequests: { status: 'unavailable' }
+    });
+    expect(searchCommunityMembers).not.toHaveBeenCalled();
+  });
+
+  it('localizes a failed non-authentication read as unavailable and rethrows authentication', async () => {
+    listMyAdminCommunities.mockResolvedValue([selected]);
+    getHome.mockResolvedValue(home);
+    searchCommunityMembers.mockRejectedValueOnce(new Error('boom'));
+    await expect(loadCommunitySurface(id, 'overview')).resolves.toMatchObject({
+      joinRequests: { status: 'unavailable' }
+    });
+    searchCommunityMembers.mockRejectedValueOnce(new Error('UNAUTHENTICATED'));
+    await expect(loadCommunitySurface(id, 'overview')).rejects.toThrow('UNAUTHENTICATED');
+    listMyAdminCommunities.mockReset();
+    listMyAdminCommunities.mockResolvedValue([]);
+    getHome.mockReset();
   });
 
   it('distinguishes a failed membership read from empty membership', () => {
