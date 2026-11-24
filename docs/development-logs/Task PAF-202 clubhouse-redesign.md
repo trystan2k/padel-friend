@@ -257,3 +257,16 @@ Fix round (`735f14a`):
 - Forensics (with CI artifacts) found THREE layered causes → findings F51/F52: (1) 3 stale mac baselines still showed pre-U3 chrome; (2) datetime-local text is browser-locale dependent (mac vs Linux formats from identical DOM — root-fixed with `locale: 'en-US'` in playwright.config, same class as the earlier focus-ring fix); (3) proven glyph-only FreeType/CoreText rounding residue on structurally-identical DOM → per-frame `-linux` baselines from CI actuals + `baselineName()` fallback (global platform template rejected — would orphan hundreds of snapshots). F3-era "text rasterizes identically" claim corrected: false for long text runs.
 - Fix commit `d8ca8fb` → full local gate PASS (5091 unit + 1296 integration + 656 e2e, zero locale fallout, mac lane correct on non-linux variants). Learnings: browser-default margins and locale-dependent native controls are renderer-divergence classes the token guard cannot catch; frame-relative gates + CI artifacts (actual/diff downloads) are the diagnostic loop that works.
 - Board: PAF-202 + 14 round-4 children → In Review. Copilot re-request unverifiable (3 attempts, known repo quirk; Codex connector is the working reviewer).
+
+### Round 5 — Round-2 audit fix round (2026-11-24)
+
+- Round-2 Opus 5.5 re-audit (owner-directed) verdict: not pixel-perfect — 19 findings F53–F71 seeded in the ledger (2 majors: admin nav over sheet z-index + WCAG focus-obscuring exposure; wizard step-3 selection never painted via StyleX marker/:has mismatch).
+- Owner decisions: execute all required/related + class-guard probes; F67 ALIGN TO FRAME (invited Accept/Decline into sticky bar, no Join); F69 HIDE invite sentence; F70 CONSOLIDATE Me into one 3-column card; F71 cheap nits only.
+- Fix units:
+  - R5-U1: 12 spot fixes.
+  - R5-U2: TopBar adoption wizard/relationships/notifications, F67 slot-portal CTA table, F70 Me card — frame-driven correction: Settings action on notifications INDEX per cAqsQ.
+  - 2b: segmented ink, ranking avatar, pill truncation.
+  - R5-U3 (F66 baseline sweep): 6 already current + 4 re-captured with fixed chrome verified visible; NEW class guards: route-chrome-matrix.spec 19 routes × assertChipsStepAside + assertNoUaFieldsetBorders, both red-proven; -linux manifest recording.
+  - 3b: league detail TopBar + mark — frame ywfn7 verified, gap the matrix itself caught, ywfn7 perceptual diff 0.
+- Learnings: StyleX defaultMarker must live on the input when using :has selectors; ::-webkit-meter-* UA gradients override backgroundColor without backgroundImage:'none'; class-guard matrices (data-driven route lists) catch what per-fix probes miss — the matrix found league detail on its first run.
+- Validation: commits 76d8aec (76 files); scoped lanes green throughout; final complete-check + CI pending at log time.
