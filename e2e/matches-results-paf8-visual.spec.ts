@@ -12,6 +12,7 @@ import {
   openRecord,
   resultFixtures,
   review,
+  reviewAction,
   sqlWithFixtureTriggersDisabled,
   sql,
   type Actor
@@ -159,6 +160,81 @@ function assertAbove(upper: Box, lower: Box, label: string, gap = 0) {
   expect(upper.bottom, `${label} vertical order`).toBeLessThanOrEqual(lower.y + gap);
 }
 
+// sLXK7: one sticky bar, Approve above the secondary action, pinned to the viewport bottom before and
+// after scrolling, full-bleed with a hairline top edge. A short viewport forces the page to scroll.
+async function assertStickyActionBar(page: Page) {
+  const r = copies.en.matches.results;
+  const original = page.viewportSize()!;
+  await page.setViewportSize({ width: original.width, height: 480 });
+  const bar = page.locator('[data-match-action-bar]');
+  await expect(bar).toHaveCount(1);
+  await expect(bar).toHaveCSS('position', 'sticky');
+  await expect(bar).toHaveCSS('border-top-width', '1px');
+  const approve = bar.getByRole('button', { name: r.review.approve, exact: true });
+  const secondary = bar.getByRole('button', { name: r.review.reject, exact: true });
+  await expect(bar.getByRole('button')).toHaveCount(2);
+  const [approveBox, secondaryBox] = [await box(approve), await box(secondary)];
+  assertAbove(approveBox, secondaryBox, 'Approve above the secondary action', 12);
+  expect(approveBox.height, 'Approve is a 52px control').toBeGreaterThanOrEqual(52);
+  expect(secondaryBox.height, 'secondary action is a 48px+ control').toBeGreaterThanOrEqual(48);
+  expect(
+    Math.abs(approveBox.width - secondaryBox.width),
+    'stacked actions share width'
+  ).toBeLessThanOrEqual(2);
+  const pinned = async (label: string) => {
+    const edge = await box(bar);
+    expect(edge.bottom, `${label}: bar pinned to the viewport bottom`).toBeCloseTo(480, 0);
+    expect(edge.x, `${label}: bar is full-bleed (left)`).toBeCloseTo(0, 0);
+    expect(edge.width, `${label}: bar is full-bleed (width)`).toBeCloseTo(original.width, 0);
+  };
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await pinned('before scrolling');
+  const scrollable = await page.evaluate(
+    () => document.documentElement.scrollHeight - window.innerHeight
+  );
+  expect(scrollable, 'the short viewport scrolls the detail').toBeGreaterThan(0);
+  await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+  await pinned('after scrolling to the end');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.setViewportSize(original);
+}
+
+// alZmm / iXRPp: the lifecycle detail wears the Clubhouse match header (56px bar, centred 17px Match
+// title), keeps the venue and map link on a token surface, never on the photo.
+async function assertLifecycleHeader(page: Page) {
+  const title = page.getByRole('heading', { level: 1, name: 'Match', exact: true });
+  const bar = title.locator('xpath=ancestor::header[1]');
+  const barBox = await box(bar);
+  expect(barBox.height, 'top bar is 56px').toBeCloseTo(56, 0);
+  const titleBox = await box(title);
+  const viewport = page.viewportSize()!;
+  expect(titleBox.x + titleBox.width / 2, 'title is centred').toBeCloseTo(viewport.width / 2, 0);
+  await expect(title).toHaveCSS('font-size', '17px');
+  await expect(title).toHaveCSS('text-align', 'center');
+  const venue = page.getByText('PADEL INDOOR MADRID', { exact: true });
+  await expect(venue).toBeVisible();
+  const map = page.getByRole('link', { name: 'View court location for PADEL INDOOR MADRID' });
+  await expect(map).toBeVisible();
+  await expect(map).toHaveAttribute('href', /^https?:/);
+  const surface = map.locator('xpath=..');
+  const card = await box(surface);
+  const photo = page.getByRole('img', { name: 'Match venue' });
+  if (await photo.count()) {
+    assertAbove(await box(photo), card, 'venue row follows the photo, never over it', 0);
+  }
+  await expect(surface).toHaveCSS(
+    'background-color',
+    await page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.backgroundColor = 'var(--color-surface)';
+      document.body.append(probe);
+      const value = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return value;
+    })
+  );
+}
+
 async function assertDialogGeometry(dialog: Locator) {
   // The sheet scrolls when its content is taller than the viewport: contain against the full
   // scrollable extent, then separately require the visible edge to touch the viewport bottom.
@@ -279,12 +355,6 @@ async function compareFrame(frame: Frame, page: Page, info: TestInfo) {
       0
     );
     await assertResultScreenshot(page, actual, frame, 'lifecycle');
-    if (frame === 'alZmm') {
-      // A taller capture clears content so the bottom band can verify navigation suppression.
-      await page.setViewportSize({ width, height: height + 120 });
-      const tall = await page.screenshot({ animations: 'disabled', caret: 'hide' });
-      await assertResultScreenshot(page, tall, frame, 'recording');
-    }
     await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
     return;
   }
@@ -396,7 +466,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   );
   const disputePage = await openDetails(firstReviewer, disputeEvent, 'H6VcqC', 'dark');
   const firstCard = await resultCard(disputePage);
-  await firstCard.getByRole('button', { name: r.review.reject, exact: true }).click();
+  await reviewAction(firstCard, r.review.reject).click();
   const dialog = disputePage.getByRole('dialog', { name: r.reject.title, exact: true });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole('radio')).toHaveCount(8);
@@ -407,7 +477,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   await assertDialogGeometry(dialog);
   await assertTouchTargets(disputePage, dialog);
   await compareFrame('H6VcqC', disputePage, info);
-  const rejectButton = firstCard.getByRole('button', { name: r.review.reject, exact: true });
+  const rejectButton = reviewAction(firstCard, r.review.reject);
   await dialog.getByRole('button', { name: r.reject.cancel, exact: true }).click();
   await expect(dialog).toBeHidden();
   await expect(rejectButton).toBeFocused();
@@ -436,7 +506,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   const groupOneReviewer = teamReviewer(groupOne, groupOneSide === 'team_a' ? 'team_b' : 'team_a');
   const groupOnePage = await openDetails(groupOneReviewer, mixedEvent, 'GMcbD', 'light');
   const groupOneCard = await resultCard(groupOnePage, 1);
-  await groupOneCard.getByRole('button', { name: r.review.approve, exact: true }).click();
+  await reviewAction(groupOneCard, r.review.approve).click();
   await expect(groupOneCard).toHaveAttribute('data-result-status', 'confirmed');
   await groupOnePage.context().close();
   await submitProposal(mixedEvent, f.creator, 2);
@@ -450,7 +520,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   const rejector = teamReviewer(groupThree, groupThreeSide === 'team_a' ? 'team_b' : 'team_a');
   const rejectPage = await openDetails(rejector, mixedEvent, 'GMcbD', 'light');
   const groupThreeCard = await resultCard(rejectPage, 3);
-  await groupThreeCard.getByRole('button', { name: r.review.reject, exact: true }).click();
+  await reviewAction(groupThreeCard, r.review.reject).click();
   const rejectDialog = rejectPage.getByRole('dialog', { name: r.reject.title, exact: true });
   await rejectDialog
     .getByRole('radio', { name: r.reject.reasons.scoreIncorrect, exact: true })
@@ -489,11 +559,12 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   const approvalPage = await openDetails(approvalReviewer, approvalEvent, 'sLXK7', 'dark');
   const approvalCard = await resultCard(approvalPage);
   await expect(
-    approvalCard.getByRole('button', { name: r.review.approve, exact: true })
+    approvalPage.getByRole('button', { name: r.review.approve, exact: true })
   ).toBeVisible();
   await expect(
-    approvalCard.getByRole('button', { name: r.review.reject, exact: true })
-  ).toBeVisible();
+    approvalCard.getByRole('button', { name: r.review.approve, exact: true })
+  ).toHaveCount(0);
+  await assertStickyActionBar(approvalPage);
   await expect(approvalCard.getByRole('region', { name: r.pending, exact: true })).toBeVisible();
   await expect(approvalCard.getByRole('region', { name: r.setScores, exact: true })).toBeVisible();
   await expect(approvalCard.getByText(/rating delta/i)).toHaveCount(0);
@@ -512,7 +583,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   const v1Reviewer = teamReviewer(v1, v1Side === 'team_a' ? 'team_b' : 'team_a');
   const v1ReviewPage = await openDetails(v1Reviewer, correctionEvent, 'CWJkF', 'dark');
   const v1Card = await resultCard(v1ReviewPage);
-  await v1Card.getByRole('button', { name: r.review.reject, exact: true }).click();
+  await reviewAction(v1Card, r.review.reject).click();
   const v1Dialog = v1ReviewPage.getByRole('dialog', { name: r.reject.title, exact: true });
   await v1Dialog.getByRole('radio', { name: r.reject.reasons.teamsIncorrect, exact: true }).check();
   await v1Dialog.getByRole('button', { name: r.reject.submit, exact: true }).click();
@@ -546,7 +617,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   const v2Reviewer = teamReviewer(v2, v2Side === 'team_a' ? 'team_b' : 'team_a');
   const v2ReviewPage = await openDetails(v2Reviewer, correctionEvent, 'CWJkF', 'dark');
   const v2Card = await resultCard(v2ReviewPage);
-  await v2Card.getByRole('button', { name: r.review.reject, exact: true }).click();
+  await reviewAction(v2Card, r.review.reject).click();
   const v2Dialog = v2ReviewPage.getByRole('dialog', { name: r.reject.title, exact: true });
   await v2Dialog.getByRole('radio', { name: r.reject.reasons.scoreIncorrect, exact: true }).check();
   await v2Dialog.getByRole('button', { name: r.reject.submit, exact: true }).click();
@@ -568,7 +639,13 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   await correctionOwnerPage.context().close();
 
   // JXjNs: compact status viewport shows server-seeded countdown, never client confirmation.
-  const pendingPage = await openDetails(approvalReviewer, approvalEvent, 'JXjNs', 'light');
+  // The submitter has no review actions, so no sticky action bar overlays the isolated status region.
+  const pendingPage = await openDetails(
+    actorFor(approvalProposal.submitted_by),
+    approvalEvent,
+    'JXjNs',
+    'light'
+  );
   const pendingCard = await resultCard(pendingPage);
   const pendingRegion = pendingCard.getByRole('region', { name: r.pending, exact: true });
   await expect(pendingRegion.getByRole('timer')).toBeVisible();
@@ -604,9 +681,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   await offlinePage.context().setOffline(true);
   const offlineCard = await resultCard(offlinePage);
   await expect(offlineCard.getByText(r.review.offline, { exact: true })).toBeVisible();
-  await expect(
-    offlineCard.getByRole('button', { name: r.review.approve, exact: true })
-  ).toHaveCount(0);
+  await expect(reviewAction(offlineCard, r.review.approve)).toHaveCount(0);
   expect(
     await sql(`select count(*)::int as count from public.match_event_result_reviews
       where proposal_id='${staleProposal.proposal_id}'`)
@@ -643,7 +718,7 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   );
   const confirmationPage = await openDetails(friendlyReviewer, friendlyEvent, 'BcpYH', 'light');
   const friendlyCard = await resultCard(confirmationPage);
-  await friendlyCard.getByRole('button', { name: r.review.approve, exact: true }).click();
+  await reviewAction(friendlyCard, r.review.approve).click();
   await expect(friendlyCard).toHaveAttribute('data-result-status', 'confirmed');
   await expect(friendlyCard.getByText(r.confirmation.manual, { exact: true })).toBeVisible();
   await expect(friendlyCard.getByText(r.ratingEffectNone, { exact: true })).toBeVisible();
@@ -716,16 +791,8 @@ test('PAF-8 Pencil screens retain exact lifecycle probes and reviewed raster bud
   ).toBeVisible();
   await expect(lifecycleCard.getByRole('region', { name: r.pending, exact: true })).toBeVisible();
   await expect(lifecycleCard.getByRole('region', { name: r.setScores, exact: true })).toBeVisible();
-  await expect(
-    lifecycleCard.getByRole('button', { name: r.review.approve, exact: true })
-  ).toBeVisible();
-  await expect(
-    lifecycleCard.getByRole('button', { name: r.review.reject, exact: true })
-  ).toBeVisible();
-  await expect(lifecyclePage.getByText('PADEL INDOOR MADRID', { exact: true })).toBeVisible();
-  await expect(
-    lifecyclePage.getByRole('link', { name: /Calle de Alcalá.*Open map/ })
-  ).toBeVisible();
+  await assertStickyActionBar(lifecyclePage);
+  await assertLifecycleHeader(lifecyclePage);
   await assertTouchTargets(lifecyclePage);
   await compareFrame('alZmm', lifecyclePage, info);
   await lifecyclePage.context().close();

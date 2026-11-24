@@ -1,6 +1,12 @@
 import { test, type Page } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
-import { assertChipsStepAside, assertNoUaFieldsetBorders } from './route-chrome';
+import {
+  assertChipsStepAside,
+  assertNoUaFieldsetBorders,
+  assertTopChrome,
+  type TopChromePattern
+} from './route-chrome';
+import { sql } from './matches-management-fixtures';
 import { statisticsWorld, type StatisticsWorld } from './statistics-fixtures';
 
 // F66/F27 class guard. Every route that resolveAppShell hides the bottom navigation on owns its top
@@ -24,6 +30,7 @@ test.beforeAll(async ({ browser }) => {
 });
 test.afterAll(async () => {
   test.setTimeout(240_000);
+  if (w) await sql(`delete from public.platform_admins where user_id = '${w.f.creator.id}'`);
   await w?.cleanup();
 });
 test.beforeEach(() => test.setTimeout(180_000));
@@ -43,7 +50,15 @@ async function visit(page: Page, path: string) {
   await waitForHydratedPage(page);
 }
 
-type RouteCase = { label: string; who: Who; path: () => string };
+// chrome: the header pattern the route's frame draws; defaults to the shared TopBar.
+type RouteCase = {
+  label: string;
+  who: Who;
+  path: () => string;
+  chrome?: TopChromePattern;
+  /** Seeds a precondition the shared world lacks (idempotent). */
+  setup?: () => Promise<void>;
+};
 
 const adminBase = () => `/community/${w.f.community}/admin`;
 
@@ -57,7 +72,7 @@ const ROUTES: RouteCase[] = [
     path: () => `/matches/${w.groupIds['g3']!.eventId}/groups/${w.groupIds['g3']!.proposalId}`
   },
   // community admin, statistics and leagues
-  { label: 'admin overview', who: 'admin', path: () => adminBase() },
+  // /admin itself only redirects to /admin/requests (visited below), so it is not a distinct destination.
   { label: 'admin members', who: 'admin', path: () => `${adminBase()}/members` },
   { label: 'admin requests', who: 'admin', path: () => `${adminBase()}/requests` },
   { label: 'admin settings', who: 'admin', path: () => `${adminBase()}/settings` },
@@ -68,7 +83,12 @@ const ROUTES: RouteCase[] = [
     who: 'player',
     path: () => `/community/${w.f.community}/statistics`
   },
-  { label: 'league index', who: 'player', path: () => `/community/${w.f.community}/leagues` },
+  {
+    label: 'league index',
+    who: 'player',
+    chrome: 'navbar',
+    path: () => `/community/${w.f.community}/leagues`
+  },
   {
     label: 'league detail',
     who: 'player',
@@ -78,6 +98,25 @@ const ROUTES: RouteCase[] = [
     label: 'league create',
     who: 'player',
     path: () => `/community/${w.f.community}/leagues/create`
+  },
+  // result-repair diagnostics: own frame header (cuVwp/bomAY), not a TopBar. The community route is
+  // open to its admin; the platform route needs a platform_admins row for the world's host.
+  {
+    label: 'community repair diagnostics',
+    who: 'admin',
+    chrome: 'diagnostics',
+    path: () => `/community/${w.f.community}/repairs`
+  },
+  {
+    label: 'platform repair diagnostics',
+    who: 'admin',
+    chrome: 'diagnostics',
+    setup: async () => {
+      await sql(
+        `insert into public.platform_admins(user_id) values ('${w.f.creator.id}') on conflict do nothing`
+      );
+    },
+    path: () => '/platform-admin/result-repairs'
   },
   // notifications
   { label: 'notifications index', who: 'player', path: () => '/notifications' },
@@ -101,9 +140,11 @@ const ROUTES: RouteCase[] = [
 for (const route of ROUTES) {
   test(`${route.label} owns its top chrome`, async () => {
     const page = await pageFor(route.who);
+    await route.setup?.();
     await visit(page, route.path());
     await assertChipsStepAside(page, route.label);
     await assertNoUaFieldsetBorders(page, route.label);
+    await assertTopChrome(page, route.label, route.chrome ?? 'topbar');
   });
 }
 

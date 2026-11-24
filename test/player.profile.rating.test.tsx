@@ -108,10 +108,11 @@ describe('PlayerProfile rating journey', () => {
         en.levelReview.entry.request.concat(en.levelReview.entry.description, '›'),
         '/level-reviews/new'
       ],
-      [en.levelReview.entry.history.concat('›'), '/level-reviews'],
-      [en.profile.links.notifications.concat('›'), '/notifications']
+      [en.profile.links.notifications.concat('›'), '/notifications'],
+      [en.levelReview.entry.history.concat('›'), '/level-reviews']
     ]);
-    // Frame vARtQ: the level-review request is a row of the same list, between history and notifications.
+    // Frame vARtQ: the level-review request is a row of the same list before notifications; the extra
+    // "My review requests" history destination (F70) follows the frame's rows.
     expect(
       shortcuts.getByRole('link', { name: new RegExp(en.levelReview.entry.request) })
     ).toBeTruthy();

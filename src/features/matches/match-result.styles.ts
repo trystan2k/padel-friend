@@ -1,52 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 
 export const matchResultStyles = stylex.create({
-  heroLabel: { color: 'var(--color-hero-copy)' },
-  heroTitle: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-22)',
-    lineHeight: 'calc(var(--space-15) * 2)',
-    fontWeight: 'var(--font-weight-bold)',
-    color: 'var(--color-on-hero)'
-  },
-  overviewBadges: { gap: 'var(--space-5)' },
-  overviewBadge: {
-    letterSpacing: 'var(--font-letter-spacing-1-5)',
-    textTransform: 'uppercase',
-    lineHeight: 'var(--space-13)'
-  },
-  overviewTitle: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-20)',
-    lineHeight: 'calc(var(--space-20) + var(--space-2))',
-    fontWeight: 'var(--font-weight-bold)'
-  },
-  overviewTime: { lineHeight: 'var(--space-13)' },
-  hero: {
-    position: 'relative',
-    minHeight: 'calc(var(--space-40) * 3 + var(--space-12) * 2)',
-    overflow: 'hidden',
-    borderRadius: 'var(--radius-16)',
-    backgroundColor: 'var(--color-surface-2)'
-  },
-  heroImage: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' },
-  heroCopy: {
-    position: 'relative',
-    display: 'grid',
-    gap: 'var(--space-6)',
-    padding: 'var(--space-14)',
-    color: 'var(--color-hero-copy)'
-  },
-  heroLink: {
-    color: 'var(--color-hero-accent)',
-    textDecoration: 'none',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    display: 'inline-flex',
-    alignItems: 'start'
-  },
-  overview: { padding: 'var(--space-9)', gap: 'var(--space-5)' },
   srOnly: {
     position: 'absolute',
     width: 'var(--space-1)',
@@ -71,16 +25,6 @@ export const matchResultStyles = stylex.create({
     fontFamily: 'var(--font-family-body)',
     fontSize: 'var(--font-size-12)',
     color: 'var(--color-text)'
-  },
-  routeHeader: { display: 'grid', gap: 'var(--space-5)', position: 'relative' },
-  routeTitle: {
-    margin: 0,
-    paddingInlineStart: 'calc(var(--space-20) + var(--space-4))',
-    paddingInlineEnd: 'calc(var(--space-40) * 2 + var(--space-8) * 3)',
-    fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-20)',
-    lineHeight: 'var(--font-size-24)',
-    fontWeight: 'var(--font-weight-bold)'
   },
   routeBack: {
     position: 'absolute',

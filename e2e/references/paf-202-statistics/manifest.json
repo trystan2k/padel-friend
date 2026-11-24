@@ -159,17 +159,17 @@
       },
       "GrkSH": {
         "cardEdge": 0,
-        "header": 0.1018,
-        "primary": 0.1825,
-        "followUp": 0.065,
-        "note": "Re-measured after the two-person composition and three tiles were restored. Bands realigned to the frame regions (header 0-104, composition+tiles 104-257, rest 257-844); they are not comparable to the earlier 104-355 band. The remaining primary residual is the live breadcrumb/title/filter chips/back link above the composition, which push it below the frame's single top bar."
+        "header": 0.0608,
+        "primary": 0.1847,
+        "followUp": 0.0673,
+        "note": "Re-measured locally after the R5 F57 shared TopBar landed (PAF-202 round 3, Chromium 390×844 light en; bands header 0-104, composition+tiles 104-257, rest 257-844). The breadcrumb/title/filter-chip block that earlier measurements attributed the header and primary residuals to no longer exists. The header band now holds the TopBar (48px back chevron, centred 17/700 title) plus the 44px Statistics filters jump link the frame does not draw; the primary residual is the composition sitting one 44px jump-link row lower than in the frame, plus fixture names/totals and initials avatars."
       },
       "khmeK": {
         "cardEdge": 0,
-        "header": 0.0988,
-        "primary": 0.1821,
-        "followUp": 0.0771,
-        "note": "Re-measured after the two-person composition and three tiles were restored. Bands realigned to the frame regions (header 0-104, composition+tiles 104-257, rest 257-844); they are not comparable to the earlier 104-473 band. The remaining primary residual is the live breadcrumb/title/filter chips/back link above the composition."
+        "header": 0.0658,
+        "primary": 0.1833,
+        "followUp": 0.0803,
+        "note": "Re-measured locally after the R5 F57 shared TopBar landed (PAF-202 round 3, Chromium 390×844 light en; bands header 0-104, composition+tiles 104-257, rest 257-844). The breadcrumb/title/filter-chip block that earlier measurements attributed the header and primary residuals to no longer exists. The header band now holds the TopBar (48px back chevron, centred 17/700 title) plus the 44px Statistics filters jump link the frame does not draw; the primary residual is the composition sitting one 44px jump-link row lower than in the frame, plus fixture names/totals and initials avatars."
       },
       "o9iaC1": {
         "cardEdge": 0,
@@ -225,13 +225,13 @@
             "name": "header",
             "top": 0,
             "bottom": 104,
-            "classification": "Layout: breadcrumb/back controls differ from the Pencil header."
+            "classification": "Layout: the shared TopBar (48px back chevron, centred 17/700 title) follows the frame; the residual is the 44px Statistics filters jump link row below it, which the frame does not draw, plus cross-renderer text rasterization."
           },
           {
             "name": "primary",
             "top": 104,
             "bottom": 257,
-            "classification": "Restored hierarchy: two initials avatars with a plus, the other player's name and caption, then three 20px hairline tiles (matches, W-L-D, win rate) from the real pair record. Fixture: names and totals differ. Layout: the live breadcrumb, title, filter chips and back link above the composition push it below the frame's single top bar. Avatars are the initials fallback only: the sporting DTO carries display names, no avatar URL."
+            "classification": "Restored hierarchy: two initials avatars with a plus, the other player's name and caption, then three 20px hairline tiles (matches, W-L-D, win rate) from the real pair record. Fixture: names and totals differ. Layout: the Statistics filters jump link row under the shared TopBar pushes the composition one 44px row below the frame's. Avatars are the initials fallback only: the sporting DTO carries display names, no avatar URL."
           },
           {
             "name": "follow-up",
@@ -252,13 +252,13 @@
             "name": "header",
             "top": 0,
             "bottom": 104,
-            "classification": "Layout: breadcrumb/back controls differ from the Pencil header."
+            "classification": "Layout: the shared TopBar (48px back chevron, centred 17/700 title) follows the frame; the residual is the 44px Statistics filters jump link row below it, which the frame does not draw, plus cross-renderer text rasterization."
           },
           {
             "name": "primary",
             "top": 104,
             "bottom": 257,
-            "classification": "Restored hierarchy: two initials avatars with vs, the other player's name and caption, then three 20px hairline tiles (meetings, W-L-D, set diff) from the real head-to-head record. Fixture: names and totals differ. Layout: the live breadcrumb, title, filter chips and back link above the composition push it below the frame's single top bar. Avatars are the initials fallback only: the sporting DTO carries display names, no avatar URL."
+            "classification": "Restored hierarchy: two initials avatars with vs, the other player's name and caption, then three 20px hairline tiles (meetings, W-L-D, set diff) from the real head-to-head record. Fixture: names and totals differ. Layout: the Statistics filters jump link row under the shared TopBar pushes the composition one 44px row below the frame's. Avatars are the initials fallback only: the sporting DTO carries display names, no avatar URL."
           },
           {
             "name": "follow-up",

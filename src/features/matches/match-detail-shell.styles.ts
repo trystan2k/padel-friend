@@ -206,6 +206,22 @@ export const matchDetailShellStyles = stylex.create({
       outlineOffset: 'var(--focus-offset)'
     }
   },
+  // Frame iXRPp venue row: venue name and notes on a token surface (never over the photo), map link at the end.
+  venueCard: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 'var(--space-12)',
+    minWidth: 0,
+    paddingBlock: 'var(--space-8)',
+    paddingInline: 'var(--space-16)',
+    borderRadius: 'var(--radius-18)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)'
+  },
+  venueText: { display: 'grid', gap: 'var(--space-2)', minWidth: 0 },
+  venueName: { fontSize: 'var(--font-size-15)', fontWeight: 'var(--font-weight-bold)' },
   shareField: { display: 'grid', gap: 'var(--space-4)', color: 'var(--color-muted)' },
   input: {
     width: '100%',

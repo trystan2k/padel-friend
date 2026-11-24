@@ -210,15 +210,15 @@ describe('record result page', () => {
     expect(screen.queryByText('Team A wins · 3–0')).toBeNull();
     expect(within(screen.getByRole('group', { name: 'Set 3' })).getByRole('alert')).toBeTruthy();
   });
-  it('uses authoritative venue and address data in the pending hero map link', () => {
-    render(
+  it('renders the frame header and a surface venue row with a map link, with or without a photo', () => {
+    const detail = (photo_url: string | null) => (
       <I18nextProvider i18n={createI18n('en')}>
         <MatchResultDetail
           event={makeMatchDetail({
             venue_name: 'PADEL INDOOR MADRID',
             notes: 'Friday open play',
             court_notes: 'Calle de Alcalá',
-            photo_url: 'https://example.com/court.jpg',
+            photo_url,
             maps_url: 'https://maps.google.com/madrid',
             starts_at: '2026-10-23T18:30:00Z',
             timezone: 'UTC'
@@ -229,10 +229,19 @@ describe('record result page', () => {
         />
       </I18nextProvider>
     );
+    const view = render(detail(null));
+    expect(screen.getByRole('heading', { level: 1, name: 'Match' })).toBeTruthy();
+    expect(screen.queryByRole('img', { name: 'Match venue' })).toBeNull();
+    const bare = screen.getByRole('link', { name: 'View court location for PADEL INDOOR MADRID' });
+    expect(bare.getAttribute('href')).toBe('https://maps.google.com/madrid');
+    expect(screen.getByText('Calle de Alcalá')).toBeTruthy();
+    view.unmount();
+    render(detail('https://example.com/court.jpg'));
     expect(screen.getByText('PADEL INDOOR MADRID')).toBeTruthy();
-    const map = screen.getByRole('link', { name: /Calle de Alcalá.*Open map/ });
+    const map = screen.getByRole('link', { name: 'View court location for PADEL INDOOR MADRID' });
     expect(map.getAttribute('href')).toBe('https://maps.google.com/madrid');
     expect(map.getAttribute('rel')).toBe('noopener noreferrer');
+    expect(screen.getByRole('img', { name: 'Match venue' }).contains(map)).toBe(false);
     expect(screen.getByRole('img', { name: 'Match venue' }).getAttribute('src')).toBe(
       'https://example.com/court.jpg'
     );

@@ -68,7 +68,11 @@ function CommunityOverview({ data }: { data: OverviewData }) {
               </div>
             </dl>
             <div {...stylex.props(s.inline)}>
-              <Link to="/matches/create" {...stylex.props(s.link, s.primary)}>
+              <Link
+                to="/matches/create"
+                search={{ communityId }}
+                {...stylex.props(s.link, s.primary)}
+              >
                 {t('matches.create')}
               </Link>
               {data.adminContext?.visibility === 'private' && (

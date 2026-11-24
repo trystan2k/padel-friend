@@ -32,31 +32,10 @@ export const styles = stylex.create({
     paddingInlineEnd: 'calc(var(--space-40) * 2 + var(--space-8) * 2)',
     marginBlockEnd: 'calc(var(--space-4) * -1)'
   },
-  mark: {
-    position: 'relative',
-    flexShrink: 0,
+  logo: {
     width: 'var(--space-40)',
     height: 'var(--space-40)',
-    borderRadius: 'var(--radius-11)',
-    backgroundColor: 'var(--color-green)'
-  },
-  markBall: {
-    position: 'absolute',
-    insetInlineStart: '62.5%',
-    insetBlockStart: '14%',
-    width: '23.4%',
-    height: '23.4%',
-    borderRadius: '50%',
-    backgroundColor: 'var(--color-lime)'
-  },
-  markLine: {
-    position: 'absolute',
-    insetInlineStart: '18.75%',
-    insetBlockStart: '70.3%',
-    width: '64%',
-    height: '4.7%',
-    borderRadius: 'var(--space-1)',
-    backgroundColor: 'var(--color-on-green)'
+    flexShrink: 0
   },
   brand: {
     color: 'var(--color-green)',
@@ -71,14 +50,14 @@ export const styles = stylex.create({
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'calc(var(--font-size-29) + var(--space-1))',
     fontWeight: 'var(--font-weight-extrabold)',
-    lineHeight: 1.15,
+    lineHeight: 'var(--font-line-height-snug)',
     overflowWrap: 'anywhere'
   },
   updated: {
     margin: 0,
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-14)',
-    lineHeight: 1.45
+    lineHeight: 'var(--font-line-height-comfortable)'
   },
   notice: {
     margin: 0,
@@ -87,7 +66,7 @@ export const styles = stylex.create({
     backgroundColor: 'var(--color-surface-2)',
     color: 'var(--color-text)',
     fontSize: 'var(--font-size-14)',
-    lineHeight: 1.45
+    lineHeight: 'var(--font-line-height-comfortable)'
   },
   section: { display: 'flex', flexDirection: 'column', gap: 'var(--space-8)' },
   sectionTitle: {
@@ -100,7 +79,7 @@ export const styles = stylex.create({
   paragraph: {
     margin: 0,
     fontSize: 'var(--font-size-16)',
-    lineHeight: 1.45,
+    lineHeight: 'var(--font-line-height-comfortable)',
     overflowWrap: 'anywhere'
   },
   list: {
@@ -116,7 +95,7 @@ export const styles = stylex.create({
     gridTemplateColumns: 'auto minmax(0, 1fr)',
     columnGap: 'var(--space-8)',
     fontSize: 'var(--font-size-16)',
-    lineHeight: 1.45,
+    lineHeight: 'var(--font-line-height-comfortable)',
     overflowWrap: 'anywhere',
     '::before': {
       content: '"•"',

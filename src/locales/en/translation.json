@@ -1276,7 +1276,6 @@
         }
       },
       "globalRating": "Global rating only",
-      "venueHeadline": "Play under the lights.",
       "overviewDate": "{{weekday}}, {{date}}",
       "openMap": "Open map ↗",
       "matchDetails": "Match details",

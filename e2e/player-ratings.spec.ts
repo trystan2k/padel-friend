@@ -24,6 +24,7 @@ import {
   openRecord,
   resultFixtures,
   review,
+  reviewAction,
   sql,
   sqlWithFixtureTriggersDisabled,
   type Actor,
@@ -246,7 +247,7 @@ test('manual confirmation changes the level; Me, history and explanation show th
   const privacy = watchRatingResponses(reviewer);
   await f.open(reviewer, eventId);
   const card = reviewer.getByRole('article', { name: fill(r.group, { number: 1 }), exact: true });
-  await card.getByRole('button', { name: r.review.approve, exact: true }).click();
+  await reviewAction(card, r.review.approve).click();
   await expect(card).toHaveAttribute('data-result-status', 'confirmed');
 
   // Result-detail entry point: per-player changes for the four who played.

@@ -121,7 +121,7 @@ test('Clubhouse result fragments retain approved structure and measured visual b
     );
     return id;
   }
-  async function compare(frame: RecordingReference) {
+  async function compare(frame: RecordingReference | 'alZmm') {
     await page.setViewportSize({ width: 390, height: frame === 'alZmm' ? 1042 : 844 });
     await page.evaluate(async () => {
       await document.fonts.ready;
@@ -140,12 +140,10 @@ test('Clubhouse result fragments retain approved structure and measured visual b
       ).toBeVisible();
       await expect(proposal.getByRole('region', { name: r.pending, exact: true })).toBeVisible();
       await expect(proposal.getByRole('region', { name: r.setScores, exact: true })).toBeVisible();
-      await expect(
-        proposal.getByRole('button', { name: r.review.approve, exact: true })
-      ).toBeVisible();
-      await expect(
-        proposal.getByRole('button', { name: r.review.reject, exact: true })
-      ).toBeVisible();
+      // sLXK7: the single-result actions live in the sticky bar, Approve above the secondary action.
+      const bar = main.locator('[data-match-action-bar]');
+      await expect(bar.getByRole('button')).toHaveText([r.review.approve, r.review.reject]);
+      await expect(proposal.getByRole('button', { name: r.review.approve })).toHaveCount(0);
     } else {
       await expect(page.locator('#locale')).toBeHidden();
       const scoring = frame === 'XySt5' || frame === 'wsXWA';
@@ -213,13 +211,8 @@ test('Clubhouse result fragments retain approved structure and measured visual b
       path: info.outputPath(`${frame}-actual.png`)
     });
     await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
-    if (frame === 'alZmm') {
-      // The pending detail ends near the old band start: measure the bottom 70px of a taller capture.
-      await page.setViewportSize({ width: 390, height: 1042 + 120 });
-      const tall = await page.screenshot({ animations: 'disabled', caret: 'hide' });
-      await assertResultScreenshot(page, tall, frame, 'recording');
-      return;
-    }
+    // The lifecycle detail's raster baseline is pinned in matches-results-paf8-visual (alZmm).
+    if (frame === 'alZmm') return;
     await assertResultScreenshot(page, actual, frame, 'recording');
   }
   const scoreId = await routeEvent();

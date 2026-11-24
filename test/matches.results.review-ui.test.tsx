@@ -121,6 +121,56 @@ afterEach(() => {
 });
 
 describe('result lifecycle review UI', () => {
+  it('places Approve above the secondary action in the sticky bar slot, through the same controller', async () => {
+    mocks.review.mockResolvedValue(receipt());
+    const slot = document.body.appendChild(document.createElement('div'));
+    const proposal = makeProposal({ can_approve: true, can_reject: true });
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchResultReview
+          eventId={proposal.event_id}
+          proposal={proposal}
+          timezone="UTC"
+          asOf={resultProposal.submitted_at}
+          actionSlot={slot}
+          onRefresh={vi.fn<() => void>()}
+        />
+      </I18nextProvider>
+    );
+    const bar = slot.querySelector<HTMLElement>('[data-match-action-bar]');
+    if (!bar) throw new Error('Missing sticky action bar');
+    const buttons = within(bar).getAllByRole('button');
+    expect(buttons.map((item) => item.textContent)).toEqual(['Approve', 'Reject']);
+    expect(
+      within(screen.getByRole('article', { name: /Group/ })).queryByRole('button', {
+        name: 'Approve'
+      })
+    ).toBeNull();
+    await userEvent.click(buttons[0]!);
+    expect(await screen.findByText(/Approval recorded for this version/)).toBeTruthy();
+    expect(mocks.review).toHaveBeenCalledTimes(1);
+    slot.remove();
+  });
+
+  it('renders no sticky bar when the caller has neither review capability', () => {
+    const slot = document.body.appendChild(document.createElement('div'));
+    const proposal = makeProposal({ can_approve: false, can_reject: false });
+    render(
+      <I18nextProvider i18n={createI18n('en')}>
+        <MatchResultReview
+          eventId={proposal.event_id}
+          proposal={proposal}
+          timezone="UTC"
+          asOf={resultProposal.submitted_at}
+          actionSlot={slot}
+          onRefresh={vi.fn<() => void>()}
+        />
+      </I18nextProvider>
+    );
+    expect(slot.querySelector('[data-match-action-bar]')).toBeNull();
+    slot.remove();
+  });
+
   it('renders only SQL-authorized actions and records approval once per version', async () => {
     const onRefresh = vi.fn<() => void>();
     mocks.review.mockResolvedValue(receipt());

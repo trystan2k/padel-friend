@@ -81,7 +81,7 @@ function focusFirstControl(root: HTMLElement | null) {
 // Draft fields whose control lives on the Players step; every other validated field is on Details.
 const playersStepErrors = ['minLevel', 'maximumRegistrations'];
 
-export function CreateMatchPage() {
+export function CreateMatchPage({ initialCommunityId }: { initialCommunityId?: string } = {}) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -139,7 +139,11 @@ export function CreateMatchPage() {
         if (generation !== optionsGeneration.current) return;
         const next = result;
         setOptions(next);
-        const first = next.communities[0];
+        // A scoped entry starts in its own community when the caller is an eligible member;
+        // the unscoped entry (bottom nav, Home) keeps the first membership.
+        const first =
+          next.communities.find((community) => community.id === initialCommunityId) ??
+          next.communities[0];
         if (first) {
           const id = crypto.randomUUID();
           setCommunityId(first.id);
@@ -177,7 +181,7 @@ export function CreateMatchPage() {
     return () => {
       optionsGeneration.current += 1;
     };
-  }, []);
+  }, [initialCommunityId]);
 
   // Eligible Leagues depend on the community and the intended UTC start. Each request carries a
   // generation so a slow response for an older community/schedule can never overwrite newer state.

@@ -52,8 +52,8 @@ export const chromeStyles = stylex.create({
   },
   srOnly: {
     position: 'absolute',
-    width: 1,
-    height: 1,
+    width: 'var(--space-1)',
+    height: 'var(--space-1)',
     overflow: 'hidden',
     clipPath: 'inset(50%)',
     whiteSpace: 'nowrap'

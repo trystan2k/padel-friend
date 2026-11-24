@@ -275,8 +275,16 @@ test('Me keeps the vARtQ order, geometry and reviewed raster budgets (mobile lig
 
   // Shortcut rows: hairline card, ≥60px rows, every destination present, chevrons decorative.
   const rowLinks = await shortcuts.getByRole('link').all();
-  // Statistics, Match history, Request a level review, its history, Notifications (frame vARtQ one list).
-  expect(rowLinks).toHaveLength(5);
+  // Frame vARtQ order: Statistics, Match history, Request a level review, Notifications; the extra
+  // "My review requests" history destination (F70) follows the frame's rows.
+  const hrefs = await Promise.all(rowLinks.map((link) => link.getAttribute('href')));
+  expect(hrefs.map((href) => href?.replace(/^\/players\/[^/]+$/, '/players/:id'))).toEqual([
+    '/players/:id',
+    '/matches/past',
+    '/level-reviews/new',
+    '/notifications',
+    '/level-reviews'
+  ]);
   for (const link of rowLinks) expect((await box(link)).height).toBeGreaterThanOrEqual(60);
   const levelBox = await box(levelCard);
   for (const [what, element] of [

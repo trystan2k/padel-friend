@@ -1,5 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useTranslation } from 'react-i18next';
+import brandIcon from '../../../docs/design/padel-friends-app-icon.png';
 import { TextLink } from '../../components/ui/TextLink';
 import {
   PRIVACY_CONTACT_EMAIL,
@@ -22,10 +23,7 @@ export function PrivacyPolicy({ approved = PRIVACY_POLICY_APPROVED }: { approved
     <main {...stylex.props(styles.page)}>
       <header {...stylex.props(styles.header)}>
         <div {...stylex.props(styles.brandRow)}>
-          <span aria-hidden="true" {...stylex.props(styles.mark)}>
-            <span {...stylex.props(styles.markBall)} />
-            <span {...stylex.props(styles.markLine)} />
-          </span>
+          <img src={brandIcon} alt="" {...stylex.props(styles.logo)} />
           <span {...stylex.props(styles.brand)}>{t('auth.loginBrand')}</span>
         </div>
         <TextLink to="/" xstyle={styles.back}>

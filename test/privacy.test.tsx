@@ -121,7 +121,11 @@ describe('skip link target', () => {
     // homepage hero or footer spills into the policy.
     expect(target?.querySelectorAll('main > section')).toHaveLength(PRIVACY_SECTIONS.length);
     expect(target?.querySelector('main > header a')?.getAttribute('href')).toBe('/');
-    expect(target?.querySelector('main > footer, [data-public-homepage], header img')).toBeNull();
+    expect(target?.querySelector('main > footer, [data-public-homepage]')).toBeNull();
+    // D8: the header carries the owner-approved app icon asset (decorative; the wordmark is adjacent).
+    const logo = target?.querySelector('main > header img');
+    expect(logo?.getAttribute('src')).toContain('padel-friends-app-icon.png');
+    expect(logo?.getAttribute('alt')).toBe('');
     // Public chrome of the frames: icon chips (language, theme) instead of text pills.
     expect(screen.getByRole<HTMLSelectElement>('combobox', { name: en.language }).value).toBe('en');
     expect(screen.getByRole('combobox', { name: en.theme })).toBeTruthy();

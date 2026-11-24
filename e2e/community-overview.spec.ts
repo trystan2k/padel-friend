@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
-import { copies, day, leagueFixtures } from './leagues-fixtures';
+import { copies, day, leagueFixtures, sql, type Actor } from './leagues-fixtures';
+import { fixtures } from './matches-management-fixtures';
 
 const club = 'Northside Padel Club';
 const en = copies.en;
@@ -37,6 +38,33 @@ async function probe(page: Page, selectors: string[]) {
     { selectors, minTarget }
   );
   expect(failures, failures.join('\n')).toEqual([]);
+}
+
+// Resolves a design token to the rgb() string the browser computes, so token-colour checks compare
+// like with like (a probe element takes var(--token) as the property under test).
+async function tokenColor(page: Page, property: 'color' | 'background-color', token: string) {
+  return page.evaluate(
+    ({ property: prop, token: name }) => {
+      const probeNode = document.createElement('span');
+      probeNode.style.setProperty(prop, 'var(' + name + ')');
+      document.body.append(probeNode);
+      const value = getComputedStyle(probeNode).getPropertyValue(prop);
+      probeNode.remove();
+      return value;
+    },
+    { property, token }
+  );
+}
+
+// The selected segment paints ink (--color-text) on a surface pill, never the green link colour.
+async function expectSelectedInk(page: Page, nav: ReturnType<Page['getByRole']>, name: string) {
+  const selected = nav.getByRole('link', { name });
+  await expect(selected).toHaveAttribute('aria-current', 'page');
+  await expect(selected).toHaveCSS('color', await tokenColor(page, 'color', '--color-text'));
+  await expect(selected).toHaveCSS(
+    'background-color',
+    await tokenColor(page, 'background-color', '--color-surface')
+  );
 }
 
 test.describe('Community overview and ranking', () => {
@@ -90,6 +118,7 @@ test.describe('Community overview and ranking', () => {
       await expect(page.getByText(en.communitySurface.joinCountUnavailable)).toBeVisible();
       await expect(page.getByRole('region', { name: en.home.activity.title })).toBeAttached();
       await expect(page.locator('[data-rank-row]')).toHaveCount(0);
+      await expectSelectedInk(page, sections, en.communitySurface.overview);
       await probe(page, [
         '[data-community-view] header',
         '[data-community-view] nav',
@@ -130,6 +159,15 @@ test.describe('Community overview and ranking', () => {
       await expect(skill).toContainText(en.communitySurface.provisional);
       await expect(page.getByText(en.communitySurface.skillListUnavailable)).toBeVisible();
       await expect(page.locator('[data-rank-row="league"]')).toHaveCount(0);
+      const rankingKinds = page.getByRole('navigation', { name: en.communitySurface.rankingKind });
+      await expectSelectedInk(page, rankingKinds, en.communitySurface.skill);
+      const selfAvatar = skill.locator('span[aria-hidden="true"]');
+      await expect(selfAvatar).toBeVisible();
+      await expect(selfAvatar).toHaveText(/^\S{1,2}$/);
+      await expect(selfAvatar).toHaveCSS(
+        'background-color',
+        await tokenColor(page, 'background-color', '--color-lime')
+      );
       await probe(page, [
         '[data-community-view] header',
         '[data-community-view] > nav',
@@ -206,4 +244,62 @@ test.describe('Community overview and ranking', () => {
       await expect(guest.locator('[data-rank-row]')).toHaveCount(0);
     });
   }
+});
+
+// A scoped entry hands the selected community to Create match; the unscoped entry keeps the first
+// membership. The member belongs to two communities and browses the SECOND one.
+test.describe('Create match from the community overview', () => {
+  test.use({ serviceWorkers: 'block' });
+  test.describe.configure({ mode: 'serial' });
+  let g: Awaited<ReturnType<typeof fixtures>>;
+  let member: Actor;
+  let second: string;
+
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(240_000);
+    g = await fixtures(browser, { memberCount: 1, communityName: 'Create Alpha Club' });
+    member = g.members[0]!;
+    const created = await g.creator.client.rpc('create_community', {
+      p_name: 'Create Beta Club',
+      p_visibility: 'public',
+      p_join_policy: 'instant'
+    });
+    if (created.error || typeof created.data !== 'string')
+      throw created.error ?? new Error('No second community');
+    second = created.data;
+    const joined = await member.client.rpc('join_public_community', { p_community_id: second });
+    if (joined.error) throw joined.error;
+  });
+  test.afterAll(async () => {
+    test.setTimeout(120_000);
+    if (second)
+      await sql(`do $$ begin
+        lock table public.communities in share row exclusive mode;
+        alter table public.community_members disable trigger community_member_guard;
+        delete from public.notifications where community_id='${second}';
+        delete from public.community_members where community_id='${second}';
+        delete from public.community_audit_log where community_id='${second}';
+        delete from public.communities where id='${second}';
+        alter table public.community_members enable trigger community_member_guard;
+      end $$`);
+    await g?.cleanup();
+  });
+
+  test('the second community hands its id to Create match; the unscoped entry defaults to the first', async () => {
+    test.setTimeout(90_000);
+    const page = await g.page(member);
+    await page.goto(`/community/${second}`);
+    await waitForHydratedPage(page);
+    const create = page.getByRole('link', { name: en.matches.create });
+    await expect(create).toHaveAttribute('href', `/matches/create?communityId=${second}`);
+    await create.click();
+    await expect(page.getByRole('heading', { name: en.matchCreate.title })).toBeVisible();
+    expect(new URL(page.url()).searchParams.get('communityId')).toBe(second);
+    await expect(page.getByLabel(en.matchCreate.fields.community)).toHaveValue(second);
+
+    const unscoped = await g.page(member);
+    await unscoped.goto('/matches/create');
+    await waitForHydratedPage(unscoped);
+    await expect(unscoped.getByLabel(en.matchCreate.fields.community)).toHaveValue(g.community);
+  });
 });

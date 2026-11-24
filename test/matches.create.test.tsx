@@ -104,10 +104,10 @@ function select(label: string) {
   if (!(element instanceof HTMLSelectElement)) throw new TypeError('Expected select');
   return element;
 }
-async function mount(locale: Locale = 'en') {
+async function mount(locale: Locale = 'en', initialCommunityId?: string) {
   const view = render(
     <I18nextProvider i18n={createI18n(locale)}>
-      <CreateMatchPage />
+      <CreateMatchPage initialCommunityId={initialCommunityId} />
     </I18nextProvider>
   );
   await screen.findByRole('heading', {
@@ -264,6 +264,24 @@ describe('create match wizard', () => {
     expect(
       select(en.matchCreate.fields.savedVenue).querySelectorAll('option').length
     ).toBeGreaterThan(1);
+  });
+
+  it('starts the draft in the community handed over by a scoped entry', async () => {
+    await mount('en', idB);
+    await waitFor(() =>
+      expect(mocks.options).toHaveBeenCalledWith({ data: { community_id: idB } })
+    );
+    expect(mocks.options).not.toHaveBeenCalledWith({ data: { community_id: idA } });
+    expect(select(en.matchCreate.fields.community).value).toBe(idB);
+    expect(screen.getByText(/America\/Sao_Paulo/)).toBeTruthy();
+  });
+
+  it('falls back to the first membership when the handed-over community is not eligible', async () => {
+    await mount('en', '99999999-9999-4999-8999-999999999999');
+    await waitFor(() =>
+      expect(mocks.options).toHaveBeenCalledWith({ data: { community_id: idA } })
+    );
+    expect(select(en.matchCreate.fields.community).value).toBe(idA);
   });
 
   it('ignores creation-options responses from an older community selection', async () => {

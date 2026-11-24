@@ -247,13 +247,14 @@ test.describe('privacy policy', () => {
       const header = page.locator('main > header');
       const brandRow = await box(header.locator('> div').first());
       expect([round(brandRow.x), round(brandRow.height)]).toEqual([24, 76]);
-      const mark = await box(header.locator('span[aria-hidden="true"]').first());
+      // D8: the owner-approved app icon asset, never a redrawn mark.
+      const logo = header.locator('img');
+      await expect(logo).toHaveAttribute('src', /padel-friends-app-icon.*\.png$/);
+      await expect(logo).toHaveAttribute('alt', '');
+      const mark = await box(logo);
       expect([round(mark.width), round(mark.height), round(mark.x), round(mark.y)]).toEqual([
         40, 40, 24, 18
       ]);
-      expect(
-        await style(header.locator('span[aria-hidden="true"]'), 'border-top-left-radius')
-      ).toEqual(['11px']);
       const wordmark = header.getByText(en.auth.loginBrand, { exact: true });
       expect(await style(wordmark, 'font-size', 'font-weight')).toEqual(['15px', '700']);
 

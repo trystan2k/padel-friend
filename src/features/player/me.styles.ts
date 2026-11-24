@@ -135,7 +135,7 @@ export const me = stylex.create({
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-34)',
     fontWeight: 'var(--font-weight-extrabold)',
-    lineHeight: 1.1,
+    lineHeight: 'var(--font-line-height-tight)',
     color: 'var(--color-text)'
   },
   reliability: {

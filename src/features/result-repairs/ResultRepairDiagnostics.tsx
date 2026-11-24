@@ -79,6 +79,7 @@ export function ResultRepairDiagnostics({
   return (
     <main
       data-result-route="repair-diagnostics"
+      data-route-chrome="navigation"
       data-repair-scope={scope.kind}
       {...stylex.props(rd.page)}
     >

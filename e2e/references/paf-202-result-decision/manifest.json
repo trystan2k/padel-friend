@@ -6,7 +6,7 @@
   "route": "/matches/$eventId",
   "precedence": "D7: route-specific result frames govern their own regions. CWJkF is record-only: no route renders Community Admin dispute resolution as a standalone screen, so it is not force-mapped; the resolve dialog in MatchResultCorrections follows its sheet structure inside match detail.",
   "frameFindings": {
-    "sLXK7": "Sentence case throughout. Amber-soft notice (r14, 12/14), score card r18, sticky actions: Approve 52 green above a 48 secondary.",
+    "sLXK7": "Sentence case throughout. Amber-soft notice (r14, 12/14), score card r18, sticky actions: Approve 52 green above a 48 secondary. Live: the eligible single-result view renders that stacked pair in the sticky action bar, pinned to the viewport bottom before and after scrolling (probe in matches-results-paf8-visual).",
     "JXjNs": "Amber-soft Pending notice, then a card with a 40px amber-soft glyph and 'Auto-confirms in 18h' (16/800) with muted explanation; no caps.",
     "iXRPp": "Started-unavailable detail with a locked-management notice above a 52px green Record result action.",
     "GMcbD": "Amber-soft partial-resolution notice; group cards with pill chips (Confirmed green, Pending amber, Disputed red), Dispute then Approve 48px actions inside the pending card.",
@@ -22,7 +22,7 @@
     },
     "MatchResultDetail": {
       "frames": ["alZmm", "iXRPp", "GMcbD"],
-      "note": "alZmm navigation band was migrated with result recording (U15) and is reused."
+      "note": "R3-02: the lifecycle branch renders the Clubhouse match header and hero composition (56px TopBar with the centred 17px Match title, photo, chips, 28px title, date) and a token-surface venue row whose map link works with or without a photo; nothing is painted over the photo. R3-03: the single-result view hosts Approve above the secondary action in the detail's sticky action bar (full-bleed, safe-area, hairline); multi-group cards keep per-group inline actions (GMcbD)."
     },
     "MatchResultRejectDialog": {
       "frames": ["H6VcqC"],
@@ -84,7 +84,7 @@
     "kind": "Chromium fixture regression luma baselines for sLXK7 and alZmm, re-measured after the Clubhouse restyle",
     "reusedManifest": "e2e/references/paf-202-result-recording/manifest.json",
     "frames": ["sLXK7", "alZmm"],
-    "reason": "Pencil frames use illustrative facts. The two lifecycle baselines were recaptured with RESULT_BASELINE_CAPTURE=1 after this unit's intended changes; self-diff is 0 and the budget stays at 0.5%. The remaining frames use exact structural probes.",
+    "reason": "Pencil frames use illustrative facts. The two lifecycle baselines were recaptured with RESULT_BASELINE_CAPTURE=1 after the R3-02 header/hero and R3-03 sticky-action changes; self-diff is 0 and the budget stays at 0.5%. The remaining frames use exact structural probes.",
     "maxDiffRatio": 0.005
   }
 }

@@ -275,20 +275,20 @@ export function PlayerProfile({
             </Link>
           </li>
           <li {...stylex.props(s.listItem)}>
-            <Link to="/level-reviews" {...stylex.props(s.row)}>
-              <RowIcon d={ICONS.history} />
-              <span {...stylex.props(s.rowText, s.rowTitle)}>{t('levelReview.entry.history')}</span>
+            <Link to="/notifications" {...stylex.props(s.row)}>
+              <RowIcon d={ICONS.bell} />
+              <span {...stylex.props(s.rowText, s.rowTitle)}>
+                {t('profile.links.notifications')}
+              </span>
               <span aria-hidden="true" {...stylex.props(s.chevron)}>
                 ›
               </span>
             </Link>
           </li>
           <li {...stylex.props(s.listItem)}>
-            <Link to="/notifications" {...stylex.props(s.row)}>
-              <RowIcon d={ICONS.bell} />
-              <span {...stylex.props(s.rowText, s.rowTitle)}>
-                {t('profile.links.notifications')}
-              </span>
+            <Link to="/level-reviews" {...stylex.props(s.row)}>
+              <RowIcon d={ICONS.history} />
+              <span {...stylex.props(s.rowText, s.rowTitle)}>{t('levelReview.entry.history')}</span>
               <span aria-hidden="true" {...stylex.props(s.chevron)}>
                 ›
               </span>

@@ -171,7 +171,7 @@ test('privacy keeps the existing policy layout and public preferences at 320px',
   ]);
   await page.goto('/privacy');
   await waitForHydratedPage(page);
-  await expect(page.locator('[data-public-homepage], header img')).toHaveCount(0);
+  await expect(page.locator('[data-public-homepage]')).toHaveCount(0);
   await expect(page.getByRole('main').locator('section[aria-labelledby]').first()).toBeVisible();
   // Privacy frame (QqUGZ): the header "Back to home" link replaces the old sign-in footer link.
   await expect(
@@ -802,6 +802,40 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
 
         const failures = await homeStructureFailures(page);
         expect(failures, failures.join('\n')).toEqual([]);
+
+        // Reliability meter paints token colours: the track is --color-surface-2 and the fill the solid
+        // --color-green (no UA gradient). The fill sits in a UA pseudo-element no computed-style read
+        // reaches, so sample the rendered pixels at both ends of the bar.
+        const meter = page.locator('meter').first();
+        await expect(meter).toBeVisible();
+        const expected = await page.evaluate(() => {
+          const resolve = (token: string) => {
+            const node = document.createElement('span');
+            node.style.color = 'var(' + token + ')';
+            document.body.append(node);
+            const rgb = getComputedStyle(node).color.match(/\d+/g)!.slice(0, 3).map(Number);
+            node.remove();
+            return rgb;
+          };
+          return { fill: resolve('--color-green'), track: resolve('--color-surface-2') };
+        });
+        const bar = await meter.screenshot({ animations: 'disabled', caret: 'hide' });
+        const sampled = await page.evaluate(async (base64) => {
+          const bitmap = await createImageBitmap(
+            await (await fetch('data:image/png;base64,' + base64)).blob()
+          );
+          const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+          const context = canvas.getContext('2d')!;
+          context.drawImage(bitmap, 0, 0);
+          const at = (x: number) =>
+            Array.from(context.getImageData(x, Math.floor(bitmap.height / 2), 1, 1).data).slice(
+              0,
+              3
+            );
+          return { fill: at(Math.min(6, bitmap.width - 1)), track: at(bitmap.width - 3) };
+        }, bar.toString('base64'));
+        expect(sampled.fill, 'meter fill is the solid green token').toEqual(expected.fill);
+        expect(sampled.track, 'meter track is the surface-2 token').toEqual(expected.track);
 
         // F63: tab labels stay on one line and never break mid-word, even at 320 pt-BR/es.
         const tabs = await page.evaluate(() =>

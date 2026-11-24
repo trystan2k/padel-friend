@@ -12,41 +12,6 @@ export async function assertResultScreenshot(
     | [frame: RecordingReference, kind: 'recording']
     | [frame: LifecycleReference, kind: 'lifecycle']
 ) {
-  if (kind === 'recording' && frame === 'alZmm') {
-    const band = await page.evaluate(
-      async ({ src, height, rgb }) => {
-        const image = new Image();
-        image.src = src;
-        await image.decode();
-        const start = image.height - height;
-        const canvas = document.createElement('canvas');
-        canvas.width = image.width;
-        canvas.height = height;
-        const context = canvas.getContext('2d');
-        if (!context) throw new Error('No comparison canvas');
-        context.drawImage(image, 0, -start);
-        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-        let changed = 0;
-        for (let i = 0; i < pixels.length; i += 4) {
-          if (pixels[i] !== rgb[0] || pixels[i + 1] !== rgb[1] || pixels[i + 2] !== rgb[2]) {
-            changed++;
-          }
-        }
-        return { width: canvas.width, height: canvas.height, changed };
-      },
-      {
-        src: `data:image/png;base64,${actual.toString('base64')}`,
-        height: evidence.navigationBandHeight,
-        rgb: evidence.frames.alZmm.solidRgb
-      }
-    );
-    expect(band, 'alZmm D9 band uses the measured no-navigation background').toEqual({
-      width: 390,
-      height: 70,
-      changed: 0
-    });
-    return;
-  }
   const reference = kind === 'lifecycle' ? evidence.lifecycle[frame] : evidence.frames[frame];
   if (!('baseline' in reference)) throw new Error(`No luma baseline for ${frame}`);
   const { width, height, recordingStartRow } = evidence;
