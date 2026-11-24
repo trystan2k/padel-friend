@@ -2358,6 +2358,11 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     });
   });
 
+  // The Review value masks follow each <dd>'s text width, and the When/cutoff text is derived from the
+  // date, so a moving date (today + N) changes the masked boxes and the raster. A far-future fixed date
+  // keeps the rendered text (and so the masks) identical on every run.
+  const REVIEW_PINNED_DATE = '2098-07-15';
+
   test('create wizard — Review states the publication summary over the staged photo', async ({
     browser
   }) => {
@@ -2370,7 +2375,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await signIn(page, host);
     await page.goto('/matches/create');
     await waitForHydratedPage(page);
-    await page.getByLabel(en.matchCreate.fields.date).fill(ymd(3));
+    await page.getByLabel(en.matchCreate.fields.date).fill(REVIEW_PINNED_DATE);
     await page.getByLabel(en.matchCreate.fields.startTime).fill('19:30');
     await page.getByLabel(en.matchCreate.fields.venueName).fill(VENUES.friendly);
     await page

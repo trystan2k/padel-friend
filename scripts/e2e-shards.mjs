@@ -44,7 +44,8 @@ export const SPEC_WEIGHTS = {
   'e2e/realtime-convergence.spec.ts': 15,
   'e2e/release-accessibility.spec.ts': 12,
   'e2e/release-integrity.spec.ts': 20,
-  'e2e/result-amendments.spec.ts': 52
+  'e2e/result-amendments.spec.ts': 52,
+  'e2e/route-chrome-matrix.spec.ts': 30
 };
 
 // Recursive like Playwright's own discovery, so nested specs still land in a lane.

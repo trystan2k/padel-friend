@@ -59,10 +59,13 @@ describe('match styles', () => {
   });
   it('reserves global chip width on non-detail headers without changing detail composition', () => {
     const root = readFileSync('src/root.styles.ts', 'utf8');
+    // Conditional: no reserve on wide viewports (default 0), chip reserve only under 880px.
     expect(root).toMatch(
-      /pageHeader: \{[^}]*paddingInlineEnd: 'calc\(var\(--space-40\) \* 2 \+ var\(--space-8\) \* 3\)'/
+      /pageHeader: \{[^]*?paddingInlineEnd: \{\s*default: 0,\s*'@media \(max-width: 879px\)': 'calc\(var\(--space-40\) \* 2 \+ var\(--space-8\) \* 3\)'\s*\}/
     );
-    expect(root).toMatch(/pageHeader: \{[^}]*overflowWrap: 'anywhere'/);
+    expect(root).toMatch(
+      /pageHeader: \{[^]*?paddingInlineEnd: \{[^}]*\},\s*overflowWrap: 'anywhere'/
+    );
     // The global language/theme chips still float top-right, so the Clubhouse header reserves them.
     expect(readFileSync('src/features/matches/MatchesPage.tsx', 'utf8')).toContain(
       's.header, rootStyles.pageHeader'
