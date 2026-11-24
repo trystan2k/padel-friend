@@ -2394,6 +2394,9 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
       await page.getByRole('button', { name: en.matchCreate.next }).click();
     await ready(page);
     await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
+    // The Review photo is rendered only after its signed URL resolves (async), so `ready` cannot see it.
+    // Without this wait the capture can run before the <img> exists: no photo mask, ~49k px of diff.
+    await expect(page.locator('main img[data-decoded="true"]')).toBeVisible({ timeout: 30_000 });
     await assertWizardChrome(page, 'create review 390', 3, en.matchCreate.steps.review);
 
     // Review rows (frame RDV2r): muted key left, bold value right, in frame order. The cutoff instant
