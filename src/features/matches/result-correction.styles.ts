@@ -6,7 +6,13 @@ import * as stylex from '@stylexjs/stylex';
 const touchTarget = 'calc(var(--space-40) + var(--space-12))';
 
 export const resultCorrectionStyles = stylex.create({
-  section: { display: 'grid', gap: 'var(--space-10)', minWidth: 0 },
+  // Frames adujr / s5TRC use 18 gutters; the detail column carries 20, so only this section reclaims 2 per side.
+  section: {
+    display: 'grid',
+    gap: 'var(--space-10)',
+    minWidth: 0,
+    marginInline: 'calc(var(--space-18) - var(--space-20))'
+  },
   sectionTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',

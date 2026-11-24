@@ -324,12 +324,15 @@ type ClubhouseRaster = {
   family: string;
   reference: string;
   masks: Rect[];
+  /** Skips viewport-sized page wrappers: masking them would hide the whole frame and void the compare. */
+  skipPageWrappers?: true;
   regions: Record<string, Pick<RegionSpec, 'reference' | 'fill'>>;
 };
 const clubhouseRaster: Partial<Record<CorrectionFrame, ClubhouseRaster>> = {
   adujr: {
     family: 'result-decision',
     reference: 'adujr',
+    skipPageWrappers: true,
     masks: [
       { x: 0, y: 0, width: 390, height: 100 },
       { x: 20, y: 104, width: 350, height: 425 },
@@ -347,6 +350,7 @@ const clubhouseRaster: Partial<Record<CorrectionFrame, ClubhouseRaster>> = {
   s5TRC: {
     family: 'result-decision',
     reference: 's5TRC',
+    skipPageWrappers: true,
     masks: [
       { x: 0, y: 0, width: 390, height: 100 },
       { x: 20, y: 104, width: 350, height: 413 },
@@ -587,17 +591,22 @@ async function regionData(locator: Locator, offsetY: number) {
 }
 
 /** Boxes of every production block inside main: declared adaptations never reach the whole-screen compare. */
-async function productionMasks(page: Page): Promise<Rect[]> {
-  return page.evaluate(() =>
-    [
+async function productionMasks(page: Page, skipPageWrappers: boolean): Promise<Rect[]> {
+  return page.evaluate((skipWrappers) => {
+    const viewportArea = innerWidth * innerHeight;
+    const visibleArea = ({ x, y, width, height }: DOMRect) =>
+      Math.max(0, Math.min(x + width, innerWidth) - Math.max(x, 0)) *
+      Math.max(0, Math.min(y + height, innerHeight) - Math.max(y, 0));
+    return [
       ...document.querySelectorAll(
         'main :is(h1,h2,h3,h4,p,section,article,header,div,dl,dd,dt,table,details,summary,button,a,ol,ul,li,output,select,label,span,td,th,tr)'
       )
     ]
       .map((element) => element.getBoundingClientRect())
       .filter(({ width, height }) => width > 0 && height > 0)
-      .map(({ x, y, width, height }) => ({ x, y, width, height }))
-  );
+      .filter((rect) => !skipWrappers || visibleArea(rect) < 0.9 * viewportArea)
+      .map(({ x, y, width, height }) => ({ x, y, width, height }));
+  }, skipPageWrappers);
 }
 
 export async function measureFrame(
@@ -632,7 +641,9 @@ export async function measureFrame(
     .toEqual(expectedRegions);
   const maskRects = [
     ...(clubhouse?.masks ?? referenceMasks[frame] ?? []),
-    ...(screen.mode === 'masked' ? await productionMasks(page) : [])
+    ...(screen.mode === 'masked'
+      ? await productionMasks(page, clubhouse?.skipPageWrappers === true)
+      : [])
   ];
   const regionInputs = [];
   const offsetY = capture.fullPage ? await page.evaluate(() => window.scrollY) : 0;
