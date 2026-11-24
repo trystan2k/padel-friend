@@ -128,10 +128,12 @@ test('member sheet keeps the loaded roster, scroll position and focus, with no r
   await expect(rows).toHaveCount(extra + 1);
   const openCalls = [...serverCalls];
   console.info(`server calls while opening the member sheet: ${JSON.stringify(openCalls)}`);
-  // Opening reads the sheet's own member (one call carrying membership_id) plus the route chain's
-  // parameterless/community reads. The roster search (query, status, offset, limit arguments) is
-  // never repeated in the background: no call may carry it.
-  expect(openCalls.filter((call) => call.includes('membership_id'))).toHaveLength(1);
+  // Opening reads the sheet's own member exactly once (one call carrying the clicked membership id)
+  // plus the route chain's parameterless/community reads. Router intent-preload may also read
+  // ANOTHER member the pointer rests on while the roster scrolls (a different membership id, seen on
+  // Linux CI): a legitimate prefetch, not a re-read of the sheet's member. The roster search (query,
+  // status, offset, limit arguments) is never repeated in the background: no call may carry it.
+  expect(openCalls.filter((call) => call.includes(membershipId!))).toHaveLength(1);
   expect(openCalls.filter((call) => /%22(query|offset|limit)%22/.test(call))).toEqual([]);
 
   // The visible close path is Escape/backdrop (the Close control is visually hidden).

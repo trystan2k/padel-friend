@@ -65,7 +65,8 @@
       "lJHUZ": "e2e/matches-management-visual.spec.ts-snapshots/lJHUZ-light-linux.png",
       "t0SZec": "e2e/matches-management-visual.spec.ts-snapshots/t0SZec-light-linux.png"
     },
-    "note": "These five frames rasterize long text runs differently on Linux (glyph baseline rounding, FreeType vs CoreText) beyond their per-frame budgets, so CI carries its own baselines instead of widening the budgets (ledger F51). Regenerate a -linux file only on Linux CI/container output; darwin runs never touch them."
+    "note": "These five frames rasterize long text runs differently on Linux (glyph baseline rounding, FreeType vs CoreText) beyond their per-frame budgets, so CI carries its own baselines instead of widening the budgets (ledger F51). Regenerate a -linux file only on Linux CI/container output; darwin runs never touch them.",
+    "maintenanceRule": "Any layout, copy or style change that moves pixels in one of these five frames (or its edit/detail page) makes the -linux baseline stale: mac gates stay green while Linux CI fails. After such a change, push, take the fresh <frame>-light-linux-actual.png from the failed CI run's e2e-evidence artifact (stable across retries) and replace the file. Frame-region geometry is unaffected unless the pinned rects themselves move (t0SZec: saveAction is a documented finding pinned at the viewport bottom)."
   },
   "exportSha256": {
     "c27ucrt": "878ed6e514900a6425031f726f58a1b11f9e4351e6d1c57c3b10fc071f11cddd",

@@ -1141,7 +1141,13 @@ test(
       animations: 'disabled',
       caret: 'hide',
       maxDiffPixelRatio: screenshotRatio,
-      mask: [page.getByTestId('community-member-sheet').locator('h2, p').first()]
+      // Identity (name) and metrics: the member-since date is wall-clock (valid_from = fixture creation),
+      // so both description lines are masked; row layout, glyphs and copy stay unmasked.
+      mask: [
+        page.getByTestId('community-member-sheet').locator('h2'),
+        page.getByTestId('community-member-sheet').locator('p').nth(0),
+        page.getByTestId('community-member-sheet').locator('p').nth(1)
+      ]
     });
     const reference = readFileSync(
       new URL('./references/paf-202-community-admin/jQDkx.png', import.meta.url)
