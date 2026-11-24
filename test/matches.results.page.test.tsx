@@ -232,13 +232,13 @@ describe('record result page', () => {
     const view = render(detail(null));
     expect(screen.getByRole('heading', { level: 1, name: 'Match' })).toBeTruthy();
     expect(screen.queryByRole('img', { name: 'Match venue' })).toBeNull();
-    const bare = screen.getByRole('link', { name: 'View court location for PADEL INDOOR MADRID' });
+    const bare = screen.getByRole('link', { name: 'Open map ↗' });
     expect(bare.getAttribute('href')).toBe('https://maps.google.com/madrid');
     expect(screen.getByText('Calle de Alcalá')).toBeTruthy();
     view.unmount();
     render(detail('https://example.com/court.jpg'));
     expect(screen.getByText('PADEL INDOOR MADRID')).toBeTruthy();
-    const map = screen.getByRole('link', { name: 'View court location for PADEL INDOOR MADRID' });
+    const map = screen.getByRole('link', { name: 'Open map ↗' });
     expect(map.getAttribute('href')).toBe('https://maps.google.com/madrid');
     expect(map.getAttribute('rel')).toBe('noopener noreferrer');
     expect(screen.getByRole('img', { name: 'Match venue' }).contains(map)).toBe(false);
@@ -247,6 +247,37 @@ describe('record result page', () => {
     );
     expect(screen.getByText('Fri, 23 Oct · 18:30–20:00')).toBeTruthy();
   });
+  it.each([
+    ['en', 'Open map'],
+    ['pt-BR', 'Abrir mapa'],
+    ['es', 'Abrir mapa']
+  ] as const)(
+    'names the %s map link from its visible text (label-in-name) beside the venue',
+    (locale, visible) => {
+      const detail = (photo_url: string | null) => (
+        <I18nextProvider i18n={createI18n(locale)}>
+          <MatchResultDetail
+            event={makeMatchDetail({
+              venue_name: 'PADEL INDOOR MADRID',
+              photo_url,
+              maps_url: 'https://maps.google.com/madrid'
+            })}
+            proposals={[]}
+            canRecord={false}
+            onRefresh={vi.fn<() => void>()}
+          />
+        </I18nextProvider>
+      );
+      for (const photo of [null, 'https://example.com/court.jpg']) {
+        const view = render(detail(photo));
+        const map = screen.getByRole('link', { name: new RegExp(`^${visible}`) });
+        expect(map.hasAttribute('aria-label')).toBe(false);
+        expect(map.textContent).toContain(visible);
+        expect(map.parentElement?.textContent).toContain('PADEL INDOOR MADRID');
+        view.unmount();
+      }
+    }
+  );
   it('shows pending status, provenance and facts without inventing review eligibility', () => {
     const proposal = parseResultProposals([
       {

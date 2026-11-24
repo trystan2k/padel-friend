@@ -213,7 +213,7 @@ async function assertLifecycleHeader(page: Page) {
   await expect(title).toHaveCSS('text-align', 'center');
   const venue = page.getByText('PADEL INDOOR MADRID', { exact: true });
   await expect(venue).toBeVisible();
-  const map = page.getByRole('link', { name: 'View court location for PADEL INDOOR MADRID' });
+  const map = page.getByRole('link', { name: /^Open map/ });
   await expect(map).toBeVisible();
   await expect(map).toHaveAttribute('href', /^https?:/);
   const surface = map.locator('xpath=..');

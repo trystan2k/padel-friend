@@ -117,7 +117,6 @@ export function MatchResultDetail({
               href={event.maps_url}
               target="_blank"
               rel="noopener noreferrer"
-              aria-label={t('matches.detail.viewCourtLocationFor', { venue: event.venue_name })}
               {...stylex.props(shell.maps)}
             >
               {t('matches.results.openMap')}
