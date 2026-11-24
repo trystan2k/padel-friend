@@ -106,15 +106,18 @@ export const homeStyles = stylex.create({
       borderWidth: 0,
       borderStyle: 'none',
       borderRadius: 'var(--space-4)',
-      backgroundColor: 'var(--color-surface-2)'
+      backgroundColor: 'var(--color-surface-2)',
+      backgroundImage: 'none'
     },
     '::-webkit-meter-optimum-value': {
       borderRadius: 'var(--space-4)',
-      backgroundColor: 'var(--color-green)'
+      backgroundColor: 'var(--color-green)',
+      backgroundImage: 'none'
     },
     '::-moz-meter-bar': {
       borderRadius: 'var(--space-4)',
-      backgroundColor: 'var(--color-green)'
+      backgroundColor: 'var(--color-green)',
+      backgroundImage: 'none'
     }
   },
   link: {
@@ -159,8 +162,16 @@ export const homeStyles = stylex.create({
     maxWidth: '100%',
     minHeight: target,
     paddingBlock: 0,
-    paddingInlineStart: 'var(--space-8)',
-    paddingInlineEnd: 'var(--space-14)',
+    // Under 360px the header row is ~176px wide (chip reserve + bell), so the pill drops its
+    // avatar and tightens padding to leave the community name room before it ellipsizes.
+    paddingInlineStart: {
+      default: 'var(--space-8)',
+      '@media (max-width: 359px)': 'var(--space-10)'
+    },
+    paddingInlineEnd: {
+      default: 'var(--space-14)',
+      '@media (max-width: 359px)': 'var(--space-10)'
+    },
     borderWidth: 0,
     borderStyle: 'none',
     borderRadius: 'var(--radius-36)',
@@ -173,7 +184,7 @@ export const homeStyles = stylex.create({
     ':focus-visible': focusRing
   },
   pillAvatar: {
-    display: 'grid',
+    display: { default: 'grid', '@media (max-width: 359px)': 'none' },
     placeItems: 'center',
     flexShrink: 0,
     width: 'calc(var(--space-20) + var(--space-8))',

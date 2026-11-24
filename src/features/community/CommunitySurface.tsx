@@ -54,7 +54,7 @@ function CommunityOverview({ data }: { data: OverviewData }) {
               {city && <span {...stylex.props(s.chip)}>{city}</span>}
             </div>
             <dl {...stylex.props(s.metrics)}>
-              <div>
+              <div {...stylex.props(s.metricItem)}>
                 <dt {...stylex.props(s.body)}>{t('communitySurface.members')}</dt>
                 <dd {...stylex.props(s.metric)}>
                   {count === undefined
@@ -62,7 +62,7 @@ function CommunityOverview({ data }: { data: OverviewData }) {
                     : formatter.format(count)}
                 </dd>
               </div>
-              <div>
+              <div {...stylex.props(s.metricItem)}>
                 <dt {...stylex.props(s.body)}>{t('communitySurface.activeWeek')}</dt>
                 <dd {...stylex.props(s.metric)}>{t('communitySurface.unavailable')}</dd>
               </div>
@@ -71,7 +71,7 @@ function CommunityOverview({ data }: { data: OverviewData }) {
               <Link to="/matches/create" {...stylex.props(s.link, s.primary)}>
                 {t('matches.create')}
               </Link>
-              {data.adminContext?.visibility === 'private' ? (
+              {data.adminContext?.visibility === 'private' && (
                 <Link
                   to="/community/$communityId/admin/members"
                   params={{ communityId }}
@@ -79,8 +79,6 @@ function CommunityOverview({ data }: { data: OverviewData }) {
                 >
                   {t('communitySurface.invite')}
                 </Link>
-              ) : (
-                <p {...stylex.props(s.body)}>{t('communitySurface.inviteUnavailable')}</p>
               )}
             </div>
           </SurfaceCard>

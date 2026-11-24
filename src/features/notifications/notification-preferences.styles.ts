@@ -15,27 +15,6 @@ export const preferenceStyles = stylex.create({
     flexDirection: 'column',
     gap: 'var(--space-12)'
   },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-8)',
-    minHeight: 'calc(var(--space-40) + var(--space-16))'
-  },
-  back: {
-    minHeight: 'calc(var(--space-40) + var(--space-8))',
-    minWidth: 'calc(var(--space-40) + var(--space-8))',
-    display: 'inline-flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    color: 'var(--color-text)',
-    fontSize: 'var(--font-size-24)',
-    textDecoration: 'none'
-  },
-  title: {
-    margin: 0,
-    fontSize: 'var(--font-size-18)',
-    lineHeight: 'var(--font-line-height-tight)'
-  },
   context: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-12)' },
   group: {
     boxSizing: 'border-box',
@@ -49,7 +28,14 @@ export const preferenceStyles = stylex.create({
     margin: 0,
     backgroundColor: 'var(--color-surface)'
   },
-  legend: { fontSize: 'var(--font-size-12)', fontWeight: 'var(--font-weight-semibold)' },
+  // A floated legend leaves the border line, so it never notches the card border.
+  legend: {
+    float: 'inline-start',
+    width: '100%',
+    padding: 0,
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   row: {
     display: 'flex',
     alignItems: 'center',

@@ -643,7 +643,11 @@ async function assertGutterAxis(page: Page, label: string): Promise<void> {
       borderRight: mainStyle.borderRightWidth,
       // The sticky action bar bleeds past the gutter by design (asserted in matches-visual).
       blocks: Array.from(main.children)
-        .filter((node) => !node.hasAttribute('data-match-action-bar'))
+        .filter(
+          (node) =>
+            !node.hasAttribute('data-match-action-bar') &&
+            getComputedStyle(node).display !== 'contents'
+        )
         .map((node) => {
           const box = node.getBoundingClientRect();
           return { left: box.left, right: innerWidth - box.right };

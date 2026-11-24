@@ -62,7 +62,9 @@ function figure(label: string): HTMLElement {
 describe('PairStatistics', () => {
   it('shows the record, scores, streaks, opponent level sample and Leagues', () => {
     render(wrap(<PairStatistics pair={makePair()} />));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Ana & Bea');
+    // GrkSH: the bar title is "Partnership"; the partner's name leads the identity block below it.
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Partnership');
+    expect(screen.getByText('Bea')).toBeTruthy();
     expect(figure('Matches together').textContent).toContain('7');
     expect(figure('Win rate').textContent).toContain('50%');
     expect(figure('Win rate').textContent).toContain('3 of 6 matches');
@@ -103,8 +105,7 @@ describe('PairStatistics', () => {
     expect(back.getAttribute('href')).toBe(
       '/players/' + FOCAL + '?communityId=' + OTHER + '&type=competitive'
     );
-    const nav = within(screen.getByRole('navigation', { name: 'Statistics navigation' }));
-    expect(nav.getByRole('link', { name: 'Back to player statistics' })).toBe(back);
+    expect(screen.getAllByRole('link', { name: 'Back to player statistics' })).toEqual([back]);
   });
 
   it('explains a one-match pair as visible but not yet eligible for a best claim', () => {
@@ -163,7 +164,8 @@ describe('PairStatistics', () => {
 describe('OpponentStatistics', () => {
   it('shows the head-to-head from the focal point of view with rating effects', () => {
     render(wrap(<OpponentStatistics opponent={makeOpponent()} />));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Ana vs Cleo');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Head-to-head');
+    expect(screen.getByText('Cleo')).toBeTruthy();
     expect(figure('Meetings').textContent).toContain('7');
     expect(figure('Toughest loss').textContent).toContain('80% expected');
     expect(figure('Biggest rating gain').textContent).toContain('+0.4');
@@ -423,11 +425,11 @@ describe('relationship copy', () => {
   });
   it('renders the pair in Portuguese and Spanish', () => {
     const { unmount } = render(wrap(<PairStatistics pair={makePair()} />, 'pt-BR'));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Ana e Bea');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Dupla');
     expect(figure('Partidas juntos')).toBeTruthy();
     unmount();
     render(wrap(<OpponentStatistics opponent={makeOpponent()} />, 'es'));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Ana contra Cleo');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Cara a cara');
     expect(figure('Enfrentamientos')).toBeTruthy();
   });
 });

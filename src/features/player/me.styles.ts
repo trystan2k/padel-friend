@@ -41,12 +41,15 @@ export const me = stylex.create({
     gap: 'var(--space-14)',
     minWidth: 0
   },
-  // vARtQ: three equal tiles (matches, W–L–D, win rate) between identity and the level card.
+  // vARtQ: one card with three equal stat columns (matches, W–L–D, win rate) between identity and the level card.
   stats: {
+    boxSizing: 'border-box',
     display: 'grid',
     gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    gap: 'var(--space-8)',
-    margin: 0
+    margin: 0,
+    paddingBlock: 'var(--space-12)',
+    borderRadius: 'var(--radius-16)',
+    backgroundColor: 'var(--color-surface)'
   },
   statTile: {
     boxSizing: 'border-box',
@@ -57,17 +60,13 @@ export const me = stylex.create({
     justifyContent: 'center',
     gap: 'var(--space-2)',
     minWidth: 0,
-    minHeight: ROW,
-    paddingBlock: 'var(--space-12)',
     paddingInline: 'var(--space-4)',
-    borderRadius: 'var(--radius-14)',
-    backgroundColor: 'var(--color-surface)',
     textAlign: 'center'
   },
   statValue: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-20)',
+    fontSize: 'var(--font-size-18)',
     fontWeight: 'var(--font-weight-extrabold)',
     lineHeight: 1.2,
     overflowWrap: 'anywhere'

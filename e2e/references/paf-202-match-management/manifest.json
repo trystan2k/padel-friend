@@ -56,6 +56,17 @@
     "playing": "cpyqqne",
     "reserve": "cr29n0n"
   },
+  "platformBaselines": {
+    "mechanism": "Selected by baselineName() in e2e/matches-management-visual.spec.ts, not by Playwright auto-suffixing: playwright.config.ts keeps snapshotPathTemplate '{testDir}/{testFileName}-snapshots/{arg}{ext}' (no platform token). When process.platform is linux and <frame>-light-linux.png exists, the frame compares against it; otherwise (darwin, or any frame without a -linux file) it compares against <frame>-light.png. A -linux file is a Chromium-on-Linux raster of the same live frame, never a design reference: the design reference hash stays in exportSha256.",
+    "linux": {
+      "c5xzgnc": "e2e/matches-management-visual.spec.ts-snapshots/c5xzgnc-light-linux.png",
+      "c7o7c5e": "e2e/matches-management-visual.spec.ts-snapshots/c7o7c5e-light-linux.png",
+      "c9n78kb": "e2e/matches-management-visual.spec.ts-snapshots/c9n78kb-light-linux.png",
+      "lJHUZ": "e2e/matches-management-visual.spec.ts-snapshots/lJHUZ-light-linux.png",
+      "t0SZec": "e2e/matches-management-visual.spec.ts-snapshots/t0SZec-light-linux.png"
+    },
+    "note": "These five frames rasterize long text runs differently on Linux (glyph baseline rounding, FreeType vs CoreText) beyond their per-frame budgets, so CI carries its own baselines instead of widening the budgets (ledger F51). Regenerate a -linux file only on Linux CI/container output; darwin runs never touch them."
+  },
   "exportSha256": {
     "c27ucrt": "878ed6e514900a6425031f726f58a1b11f9e4351e6d1c57c3b10fc071f11cddd",
     "c37x0cg": "0645592e6013f7e15666eb03bc760cdad0fb7cde8087473c52500a79c7b03f12",

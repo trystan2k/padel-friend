@@ -513,6 +513,7 @@ export function NotificationDetailPage({
       <main
         {...stylex.props(styles.page, invitationStyles.page)}
         data-community-invitation={invitationState}
+        data-route-chrome="navigation"
       >
         <header {...stylex.props(invitationStyles.header)}>
           {t('communityInvites.detailLabel')}
@@ -646,7 +647,7 @@ export function NotificationDetailPage({
     </>
   );
   return (
-    <main {...stylex.props(detail.page)}>
+    <main {...stylex.props(detail.page)} data-route-chrome="navigation">
       <NotificationDetailTopBar />
       {liveRegion}
       {unconfirmedAlert}

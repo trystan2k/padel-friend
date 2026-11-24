@@ -104,17 +104,17 @@ describe('PlayerProfile rating journey', () => {
     expect(hrefs).toEqual([
       [en.profile.links.statistics.concat('›'), '/players/$playerId'],
       [en.profile.links.matchHistory.concat('›'), '/matches/past'],
+      [
+        en.levelReview.entry.request.concat(en.levelReview.entry.description, '›'),
+        '/level-reviews/new'
+      ],
+      [en.levelReview.entry.history.concat('›'), '/level-reviews'],
       [en.profile.links.notifications.concat('›'), '/notifications']
     ]);
-    const review = within(screen.getByRole('region', { name: en.levelReview.entry.title }));
+    // Frame vARtQ: the level-review request is a row of the same list, between history and notifications.
     expect(
-      review
-        .getByRole('link', { name: new RegExp(en.levelReview.entry.request) })
-        .getAttribute('href')
-    ).toBe('/level-reviews/new');
-    expect(
-      review.getByRole('link', { name: en.levelReview.entry.history }).getAttribute('href')
-    ).toBe('/level-reviews');
+      shortcuts.getByRole('link', { name: new RegExp(en.levelReview.entry.request) })
+    ).toBeTruthy();
   });
 
   it('shows the platform-admin entry on Me only for server-confirmed admins', () => {
@@ -169,13 +169,13 @@ describe('PlayerProfile rating journey', () => {
 
   it('offers the level review entry points and no writable level input', () => {
     renderProfile(rating);
-    const entry = screen.getByRole('region', { name: 'Level review' });
-    expect(
-      within(entry).getByRole('link', { name: 'Request level review' }).getAttribute('href')
-    ).toBe('/level-reviews/new');
-    expect(
-      within(entry).getByRole('link', { name: 'My review requests' }).getAttribute('href')
-    ).toBe('/level-reviews');
+    const entry = within(screen.getByRole('navigation', { name: en.profile.links.label }));
+    expect(entry.getByRole('link', { name: /Request level review/ }).getAttribute('href')).toBe(
+      '/level-reviews/new'
+    );
+    expect(entry.getByRole('link', { name: 'My review requests' }).getAttribute('href')).toBe(
+      '/level-reviews'
+    );
     // The level is shown, never editable: no spin button and no field holding it.
     expect(screen.queryByRole('spinbutton')).toBeNull();
     expect(screen.queryByDisplayValue('4.12')).toBeNull();

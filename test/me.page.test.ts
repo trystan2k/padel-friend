@@ -102,7 +102,7 @@ describe('Me composition sources', () => {
       '<header {...stylex.props(s.identity)}',
       'profile.globalLevel',
       "t('profile.links.label')",
-      "t('levelReview.entry.title')",
+      "t('levelReview.entry.request')",
       '<RatingJourney',
       '<PlatformAdminEntry',
       "t('signOut')"

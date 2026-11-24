@@ -65,6 +65,8 @@ export const matchDetailShellStyles = stylex.create({
     borderBlockStartStyle: 'solid',
     borderBlockStartColor: 'var(--color-hairline)'
   },
+  // Mount point for the invitation's Accept / Decline bar: contents, so the bar is a direct item of the column.
+  barSlot: { display: 'contents' },
   barNotice: {
     margin: 0,
     padding: 'var(--space-12) var(--space-14)',

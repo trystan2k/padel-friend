@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from '@playwrigh
 import { createHash } from 'node:crypto';
 import { waitForHydratedPage } from './auth-helpers';
 import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
+import { assertNoUaFieldsetBorders } from './route-chrome';
 import { copies, day, fill, leagueFixtures, sql, type Actor } from './leagues-fixtures';
 import manifest from './references/paf-202-leagues/manifest.json' with { type: 'json' };
 
@@ -345,6 +346,7 @@ for (const theme of ['light', 'dark'] as const) {
   test(`ik5JC League creation fieldsets render no border (${theme})`, async () => {
     const page = await f.page(member, 'en', 390, theme, 844);
     await openCreateLeague(page);
+    await assertNoUaFieldsetBorders(page, `league create (${theme})`);
     const borders = await page.locator('main fieldset').evaluateAll((nodes) =>
       nodes.map((node) => {
         const style = getComputedStyle(node);

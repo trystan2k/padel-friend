@@ -20,8 +20,6 @@ export const styles = stylex.create({
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)'
   },
-  header: { display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', minWidth: 0 },
-  headingRow: { display: 'flex', alignItems: 'center', gap: 'var(--space-4)', minWidth: 0 },
   backLink: {
     boxSizing: 'border-box',
     display: 'inline-flex',

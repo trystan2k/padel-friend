@@ -80,7 +80,7 @@ export const communityStyles = stylex.create({
   },
   segmentActive: {
     backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-green)'
+    color: 'var(--color-text)'
   },
   compact: { minHeight: 'calc(var(--space-40) + var(--space-4))' },
   primary: {
@@ -111,10 +111,13 @@ export const communityStyles = stylex.create({
     gap: 'var(--space-8)',
     margin: 0
   },
+  // Ex7RD: value above label. DOM keeps term before value for assistive tech; order flips visually.
+  metricItem: { display: 'flex', flexDirection: 'column-reverse', gap: 'var(--space-2)' },
   metric: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontWeight: 'var(--font-weight-bold)'
+    fontSize: 'var(--font-size-24)',
+    fontWeight: 'var(--font-weight-extrabold)'
   },
   list: { margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 'var(--space-4)' },
   row: {
@@ -129,6 +132,20 @@ export const communityStyles = stylex.create({
     backgroundColor: 'var(--color-surface)'
   },
   self: { backgroundColor: 'var(--color-green-soft)' },
+  // y4Zeg self row: position, initials avatar, identity, level.
+  selfAvatarRow: { gridTemplateColumns: 'auto auto minmax(0, 1fr) auto' },
+  selfAvatar: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 'calc(var(--space-40) + var(--space-4))',
+    height: 'calc(var(--space-40) + var(--space-4))',
+    borderRadius: 'var(--radius-36)',
+    backgroundColor: 'var(--color-lime)',
+    color: 'var(--color-green-deep)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-extrabold)'
+  },
   match: {
     minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-8))',
     textAlign: 'start',

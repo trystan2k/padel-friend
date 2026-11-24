@@ -37,10 +37,12 @@ export function MatchEditCompetitionField({
           : 'members';
   return (
     <fieldset
-      {...stylex.props(edit.field)}
+      {...stylex.props(edit.field, edit.competitionGroup)}
       aria-describedby={`${id}-guidance${error ? ` ${id}-error` : ''}`}
     >
-      <legend>{t('matchCreate.competition.legend')}</legend>
+      <legend {...stylex.props(edit.competitionLegend)}>
+        {t('matchCreate.competition.legend')}
+      </legend>
       <label {...stylex.props(edit.competitionLabel)}>
         <input
           type="radio"

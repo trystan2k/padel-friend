@@ -4,6 +4,7 @@ import { controlStyles } from '../../components/ui/control.styles';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
+import { TopBar, TopBarActionLink } from '../../components/ui/TopBar';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { NotificationCategory, NotificationPage } from './notification-model';
 import { groupNotifications } from './notification-model';
@@ -216,107 +217,102 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
   return (
     <main data-route-chrome="navigation" {...stylex.props(styles.page)}>
       <section {...stylex.props(styles.panel)}>
-        <header {...stylex.props(styles.header)}>
-          <Link
-            to="/dashboard"
-            aria-label={t('notifications.backHome')}
-            {...stylex.props(legacyStyles.link, styles.back)}
+        <TopBar
+          title={t('notifications.title')}
+          back={{ to: '/dashboard', label: t('notifications.backHome') }}
+          trailing={
+            <TopBarActionLink to="/notifications/preferences">
+              {t('notificationPreferences.preferencesLink')}
+            </TopBarActionLink>
+          }
+        />
+        <div {...stylex.props(styles.content)}>
+          <output
+            aria-live="polite"
+            aria-atomic="true"
+            {...stylex.props(legacyStyles.visuallyHidden)}
           >
-            <span aria-hidden="true">‹</span>
-          </Link>
-          <h1 {...stylex.props(styles.title)}>{t('notifications.title')}</h1>
-          <Link
-            to="/notifications/preferences"
-            {...stylex.props(legacyStyles.link, styles.textAction)}
-          >
-            {t('notificationPreferences.preferencesLink')}
-          </Link>
-        </header>
-        <output
-          aria-live="polite"
-          aria-atomic="true"
-          {...stylex.props(legacyStyles.visuallyHidden)}
-        >
-          {countAnnouncement}
-        </output>
-        <nav aria-label={t('notifications.filters.label')} {...stylex.props(styles.filters)}>
-          {categories.map((key) => (
-            <button
-              key={key}
-              type="button"
-              aria-current={category === key ? 'page' : undefined}
-              onClick={() => setCategory(key)}
-              {...stylex.props(
-                styles.filter,
-                category === key && styles.selected,
-                controlStyles.focusRing
-              )}
+            {countAnnouncement}
+          </output>
+          <nav aria-label={t('notifications.filters.label')} {...stylex.props(styles.filters)}>
+            {categories.map((key) => (
+              <button
+                key={key}
+                type="button"
+                aria-current={category === key ? 'page' : undefined}
+                onClick={() => setCategory(key)}
+                {...stylex.props(
+                  styles.filter,
+                  category === key && styles.selected,
+                  controlStyles.focusRing
+                )}
+              >
+                {category === key && <span aria-hidden="true">✓</span>}
+                {t(`notifications.filters.${key}`)}
+              </button>
+            ))}
+          </nav>
+          <div {...stylex.props(styles.summary)}>
+            {feed.unreadCount !== null && (
+              <StatusBadge appearance="summary">{unreadSummary}</StatusBadge>
+            )}
+            <Button
+              variant="secondary"
+              xstyle={styles.textButton}
+              disabled={!feed.online || feed.mutating || !feed.unreadCount}
+              onClick={() => void feed.markAll()}
             >
-              {category === key && <span aria-hidden="true">✓</span>}
-              {t(`notifications.filters.${key}`)}
-            </button>
-          ))}
-        </nav>
-        <div {...stylex.props(styles.summary)}>
-          {feed.unreadCount !== null && (
-            <StatusBadge appearance="summary">{unreadSummary}</StatusBadge>
+              {t('notifications.markAllRead')}
+            </Button>
+          </div>
+          {!feed.online && <output>{t('notifications.offline')}</output>}
+          {feed.mutationError && <p role="alert">{t('notifications.mutationError')}</p>}
+          {feed.error && (
+            <p role="alert">
+              {t('notifications.stale')}{' '}
+              <Button variant="secondary" size="large" onClick={() => void feed.refresh()}>
+                {t('notifications.retry')}
+              </Button>
+            </p>
           )}
-          <Button
-            variant="secondary"
-            xstyle={styles.textButton}
-            disabled={!feed.online || feed.mutating || !feed.unreadCount}
-            onClick={() => void feed.markAll()}
-          >
-            {t('notifications.markAllRead')}
-          </Button>
-        </div>
-        {!feed.online && <output>{t('notifications.offline')}</output>}
-        {feed.mutationError && <p role="alert">{t('notifications.mutationError')}</p>}
-        {feed.error && (
-          <p role="alert">
-            {t('notifications.stale')}{' '}
+          {feed.loading && !feed.rows.length && <p>{t('notifications.loading')}</p>}
+          {feed.error && !feed.rows.length ? (
             <Button variant="secondary" size="large" onClick={() => void feed.refresh()}>
               {t('notifications.retry')}
             </Button>
-          </p>
-        )}
-        {feed.loading && !feed.rows.length && <p>{t('notifications.loading')}</p>}
-        {feed.error && !feed.rows.length ? (
-          <Button variant="secondary" size="large" onClick={() => void feed.refresh()}>
-            {t('notifications.retry')}
-          </Button>
-        ) : feed.rows.length ? (
-          <>
-            {(['today', 'earlier'] as const).map((group) =>
-              grouped[group].length > 0 ? (
-                <section
-                  key={group}
-                  aria-labelledby={`notifications-${group}`}
-                  {...stylex.props(styles.group)}
+          ) : feed.rows.length ? (
+            <>
+              {(['today', 'earlier'] as const).map((group) =>
+                grouped[group].length > 0 ? (
+                  <section
+                    key={group}
+                    aria-labelledby={`notifications-${group}`}
+                    {...stylex.props(styles.group)}
+                  >
+                    <h2 id={`notifications-${group}`} {...stylex.props(styles.groupTitle)}>
+                      {t(`notifications.${group}`)}
+                    </h2>
+                    {list(grouped[group])}
+                  </section>
+                ) : null
+              )}
+              {feed.cursor && (
+                <Button
+                  variant="secondary"
+                  size="large"
+                  disabled={!feed.online || feed.loading}
+                  onClick={() => void feed.loadMore()}
                 >
-                  <h2 id={`notifications-${group}`} {...stylex.props(styles.groupTitle)}>
-                    {t(`notifications.${group}`)}
-                  </h2>
-                  {list(grouped[group])}
-                </section>
-              ) : null
-            )}
-            {feed.cursor && (
-              <Button
-                variant="secondary"
-                size="large"
-                disabled={!feed.online || feed.loading}
-                onClick={() => void feed.loadMore()}
-              >
-                {t('notifications.loadMore')}
-              </Button>
-            )}
-          </>
-        ) : (
-          !feed.loading && (
-            <p {...stylex.props(styles.meta)}>{t(`notifications.empty.${category}`)}</p>
-          )
-        )}
+                  {t('notifications.loadMore')}
+                </Button>
+              )}
+            </>
+          ) : (
+            !feed.loading && (
+              <p {...stylex.props(styles.meta)}>{t(`notifications.empty.${category}`)}</p>
+            )
+          )}
+        </div>
       </section>
     </main>
   );

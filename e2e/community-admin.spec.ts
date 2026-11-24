@@ -982,7 +982,9 @@ async function venueGeometry(page: Page) {
     .getByRole('button', { name: en.communityAdmin.venue.archive })
     .boundingBox();
   expect(archive).not.toBeNull();
-  expect(archive!.height).toBeGreaterThanOrEqual(controlHeight - 1);
+  // F62: compact inline row action, not a full-width control; still a >=44px target.
+  expect(archive!.height).toBeGreaterThanOrEqual(44);
+  expect(archive!.width).toBeLessThan(contentWidth / 2);
 }
 
 async function auditGeometry(page: Page) {

@@ -1,5 +1,4 @@
 import * as stylex from '@stylexjs/stylex';
-import { useTranslation } from 'react-i18next';
 import {
   RelationshipIdentity,
   RelationshipTiles,
@@ -7,7 +6,7 @@ import {
 } from './RelationshipHeadline';
 import { FilterContext } from './PlayerStatistics';
 import { RelationshipMeetings } from './RelationshipMeetings';
-import { RelationshipSections, useRelationshipFormat } from './RelationshipRecordView';
+import { RelationshipSections } from './RelationshipRecordView';
 import type { PairStatistics as Pair } from './statistics-relationship-contracts';
 import { playerStyles as s } from './statistics-player.styles';
 import { StatisticsFilterSection, type FilterControls } from './StatisticsFilterSection';
@@ -26,19 +25,14 @@ export function PairStatistics({
   recentOffset?: number;
   onRecentOffsetChange?: (offset: number) => void;
 }) {
-  const { t } = useTranslation();
-  const f = useRelationshipFormat();
   const focal = pair.players.find((player) => player.userId === pair.focalId);
   const other = pair.players.find((player) => player.userId === pair.otherId);
   return (
-    <main {...stylex.props(s.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(s.page)}>
       <RelationshipTopBar
+        kind="pair"
         playerId={pair.focalId}
         filters={pair.filters}
-        heading={t('statistics.relationships.pair.heading', {
-          first: f.name(focal?.displayName ?? null),
-          second: f.name(other?.displayName ?? null)
-        })}
         filtersId={filterControls ? FILTERS_ID : undefined}
       />
       <RelationshipIdentity kind="pair" focal={focal} other={other} />

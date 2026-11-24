@@ -1,5 +1,5 @@
 import * as stylex from '@stylexjs/stylex';
-import { Link } from '@tanstack/react-router';
+import { TopBar } from '../../components/ui/TopBar';
 import { useTranslation } from 'react-i18next';
 import { playerInitials } from '../player/player-initials';
 import { ReasonText } from './StatisticsStates';
@@ -10,44 +10,40 @@ import { playerStyles as s } from './statistics-player.styles';
 import { filterSearch } from './statistics-search';
 
 /**
- * GrkSH / khmeK compact top bar: back chevron and title on one row, then a jump to the filter section below the summary
+ * GrkSH / khmeK shared top bar: back chevron and the centred "Partnership" / "Head-to-head" title (the
+ * pair names live in the identity block below), then a jump to the filter section below the summary
  * (the active-filter chips sit with that section). The back link keeps the filters in the URL.
  */
 export function RelationshipTopBar({
+  kind,
   playerId,
   filters,
-  heading,
   filtersId
 }: {
+  kind: 'pair' | 'opponent';
   playerId: string;
   filters: StatisticsFilters;
-  heading: string;
   /** Id of the filter section heading; omitted when the page offers no filter controls. */
   filtersId?: string;
 }) {
   const { t } = useTranslation();
   return (
-    <header {...stylex.props(s.header)}>
-      <div {...stylex.props(s.topBar)}>
-        <nav aria-label={t('statistics.navigation.label')}>
-          <Link
-            to="/players/$playerId"
-            params={{ playerId }}
-            search={filterSearch(filters)}
-            aria-label={t('statistics.relationships.backToPlayer')}
-            {...stylex.props(s.back)}
-          >
-            <span aria-hidden="true">‹</span>
-          </Link>
-        </nav>
-        <h1 {...stylex.props(s.title)}>{heading}</h1>
-      </div>
+    <>
+      <TopBar
+        title={t(`statistics.relationships.${kind}.title`)}
+        back={{
+          to: '/players/$playerId',
+          params: { playerId },
+          search: filterSearch(filters),
+          label: t('statistics.relationships.backToPlayer')
+        }}
+      />
       {filtersId && (
         <a href={`#${filtersId}`} {...stylex.props(s.filterAccess)}>
           {t('statistics.filters.title')}
         </a>
       )}
-    </header>
+    </>
   );
 }
 

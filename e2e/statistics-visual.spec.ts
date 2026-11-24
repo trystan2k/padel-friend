@@ -324,7 +324,7 @@ const PLAYER_REGIONS: Region[] = [
 
 /** GrkSH / khmeK lead: the two-player composition, then the three headline metric tiles. */
 const HEADLINE_REGIONS: Region[] = [
-  { name: 'player composition', selector: 'main > header + div' },
+  { name: 'player composition', selector: 'main > header ~ div:first-of-type' },
   { name: 'headline tiles', selector: 'main > section[aria-label] > dl > div', count: 3 }
 ];
 
@@ -434,17 +434,20 @@ for (const [locale, width] of LOCALES.flatMap((language) =>
       await page.goto(surfaces().find((candidate) => candidate.name === name)!.path);
       await waitForHydratedPage(page);
       const bar = await page.evaluate(() => {
-        const back = document.querySelector('main > header nav a')!.getBoundingClientRect();
+        const back = document.querySelector('main > header a')!.getBoundingClientRect();
         const title = document.querySelector('main > header h1')!.getBoundingClientRect();
-        const identity = document.querySelector('main > header + div')!.getBoundingClientRect();
-        return { back, title, identity };
+        const identity = document.querySelector('main > header ~ div')!.getBoundingClientRect();
+        return { back, title, identity, viewport: window.innerWidth };
       });
       if (bar.back.width < 44 || bar.back.height < 44)
         failures.push(name + ': back link under 44px');
       if (Math.abs(bar.back.top + bar.back.height / 2 - (bar.title.top + bar.title.height / 2)) > 8)
         failures.push(name + ': back link and title are not on one row');
       if (bar.title.left < bar.back.right) failures.push(name + ': title overlaps the back link');
-      if ((await page.locator('main > header a[href^="#"]').count()) !== 1)
+      // R5 F57: the shared TopBar centres the 17/700 "Partnership" / "Head-to-head" title.
+      if (Math.abs(bar.title.left + bar.title.width / 2 - bar.viewport / 2) > 1)
+        failures.push(name + ': bar title is not centred');
+      if ((await page.locator('main > a[href^="#"]').count()) !== 1)
         failures.push(name + ': filter access link missing');
       const meetings = await page.locator('#relationship-recent').boundingBox();
       const filters = await page.locator('#' + name + '-stats-filters').boundingBox();

@@ -13,7 +13,11 @@ import {
 import { spawnTestSql, testSupabaseConfig } from './test-supabase-config';
 import { waitForHydratedPage } from './auth-helpers';
 import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
-import { assertChipsOnUnmarkedRoute, assertChipsStepAside } from './route-chrome';
+import {
+  assertChipsOnUnmarkedRoute,
+  assertChipsStepAside,
+  assertNoUaFieldsetBorders
+} from './route-chrome';
 
 // Pixel baselines superseded by the PAF-6 frame-driven redesign; re-baselining requires product approval.
 // Retain structural/role/a11y coverage. Historical exports remain provenance only.
@@ -852,7 +856,7 @@ async function assertWizardChrome(
     const main = document.querySelector('main');
     const header = main?.querySelector(':scope > header');
     const heading = header?.querySelector('h1');
-    const back = header?.firstElementChild;
+    const back = header?.querySelector('a, button');
     const progress = main?.querySelector('ol[aria-hidden="true"]');
     const content = progress?.parentElement;
     const stepLabel = progress?.nextElementSibling;
@@ -863,7 +867,11 @@ async function assertWizardChrome(
     const backBox = back.getBoundingClientRect();
     return {
       mainPadding: [mainStyle.paddingLeft, mainStyle.paddingRight],
-      headerTags: Array.from(header.children, (node) => node.tagName.toLowerCase()),
+      headerTags: [back.tagName.toLowerCase(), heading.tagName.toLowerCase()],
+      titleCentre: [
+        heading.getBoundingClientRect().left + heading.getBoundingClientRect().width / 2,
+        window.innerWidth / 2
+      ],
       headerHeight: header.getBoundingClientRect().height,
       backSize: [backBox.width, backBox.height],
       headingFont: [heads.fontFamily, heads.fontSize, heads.fontWeight, heads.color],
@@ -887,6 +895,11 @@ async function assertWizardChrome(
     stepIndex > 0 ? 'button' : 'a',
     'h1'
   ]);
+  // R5 F56 (wHaAb/vAxZh/b5RR4/RDV2r): the shared TopBar centres the 17/700 title between equal slots.
+  expect(
+    Math.abs(reading!.titleCentre[0]! - reading!.titleCentre[1]!),
+    `${label}: top bar title is centred`
+  ).toBeLessThanOrEqual(1);
   expect(reading!.headerHeight, `${label}: top bar height`).toBeGreaterThanOrEqual(56);
   expect(reading!.backSize, `${label}: back control 48×48`).toEqual([48, 48]);
   expect(reading!.headingFont[0]!.startsWith('Figtree'), `${label}: h1 heading face`).toBe(true);
@@ -1085,6 +1098,9 @@ async function assertListChrome(
       actionHeight: action.getBoundingClientRect().height,
       actionHref: action.getAttribute('href'),
       actionRight: action.getBoundingClientRect().right,
+      chipsLeft:
+        document.querySelector('#locale')?.parentElement?.parentElement?.getBoundingClientRect()
+          .left ?? null,
       mainRight: main.getBoundingClientRect().right,
       dayHeadings: Array.from(main.querySelectorAll('h2[id^="matches-day-"]')).map(
         (node) => node.textContent
@@ -1105,14 +1121,26 @@ async function assertListChrome(
     chrome.innerWidth / 2,
     0
   );
-  // The global language/theme chips float top-right, so the header reserves their width.
+  // F68: the global language/theme chips float top-right, so the header reserves their width only
+  // where they intersect the column; wide viewports hug the column edge instead.
   const reserve =
     2 * Number.parseFloat(await tokenValue(page, '--space-40')) +
     3 * Number.parseFloat(await tokenValue(page, '--space-8'));
-  expect(
-    chrome.mainRight - chrome.actionRight,
-    `${label}: New action stays clear of the global chips`
-  ).toBeGreaterThanOrEqual(gutter + reserve - 0.5);
+  if (chrome.innerWidth < 880)
+    expect(
+      chrome.mainRight - chrome.actionRight,
+      `${label}: New action stays clear of the global chips`
+    ).toBeGreaterThanOrEqual(gutter + reserve - 0.5);
+  else
+    expect(
+      chrome.mainRight - chrome.actionRight,
+      `${label}: New action hugs the column edge`
+    ).toBeCloseTo(gutter, 0);
+  if (chrome.chipsLeft !== null && chrome.innerWidth >= 880)
+    expect(
+      chrome.actionRight,
+      `${label}: New action does not intersect the global chips`
+    ).toBeLessThanOrEqual(chrome.chipsLeft);
   expect(chrome.font.startsWith('Figtree'), `${label}: h1 uses Figtree`).toBe(true);
   expect(chrome.size, `${label}: h1 is --font-size-28 (frame 30px, nearest token)`).toBe('28px');
   expect(chrome.weight, `${label}: h1 is extrabold`).toBe('800');
@@ -1255,7 +1283,11 @@ async function assertGutterAxis(
       borderRight: mainStyle.borderRightWidth,
       // The sticky action bar bleeds past the gutter by design; assertActionBar owns its geometry.
       blocks: Array.from(main.children)
-        .filter((node) => !node.hasAttribute('data-match-action-bar'))
+        .filter(
+          (node) =>
+            !node.hasAttribute('data-match-action-bar') &&
+            getComputedStyle(node).display !== 'contents'
+        )
         .map((node) => {
           const box = node.getBoundingClientRect();
           return { left: box.left, right: innerWidth - box.right };
@@ -1318,7 +1350,7 @@ async function assertRhythm(
     const containerStyle = getComputedStyle(container);
     const containerBox = container.getBoundingClientRect();
     // The sticky action bar is spaced by auto/negative margins and owned by assertActionBar.
-    const hasBar = container.querySelector(':scope > [data-match-action-bar]') !== null;
+    const hasBar = container.querySelector('[data-match-action-bar]') !== null;
     const children = Array.from(container.children)
       .filter((node): node is Element => node instanceof Element)
       .filter((node) => !node.hasAttribute('data-match-action-bar'))
@@ -2096,6 +2128,7 @@ test.describe.serial('PAF-4 match event visual and structural QA', () => {
     await expect(page.locator('[data-app-nav]')).toHaveCount(0);
     await expect(page.locator('main[data-route-chrome="navigation"]')).toHaveCount(1);
     await assertChipsStepAside(page, 'create wizard');
+    await assertNoUaFieldsetBorders(page, 'create wizard');
     await page.setViewportSize({ width: 390, height: 844 });
     const radioLabels = await page.getByRole('radio').evaluateAll((nodes) =>
       nodes.map((radio) => {

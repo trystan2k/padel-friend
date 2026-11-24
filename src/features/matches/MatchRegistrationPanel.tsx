@@ -141,6 +141,7 @@ export function MatchRegistrationPanel({
   unavailable = null,
   isOrganizer = false,
   showRoster = true,
+  invitationPending = false,
   children
 }: {
   event: MatchRegistrationEvent;
@@ -150,6 +151,8 @@ export function MatchRegistrationPanel({
   unavailable?: ManagementErrorCode | null;
   isOrganizer?: boolean;
   showRoster?: boolean;
+  /** A pending invitation owns the sticky bar (Accept / Decline), so Join / request steps aside (frame Fyhbv). */
+  invitationPending?: boolean;
   /** Lower-priority panels, rendered after the roster and before the sticky action bar. */
   children?: ReactNode;
 }) {
@@ -268,6 +271,15 @@ export function MatchRegistrationPanel({
       />
     );
   })();
+
+  // Frame Fyhbv: an invited caller with no place yet answers in the sticky bar. The "Your place" card
+  // would only offer a Join the bar no longer shows, so it steps aside with the Join / request control.
+  if (
+    invitationPending &&
+    registration.state === 'none' &&
+    (action === 'join' || action === 'request')
+  )
+    return lowerPanels;
 
   let body: ReactNode;
   const rejected = controller.feedback?.kind === 'error' ? controller.feedback.code : null;
@@ -596,7 +608,7 @@ export function MatchRegistrationPanel({
       </section>
       {rosterBlock}
       {lowerPanels}
-      {cta && (
+      {cta && !(invitationPending && (action === 'join' || action === 'request')) && (
         <div data-match-action-bar="" {...stylex.props(shell.actionBar)}>
           {notice && <p {...stylex.props(shell.barNotice)}>{notice}</p>}
           <div {...stylex.props(shell.barAction)}>

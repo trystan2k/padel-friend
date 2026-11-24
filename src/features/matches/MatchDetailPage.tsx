@@ -101,6 +101,8 @@ export function MatchDetailPage({
   const [feedback, setFeedback] = useState<{ id: string; copied: boolean; failed: boolean } | null>(
     null
   );
+  // The sticky action bar's mount point: the invitation controller renders Accept / Decline there (Fyhbv).
+  const [actionBarSlot, setActionBarSlot] = useState<HTMLElement | null>(null);
   const eventId = event?.event_id ?? '';
   const callerAccepted =
     registration?.state === 'accepted' || registration?.state === 'reconfirmation_required';
@@ -340,6 +342,9 @@ export function MatchDetailPage({
       </label>
     </>
   );
+  // An invited caller answers the invitation in the sticky bar, so no Join / request action competes with it.
+  const invitationPending =
+    invitation !== null && !cancelled && invitation.effective_status === 'pending';
   return (
     <main
       data-route-chrome="navigation"
@@ -406,6 +411,7 @@ export function MatchDetailPage({
             invitation={invitation}
             timezone={event.timezone}
             pendingApproval={registration?.state === 'pending'}
+            actionSlot={actionBarSlot}
           />
         )}
         {!cancelled && !unavailable && (
@@ -521,12 +527,14 @@ export function MatchDetailPage({
             unavailable={unavailable}
             isOrganizer={isCreator}
             showRoster={!management?.actions.remove.allowed}
+            invitationPending={invitationPending}
           >
             {lowerPanels}
           </MatchRegistrationPanel>
         ) : (
           lowerPanels
         )}
+        {invitationPending && <div ref={setActionBarSlot} {...stylex.props(shell.barSlot)} />}
       </div>
     </main>
   );

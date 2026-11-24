@@ -65,6 +65,17 @@ export const matchEditStyles = stylex.create({
     minWidth: 0,
     fontWeight: 'var(--font-weight-semibold)'
   },
+  competitionGroup: {
+    borderWidth: 0,
+    borderStyle: 'none',
+    margin: 0,
+    padding: 0
+  },
+  competitionLegend: {
+    padding: 0,
+    marginBlockEnd: 'var(--space-4)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   input: {
     appearance: 'none',
     boxShadow: 'none',

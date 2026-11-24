@@ -803,6 +803,28 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
         const failures = await homeStructureFailures(page);
         expect(failures, failures.join('\n')).toEqual([]);
 
+        // F63: tab labels stay on one line and never break mid-word, even at 320 pt-BR/es.
+        const tabs = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('[data-app-nav] a:not([aria-label])')).map(
+            (link) => {
+              const label = Array.from(link.childNodes).find((node) => node.nodeType === 3)!;
+              const range = document.createRange();
+              range.selectNodeContents(label);
+              return {
+                lines: new Set(
+                  Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))
+                ).size,
+                overflow: link.scrollWidth - link.clientWidth
+              };
+            }
+          )
+        );
+        expect(tabs.length).toBeGreaterThan(0);
+        for (const tab of tabs) {
+          expect(tab.lines, config.locale + ' ' + config.width + ': tab label is one line').toBe(1);
+          expect(tab.overflow).toBeLessThanOrEqual(0);
+        }
+
         if (!('shot' in config)) return;
         await page.evaluate((text) => {
           // Header date and activity days follow the wall clock; fixture match times are fixed.

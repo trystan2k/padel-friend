@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
 import type { HomeLeagueRank, HomeRankMovement, HomeSection } from '../home/home-contracts';
+import { playerInitials } from '../player/player-initials';
 import { formatDisplayLevel } from '../player/rating-config';
 import { communityStyles as s } from './community-surface.styles';
 import type { CommunitySurfaceData, RankingKind } from './community-surface';
@@ -45,8 +46,11 @@ function SkillRanking({ data }: { data: Props }) {
         {t('communitySurface.skillListUnavailable')}
       </p>
       <ul {...stylex.props(s.list)}>
-        <li data-rank-row="skill" data-rank-self {...stylex.props(s.row, s.self)}>
+        <li data-rank-row="skill" data-rank-self {...stylex.props(s.row, s.self, s.selfAvatarRow)}>
           <span>{position === null ? '—' : number.format(position)}</span>
+          <span aria-hidden="true" {...stylex.props(s.selfAvatar)}>
+            {data.profile.display_name ? playerInitials(data.profile.display_name) : '?'}
+          </span>
           <div>
             <strong>
               {data.profile.display_name

@@ -105,6 +105,14 @@ function BackChevron() {
   );
 }
 
+/** The same end-slot action as a route link, for actions that navigate instead of acting in place. */
+export function TopBarActionLink({
+  xstyle,
+  ...props
+}: LinkProps & { xstyle?: StyleXStyles; children?: ReactNode }) {
+  return <Link {...props} {...stylex.props(styles.action, controlStyles.focusRing, xstyle)} />;
+}
+
 export function TopBarAction({
   xstyle,
   type = 'button',

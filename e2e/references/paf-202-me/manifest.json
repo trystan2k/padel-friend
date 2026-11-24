@@ -24,7 +24,7 @@
   "surfaces": {
     "PlayerProfile": {
       "frames": ["vARtQ"],
-      "note": "Flat identity header on the page background (frame avatar is lime; production keeps the hero-avatar token), level card on the 20px hairline surface card, hairline 18px shortcut list (Statistics, Match history, Notifications) and level review rows (request with description, my requests). Sentence-case labels."
+      "note": "Flat identity header on the page background (frame avatar is lime; production keeps the hero-avatar token), R5 F70 (owner decision CONSOLIDATE): one 16px surface card with three equal stat columns (matches, W–L–D, win rate; 18/800 value above a 13px label) instead of three tiles; level card on the 20px hairline surface card; ONE hairline 18px list in the frame order: Statistics, Match history, Request a level review (with its description), then Notifications, plus 'My level review requests' kept as an extra row after the request (not drawn; keeps the history reachable). The level card keeps initial/highest/groups rows. Sentence-case labels."
     },
     "PlatformAdminEntry": {
       "frames": ["vARtQ"],
@@ -52,9 +52,9 @@
     }
   },
   "omittedDrawnMetrics": {
-    "statsTiles": "Implemented (F39, owner decision ADOPT): vARtQ matches / W–L–D / win rate tiles come from the existing getPlayerStatistics read for the authenticated own profile (user_id), default scope (all communities, match types and dates), one read in the Me loader. Win rate is the contract metric (decided matches, no new denominator) and shows an unavailable mark when the contract has none; a failed read shows a truthful unavailable line without blocking settings or the profile. The level card keeps its initial/highest/groups rows below the frame figures. Statistics keep their own /players/$playerId page. Exact structural tile probes live in player-ratings-visual.spec.ts; there is no raster region for the tiles.",
+    "statsTiles": "Implemented (F39, owner decision ADOPT; R5 F70 consolidated into ONE card with three columns): vARtQ matches / W–L–D / win rate figures come from the existing getPlayerStatistics read for the authenticated own profile (user_id), default scope (all communities, match types and dates), one read in the Me loader. Win rate is the contract metric (decided matches, no new denominator) and shows an unavailable mark when the contract has none; a failed read shows a truthful unavailable line without blocking settings or the profile. The level card keeps its initial/highest/groups rows below the frame figures. Statistics keep their own /players/$playerId page. Exact structural tile probes live in player-ratings-visual.spec.ts; there is no raster region for the tiles.",
     "seasonTrend": "'↑ 0.31 this season' has no source (no season concept; D6 'no direct source'): omitted. Level and reliability come from the committed rating projection.",
-    "levelBars": "The frame's 10 level bars are a mock; the real per-game progression is the Rating journey chart below the shortcut list.",
+    "levelBars": "The frame's 10 level bars are a mock; the real per-game progression is the Rating journey chart below the shortcut list (R5 F70: no second sparkline is drawn in the level card; the journey chart already carries that data, so adding one would duplicate it).",
     "appearance": "Theme and language remain the global top-right controls shared by every protected page (same ids, persistence and tests); duplicating them on Me would create a second source of truth."
   },
   "visualBudgets": {

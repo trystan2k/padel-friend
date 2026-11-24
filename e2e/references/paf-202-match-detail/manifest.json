@@ -72,7 +72,7 @@
     "Fyhbv": {
       "state": "Match invitation — invited player",
       "route": "/matches/$eventId (MatchInvitationPanel)",
-      "probe": "structural: Accept | Decline stacked, expiry hint",
+      "probe": "structural: Accept | Decline stacked in the sticky action bar (no Join), expiry hint in the card",
       "sha256": "48b190fad35e96534207ca8c5f66b3e7e1fcf7efd7e2072e3b313fa2973ede79"
     }
   },
@@ -185,7 +185,8 @@
       "F25 (owner decision RESTYLE): the detail renders the shared TopBar (centered 17/700 Match title, 48px back, Share as a 15/700 green text action on the end) and marks main data-route-chrome=\"navigation\", so the global language/theme chips step aside on this route; preferences stay reachable via Me.",
       "F25: the frame title is a match name; the app has no match name, so the 28/800 title is the venue and the date line is the localized zoned date and time (no end time). The frame's venue card is not drawn: View court location and the existing notes sit under the date line.",
       "F25: the stats strip carries playing, level and price (price omitted when absent). The reserve queue row follows the roster; Timezone and the Participation counts are relocated to a lower Participation card, not removed. Organizer and management panels follow the roster; invitation, reconfirmation and status banners stay above the hero as urgent per-state content.",
-      "F25: exactly one sticky action bar exists where the existing registration controller renders a control (join, request, request again, register again, disabled full). Closed, pending, accepted and invited states render no control, so no bar is invented. The bar holds the capacity or request-note line plus the one control and its feedback; it is last in the content column, full-bleed, with safe-area bottom padding.",
+      "F25: exactly one sticky action bar exists where the existing registration controller renders a control (join, request, request again, register again, disabled full). Closed, pending and accepted states render no control, so no bar is invented. The bar holds the capacity or request-note line plus the one control and its feedback; it is last in the content column, full-bleed, with safe-area bottom padding.",
+      "R5 F67 (owner decision ALIGN TO FRAME Fyhbv). CTA table, invited caller with a pending invitation: BEFORE community-open = invitation card with Accept/Decline AND the sticky bar's 'Join match' (two competing primaries); invite-only = card with Accept/Decline, no sticky bar. AFTER (both visibilities) = the sticky bar hosts Accept (primary) and Decline (secondary) and nothing else; the Join / request control steps aside (MatchRegistrationPanel invitationPending). The invitation card stays as the informational status plus expiry hint; the 'Your place' registration card steps aside for a caller with no place yet (its open-match copy would offer a Join that no longer shows). The Accept/Decline buttons are still rendered by the one MatchInvitationPanel controller (busy, offline, error and pending-approval handling unchanged) through a portal into a slot at the end of the detail column, so nothing is duplicated or remounted; before hydration the slot is absent and the buttons appear once it mounts. After a response the invitation status banner replaces the card and the registration state decides the one control (accepted/pending: none). A declined or expired invitation no longer suppresses Join / request. The frame's notice ('Accepting joins the queue now. No spot is held...') has no approved copy in the app catalogs and is not rendered (frame-only remainder).",
       "Roster is gated to accepted viewers (PAF-5.5 recorded deviation, unchanged)."
     ]
   },

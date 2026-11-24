@@ -1,5 +1,4 @@
 import * as stylex from '@stylexjs/stylex';
-import { useTranslation } from 'react-i18next';
 import {
   RelationshipIdentity,
   RelationshipTiles,
@@ -7,7 +6,7 @@ import {
 } from './RelationshipHeadline';
 import { FilterContext } from './PlayerStatistics';
 import { RelationshipMeetings } from './RelationshipMeetings';
-import { RelationshipSections, useRelationshipFormat } from './RelationshipRecordView';
+import { RelationshipSections } from './RelationshipRecordView';
 import type { OpponentStatistics as Opponent } from './statistics-relationship-contracts';
 import { playerStyles as s } from './statistics-player.styles';
 import { StatisticsFilterSection, type FilterControls } from './StatisticsFilterSection';
@@ -26,17 +25,12 @@ export function OpponentStatistics({
   recentOffset?: number;
   onRecentOffsetChange?: (offset: number) => void;
 }) {
-  const { t } = useTranslation();
-  const f = useRelationshipFormat();
   return (
-    <main {...stylex.props(s.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(s.page)}>
       <RelationshipTopBar
+        kind="opponent"
         playerId={opponent.focalId}
         filters={opponent.filters}
-        heading={t('statistics.relationships.opponent.heading', {
-          first: f.name(opponent.focal.displayName),
-          second: f.name(opponent.other.displayName)
-        })}
         filtersId={filterControls ? FILTERS_ID : undefined}
       />
       <RelationshipIdentity kind="opponent" focal={opponent.focal} other={opponent.other} />

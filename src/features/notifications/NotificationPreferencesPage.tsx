@@ -1,8 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { Switch } from '@base-ui/react/switch';
 import { Button } from '../../components/ui/Button';
-import { controlStyles } from '../../components/ui/control.styles';
-import { Link } from '@tanstack/react-router';
+import { TopBar } from '../../components/ui/TopBar';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Database } from '../../lib/supabase/database.types';
@@ -12,6 +11,7 @@ import {
 } from './notifications.functions';
 import { PwaInstallPanel } from '../pwa/PwaInstallPanel';
 import { PushDevicePanel } from './PushDevicePanel';
+import { preferenceBarStyles as barStyles } from './notification-preferences-bar.styles';
 import { preferenceStyles as styles } from './notification-preferences.styles';
 
 type Preferences = Pick<
@@ -91,16 +91,11 @@ export function NotificationPreferencesPage({
   return (
     <main data-route-chrome="navigation" {...stylex.props(styles.page)}>
       <section {...stylex.props(styles.panel)}>
-        <header {...stylex.props(styles.header)}>
-          <Link
-            to="/notifications"
-            aria-label={t('notificationPreferences.back')}
-            {...stylex.props(styles.back, controlStyles.focusRing)}
-          >
-            <span aria-hidden="true">‹</span>
-          </Link>
-          <h1 {...stylex.props(styles.title)}>{t('notificationPreferences.title')}</h1>
-        </header>
+        <TopBar
+          title={t('notificationPreferences.title')}
+          back={{ to: '/notifications', label: t('notificationPreferences.back') }}
+          xstyle={barStyles.bleed}
+        />
         <PushDevicePanel savedIntent={savedEnabled} />
         <p {...stylex.props(styles.context)}>{t('notificationPreferences.context')}</p>
         <fieldset {...stylex.props(styles.group)}>

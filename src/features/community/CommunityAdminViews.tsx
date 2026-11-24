@@ -1497,6 +1497,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
                 )}
                 <Button
                   variant="secondary"
+                  xstyle={styles.venueButton}
                   busy={busy || paginationPending}
                   onClick={() => {
                     setVenueDraft({
@@ -1511,6 +1512,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
                 </Button>
                 <Button
                   variant="secondary"
+                  xstyle={styles.venueButton}
                   busy={busy || paginationPending}
                   onClick={() =>
                     void run(

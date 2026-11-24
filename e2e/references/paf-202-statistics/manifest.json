@@ -124,7 +124,7 @@
     },
     "PairStatistics": {
       "frames": ["GrkSH"],
-      "note": "Compact top bar (back chevron + 21/800 title) leads into the two-player composition (initials avatars, plus, other player's name and caption) and three headline tiles (matches, W-L-D, win rate; unavailable win rate renders the typed reason), then recent meetings, then the filter section and the detailed record cards (20px).",
+      "note": "Shared top bar (R5 F57: back chevron + centered 17/700 'Partnership' title; the pair names live in the identity block) leads into the two-player composition (initials avatars, plus, other player's name and caption) and three headline tiles (matches, W-L-D, win rate; unavailable win rate renders the typed reason), then recent meetings, then the filter section and the detailed record cards (20px).",
       "route": "/players/$playerId/partners/$partnerId"
     },
     "OpponentStatistics": {
@@ -354,7 +354,7 @@
     },
     "RelationshipHeadline": {
       "frames": ["GrkSH", "khmeK"],
-      "note": "Compact top bar: 44px back chevron (named Back to player statistics, keeps the filters in the URL) and the title on one 56px row; a 44px Statistics filters jump below it; the active-filter chips sit with the filter section under the meetings. Players and tiles follow, then recent meetings, then filters and detailed records."
+      "note": "R5 F57 shared TopBar: 48px back chevron (named Back to player statistics, keeps the filters in the URL) and the centered 17/700 'Partnership' / 'Head-to-head' title on one 56px row; the routes mark main data-route-chrome=\"navigation\" so the global chips step aside; a 44px Statistics filters jump below it (not drawn in GrkSH/khmeK; kept as the jump to the filter form); the active-filter chips sit with the filter section under the meetings. Players and tiles follow, then recent meetings, then filters and detailed records."
     },
     "StatisticsStates": {
       "frames": [],

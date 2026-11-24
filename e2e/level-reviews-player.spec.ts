@@ -76,7 +76,7 @@ test('profile entry opens the request form with a read-only current level', asyn
   const page = await f.page(exact);
   // The level review entry lives on Me (D5), not on Home.
   await open(page, '/me');
-  await expect(page.getByRole('region', { name: lr.entry.title })).toBeVisible();
+  await expect(page.getByRole('link', { name: lr.entry.request })).toBeVisible();
   await page.getByRole('link', { name: lr.entry.request }).click();
   await expect(page).toHaveURL(/\/level-reviews\/new$/);
   await waitForHydratedPage(page);

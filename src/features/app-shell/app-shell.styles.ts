@@ -62,12 +62,16 @@ export const appShellStyles = stylex.create({
     minHeight: target,
     paddingInline: 'var(--space-2)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
+    // Labels stay on one line (frames); the step-down below 360px fits the longest pt-BR/es words.
+    fontSize: {
+      default: 'var(--font-size-12)',
+      '@media (max-width: 359px)': 'var(--font-size-10)'
+    },
     fontWeight: 'var(--font-weight-semibold)',
     color: 'var(--color-muted)',
     textAlign: 'center',
     textDecoration: 'none',
-    overflowWrap: 'anywhere',
+    overflowWrap: 'normal',
     borderRadius: 'var(--radius-12)',
     ':focus-visible': focusRing
   },

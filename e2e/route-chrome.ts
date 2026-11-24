@@ -11,7 +11,7 @@ export async function assertChipsStepAside(page: Page, label: string): Promise<v
   for (const width of WIDTHS) {
     await page.setViewportSize({ width, height: original.height });
     await expect(
-      page.locator('main[data-route-chrome="navigation"]'),
+      page.locator('[data-route-chrome="navigation"]'),
       `${label} @${width}: route owns its top chrome`
     ).toHaveCount(1);
     const reading = await page.evaluate(() => {
@@ -34,7 +34,7 @@ export async function assertChipsStepAside(page: Page, label: string): Promise<v
 /** Preferences stay reachable where the page does not own the chrome: the chips render and switch language. */
 export async function assertChipsOnUnmarkedRoute(page: Page, label: string): Promise<void> {
   await expect(
-    page.locator('main[data-route-chrome="navigation"]'),
+    page.locator('[data-route-chrome="navigation"]'),
     `${label}: unmarked route`
   ).toHaveCount(0);
   const locale = page.locator('#locale');
@@ -44,4 +44,33 @@ export async function assertChipsOnUnmarkedRoute(page: Page, label: string): Pro
     'lang',
     /^es/
   );
+}
+
+/**
+ * F66 class guard: a <fieldset> that no style resets renders the UA default 2px groove frame, which
+ * no clubhouse frame draws. Designed fieldsets are either borderless or carry a token border (solid),
+ * so this flags only the UA signature (a groove, ridge, inset or outset side with a non-zero width;
+ * a width-0 side draws nothing) and leaves the intentionally bordered ones (e.g. the notification
+ * push group) alone. Scans every fieldset in the
+ * document, including ones inside open dialogs.
+ */
+export async function assertNoUaFieldsetBorders(page: Page, label: string): Promise<void> {
+  const uaBordered = await page.evaluate(() => {
+    const ua = new Set(['groove', 'ridge', 'inset', 'outset']);
+    return [...document.querySelectorAll('fieldset')]
+      .filter((node) => {
+        const style = getComputedStyle(node);
+        return [
+          [style.borderTopStyle, style.borderTopWidth],
+          [style.borderRightStyle, style.borderRightWidth],
+          [style.borderBottomStyle, style.borderBottomWidth],
+          [style.borderLeftStyle, style.borderLeftWidth]
+        ].some(([side, width]) => ua.has(side!) && Number.parseFloat(width!) > 0);
+      })
+      .map(
+        (node) =>
+          node.getAttribute('aria-label') ?? node.querySelector('legend')?.textContent ?? 'fieldset'
+      );
+  });
+  expect(uaBordered, `${label}: fieldsets render no UA default border`).toEqual([]);
 }

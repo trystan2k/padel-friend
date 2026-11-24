@@ -3,7 +3,12 @@ import * as stylex from '@stylexjs/stylex';
 export const rootStyles = stylex.create({
   pageHeader: {
     minWidth: 0,
-    paddingInlineEnd: 'calc(var(--space-40) * 2 + var(--space-8) * 3)',
+    // Reserve room for the global chips only where they intersect the widest (640px) content column:
+    // viewports under 640px + 2 x (chips 96px + 18px inset).
+    paddingInlineEnd: {
+      default: 0,
+      '@media (max-width: 879px)': 'calc(var(--space-40) * 2 + var(--space-8) * 3)'
+    },
     overflowWrap: 'anywhere'
   },
   controls: {

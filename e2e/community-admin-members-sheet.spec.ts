@@ -114,6 +114,15 @@ test('member sheet keeps the loaded roster, scroll position and focus, with no r
   await link.click();
   const sheet = page.getByTestId('community-member-sheet');
   await expect(sheet).toBeVisible();
+  // F53: the fixed admin bottom navigation never paints over the sheet or its backdrop.
+  const navCovers = await page.evaluate(() => {
+    const nav = document.querySelector('nav');
+    if (!nav) return null;
+    const box = nav.getBoundingClientRect();
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+    return hit ? nav.contains(hit) : null;
+  });
+  expect(navCovers).toBe(false);
   // Give any background re-read time to land before asserting on the roster.
   await page.waitForTimeout(1_500);
   await expect(rows).toHaveCount(extra + 1);

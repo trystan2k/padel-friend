@@ -54,7 +54,7 @@ test('the platform-admin entry lives on Me for admins only and not on the Commun
 
   const playerPage = await f.page(player);
   await open(playerPage, '/me');
-  await expect(playerPage.getByRole('region', { name: lr.entry.title })).toBeVisible();
+  await expect(playerPage.getByRole('link', { name: lr.entry.request })).toBeVisible();
   await expect(playerPage.getByRole('region', { name: lr.admin.entryTitle })).toHaveCount(0);
 });
 

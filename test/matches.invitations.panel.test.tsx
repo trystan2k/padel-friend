@@ -1,5 +1,5 @@
 /** @vitest-environment jsdom */
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { I18nextProvider } from 'react-i18next';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -40,6 +40,50 @@ beforeEach(() => {
   mocks.invalidate.mockResolvedValue(undefined);
 });
 describe('invitation panel', () => {
+  it('renders Accept and Decline once, in the action bar slot, through the same controller (Fyhbv)', async () => {
+    const slot = document.createElement('div');
+    document.body.append(slot);
+    const i18n = createI18n('en');
+    mocks.respond.mockResolvedValue({ status: 'declined' });
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MatchInvitationPanel
+          eventId={id}
+          invitation={invitation}
+          timezone="UTC"
+          actionSlot={slot}
+        />
+      </I18nextProvider>
+    );
+    const region = screen.getByRole('region', { name: i18n.t('matches.invitations.title') });
+    expect(within(region).queryByRole('button')).toBeNull();
+    const bar = slot.querySelector<HTMLElement>('[data-match-action-bar]');
+    if (!bar) throw new Error('action bar missing');
+    expect(
+      within(bar)
+        .getAllByRole('button')
+        .map((b) => b.textContent)
+    ).toEqual([i18n.t('matches.invitations.accept'), i18n.t('matches.invitations.decline')]);
+    await userEvent.click(
+      within(bar).getByRole('button', { name: i18n.t('matches.invitations.decline') })
+    );
+    expect(mocks.respond).toHaveBeenCalledOnce();
+    slot.remove();
+  });
+  it('renders no actions until the action bar slot exists', () => {
+    const i18n = createI18n('en');
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MatchInvitationPanel
+          eventId={id}
+          invitation={invitation}
+          timezone="UTC"
+          actionSlot={null}
+        />
+      </I18nextProvider>
+    );
+    expect(screen.queryByRole('button')).toBeNull();
+  });
   it('rejects offline invitation acceptance at invocation and shows unconfirmed false-online failure', async () => {
     const i18n = panel('en');
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });

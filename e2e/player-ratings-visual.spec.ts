@@ -241,8 +241,17 @@ test('Me keeps the vARtQ order, geometry and reviewed raster budgets (mobile lig
     expect(Math.abs(tile.width - tileBoxes[0]!.width), 'tiles are equal width').toBeLessThanOrEqual(
       1
     );
-    expect(tile.height).toBeGreaterThanOrEqual(60);
   }
+  // One consolidated card (frame vARtQ): the three columns sit inside a single surface, not three cards.
+  const statsCard = page.locator('main dl[aria-label]');
+  const cardBox = await box(statsCard);
+  expect(cardBox.height).toBeGreaterThanOrEqual(60);
+  expect(tileBoxes[0]!.x).toBeGreaterThanOrEqual(cardBox.x);
+  expect(tileBoxes[2]!.right).toBeLessThanOrEqual(cardBox.right + 1);
+  expect(
+    await tiles.first().evaluate((element) => getComputedStyle(element).backgroundColor),
+    'tiles are columns of the card, not separate surfaces'
+  ).toBe('rgba(0, 0, 0, 0)');
   for (const [key, label] of [
     ['matches', statCopy.matches],
     ['record', statCopy.record],
@@ -266,7 +275,8 @@ test('Me keeps the vARtQ order, geometry and reviewed raster budgets (mobile lig
 
   // Shortcut rows: hairline card, ≥60px rows, every destination present, chevrons decorative.
   const rowLinks = await shortcuts.getByRole('link').all();
-  expect(rowLinks).toHaveLength(3);
+  // Statistics, Match history, Request a level review, its history, Notifications (frame vARtQ one list).
+  expect(rowLinks).toHaveLength(5);
   for (const link of rowLinks) expect((await box(link)).height).toBeGreaterThanOrEqual(60);
   const levelBox = await box(levelCard);
   for (const [what, element] of [

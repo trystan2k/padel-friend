@@ -22,7 +22,8 @@ export const topBarStyles = stylex.create({
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    minWidth: target
+    // Mirrors the end slot's minimum, so a long title stays centered between equal columns.
+    minWidth: actionSlot
   },
   endSlot: {
     display: 'flex',
@@ -80,6 +81,7 @@ export const topBarStyles = stylex.create({
     fontWeight: 'var(--font-weight-bold)',
     cursor: 'pointer',
     textAlign: 'center',
+    textDecoration: 'none',
     overflowWrap: 'anywhere'
   }
 });

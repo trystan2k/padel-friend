@@ -235,7 +235,8 @@ async function prepare(
     if (state !== 'cutoff-unavailable')
       await expect(page.getByRole('button', { name: m.edit.title, exact: true })).toBeEnabled();
   }
-  if (!immutable)
+  // Fyhbv (R5 F67): a pending invitation owns the page, so the "Your place" card steps aside with Join.
+  if (!immutable && state !== 'invitation-pending')
     await expect(
       page.getByRole('heading', { name: copy.matchRegistration.place.title, exact: true })
     ).toBeVisible();
@@ -359,17 +360,23 @@ async function prepare(
   } else if (state === 'invitation-pending') {
     const panel = page.getByRole('region', { name: copy.matches.invitations.title });
     await expect(panel.getByRole('status')).toContainText(copy.matches.invitations.pending);
+    // Fyhbv (R5 F67): Accept and Decline live in the sticky action bar, not in the card, and
+    // no Join / request control competes with them.
+    await expect(panel.getByRole('button')).toHaveCount(0);
+    const bar = page.locator('[data-match-action-bar]');
+    await expect(bar).toHaveCount(1);
     expect
-      .soft(await panel.getByRole('button').allTextContents())
+      .soft(await bar.getByRole('button').allTextContents())
       .toEqual([copy.matches.invitations.accept, copy.matches.invitations.decline]);
-    // Fyhbv places both invitation actions above the fold. Presence somewhere
-    // down a long detail page is not an equivalent screen composition.
     await expect
-      .soft(panel.getByRole('button', { name: copy.matches.invitations.accept, exact: true }))
+      .soft(bar.getByRole('button', { name: copy.matches.invitations.accept, exact: true }))
       .toBeInViewport();
     await expect
-      .soft(panel.getByRole('button', { name: copy.matches.invitations.decline, exact: true }))
+      .soft(bar.getByRole('button', { name: copy.matches.invitations.decline, exact: true }))
       .toBeInViewport();
+    await expect(
+      page.getByRole('button', { name: copy.matchRegistration.join.button, exact: true })
+    ).toHaveCount(0);
     await expect(page.getByRole('button', { name: m.edit.title, exact: true })).toHaveCount(0);
   } else if (
     state === 'invitation-accepted' ||
@@ -581,11 +588,11 @@ function frameRegionLocators(
     case 'invitation-pending':
       return {
         statusNotice: invitations.getByRole('status'),
-        acceptAction: invitations.getByRole('button', {
+        acceptAction: page.locator('[data-match-action-bar]').getByRole('button', {
           name: copy.matches.invitations.accept,
           exact: true
         }),
-        declineAction: invitations.getByRole('button', {
+        declineAction: page.locator('[data-match-action-bar]').getByRole('button', {
           name: copy.matches.invitations.decline,
           exact: true
         })

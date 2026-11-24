@@ -254,21 +254,6 @@ export function PlayerProfile({
             </Link>
           </li>
           <li {...stylex.props(s.listItem)}>
-            <Link to="/notifications" {...stylex.props(s.row)}>
-              <RowIcon d={ICONS.bell} />
-              <span {...stylex.props(s.rowText, s.rowTitle)}>
-                {t('profile.links.notifications')}
-              </span>
-              <span aria-hidden="true" {...stylex.props(s.chevron)}>
-                ›
-              </span>
-            </Link>
-          </li>
-        </ul>
-      </nav>
-      <section aria-label={t('levelReview.entry.title')}>
-        <ul {...stylex.props(s.list)}>
-          <li {...stylex.props(s.listItem)}>
             <Link
               to="/level-reviews/new"
               aria-labelledby={`${reviewId}-title`}
@@ -298,8 +283,19 @@ export function PlayerProfile({
               </span>
             </Link>
           </li>
+          <li {...stylex.props(s.listItem)}>
+            <Link to="/notifications" {...stylex.props(s.row)}>
+              <RowIcon d={ICONS.bell} />
+              <span {...stylex.props(s.rowText, s.rowTitle)}>
+                {t('profile.links.notifications')}
+              </span>
+              <span aria-hidden="true" {...stylex.props(s.chevron)}>
+                ›
+              </span>
+            </Link>
+          </li>
         </ul>
-      </section>
+      </nav>
       <SurfaceCard>
         <div {...stylex.props(s.fact)}>
           <span>{t('profile.dominantHand')}</span>

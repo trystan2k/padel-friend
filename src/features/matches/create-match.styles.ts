@@ -28,45 +28,6 @@ export const createMatchStyles = stylex.create({
     lineHeight: 'var(--font-line-height-body)',
     overflowWrap: 'anywhere'
   },
-  // The wizard and edit routes opt into data-route-chrome="navigation", so the global chips step aside
-  // and the bar reserves no width for them.
-  topBar: {
-    boxSizing: 'border-box',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-8)',
-    minHeight: 'calc(var(--space-40) + var(--space-16))',
-    paddingBlockStart: 'max(var(--space-4), env(safe-area-inset-top))',
-    paddingInlineStart: 'max(var(--space-8), env(safe-area-inset-left))',
-    paddingInlineEnd: 'max(var(--space-8), env(safe-area-inset-right))'
-  },
-  back: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    width: 'calc(var(--space-40) + var(--space-8))',
-    height: 'calc(var(--space-40) + var(--space-8))',
-    padding: 0,
-    borderWidth: 0,
-    borderRadius: 'var(--radius-14)',
-    backgroundColor: 'transparent',
-    color: 'var(--color-text)',
-    cursor: 'pointer',
-    ':focus-visible': focusRing
-  },
-  backIcon: {
-    width: 'calc(var(--space-20) + var(--space-4))',
-    height: 'calc(var(--space-20) + var(--space-4))'
-  },
-  title: {
-    margin: 0,
-    minWidth: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-17)',
-    fontWeight: 'var(--font-weight-bold)',
-    lineHeight: 'var(--font-line-height-snug)'
-  },
   form: { display: 'flex', flexDirection: 'column', flexGrow: 1, minWidth: 0 },
   content: {
     boxSizing: 'border-box',

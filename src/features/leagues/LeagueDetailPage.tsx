@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
-import { rootStyles } from '../../root.styles';
+import { TopBar } from '../../components/ui/TopBar';
 import type {
   LeagueDetailResult,
   LeagueDto,
@@ -34,7 +34,7 @@ import {
   LeagueStandingsUnavailable
 } from './LeagueStandings';
 import { LeagueStandingsHistory } from './LeagueStandingsHistory';
-import { LeagueBackIcon, LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
+import { LeagueStatusBadge, useLeaguePeriodText } from './LeagueSummary';
 import { styles } from './league.styles';
 
 type Feedback = { kind: 'success'; key: string } | { kind: 'error'; code: LeagueErrorCode } | null;
@@ -182,35 +182,24 @@ export function LeagueDetailPage({
   };
 
   return (
-    <main {...stylex.props(styles.page)}>
-      <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
-        <div {...stylex.props(styles.headingRow)}>
-          {former ? (
-            <Link
-              to="/matches/past"
-              aria-label={t('leagues.former.back')}
-              {...stylex.props(styles.backLink)}
-            >
-              <LeagueBackIcon />
-            </Link>
-          ) : (
-            <Link
-              to="/community/$communityId/leagues"
-              params={{ communityId: community.id }}
-              aria-label={t('leagues.back')}
-              {...stylex.props(styles.backLink)}
-            >
-              <LeagueBackIcon />
-            </Link>
-          )}
-          <h1 id="league-heading" {...stylex.props(styles.title)}>
-            {league.name}
-          </h1>
-        </div>
-        <p {...stylex.props(styles.context)}>
-          {t('leagues.communityContext', { community: community.name })}
-        </p>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(styles.page)}>
+      <TopBar
+        xstyle={styles.barFrame}
+        headingId="league-heading"
+        title={league.name}
+        back={
+          former
+            ? { to: '/matches/past', label: t('leagues.former.back') }
+            : {
+                to: '/community/$communityId/leagues',
+                params: { communityId: community.id },
+                label: t('leagues.back')
+              }
+        }
+      />
+      <p {...stylex.props(styles.context, styles.contextCenter)}>
+        {t('leagues.communityContext', { community: community.name })}
+      </p>
 
       <div {...stylex.props(styles.content)}>
         <output

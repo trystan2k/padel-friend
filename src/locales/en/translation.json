@@ -18,7 +18,6 @@
     "activeWeek": "Active this week",
     "unavailable": "Unavailable",
     "invite": "Invite players",
-    "inviteUnavailable": "Invitations are not available here.",
     "joinCountUnavailable": "Join request count unavailable.",
     "joinRequests_one": "{{count}} person wants to join",
     "joinRequests_other": "{{count}} people want to join",
@@ -2573,13 +2572,11 @@
       "backToPlayer": "Back to player statistics",
       "pair": {
         "title": "Partnership",
-        "heading": "{{first}} & {{second}}",
         "subtitle": "Results when these two players were on the same team.",
         "played": "Matches together"
       },
       "opponent": {
-        "title": "Head to head",
-        "heading": "{{first}} vs {{second}}",
+        "title": "Head-to-head",
         "subtitle": "Results when these two players were on opposite teams, from the first player’s point of view.",
         "played": "Meetings",
         "versus": "vs"

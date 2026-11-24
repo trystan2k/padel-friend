@@ -56,12 +56,14 @@ export const styles = stylex.create({
   content: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)', minWidth: 0 },
   confirmBackdrop: {
     position: 'fixed',
+    zIndex: 2,
     inset: 0,
     backgroundColor: 'var(--color-text)',
     opacity: 0.6
   },
   confirmViewport: {
     position: 'fixed',
+    zIndex: 2,
     inset: 0,
     display: 'flex',
     alignItems: 'center',
@@ -195,6 +197,7 @@ export const styles = stylex.create({
   },
   sheetViewport: {
     position: 'fixed',
+    zIndex: 2,
     inset: 0,
     display: 'flex',
     alignItems: 'flex-end',
@@ -413,9 +416,9 @@ export const styles = stylex.create({
     ':focus-visible': focus
   },
   filterTabSelected: {
-    borderColor: 'var(--color-green)',
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green-ink)'
+    borderColor: 'var(--color-text)',
+    backgroundColor: 'var(--color-text)',
+    color: 'var(--color-bg)'
   },
   memberRowHeader: {
     display: 'flex',
@@ -485,6 +488,13 @@ export const styles = stylex.create({
     alignItems: 'center',
     minHeight: tap,
     paddingInline: 'var(--space-4)'
+  },
+  venueButton: {
+    width: 'auto',
+    minHeight: tap,
+    paddingBlock: 'var(--space-4)',
+    paddingInline: 'var(--space-12)',
+    fontSize: 'var(--font-size-14)'
   },
   venueHead: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)', minWidth: 0 },
   venuePhoto: {

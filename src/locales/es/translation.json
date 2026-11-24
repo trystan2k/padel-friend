@@ -18,7 +18,6 @@
     "activeWeek": "Activos esta semana",
     "unavailable": "No disponible",
     "invite": "Invitar jugadores",
-    "inviteUnavailable": "Las invitaciones no están disponibles aquí.",
     "joinCountUnavailable": "Número de solicitudes de ingreso no disponible.",
     "joinRequests_one": "{{count}} persona quiere unirse",
     "joinRequests_other": "{{count}} personas quieren unirse",
@@ -2573,13 +2572,11 @@
       "backToPlayer": "Volver a las estadísticas del jugador",
       "pair": {
         "title": "Pareja",
-        "heading": "{{first}} y {{second}}",
         "subtitle": "Resultados cuando estos dos jugadores estaban en el mismo equipo.",
         "played": "Partidos juntos"
       },
       "opponent": {
         "title": "Cara a cara",
-        "heading": "{{first}} contra {{second}}",
         "subtitle": "Resultados cuando estos dos jugadores estaban en equipos contrarios, desde el punto de vista del primer jugador.",
         "played": "Enfrentamientos",
         "versus": "vs"

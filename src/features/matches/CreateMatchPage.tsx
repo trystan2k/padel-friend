@@ -1,8 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
 import { Button } from '../../components/ui/Button';
 import { TextLink } from '../../components/ui/TextLink';
+import { TopBar } from '../../components/ui/TopBar';
 import { validMatchMapsUrl } from './match-management-edit';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MatchDetailsForm } from './MatchDetailsForm';
@@ -568,25 +569,16 @@ export function CreateMatchPage() {
   }
 
   const wizardHeader = (
-    <header {...stylex.props(s.topBar)}>
-      {step > 0 ? (
-        <button
-          type="button"
-          aria-label={t('matchCreate.previousStep')}
-          {...stylex.props(s.back)}
-          onClick={() => setStep(step - 1)}
-        >
-          <BackIcon />
-        </button>
-      ) : (
-        <Link to="/matches" aria-label={t('matches.back')} {...stylex.props(s.back)}>
-          <BackIcon />
-        </Link>
-      )}
-      <h1 {...stylex.props(s.title)} ref={heading} tabIndex={-1}>
-        {t('matchCreate.title')}
-      </h1>
-    </header>
+    <TopBar
+      title={t('matchCreate.title')}
+      headingRef={heading}
+      back={step > 0 ? undefined : { to: '/matches', label: t('matches.back') }}
+      backAction={
+        step > 0
+          ? { label: t('matchCreate.previousStep'), onClick: () => setStep(step - 1) }
+          : undefined
+      }
+    />
   );
   if (optionsLoading && !options.communities.length)
     return <main data-route-chrome="navigation" {...stylex.props(s.page)} aria-busy="true" />;
@@ -707,11 +699,11 @@ export function CreateMatchPage() {
               <legend {...stylex.props(s.legend)}>{t('matchCreate.helpers.teamMode')}</legend>
               <div {...stylex.props(s.segmented)}>
                 {(['POST_MATCH_TEAMS', 'PREDEFINED_TEAMS'] as const).map((mode) => (
-                  <label key={mode} {...stylex.props(stylex.defaultMarker(), s.segment)}>
+                  <label key={mode} {...stylex.props(s.segment)}>
                     <input
                       type="radio"
                       name="teamMode"
-                      {...stylex.props(s.segmentInput)}
+                      {...stylex.props(stylex.defaultMarker(), s.segmentInput)}
                       checked={(value.teamMode ?? 'POST_MATCH_TEAMS') === mode}
                       onChange={() => change('teamMode', mode)}
                     />
@@ -795,20 +787,5 @@ export function CreateMatchPage() {
         </div>
       </div>
     </main>
-  );
-}
-
-function BackIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      aria-hidden="true"
-      {...stylex.props(s.backIcon)}
-    >
-      <path d="m14 6-6 6 6 6" />
-    </svg>
   );
 }

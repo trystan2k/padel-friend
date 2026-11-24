@@ -4,33 +4,22 @@ export const centerStyles = stylex.create({
   panel: {
     maxWidth: 'calc(var(--space-40) * 12)',
     marginInline: 'auto',
+    minWidth: 0
+  },
+  // The shared top bar owns the page edge (frame cAqsQ: 8 bar inset, 20 content gutter).
+  content: {
     display: 'grid',
     gap: 'var(--space-12)',
-    minWidth: 0
+    minWidth: 0,
+    paddingInline: 'var(--space-20)',
+    paddingBlockStart: 'var(--space-4)',
+    paddingBlockEnd: 'var(--space-20)'
   },
   page: {
     minHeight: '100%',
-    padding: 'var(--space-20)',
     color: 'var(--color-text)',
     backgroundColor: 'var(--color-bg)',
     fontFamily: 'var(--font-family-body)'
-  },
-  header: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-8)',
-    minHeight: 'calc(var(--space-40) + var(--space-16))'
-  },
-  title: {
-    flex: 1,
-    margin: 0,
-    fontSize: 'var(--font-size-18)',
-    overflowWrap: 'anywhere'
-  },
-  back: {
-    minWidth: 'calc(var(--space-40) + var(--space-4))',
-    justifyContent: 'center',
-    textDecoration: 'none'
   },
   filters: { display: 'flex', gap: 'var(--space-8)', flexWrap: 'wrap' },
   filter: {
@@ -115,7 +104,6 @@ export const centerStyles = stylex.create({
     margin: 0
   },
   actions: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--space-8)' },
-  textAction: { paddingInline: 'var(--space-8)' },
   textButton: {
     width: 'auto',
     backgroundColor: 'transparent',

@@ -286,9 +286,12 @@ test('dashboard to player, partner pair, opponent head-to-head and group detail 
   await waitForHydratedPage(page);
   const pair = linesFor('A', scope).filter((line) => line.partner === 'B');
   const pairTotals = totalsOf(pair);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(
-    `${w.nameOf('A')} & ${w.nameOf('B')}`
-  );
+  // GrkSH: centred "Partnership" bar title; the partner's name leads the identity block.
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(t.relationships.pair.title);
+  await expect(
+    page.getByRole('main').getByText(w.nameOf('B'), { exact: true }).first()
+  ).toBeVisible();
+  await assertChipsStepAside(page, 'pair statistics');
   await expectStat(page, 'Matches together', pairTotals.groups);
   await expectStat(page, 'Wins', pairTotals.wins);
   await expectStat(page, 'Incomplete results', pairTotals.incomplete);
@@ -304,9 +307,11 @@ test('dashboard to player, partner pair, opponent head-to-head and group detail 
   await waitForHydratedPage(page);
   const meetings = linesFor('A', scope).filter((line) => line.opponents.includes('C'));
   const h2h = totalsOf(meetings);
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(
-    `${w.nameOf('A')} vs ${w.nameOf('C')}`
-  );
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(t.relationships.opponent.title);
+  await expect(
+    page.getByRole('main').getByText(w.nameOf('C'), { exact: true }).first()
+  ).toBeVisible();
+  await assertChipsStepAside(page, 'opponent statistics');
   await expectStat(page, 'Meetings', h2h.groups);
   await expectStat(page, 'Wins', h2h.wins);
   await expectStat(page, 'Losses', h2h.losses);

@@ -10,6 +10,7 @@ import {
   type Response,
   type Route
 } from '@playwright/test';
+import { assertChipsStepAside, assertNoUaFieldsetBorders } from './route-chrome';
 import { testSupabaseConfig } from './test-supabase-config';
 import { trustedClient } from '../test/helpers/trusted-client';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
@@ -691,6 +692,7 @@ test('invitation revoked between detail load and accept degrades gracefully with
     await expect(page.getByRole('heading', { name: communityName })).toBeVisible();
     const accept = page.getByRole('button', { name: en.notifications.accept });
     await expect(accept).toBeVisible();
+    await assertChipsStepAside(page, 'notification detail invitation');
 
     // Admin revokes the invitation after the detail is loaded but before Accept is clicked.
     const revoked = await trustedClient()
@@ -1189,7 +1191,9 @@ async function expectTokenStyle(
 async function assertAppliedCenterTypography(page: Page, copy: Copy = en) {
   const title = page.getByRole('heading', { level: 1, name: copy.notifications.title });
   expect(await title.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Figtree/);
-  await expect(title).toHaveCSS('font-size', '18px');
+  // Shared TopBar title (cAqsQ): 17/700 centred.
+  await expect(title).toHaveCSS('font-size', '17px');
+  await expect(title).toHaveCSS('text-align', 'center');
 }
 
 // Populated-center-only typography: the section heading and card copy.
@@ -1378,6 +1382,7 @@ async function assertPreferencesStructure(page: Page, copy: Copy) {
   await expectTokenStyle(fieldset, 'border-color', '--color-hairline', 'push group border');
   await expectTokenStyle(fieldset, 'background-color', '--color-surface', 'push group surface');
   await expect(fieldset).toHaveCSS('border-radius', '18px');
+  await assertNoUaFieldsetBorders(page, 'notification preferences');
   const device = page.getByRole('region', { name: copy.push.title });
   expect((await device.boundingBox())!.y).toBeLessThan((await fieldset.boundingBox())!.y);
   for (const key of ['community', 'matches', 'results', 'rankings', 'leagues'] as const) {
@@ -1395,10 +1400,10 @@ async function assertPreferencesStructure(page: Page, copy: Copy) {
   await expect(critical).toHaveCSS('border-inline-start-width', '2px');
   await expectTokenStyle(critical, 'border-inline-start-color', '--color-green', 'always-on edge');
 
-  // Applied preferences typography: compact 20px back link/title, 12px context/legend.
+  // Applied preferences typography: shared TopBar 17px title, 12px context/legend.
   expect(await back.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Figtree/);
   expect((await back.boundingBox())!.width).toBeGreaterThanOrEqual(44);
-  await expect(title).toHaveCSS('font-size', '18px');
+  await expect(title).toHaveCSS('font-size', '17px');
   await expect(context).toHaveCSS('font-size', '12px');
   const legend = fieldset.locator('legend');
   await expect(legend).toHaveCSS('font-size', '12px');

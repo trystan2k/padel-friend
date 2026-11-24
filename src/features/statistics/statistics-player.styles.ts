@@ -169,37 +169,6 @@ export const playerStyles = stylex.create({
     fontVariantNumeric: 'tabular-nums',
     overflowWrap: 'anywhere'
   },
-  title: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-21)',
-    fontWeight: 'var(--font-weight-extrabold)',
-    lineHeight: 'var(--font-line-height-tight)',
-    overflowWrap: 'anywhere'
-  },
-  // GrkSH / khmeK top bar: back chevron + title on one compact row; the global chips keep their corner.
-  topBar: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--space-8)',
-    minHeight: 'calc(var(--space-40) + var(--space-16))',
-    paddingInlineEnd: `calc(${TOUCH} * 2 + var(--space-8) + var(--space-8))`,
-    minWidth: 0
-  },
-  back: {
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-    minHeight: TOUCH,
-    minWidth: TOUCH,
-    borderRadius: 'var(--radius-14)',
-    color: 'var(--color-text)',
-    fontSize: 'var(--font-size-24)',
-    fontWeight: 'var(--font-weight-bold)',
-    textDecoration: 'none',
-    ':focus-visible': focusRing
-  },
   filterAccess: {
     display: 'inline-flex',
     alignItems: 'center',
