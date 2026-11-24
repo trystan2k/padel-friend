@@ -1,18 +1,14 @@
 import * as stylex from '@stylexjs/stylex';
 
 export const inboxStyles = stylex.create({
-  section: { display: 'grid', gap: 'var(--space-4)', width: '100%' },
-  card: {
-    display: 'grid',
-    gap: 'var(--space-3)',
-    padding: 'var(--space-4)',
-    borderWidth: 'var(--border-width-sm)',
-    borderStyle: 'solid',
-    borderColor: 'var(--color-line)',
-    borderRadius: 'var(--radius-10)',
-    backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-text)'
+  section: { display: 'grid', gap: 'var(--space-12)', width: '100%' },
+  title: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-bold)'
   },
-  body: { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
-  notice: { color: 'var(--color-muted)' }
+  card: { gap: 'var(--space-12)', padding: 'var(--space-14)' },
+  body: { margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' },
+  notice: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-14)' }
 });

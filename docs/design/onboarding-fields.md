@@ -14,7 +14,7 @@ Sources:
 - [Generated database types](../../src/lib/supabase/database.types.ts) — typed table rows and RPC arguments.
 - Current player UI/logic: [PlayerOnboarding](../../src/features/player/PlayerOnboarding.tsx), [PlayerProfile](../../src/features/player/PlayerProfile.tsx), [validators](../../src/features/player/player.validators.ts), [server mapping](../../src/features/player/player.server.ts), [server functions](../../src/features/player/player.functions.ts), [rating config](../../src/features/player/rating-config.ts).
 - [English copy](../../src/locales/en/translation.json) — current field labels and options.
-- [Pen design](padel-friend.pen) — onboarding frame `PdRtP` (read-only reference).
+- [Clubhouse design](padel-friend-clubhouse.pen) — player setup `PdRtP`, editable claim `cnU76` → `cs78ezj`, and history-locked claim `cnU76` → `ct4tab0` (read-only references).
 
 ## 2. Field inventory
 
@@ -47,7 +47,15 @@ Sources:
 
 The PRD also names rating history (§11.2), which is not a column in either table; its storage shape is outside this field inventory.
 
-## 3. What onboarding currently captures
+## 3. Clubhouse onboarding (PAF-212)
+
+New player setup follows `PdRtP`: step 2 progress, starting-level card, then side and hand. The editable claim follows `cs78ezj`: invited-match notice when applicable, estimated-level slider, then court side. The history-locked claim follows `ct4tab0`: lock badge and read-only **starting** level (the current evolving rating is not in the claim payload), then dominant hand. The locked claim retains a read-only copy of both level controls; its prefilled display name is still editable.
+
+The references do not draw the display-name, avatar, exact-level, bio, availability or reliability controls. The form keeps all of them before the sticky Continue action in DOM order. It also keeps the optional dominant hand in the editable claim and the required court-side field in the locked claim. The design's sample side/hand selections and intermediate classification are illustrative and do not become app defaults. The frame back affordance has no equivalent in this guarded flow; no navigation behavior was added. Claim password and mailbox verification have no approved frame and were left unchanged (D1).
+
+The field contract below predates Clubhouse; placement notes describe the pre-redesign implementation.
+
+## 4. Pre-Clubhouse field placement
 
 | Field                | Required?                                     | Current rendering                                                                                                                                                                                                                                   |
 | -------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -61,27 +69,27 @@ The PRD also names rating history (§11.2), which is not a column in either tabl
 
 Current implementation validates the required display-name, side, and initial-level fields; dominant hand and bio remain optional. “Prefer not to say” submits `dominant_hand = null` without a validation error. The hand control sits inside the preferred-court-side card, before the reliability card and primary “Save player profile” CTA. The exact-tenth numeric input and bio card remain after the CTA. Pen frame `PdRtP` shows the hand control but omits the exact-level input and bio. Availability is saved in the same transaction as the profile (direct) or claim through the `onboard_player_with_availability` / `claim_provisional_player_with_availability` wrappers, which call the unchanged original RPCs. On the profile screen, name, side, hand, bio and availability are editable (read mode lists the translated choices, or "Not provided" per group); hand keeps its own select with a clearing option, and avatar upload stays a separate profile action (unchanged). In onboarding the photo is selected locally, the profile or claim is created first, then the file is uploaded and finalized; if that fails the player sees a localized alert with "Retry photo upload" and "Continue without photo" (the profile or claim is never resubmitted), and the photo can always be added later from the profile screen. Current labels/options use `onboarding.*` and `profile.*` translation keys in en, pt-BR, and es.
 
-## 4. UX follow-up status
+## 5. PAF-25 UX follow-up status (historical)
 
 1. **P1 — Dominant hand — DONE.** `PdRtP` now includes an optional Left / Right / Prefer not to say segmented control inside the preferred-court-side card, before the reliability card and CTA. “Prefer not to say” is the default and submits `dominant_hand = null` without validation error. Implementation and en/pt-BR/es labels are updated; DB support already exists (`player_profiles.dominant_hand`).
 2. **P2 — Avatar — DONE (avatar in onboarding delivered, PAF-25 Unit 1).** Optional photo card sits directly after the display name and before the level card and CTA, with initials fallback and an explicit skip. Works for direct onboarding and provisional claim; en/pt-BR/es copy; profile-screen upload unchanged. **DB status:** no migration (`player_profiles.avatar_url`; private avatar storage). The `PdRtP` frame in `padel-friend.pen` was not edited; the visual gate compares the pinned PAF-1 reference with the card taken out of flow and a separate current-layout snapshot.
 3. **P3 — Preferred playing days/times — DONE (PAF-25 Unit 2).** Two independent optional sets: `preferred_playing_days` (`MON`–`SUN`) and `preferred_playing_times` (`MORNING`, `AFTERNOON`, `EVENING`), stored as nullable `text[]` with named CHECKs (NULL or empty = not provided, flat arrays of known values, no NULL elements, cardinality ≤ 7 / ≤ 3). The app normalizes to canonical order, de-duplicated, with empty stored as `NULL`. **Placement:** trailing optional card after the bio in onboarding (direct and claim) and in profile edit; read mode shows translated groups with a "Not provided" state. **Visibility:** owner-only through the unchanged owner `SELECT` policy; exposing availability to community members is out of scope (no RLS or storage-policy change). **DB status:** migration `20261112090000_player_availability.sql` (columns, CHECKs, column-level `UPDATE` grant, two SECURITY INVOKER wrappers). The `PdRtP` frame in `padel-friend.pen` was not edited.
 4. **P4 — Phone/contact data — SKIPPED / decision-out (2026-11-12).** Product-owner decision: not scheduled for PAF-25 and not implemented. The original analysis is kept for reference only. **What:** Add a private contact field and controlled visibility behavior. **Why:** PRD §11.3 lists phone/contact as optional and private by default; §11.4 says auth email/security data must not be automatically exposed. **DB status:** New migration and explicit privacy/visibility rules needed; no column exists. **Recommendation:** Optional, in a separate private contact section (preferably profile/settings, not the sporting-profile card); never surface it as sporting-profile data.
 
-## 5. Explicitly NOT onboarding/profile fields
+## 6. Explicitly NOT onboarding/profile fields
 
 - **City/area:** PRD §9.2 lists this as an optional _community_ field, not a player field. Arbitrary nearby-player geolocation discovery is a V1 non-goal (§4).
 - **UI language:** PRD §70 treats locale as an internationalization/display concern and says initial locales can be chosen later; no player-profile field or onboarding capture is specified. Persistence per user is not specified in docs.
 - **Timezone:** PRD §69 says use community timezone for match scheduling by default and store timestamps canonically; timezone is not a player-profile column or onboarding input. User-specific timezone storage is not specified in docs.
 - **Notification preferences:** PRD §43.9 calls for separate per-user notification preferences; these are not player-profile fields or onboarding inputs. Their precise storage/placement is not specified in docs.
 
-## 6. Key rules
+## 7. Key rules
 
 - **Initial level is write-once:** the player cannot directly edit it after onboarding (PRD §12.5). Current displayed level is rating-engine-managed and evolves from eligible results; an approved Platform/App Admin review can adjust it forward-only (PRD §§12.4, 12.7).
 - **Keep auth email private:** authentication identity and player profile are separate; auth email/security data must not automatically be exposed as sporting-profile data (PRD §§10.3, 11.4; onboarding task).
 - **Respect DB update grants:** authenticated profile updates are limited to `display_name`, `avatar_url`, `preferred_side`, `dominant_hand`, `bio`, `preferred_playing_days`, and `preferred_playing_times` (migrations). Rating fields and timestamps are not included in those grants.
 
-## 7. Follow-up checklist
+## 8. Follow-up checklist
 
 ### Pen design
 

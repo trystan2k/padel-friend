@@ -1,0 +1,375 @@
+{
+  "status": "scoped-card-edge-evidence-not-full-frame-certification",
+  "sourceDesign": {
+    "path": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
+    "sha256": "41f3b06db61a180ed1d0eebe0fb3ff71e0086a703b5497ad7b47cd7ba7bb971e",
+    "exportCommand": "Pencil MCP (read-only): Export([\"RN0yw\",\"RRuhH\",\"z6vIR\",\"QVLTH\",\"GrkSH\",\"khmeK\",\"o9iaC1\",\"m8Loju\",\"BcpYH\"], \"png\", \"<repo>/e2e/references/paf-202-statistics\", {scale:1})",
+    "provenanceNote": "U20 (PAF-225) provenance. The tracked .pen was opened only through Pencil MCP Get/Export (read-only, not modified). Each of the nine frames was exported individually at scale 1 and read frame by frame; the summary screenshot was not used. D7: route-specific frames win and BcpYH is the confirmed group detail (/matches/$eventId/groups/$groupId), not the /matches/past list."
+  },
+  "precedence": "D7: BcpYH = ConfirmedGroupDetail. Route-specific frames (GrkSH pair, khmeK opponent, o9iaC1 community) govern their own pages; RN0yw/RRuhH/z6vIR/QVLTH split the player statistics page into sections; m8Loju is the shared filters region. The match history LIST has no frame of its own (w25dY belongs to U11): it takes the history card rhythm only.",
+  "approvedReferences": {
+    "RN0yw": {
+      "frameId": "RN0yw",
+      "frameName": "Player statistics",
+      "file": "RN0yw.png",
+      "certifies": "Top bar, community scope chips (selected dark with check), 30 days / Season / All time segmented control, three 20px hairline tiles (win rate, set diff, game diff), W-L-D strip, Recent form W/L/D squares, Best partners card",
+      "sha256": "4158d75eb367fbd143359ced77a1591779ba8bf9ae054f8693a093431f573ec8",
+      "pixelSize": [390, 892]
+    },
+    "RRuhH": {
+      "frameId": "RRuhH",
+      "frameName": "Player statistics — form and breakdown",
+      "file": "RRuhH.png",
+      "certifies": "Scope line, Last 10 squares, hairline card of label/value rows (matches, sets, games, incomplete), By match type card, muted footnote",
+      "sha256": "9e9c0fdc59869d28e7143d7529ff429c6388c9ce44821d275cde3bfc9ac1cfa7",
+      "pixelSize": [390, 844]
+    },
+    "z6vIR": {
+      "frameId": "z6vIR",
+      "frameName": "Player statistics — advanced outcomes",
+      "file": "z6vIR.png",
+      "certifies": "Four stat tiles (straight-set wins, 3rd-set record, upset wins, biggest gain) and a hairline row card (comebacks, tiebreaks, avg. opponent level)",
+      "sha256": "7b1c12386f83d2aebf060aca5ba6a3aa55b8ff92e1c3fb52bf2c5b072a0ab60a",
+      "pixelSize": [390, 844]
+    },
+    "QVLTH": {
+      "frameId": "QVLTH",
+      "frameName": "Player statistics — partnership records",
+      "file": "QVLTH.png",
+      "certifies": "Most played / Best win rate segmented control, hairline card of 72px rows with initials avatar, record and win-rate figure, muted early-sample footnote",
+      "sha256": "bdc0c1b89d99cee6006e35d294b004099a2fa1cf7a76d6878ff992cc498f5408",
+      "pixelSize": [390, 844]
+    },
+    "GrkSH": {
+      "frameId": "GrkSH",
+      "frameName": "Player statistics — pair record",
+      "file": "GrkSH.png",
+      "certifies": "Top bar, two initials avatars with plus, 20px tiles (matches, W-L-D, win rate), row card (avg. opponent level, leagues), Last meetings card with Won/Lost chips and set scores",
+      "sha256": "557b873ef150a6a4b5849d5b6f167e1fbc9c11608e057b36528975bbe03ad437",
+      "pixelSize": [390, 844]
+    },
+    "khmeK": {
+      "frameId": "khmeK",
+      "frameName": "Player statistics — opponent head-to-head",
+      "file": "khmeK.png",
+      "certifies": "Two avatars with vs, tiles (meetings, W-L-D, set diff), Last meetings card with Won/Lost chips and set scores, muted footnote",
+      "sha256": "7bb724557c2e604879f8963b34cdb903411cd85f0e55fd990b507d58948c0670",
+      "pixelSize": [390, 844]
+    },
+    "o9iaC1": {
+      "frameId": "o9iaC1",
+      "frameName": "Community statistics — overview",
+      "file": "o9iaC1.png",
+      "certifies": "Scope chips (All time, All matches), two tiles (matches, active players), Matches per month bar chart card, row card (competitive share, avg. level, most active venue), muted footnote",
+      "sha256": "85110e5f030f3511c27bde358368870d2eaf98cdfe07dee550e54108891b6ad0",
+      "pixelSize": [390, 844]
+    },
+    "m8Loju": {
+      "frameId": "m8Loju",
+      "frameName": "Player statistics — filters",
+      "file": "m8Loju.png",
+      "certifies": "Bottom sheet: community chips, match type chips, 30 days / Season / All time control, 52px green Show results, text Reset",
+      "sha256": "e396f2ad6db2e97a0d49cfd1dc778b7969222de8d1cc802c29d339461a908cf0",
+      "pixelSize": [390, 844]
+    },
+    "BcpYH": {
+      "frameId": "BcpYH",
+      "frameName": "Match history detail",
+      "file": "BcpYH.png",
+      "certifies": "Top bar with back and Share, Friendly/Confirmed chips, 28/800 title, muted meta, white score card (teams with per-set scores), green-soft outcome notice, outlined Request a correction",
+      "sha256": "ed85cfe7f134bbe0dbcab5ba49f1c51b7148809e934ce095cb362a66648ba24d",
+      "pixelSize": [390, 844]
+    }
+  },
+  "surfaces": {
+    "PlayerStatistics": {
+      "frames": ["RN0yw", "RRuhH", "m8Loju"],
+      "note": "Page background with 20px gutters and 14px rhythm; 21/800 title with the real subtitle and filter context chips; three compact 20px hairline tiles (24/800 value above its label; the metric definition stays in the markup for assistive tech, the sample basis stays visible), 20px W-L-D strip, recent form as chronological W/L/D squares (letter plus a hidden full word, legend below; the sample only holds decided results, incomplete matches are not part of it), 17/800 section titles, sections in 20px hairline cards. The metric inventory (rating, activity chart, records) stays: all real data. The real URL form remains inline after highlights, recent form and recent matches so the first viewport leads with results.",
+      "route": "/players/$playerId"
+    },
+    "CommunityStatistics": {
+      "frames": ["o9iaC1", "m8Loju"],
+      "note": "F28/F5 bounded ADOPT: shared top bar (back to the community overview, or the community list without a scope), real scope chips with a jump to the unchanged filter form, matches-played and active-players tiles, the Matches per month chart card (shared StatisticsChart, summary and data table), then a row card with competitive share, competitive and friendly counts. Competitive share = competitive / played, validated by the server partition (competitive + friendly = played) and unavailable when nothing was played. Frame figures \"Avg. level\" and \"Most active venue\" have no source (D6) and are omitted. Decided, draws, incomplete, ranking, sets and games, filters, leaders, pairings and the weekly chart stay as secondary content.",
+      "route": "/community/$communityId/statistics"
+    },
+    "PlayerMetric": {
+      "frames": ["RN0yw", "RRuhH", "z6vIR"],
+      "note": "Section = 17/800 title above a 20px hairline SurfaceCard; Stat tile = 20px hairline tile with 24/800 value; rows use 14px muted labels and 17/800 values."
+    },
+    "PlayerStatisticsRecords": {
+      "frames": ["z6vIR", "QVLTH"],
+      "note": "Set patterns and record cards in the same card/row rhythm; partner and opponent record lists keep their real columns."
+    },
+    "PlayerRecentMatches": {
+      "frames": ["RN0yw"],
+      "note": "Recent matches stay one 20px hairline card per match with 44px+ links (RN0yw recent history rows); the frame shows form squares only, the real list stays."
+    },
+    "MatchHistory": {
+      "frames": [],
+      "note": "No dedicated frame (w25dY is the Matches list owned by U11): history rows take the hairline 20px card rhythm, 16/800 outcome and 14px meta; filters of the list are not invented (D6).",
+      "route": "/matches/past"
+    },
+    "ConfirmedGroupDetail": {
+      "frames": ["BcpYH"],
+      "note": "D7: BcpYH = confirmed group detail. Light 20px scorecard presents two team rows with scoped set columns, independent green-soft outcome notice, 28/800 title, status chips, hairline cards for players, sets, matchup, confirmation and the audit timeline. \"Request a correction\" and \"Share\" have no source on this route (D6) and are not added.",
+      "route": "/matches/$eventId/groups/$groupId"
+    },
+    "PartnerRecords": {
+      "frames": ["QVLTH"],
+      "note": "Partner list inside one 20px hairline card; rows keep their real links and figures."
+    },
+    "OpponentRecords": {
+      "frames": ["khmeK"],
+      "note": "Opponent list inside one 20px hairline card; rows keep their real links and figures."
+    },
+    "PairStatistics": {
+      "frames": ["GrkSH"],
+      "note": "Shared top bar (R5 F57: back chevron + centered 17/700 'Partnership' title; the pair names live in the identity block) leads into the two-player composition (initials avatars, plus, other player's name and caption) and three headline tiles (matches, W-L-D, win rate; unavailable win rate renders the typed reason), then recent meetings, then the filter section and the detailed record cards (20px).",
+      "route": "/players/$playerId/partners/$partnerId"
+    },
+    "OpponentStatistics": {
+      "frames": ["khmeK"],
+      "note": "Two-player composition and three tiles (meetings, W-L-D, set diff) lead, then recent meetings, with exact filters and detailed head-to-head evidence still available below.",
+      "route": "/players/$playerId/opponents/$opponentId"
+    },
+    "RelationshipList": {
+      "frames": ["GrkSH", "khmeK"],
+      "note": "Recent meetings: one row per match inside the section card (outcome chip, date, sets, then games and rating change, then the match link); no horizontal scrolling table. Show more is a 48px outlined control."
+    },
+    "RelationshipMeetings": {
+      "frames": ["GrkSH", "khmeK"],
+      "note": "Meeting rows in the same card; outcome comes from the stored result (Win, Loss, Draw, Incomplete), never inferred from the score; link to the confirmed group detail unchanged; URL-offset paging and retry unchanged."
+    },
+    "RelationshipRecordView": {
+      "frames": ["GrkSH", "khmeK", "QVLTH"],
+      "note": "Shared record sections (record, scores, streaks, rating, leagues) as 20px hairline cards with 14px muted labels and 17/800 values. Recent matches are scoped row cards (GrkSH, khmeK) instead of a table."
+    }
+  },
+  "visualBudgets": {
+    "status": "measured-card-edge-with-viewport-diagnostics",
+    "scale": 1,
+    "measurementMethod": "Chromium 390×844, device scale 1, light English. Compute unmasked 390px-wide diagnostic bands separately. Gate only a 32×20 crop at x=0 and card-top+22, independently aligned on the Pencil and live card. Crop contains background, hairline and empty card padding, not sample copy or controls. Live gutter, radius and hairline width are asserted separately. A narrow edge comparison does not certify the full viewport.",
+    "observedDiagnostics": {
+      "RN0yw": {
+        "cardEdge": 0,
+        "viewport": 0.1448,
+        "header": 0.1436,
+        "primary": 0.1579,
+        "followUp": 0.1557
+      },
+      "GrkSH": {
+        "cardEdge": 0,
+        "header": 0.0608,
+        "primary": 0.1847,
+        "followUp": 0.0673,
+        "note": "Re-measured locally after the R5 F57 shared TopBar landed (PAF-202 round 3, Chromium 390×844 light en; bands header 0-104, composition+tiles 104-257, rest 257-844). The breadcrumb/title/filter-chip block that earlier measurements attributed the header and primary residuals to no longer exists. The header band now holds the TopBar (48px back chevron, centred 17/700 title) plus the 44px Statistics filters jump link the frame does not draw; the primary residual is the composition sitting one 44px jump-link row lower than in the frame, plus fixture names/totals and initials avatars."
+      },
+      "khmeK": {
+        "cardEdge": 0,
+        "header": 0.0658,
+        "primary": 0.1833,
+        "followUp": 0.0803,
+        "note": "Re-measured locally after the R5 F57 shared TopBar landed (PAF-202 round 3, Chromium 390×844 light en; bands header 0-104, composition+tiles 104-257, rest 257-844). The breadcrumb/title/filter-chip block that earlier measurements attributed the header and primary residuals to no longer exists. The header band now holds the TopBar (48px back chevron, centred 17/700 title) plus the 44px Statistics filters jump link the frame does not draw; the primary residual is the composition sitting one 44px jump-link row lower than in the frame, plus fixture names/totals and initials avatars."
+      },
+      "o9iaC1": {
+        "cardEdge": 0,
+        "viewport": 0.1578,
+        "header": 0.1179,
+        "primary": 0.2454,
+        "followUp": 0.119
+      },
+      "BcpYH": {
+        "cardEdge": 0,
+        "viewport": 0.0858,
+        "header": 0.1123,
+        "primary": 0.0949,
+        "followUp": 0.0671
+      }
+    },
+    "rasterRegions": {
+      "RN0yw": {
+        "surface": "player",
+        "cardSelector": "main > section[aria-label] > dl > div",
+        "referenceTop": 224,
+        "previousViewportResidual": 0.1926,
+        "budget": 0.015,
+        "bands": [
+          {
+            "name": "header",
+            "top": 0,
+            "bottom": 104,
+            "classification": "Layout: shell, subtitle and left title differ from the centered Pencil top bar. Not fixture noise."
+          },
+          {
+            "name": "primary",
+            "top": 104,
+            "bottom": 363,
+            "classification": "Layout: exact UTC filter form moved below form and recent results; sample values and eligibility help differ in the tile row. The live first-tile edge is the shared comparison."
+          },
+          {
+            "name": "follow-up",
+            "top": 363,
+            "bottom": 844,
+            "classification": "Layout: real form, records and confirmed history differ from mock ranked partner list. Structural probes assert section order and containment; no raster tolerance is granted to this band."
+          }
+        ]
+      },
+      "GrkSH": {
+        "surface": "pair",
+        "cardSelector": "main > section[aria-label] > dl > div",
+        "referenceTop": 172,
+        "previousViewportResidual": 0.1508,
+        "budget": 0.015,
+        "bands": [
+          {
+            "name": "header",
+            "top": 0,
+            "bottom": 104,
+            "classification": "Layout: the shared TopBar (48px back chevron, centred 17/700 title) follows the frame; the residual is the 44px Statistics filters jump link row below it, which the frame does not draw, plus cross-renderer text rasterization."
+          },
+          {
+            "name": "primary",
+            "top": 104,
+            "bottom": 257,
+            "classification": "Restored hierarchy: two initials avatars with a plus, the other player's name and caption, then three 20px hairline tiles (matches, W-L-D, win rate) from the real pair record. Fixture: names and totals differ. Layout: the Statistics filters jump link row under the shared TopBar pushes the composition one 44px row below the frame's. Avatars are the initials fallback only: the sporting DTO carries display names, no avatar URL."
+          },
+          {
+            "name": "follow-up",
+            "top": 257,
+            "bottom": 844,
+            "classification": "Layout: real filters and detailed records remain between the tiles and the meetings; meetings use seeded dates and scores. Structural coverage, not a broad raster tolerance."
+          }
+        ]
+      },
+      "khmeK": {
+        "surface": "opponent",
+        "cardSelector": "main > section[aria-label] > dl > div",
+        "referenceTop": 172,
+        "previousViewportResidual": 0.1507,
+        "budget": 0.015,
+        "bands": [
+          {
+            "name": "header",
+            "top": 0,
+            "bottom": 104,
+            "classification": "Layout: the shared TopBar (48px back chevron, centred 17/700 title) follows the frame; the residual is the 44px Statistics filters jump link row below it, which the frame does not draw, plus cross-renderer text rasterization."
+          },
+          {
+            "name": "primary",
+            "top": 104,
+            "bottom": 257,
+            "classification": "Restored hierarchy: two initials avatars with vs, the other player's name and caption, then three 20px hairline tiles (meetings, W-L-D, set diff) from the real head-to-head record. Fixture: names and totals differ. Layout: the Statistics filters jump link row under the shared TopBar pushes the composition one 44px row below the frame's. Avatars are the initials fallback only: the sporting DTO carries display names, no avatar URL."
+          },
+          {
+            "name": "follow-up",
+            "top": 257,
+            "bottom": 844,
+            "classification": "Layout: recent meetings follow the tiles as row cards with outcome chip, date, sets, games, rating change and a match link (the frame shows Won/Lost chips and per-set scores; the DTO has set and game totals only); exact date/league filters and real detailed evidence have no equivalent in this frame."
+          }
+        ]
+      },
+      "o9iaC1": {
+        "surface": "community",
+        "cardSelector": "main > section[aria-label] > dl > div",
+        "referenceTop": 160,
+        "previousViewportResidual": 0.1983,
+        "budget": 0.015,
+        "bands": [
+          {
+            "name": "header",
+            "top": 0,
+            "bottom": 104,
+            "classification": "Layout: the shared centered top bar with back chevron now matches the frame; the live community name in the title and the 44px-plus back target differ from the mock's fixed copy. Not fixture noise."
+          },
+          {
+            "name": "primary",
+            "top": 104,
+            "bottom": 403,
+            "classification": "Fixture: scope and counts differ. Layout: scope chips are the real read-only filter chips plus a Filters jump link (the frame shows two static chips); matches and active-players tiles lead; tile labels are the localized sentence-case metric names. The first Pencil tile edge is compared with the first live tile."
+          },
+          {
+            "name": "follow-up",
+            "top": 403,
+            "bottom": 844,
+            "classification": "Fixture: months and values differ. Layout: the shared StatisticsChart has no on-bar value or month labels (values live in its summary and data table); the row card carries competitive share, competitive and friendly rows; average level and most active venue are unavailable (D6) and omitted; the remaining real metrics, filters and leaders follow as secondary content."
+          }
+        ]
+      },
+      "BcpYH": {
+        "surface": "detail-friendly-draw",
+        "cardSelector": "section[aria-labelledby=\"statistics-detail-result\"] > div:first-child",
+        "referenceTop": 222,
+        "previousViewportResidual": 0.0877,
+        "budget": 0.015,
+        "bands": [
+          {
+            "name": "header",
+            "top": 0,
+            "bottom": 222,
+            "classification": "Fixture: actual venue, participants and match metadata differ. Layout: live back action, title and badges differ from Pencil order."
+          },
+          {
+            "name": "primary",
+            "top": 222,
+            "bottom": 430,
+            "classification": "Fixture: names, scores and outcome differ. Layout fixed: two team score rows and a separate verdict block now match the scorecard hierarchy. Gate the empty scorecard edge; assert score rows and set values separately."
+          },
+          {
+            "name": "follow-up",
+            "top": 430,
+            "bottom": 844,
+            "classification": "Layout: real audit, authorization and player evidence remain; Share and Request a correction are not fabricated."
+          }
+        ]
+      }
+    }
+  },
+  "frameFindings": {
+    "RN0yw": "Top bar (back, centered 17/700 title), scope chips (dark selected with check, outlined other, 48px pills), segmented 30 days/Season/All time, three 20px hairline tiles (24/800 value, 13px muted label), 20px W-L-D strip, 17/800 section titles, W/L/D squares, Best partners card with initials avatar rows.",
+    "RRuhH": "Muted scope line, Last 10 squares, 20px hairline row card (muted 15px label left, bold value right, 48px rows), By match type card, 14px muted footnote.",
+    "z6vIR": "Four 20px stat tiles in two columns, 20px row card (comebacks, tiebreaks, avg. opponent level), footnote. Used for the set patterns and records cards of the player statistics page.",
+    "QVLTH": "Segmented Most played / Best win rate control, one 20px hairline card of 68px partner rows (avatar, name, record, win-rate figure), footnote about early samples.",
+    "GrkSH": "Two avatars with +, 20px tiles (matches, W-L-D, win rate), row card (avg. opponent level, leagues), Last meetings card with Won/Lost chips, date and set scores.",
+    "khmeK": "Two avatars with vs, tiles (meetings, W-L-D, set diff), Last meetings card, footnote.",
+    "o9iaC1": "Scope chips, two tiles (matches, active players), Matches per month bar card (values above bars, month labels), row card (competitive share, avg. level, most active venue), footnote.",
+    "m8Loju": "Bottom-sheet filters: 15/700 group labels, 48px pill chips (selected dark with check), segmented period control, 52px green primary and text Reset.",
+    "BcpYH": "Chips (Friendly outlined, Confirmed green-soft), 28/800 title, 14px muted meta, light 20px score card (team rows, set scores), green-soft outcome notice, 52px outlined correction action."
+  },
+  "sharedComponents": {
+    "StatisticsFilters": {
+      "frames": ["m8Loju"],
+      "note": "Match type chips: 48px pills, 1.5px line, selected chip green-deep with a check mark (decorative, aria-hidden); the Base UI radio stays the real control, stretched transparent over the chip, so keyboard, radio semantics and the URL write are unchanged. 48px selects and date fields, 52px Apply and Reset buttons. Param names, defaults and validation untouched."
+    },
+    "StatisticsFilterSection": {
+      "frames": ["m8Loju", "RN0yw"],
+      "note": "Section title + 20px hairline card holding the community select and the filter form; community switch still writes the URL."
+    },
+    "StatisticsChart": {
+      "frames": ["o9iaC1"],
+      "note": "Bar chart keeps the real SVG; heading, numeric summary and the Show data disclosure (48px outlined trigger) stay, so the text alternative is complete."
+    },
+    "StatisticsDataTable": {
+      "frames": ["o9iaC1"],
+      "note": "Focusable scroll region with caption, scoped headers and every value; 14px type and hairline row separators."
+    },
+    "RelationshipHeadline": {
+      "frames": ["GrkSH", "khmeK"],
+      "note": "R5 F57 shared TopBar: 48px back chevron (named Back to player statistics, keeps the filters in the URL) and the centered 17/700 'Partnership' / 'Head-to-head' title on one 56px row; the routes mark main data-route-chrome=\"navigation\" so the global chips step aside; a 44px Statistics filters jump below it (not drawn in GrkSH/khmeK; kept as the jump to the filter form); the active-filter chips sit with the filter section under the meetings. Players and tiles follow, then recent meetings, then filters and detailed records."
+    },
+    "StatisticsStates": {
+      "frames": [],
+      "note": "Loading, empty and error states keep their roles (status, alert) with 14px copy and a 48px outlined Retry."
+    }
+  },
+  "browserBaselines": {
+    "player-error-state.png": "Chromium full-page snapshot of an invalid UTC date range. No approved Pencil frame depicts this error. Re-captured because shared Clubhouse shell, typography, spacing and alert text size changed the rendered state. The existing 0.002 maxDiffPixelRatio was retained; the localized alert and overflow assertions remain independent."
+  },
+  "omittedDrawnElements": {
+    "avgLevelVenue": "o9iaC1 \"Avg. level\" and \"Most active venue\" have no contract source (D6): omitted.",
+    "correctionShare": "BcpYH \"Request a correction\" and \"Share\": no source on the confirmed group route (D6): not added.",
+    "periodSegment": "RN0yw/m8Loju \"30 days / Season / All time\" segmented control: the real filters are From/Through UTC dates (D6, URL contract); no preset period is invented.",
+    "scopeChips": "Community scope chips of RN0yw: the real control is the community select, which also covers many communities.",
+    "partnersTab": "QVLTH \"Most played / Best win rate\" tabs: ranking order is the real server order; no re-sort control is invented.",
+    "bottomSheet": "m8Loju bottom sheet: the filters stay an inline section (deep-linkable form with real validation)."
+  }
+}

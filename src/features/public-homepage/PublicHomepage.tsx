@@ -1,6 +1,12 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import brandIcon from '../../../docs/design/padel-friends-app-icon.png';
+import { styles as buttonStyles } from '../../components/ui/button.styles';
+import { controlStyles } from '../../components/ui/control.styles';
+import { PrivacyLink } from '../../components/ui/PrivacyLink';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { textLinkProps } from '../../components/ui/TextLink';
 import { useTranslation } from 'react-i18next';
 import { PRIVACY_CONTACT_EMAIL } from '../privacy/privacy-content';
 import { styles } from './public-homepage.styles';
@@ -15,8 +21,7 @@ const featureIcons = {
   inviteFriends: (
     <>
       <circle cx="9" cy="7" r="4" />
-      <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
-      <path d="M19 8v6M16 11h6" />
+      <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2M19 8v6M16 11h6" />
     </>
   ),
   trackResults: (
@@ -28,15 +33,29 @@ const featureIcons = {
   )
 } satisfies Record<string, ReactNode>;
 
-const featureKeys = ['findMatches', 'inviteFriends', 'trackResults'] as const;
+const features = ['findMatches', 'inviteFriends', 'trackResults'] as const;
+
+// CTAs navigate. Reuse the button appearance without overriding native link semantics.
+function ctaProps(variant: 'primary' | 'secondary') {
+  return stylex.props(
+    buttonStyles.base,
+    buttonStyles[variant],
+    controlStyles.size,
+    controlStyles.focusRing,
+    styles.cta
+  );
+}
 
 export function PublicHomepage({ authenticated }: { authenticated: boolean }) {
   const { t } = useTranslation();
 
   return (
-    <div {...stylex.props(styles.page)}>
-      <header>
-        <span {...stylex.props(styles.brand)}>{t('auth.welcomeBrand')}</span>
+    <div data-public-homepage="" {...stylex.props(styles.page)}>
+      <header {...stylex.props(styles.header)}>
+        <div {...stylex.props(styles.brand)}>
+          <img src={brandIcon} alt="" {...stylex.props(styles.logo)} />
+          <span>{t('publicHomepage.brand')}</span>
+        </div>
       </header>
 
       <main {...stylex.props(styles.main)}>
@@ -45,15 +64,20 @@ export function PublicHomepage({ authenticated }: { authenticated: boolean }) {
           <p {...stylex.props(styles.description)}>{t('publicHomepage.hero.description')}</p>
           <div {...stylex.props(styles.actions)}>
             {authenticated ? (
-              <Link to="/dashboard" {...stylex.props(styles.cta, styles.ctaPrimary)}>
-                {t('publicHomepage.actions.dashboard')}
-              </Link>
+              <>
+                <Link to="/dashboard" {...ctaProps('primary')}>
+                  {t('publicHomepage.actions.dashboard')}
+                </Link>
+                <p {...stylex.props(styles.signedInNote)}>
+                  {t('publicHomepage.actions.signedInNote')}
+                </p>
+              </>
             ) : (
               <>
-                <Link to="/login" {...stylex.props(styles.cta, styles.ctaPrimary)}>
+                <Link to="/login" {...ctaProps('primary')}>
                   {t('publicHomepage.actions.signIn')}
                 </Link>
-                <Link to="/onboarding/account" {...stylex.props(styles.cta, styles.ctaSecondary)}>
+                <Link to="/onboarding/account" {...ctaProps('secondary')}>
                   {t('publicHomepage.actions.createAccount')}
                 </Link>
               </>
@@ -61,48 +85,54 @@ export function PublicHomepage({ authenticated }: { authenticated: boolean }) {
           </div>
         </div>
 
-        <ul {...stylex.props(styles.features)}>
-          {featureKeys.map((key) => (
-            <li key={key} {...stylex.props(styles.card)}>
-              <span aria-hidden="true" {...stylex.props(styles.iconTile)}>
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  {...stylex.props(styles.icon)}
-                >
-                  {featureIcons[key]}
-                </svg>
-              </span>
-              <h2 {...stylex.props(styles.cardTitle)}>
-                {t(`publicHomepage.features.${key}.title`)}
-              </h2>
-              <p {...stylex.props(styles.cardDescription)}>
-                {t(`publicHomepage.features.${key}.description`)}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <section {...stylex.props(styles.features)}>
+          <h2 {...stylex.props(styles.sectionTitle)}>{t('publicHomepage.features.heading')}</h2>
+          <ul {...stylex.props(styles.featureList)}>
+            {features.map((key) => (
+              <li key={key}>
+                <SurfaceCard xstyle={styles.card}>
+                  <span aria-hidden="true" {...stylex.props(styles.iconTile)}>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      {...stylex.props(styles.icon)}
+                    >
+                      {featureIcons[key]}
+                    </svg>
+                  </span>
+                  <div {...stylex.props(styles.cardCopy)}>
+                    <h3 {...stylex.props(styles.cardTitle)}>
+                      {t(`publicHomepage.features.${key}.title`)}
+                    </h3>
+                    <p {...stylex.props(styles.body)}>
+                      {t(`publicHomepage.features.${key}.description`)}
+                    </p>
+                  </div>
+                </SurfaceCard>
+              </li>
+            ))}
+          </ul>
+        </section>
       </main>
 
       <footer {...stylex.props(styles.footer)}>
-        {/* Plain anchor: the href must stay the canonical /privacy used as the Google Branding link. */}
-        <a href="/privacy" {...stylex.props(styles.footerLink)}>
-          {t('auth.privacyLink')}
-        </a>
-        <div {...stylex.props(styles.contact)}>
-          <p {...stylex.props(styles.footerText)}>{t('publicHomepage.footer.contact')}</p>
-          <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} {...stylex.props(styles.footerLink)}>
-            {t('publicHomepage.footer.contactEmail', { email: PRIVACY_CONTACT_EMAIL })}
-          </a>
+        <div {...stylex.props(styles.footerLinks)}>
+          <PrivacyLink canonical />
+          <div {...stylex.props(styles.contact)}>
+            <p {...stylex.props(styles.contactLabel)}>{t('publicHomepage.footer.contact')}</p>
+            <a href={`mailto:${PRIVACY_CONTACT_EMAIL}`} {...textLinkProps(styles.contactLink)}>
+              {t('publicHomepage.footer.contactEmail', { email: PRIVACY_CONTACT_EMAIL })}
+            </a>
+          </div>
         </div>
-        <p {...stylex.props(styles.footerText, styles.footerNote)}>
-          {t('publicHomepage.footer.operator')}
-        </p>
-        <p {...stylex.props(styles.footerText)}>{t('publicHomepage.footer.audience')}</p>
+        <div {...stylex.props(styles.operator)}>
+          <p {...stylex.props(styles.body)}>{t('publicHomepage.footer.operator')}</p>
+          <p {...stylex.props(styles.body)}>{t('publicHomepage.footer.audience')}</p>
+        </div>
       </footer>
     </div>
   );

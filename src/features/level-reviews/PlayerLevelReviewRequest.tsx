@@ -5,6 +5,8 @@ import { useUpdateGuard } from '../pwa/update-guard';
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import { TextField } from '../../components/ui/TextField';
 import { MAX_LEVEL, MIN_LEVEL } from '../player/rating-config';
 import { formatLevel, formatPercentPoints } from '../player/rating-format';
@@ -26,7 +28,7 @@ import {
 } from './level-review-form';
 import { listMyLevelReviewRequests, submitLevelReviewRequest } from './level-review.functions';
 import { type CurrentLevelLoad } from './level-review-view';
-import { levelReview as s } from './level-review.styles';
+import { levelReviewClubhouse as c } from './level-review-clubhouse.styles';
 
 type Failure = {
   kind: LevelReviewErrorKind | 'offline' | 'unconfirmed';
@@ -180,57 +182,52 @@ export function PlayerLevelReviewRequest({
   const evidenceCount = codePointLength(values.evidence);
 
   return (
-    <main {...stylex.props(s.page)}>
-      <header {...stylex.props(s.header)}>
-        <div {...stylex.props(s.headingRow)}>
-          <Link
-            to="/dashboard"
-            aria-label={t('levelReview.request.backLabel')}
-            {...stylex.props(s.backLink)}
-          >
-            <span aria-hidden="true">‹</span>
-          </Link>
-          <h1 {...stylex.props(s.title)}>{t('levelReview.request.title')}</h1>
-        </div>
-        {current.status === 'ok' && current.current && (
-          <p {...stylex.props(s.context)}>
-            {t('levelReview.request.context', { level: level(current.current.display_level) })}
-          </p>
-        )}
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(c.page)}>
+      <TopBar
+        xstyle={c.barFrame}
+        title={t('levelReview.request.title')}
+        back={{ to: '/me', label: t('levelReview.request.backLabel') }}
+      />
+      {current.status === 'ok' && current.current && (
+        <p {...stylex.props(c.body)}>{t('levelReview.request.intro')}</p>
+      )}
       {current.status === 'error' && (
-        <section {...stylex.props(s.card)}>
+        <SurfaceCard xstyle={c.card}>
           <RatingError
             code={current.code}
             onRetry={onRetryCurrent}
             returnPath="/level-reviews/new"
           />
-        </section>
+        </SurfaceCard>
       )}
       {current.status === 'ok' && !current.current && (
-        <p role="alert" {...stylex.props(s.alert, s.alertText)}>
+        <p role="alert" {...stylex.props(c.alert, c.alertText)}>
           {t('levelReview.request.unavailable')}
         </p>
       )}
       {current.status === 'ok' && current.current && (
-        <form noValidate onSubmit={(event) => void submit(event)} {...stylex.props(s.form)}>
-          <section aria-labelledby={`${id}-current`} {...stylex.props(s.card)}>
-            <h2 id={`${id}-current`} {...stylex.props(s.strong)}>
-              {t('levelReview.request.currentLabel')}
-            </h2>
-            <p {...stylex.props(s.currentValue)}>
-              {t('levelReview.request.currentValue', {
-                level: level(current.current.display_level),
-                reliability: formatPercentPoints(current.current.reliability_percent, locale)
-              })}
-            </p>
-            <p {...stylex.props(s.muted)}>{t('levelReview.request.currentHelper')}</p>
+        <form noValidate onSubmit={(event) => void submit(event)} {...stylex.props(c.form)}>
+          <section aria-labelledby={`${id}-current`}>
+            <SurfaceCard xstyle={c.card}>
+              <div {...stylex.props(c.levelRow)}>
+                <h2 id={`${id}-current`} {...stylex.props(c.meta)}>
+                  {t('levelReview.request.currentLabel')}
+                </h2>
+                <p {...stylex.props(c.value)}>
+                  {t('levelReview.request.currentValue', {
+                    level: level(current.current.display_level),
+                    reliability: formatPercentPoints(current.current.reliability_percent, locale)
+                  })}
+                </p>
+              </div>
+              <p {...stylex.props(c.meta)}>{t('levelReview.request.currentHelper')}</p>
+            </SurfaceCard>
           </section>
-          <fieldset {...stylex.props(s.card, s.fieldset)}>
-            <legend {...stylex.props(s.legend)}>{t('levelReview.request.modeLegend')}</legend>
-            <div {...stylex.props(s.modes)}>
+          <fieldset {...stylex.props(c.fieldset)}>
+            <legend {...stylex.props(c.legend)}>{t('levelReview.request.modeLegend')}</legend>
+            <div {...stylex.props(c.modes)}>
               {(['exact', 'range'] as const satisfies readonly LevelMode[]).map((mode) => (
-                <label key={mode} {...stylex.props(s.mode, values.mode === mode && s.modeSelected)}>
+                <label key={mode} {...stylex.props(c.mode, values.mode === mode && c.modeSelected)}>
                   <input
                     type="radio"
                     name={`${id}-mode`}
@@ -238,7 +235,7 @@ export function PlayerLevelReviewRequest({
                     checked={values.mode === mode}
                     disabled={phase !== 'idle'}
                     onChange={() => change('mode', mode)}
-                    {...stylex.props(s.radio)}
+                    {...stylex.props(c.radio)}
                   />
                   {t(
                     mode === 'exact'
@@ -248,7 +245,7 @@ export function PlayerLevelReviewRequest({
                 </label>
               ))}
             </div>
-            <div {...stylex.props(s.levelFields)}>
+            <div {...stylex.props(c.levelFields)}>
               {values.mode === 'exact' ? (
                 <TextField
                   id={fieldId('exact')}
@@ -289,25 +286,24 @@ export function PlayerLevelReviewRequest({
               )}
             </div>
           </fieldset>
-          <section {...stylex.props(s.card)}>
-            <TextField
-              id={fieldId('reason')}
-              label={t('levelReview.request.reasonLabel')}
-              helper={t('levelReview.request.reasonHelper', {
-                count: reasonCount,
-                max: LEVEL_REVIEW_TEXT_MAX
-              })}
-              error={errorFor('reason')}
-              placeholder={t('levelReview.request.reasonPlaceholder')}
-              value={values.reason}
-              disabled={phase !== 'idle'}
-              onChange={(event) => change('reason', event.target.value)}
-              render={<textarea rows={5} />}
-              xstyle={s.textarea}
-            />
-          </section>
+          <TextField
+            id={fieldId('reason')}
+            label={t('levelReview.request.reasonLabel')}
+            helper={t('levelReview.request.reasonHelper', {
+              count: reasonCount,
+              max: LEVEL_REVIEW_TEXT_MAX
+            })}
+            error={errorFor('reason')}
+            placeholder={t('levelReview.request.reasonPlaceholder')}
+            value={values.reason}
+            disabled={phase !== 'idle'}
+            onChange={(event) => change('reason', event.target.value)}
+            render={<textarea rows={5} />}
+            xstyle={c.textarea}
+          />
           <Collapsible.Root open={evidenceOpen} onOpenChange={setEvidenceOpen}>
-            <Collapsible.Trigger {...stylex.props(s.disclosureTrigger)}>
+            <Collapsible.Trigger {...stylex.props(c.disclosureTrigger)}>
+              <span aria-hidden="true">{evidenceOpen ? '−' : '+'}</span>
               <span>
                 {t(
                   evidenceOpen
@@ -315,9 +311,8 @@ export function PlayerLevelReviewRequest({
                     : 'levelReview.request.evidenceShow'
                 )}
               </span>
-              <span aria-hidden="true">{evidenceOpen ? '−' : '+'}</span>
             </Collapsible.Trigger>
-            <Collapsible.Panel {...stylex.props(s.disclosurePanel)}>
+            <Collapsible.Panel {...stylex.props(c.disclosurePanel)}>
               <TextField
                 id={fieldId('evidence')}
                 label={t('levelReview.request.evidenceLabel')}
@@ -330,12 +325,12 @@ export function PlayerLevelReviewRequest({
                 disabled={phase !== 'idle'}
                 onChange={(event) => change('evidence', event.target.value)}
                 render={<textarea rows={4} />}
-                xstyle={s.textarea}
+                xstyle={c.textarea}
               />
             </Collapsible.Panel>
           </Collapsible.Root>
-          <p {...stylex.props(s.guidance)}>{t('levelReview.request.forwardOnly')}</p>
-          <output aria-live="polite" {...stylex.props(phase === 'idle' ? s.srOnly : s.notice)}>
+          <p {...stylex.props(c.meta)}>{t('levelReview.request.forwardOnly')}</p>
+          <output aria-live="polite" {...stylex.props(phase === 'idle' ? c.srOnly : c.notice)}>
             {phase === 'pending'
               ? t('levelReview.request.submitting')
               : phase === 'done'
@@ -343,20 +338,20 @@ export function PlayerLevelReviewRequest({
                 : ''}
           </output>
           {failure && (
-            <div role="alert" {...stylex.props(s.alert)}>
-              <p {...stylex.props(s.alertText)}>{t(`levelReview.errors.${failure.kind}`)}</p>
-              <div {...stylex.props(s.actions)}>
+            <div role="alert" {...stylex.props(c.alert)}>
+              <p {...stylex.props(c.alertText)}>{t(`levelReview.errors.${failure.kind}`)}</p>
+              <div {...stylex.props(c.actions)}>
                 {failure.kind === 'duplicate' && failure.existingId && (
                   <Link
                     to="/level-reviews/$requestId"
                     params={{ requestId: failure.existingId }}
-                    {...stylex.props(s.actionLink)}
+                    {...stylex.props(c.actionLink)}
                   >
                     {t('levelReview.errors.viewActive')}
                   </Link>
                 )}
                 {failure.kind === 'unconfirmed' && (
-                  <Link to="/level-reviews" {...stylex.props(s.actionLink)}>
+                  <Link to="/level-reviews" {...stylex.props(c.actionLink)}>
                     {t('levelReview.errors.checkRequests')}
                   </Link>
                 )}
@@ -364,7 +359,7 @@ export function PlayerLevelReviewRequest({
                   <button
                     type="button"
                     onClick={() => window.location.assign('/login?next=%2Flevel-reviews%2Fnew')}
-                    {...stylex.props(s.textButton)}
+                    {...stylex.props(c.textButton)}
                   >
                     {t('signIn')}
                   </button>

@@ -2,6 +2,7 @@ import * as stylex from '@stylexjs/stylex';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StatusBadge } from '../../components/ui/StatusBadge';
+import { TopBar } from '../../components/ui/TopBar';
 import type { StatisticsFilters } from './statistics-contracts';
 import type {
   PlayerFormSample,
@@ -26,7 +27,7 @@ import { playerStyles as s } from './statistics-player.styles';
 
 const CHART_MONTHS = 12;
 
-const OUTCOME_TONE = { W: 'positive', L: 'danger', D: 'neutral' } as const;
+const SQUARE_STYLE = { W: s.squareWin, L: s.squareLoss, D: s.squareDraw } as const;
 
 /** The active filter set, read back so the figures below are never ambiguous about their scope. */
 export function FilterContext({ filters }: { filters: StatisticsFilters }) {
@@ -61,18 +62,42 @@ export function FilterContext({ filters }: { filters: StatisticsFilters }) {
   );
 }
 
-function OutcomeBadges({ outcomes }: { outcomes: PlayerFormSample['outcomes'] }) {
+/**
+ * Resolved results as chronological squares, oldest first. The sample only holds decided results
+ * (win, loss, draw): incomplete matches have no result and are not part of it. Each square shows a
+ * letter and carries the full word for assistive tech, so colour is never the only signal.
+ */
+function FormSquares({ outcomes }: { outcomes: PlayerFormSample['outcomes'] }) {
   const { t } = useTranslation();
   return (
-    <ul aria-label={t('statistics.player.form.outcomes')} {...stylex.props(s.outcomes)}>
+    <ul aria-label={t('statistics.player.form.outcomes')} {...stylex.props(s.formSquares)}>
       {outcomes.map((entry, index) => (
-        <li key={`${entry.g}-${index}`}>
-          <StatusBadge tone={OUTCOME_TONE[entry.o]}>
+        <li key={`${entry.g}-${index}`} {...stylex.props(s.square, SQUARE_STYLE[entry.o])}>
+          <span aria-hidden="true">{t(`statistics.player.form.short.${entry.o}`)}</span>
+          <span {...stylex.props(s.visuallyHidden)}>
             {t(`statistics.player.form.outcome.${entry.o}`)}
-          </StatusBadge>
+          </span>
         </li>
       ))}
     </ul>
+  );
+}
+
+/** RN0yw recent form: the longest ready sample (last 10, else last 5) with its legend. */
+function RecentForm({ form }: { form: Statistics['form'] }) {
+  const { t } = useTranslation();
+  const sample =
+    form.last10.state === 'ready'
+      ? form.last10.value
+      : form.last5.state === 'ready'
+        ? form.last5.value
+        : null;
+  if (!sample) return null;
+  return (
+    <div {...stylex.props(s.formLead)}>
+      <FormSquares outcomes={sample.outcomes} />
+      <p {...stylex.props(s.copy)}>{t('statistics.player.form.legend')}</p>
+    </div>
   );
 }
 
@@ -111,7 +136,6 @@ function FormStat({
           capacity: count(sample.capacity)
         })}
       </span>
-      <OutcomeBadges outcomes={sample.outcomes} />
     </Stat>
   );
 }
@@ -195,25 +219,23 @@ export function PlayerStatistics({
   const f = usePlayerFormat();
   const { matches, sets, games, rating, form, activity } = stats;
   return (
-    <main {...stylex.props(s.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(s.page)}>
+      <TopBar
+        xstyle={s.barFrame}
+        title={t('statistics.player.title')}
+        back={
+          recentIsOwn
+            ? { to: '/me', label: t('statistics.player.backToProfile') }
+            : { to: '/community', label: t('statistics.player.backToCommunity') }
+        }
+      />
       <header {...stylex.props(s.header)}>
-        <div {...stylex.props(s.lead)}>
-          <h1 {...stylex.props(s.title)}>{t('statistics.player.title')}</h1>
-          <p {...stylex.props(s.copy)}>{t('statistics.player.subtitle')}</p>
-        </div>
+        <p {...stylex.props(s.copy)}>{t('statistics.player.subtitle')}</p>
         <FilterContext filters={stats.filters} />
         {!stats.config.rating_aligned && (
           <output {...stylex.props(s.copy)}>{t('statistics.player.ratingLagging')}</output>
         )}
       </header>
-
-      {filterControls && (
-        <StatisticsFilterSection
-          id="player-stats-filters"
-          filters={stats.filters}
-          controls={filterControls}
-        />
-      )}
 
       <section aria-label={t('statistics.player.sections.highlights')} {...stylex.props(s.section)}>
         <dl {...stylex.props(s.hero)}>
@@ -251,6 +273,7 @@ export function PlayerStatistics({
       </section>
 
       <Section id="player-stats-form" title={t('statistics.player.sections.form')}>
+        <RecentForm form={form} />
         <dl {...stylex.props(s.stats)}>
           <FormStat
             id="player.form.last5"
@@ -279,6 +302,14 @@ export function PlayerStatistics({
       {children}
       {recentHistory !== undefined && (
         <PlayerRecentMatches response={recentHistory} isOwn={recentIsOwn} onRetry={onRecentRetry} />
+      )}
+
+      {filterControls && (
+        <StatisticsFilterSection
+          id="player-stats-filters"
+          filters={stats.filters}
+          controls={filterControls}
+        />
       )}
 
       <Section id="player-stats-matches" title={t('statistics.player.sections.matches')}>

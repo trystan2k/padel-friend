@@ -13,6 +13,7 @@ import {
   matchPhotoExtension,
   validateMatchPhotoFile
 } from './match-photo';
+import { Button } from '../../components/ui/Button';
 import { createMatchStyles as s } from './create-match.styles';
 
 export function MatchPhotoUpload({
@@ -77,7 +78,7 @@ export function MatchPhotoUpload({
   }
   return (
     <section {...stylex.props(s.fields)}>
-      <label>
+      <label {...stylex.props(s.field)}>
         {t('matchCreate.fields.photo')}
         <input
           {...stylex.props(s.fileInput)}
@@ -150,19 +151,27 @@ export function MatchPhotoUpload({
         />
       </label>
       {invalid && (
-        <p id="photo-error" role="alert">
+        <p id="photo-error" role="alert" {...stylex.props(s.fieldError)}>
           {t('matchCreate.errors.missingPhoto')}
         </p>
       )}
-      {busy && <p aria-live="polite">{t('matchCreate.photo.uploading')}</p>}
-      {copying && <p aria-live="polite">{t('matchCreate.photo.uploading')}</p>}
+      {busy && (
+        <p aria-live="polite" {...stylex.props(s.muted)}>
+          {t('matchCreate.photo.uploading')}
+        </p>
+      )}
+      {copying && (
+        <p aria-live="polite" {...stylex.props(s.muted)}>
+          {t('matchCreate.photo.uploading')}
+        </p>
+      )}
       {copyFailed && (
-        <p id="photo-copy-error" role="alert">
+        <p id="photo-copy-error" role="alert" {...stylex.props(s.fieldError)}>
           {t('matchCreate.photo.unavailable')}
         </p>
       )}
       {error && (
-        <p id="photo-upload-error" role="alert">
+        <p id="photo-upload-error" role="alert" {...stylex.props(s.fieldError)}>
           {t('matchCreate.photo.unavailable')}
         </p>
       )}
@@ -175,11 +184,11 @@ export function MatchPhotoUpload({
               alt={t('matchCreate.fields.photo')}
             />
           ) : signingFailed === photo ? (
-            <output>{t('matchCreate.photo.unavailable')}</output>
+            <output {...stylex.props(s.muted)}>{t('matchCreate.photo.unavailable')}</output>
           ) : null}
-          <button type="button" onClick={() => void remove()} {...stylex.props(s.button)}>
+          <Button variant="secondary" onClick={() => void remove()}>
             {t('matchCreate.photo.remove')}
-          </button>
+          </Button>
         </>
       )}
     </section>

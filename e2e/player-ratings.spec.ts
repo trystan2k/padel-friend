@@ -24,6 +24,7 @@ import {
   openRecord,
   resultFixtures,
   review,
+  reviewAction,
   sql,
   sqlWithFixtureTriggersDisabled,
   type Actor,
@@ -129,7 +130,7 @@ function assertNoPrivateFields(texts: readonly string[], forbidden: readonly str
  * Raw server-rendered HTML (including the dehydrated loader payload) fetched with the page's
  * session, so privacy is asserted on what the server sent before any hydration runs.
  */
-async function ssrHtml(page: Page, path = '/dashboard') {
+async function ssrHtml(page: Page, path = '/me') {
   const response = await page.context().request.get(path);
   expect(response.status(), `${path} SSR status`).toBe(200);
   const html = await response.text();
@@ -217,7 +218,7 @@ function actorFor(userId: string): Actor {
 
 // --- AC1/AC4/AC6: real manual confirmation through the UI --------------------------------
 
-test('manual confirmation changes the level; dashboard, history and explanation show the stored numbers', async ({
+test('manual confirmation changes the level; Me, history and explanation show the stored numbers', async ({
   browserName,
   request
 }) => {
@@ -246,7 +247,7 @@ test('manual confirmation changes the level; dashboard, history and explanation 
   const privacy = watchRatingResponses(reviewer);
   await f.open(reviewer, eventId);
   const card = reviewer.getByRole('article', { name: fill(r.group, { number: 1 }), exact: true });
-  await card.getByRole('button', { name: r.review.approve, exact: true }).click();
+  await reviewAction(card, r.review.approve).click();
   await expect(card).toHaveAttribute('data-result-status', 'confirmed');
 
   // Result-detail entry point: per-player changes for the four who played.
@@ -278,7 +279,7 @@ test('manual confirmation changes the level; dashboard, history and explanation 
   page.on('console', (message) => {
     if (message.type() === 'error') consoleErrors.push(message.text());
   });
-  await page.goto('/dashboard');
+  await page.goto('/me');
   await waitForHydratedPage(page);
   await expect(page.getByText(level(event.after), { exact: true }).first()).toBeVisible();
 
@@ -295,7 +296,7 @@ test('manual confirmation changes the level; dashboard, history and explanation 
   expect(() => assertNoPrivateFields([`${html}"invited_by":"x"`], [])).toThrow();
   expect(() => assertNoPrivateFields([html], [f.creator.name])).toThrow();
   // Anonymous access to the protected route never serves rating data (redirected, not rendered).
-  const anonymousResponse = await request.get('/dashboard');
+  const anonymousResponse = await request.get('/me');
   const anonymousHtml = await anonymousResponse.text();
   expect(anonymousHtml).not.toMatch(/display_level|calculation_revision|game_group_id/);
   expect(anonymousHtml).not.toContain(rating.journey.title);
@@ -363,7 +364,7 @@ test('manual confirmation changes the level; dashboard, history and explanation 
     localized.on('console', (message) => {
       if (message.type() === 'error') errors.push(message.text());
     });
-    await localized.goto('/dashboard');
+    await localized.goto('/me');
     await waitForHydratedPage(localized);
     await expect(localized.locator('html')).toHaveAttribute('lang', locale);
     const copy = copies[locale].rating;
@@ -444,7 +445,7 @@ test('AUTO_48H and MANUAL confirmation store equivalent calculations; retries an
   expect(await eventCount(all)).toBe(8);
 
   const page = await f.page(f.members[7]!);
-  await page.goto('/dashboard');
+  await page.goto('/me');
   await waitForHydratedPage(page);
   const region = await journey(page);
   await expect(region.getByRole('listitem').filter({ hasText: signed(b.delta) })).toHaveCount(1);
@@ -562,7 +563,7 @@ test('a player shared by two communities keeps one global state and continuous h
   expect(Number(current?.['display_level'])).toBe(own.at(-1)!.after);
 
   const page = await f.page(shared);
-  await page.goto('/dashboard');
+  await page.goto('/me');
   await waitForHydratedPage(page);
   const region = await journey(page);
   await expect(
@@ -635,8 +636,18 @@ async function claim(
   const locked = page.getByText(en.auth.claim.levelLocked);
   if (edit?.name) await page.getByLabel(en.onboarding.name).fill(edit.name);
   if (edit?.startLevel) await page.getByLabel(en.onboarding.preciseLevel).fill(edit.startLevel);
-  await page.getByLabel(en.onboarding.sideLeftShort).first().check();
+  await page
+    .getByRole('group', { name: en.onboarding.side })
+    .getByRole('radio', { name: en.onboarding.sideLeftShort })
+    .check();
   const lockedShown = await locked.isVisible();
+  if (lockedShown) {
+    const levelCard = page.getByTestId('onboarding-level');
+    await expect(levelCard.getByText(en.auth.claim.locked, { exact: true })).toBeVisible();
+    await expect(levelCard.getByRole('slider')).toHaveCount(0);
+    await expect(page.getByRole('slider', { name: en.onboarding.levelScale })).toBeDisabled();
+    await expect(page.getByLabel(en.onboarding.preciseLevel)).toBeDisabled();
+  }
   await page.getByRole('button', { name: en.auth.claim.submit }).click();
   const password = 'Claim-pass-9!';
   await page.getByLabel(en.auth.resetNewPasswordLabel, { exact: true }).fill(password);
@@ -688,7 +699,7 @@ test('provisional players on either side are rated normally; claims keep ratings
   // A viewer who played sees the provisional badge and name, never the adder.
   const viewer = await f.page(m3);
   const wire = watchRatingResponses(viewer);
-  await viewer.goto('/dashboard');
+  await viewer.goto('/me');
   await waitForHydratedPage(viewer);
   const viewerRegion = await journey(viewer);
   const dialog = await openExplanation(
@@ -734,7 +745,7 @@ test('provisional players on either side are rated normally; claims keep ratings
   expect(p1After[1]!.before).toBe(p1Before[0]!.after); // continuity across the claim
   expect(p1After[1]!.calculations).toBe(1);
 
-  await claimed.page.goto('/dashboard');
+  await claimed.page.goto('/me');
   await waitForHydratedPage(claimed.page);
   const region = await journey(claimed.page);
   await expect(
@@ -775,7 +786,7 @@ test('a stale explanation reloads the journey, moves focus to its heading and an
   const [seen] = await ledger(viewer.id);
   expect(seen).toBeTruthy();
   const page = await f.page(viewer, 'en', 390, 'light', 844);
-  await page.goto('/dashboard');
+  await page.goto('/me');
   await waitForHydratedPage(page);
   const region = await journey(page);
   const rows = region.getByRole('listitem').filter({ has: page.locator('time') });
@@ -838,9 +849,9 @@ test('sign-in recovery returns to the result detail or the dashboard and ignores
     .poll(() => new URL(detail.url()).search)
     .toBe(`?next=${encodeURIComponent(`/matches/${eventId}`)}`);
 
-  // Dashboard entry point keeps its own destination.
+  // Me now hosts the journey; the existing sign-in fallback still targets Home.
   const dash = await f.page(viewer, 'en', 390, 'light', 844);
-  await dash.goto('/dashboard');
+  await dash.goto('/me');
   await waitForHydratedPage(dash);
   const region = await journey(dash);
   const trigger = region
@@ -848,6 +859,15 @@ test('sign-in recovery returns to the result detail or the dashboard and ignores
     .filter({ has: dash.locator('time') })
     .first()
     .getByRole('button');
+  await expect(trigger).toBeVisible();
+  // The home view re-reads every 3 s while visible. Once the cookies are gone that poll fails
+  // authentication and replaces the history with the error banner, so the row would vanish
+  // before focus() lands and the locator never resolves (the 180 s hang). A hidden tab pauses
+  // the loop, leaving the explanation read as the one that reports the expired session.
+  await dash.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
   await dash.context().clearCookies();
   await trigger.focus();
   await trigger.press('Enter');

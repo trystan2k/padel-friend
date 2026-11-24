@@ -42,33 +42,55 @@ export function MatchReview({
       : new Intl.NumberFormat(i18n.language, { style: 'currency', currency }).format(
           Number(value.price)
         );
+  const competitionText =
+    competition.competition === 'ranked' && competition.league
+      ? `${t('matches.competition.ranked')} · ${competition.league.name} · ${formatMatchLeaguePeriod(competition.league, i18n.language)}`
+      : t('matches.competition.unranked');
+  const rows: [string, string][] = [
+    [t('matchCreate.reviewRows.when'), `${value.date} · ${value.startTime} · ${value.timezone}`],
+    [t('matchCreate.fields.cutoff'), value.cutoffInstant || t('matchCreate.helpers.defaultCutoff')],
+    [t('matchCreate.reviewRows.where'), value.venueName],
+    [t('matchCreate.fields.type'), t(`matches.type.${value.type}`)],
+    ...(value.type === 'competitive'
+      ? [[t('matchCreate.competition.legend'), competitionText] as [string, string]]
+      : []),
+    [t('matchCreate.fields.visibility'), t(`matches.visibility.${value.visibility}`)],
+    [
+      t('matchCreate.reviewRows.level'),
+      !value.levelRestriction
+        ? t('matches.card.noLevelRestriction')
+        : `${value.minLevel}–${value.maxLevel}`
+    ],
+    ...(cost ? [[t('matchCreate.fields.price'), cost] as [string, string]] : []),
+    [t('matchCreate.reviewRows.teams'), t(`matches.teamMode.${value.teamMode}`)],
+    ...(value.courtBooked
+      ? [[t('matchCreate.fields.courtBooked'), t('matchCreate.reviewRows.yes')] as [string, string]]
+      : []),
+    ...(value.paymentNote
+      ? [[t('matchCreate.fields.paymentNote'), value.paymentNote] as [string, string]]
+      : []),
+    ...(value.maximumRegistrations
+      ? [
+          [t('matchCreate.fields.maximumRegistrations'), value.maximumRegistrations] as [
+            string,
+            string
+          ]
+        ]
+      : []),
+    [t('matchCreate.invitees.selected'), String(count)]
+  ];
   return (
-    <section {...stylex.props(s.card)}>
-      <h2>{t('matchCreate.review')}</h2>
-      <p>{value.cutoffInstant || t('matchCreate.helpers.defaultCutoff')}</p>
-      <div {...stylex.props(s.reviewFacts)}>
-        <p>
-          {value.date} · {value.startTime} · {value.timezone}
-        </p>
-        <p>{value.venueName}</p>
-        <p>{t(`matches.type.${value.type}`)}</p>
-        {value.type === 'competitive' && (
-          <p>
-            {competition.competition === 'ranked' && competition.league
-              ? `${t('matches.competition.ranked')} · ${competition.league.name} · ${formatMatchLeaguePeriod(competition.league, i18n.language)}`
-              : t('matches.competition.unranked')}
-          </p>
-        )}
-        <p>{t(`matches.visibility.${value.visibility}`)}</p>
-        <p>
-          {!value.levelRestriction
-            ? t('matches.card.noLevelRestriction')
-            : `${value.minLevel}–${value.maxLevel}`}
-        </p>
-      </div>
-      <p>
-        {cost} {t('matchCreate.informationalOnly')}
-      </p>
+    <section {...stylex.props(s.fields)}>
+      <h2 {...stylex.props(s.heading)}>{t('matchCreate.readyTitle')}</h2>
+      <dl {...stylex.props(s.list)}>
+        {rows.map(([label, text]) => (
+          <div key={label} {...stylex.props(s.reviewRow)}>
+            <dt {...stylex.props(s.reviewKey)}>{label}</dt>
+            <dd {...stylex.props(s.reviewValue)}>{text}</dd>
+          </div>
+        ))}
+      </dl>
+      <p {...stylex.props(s.muted)}>{t('matchCreate.informationalOnly')}</p>
       {preview?.key === photo ? (
         <img
           {...stylex.props(s.photo)}
@@ -81,18 +103,11 @@ export function MatchReview({
           onError={() => setPreviewFailed(photo)}
         />
       ) : null}
-      {previewFailed === photo && <p role="alert">{t('matchCreate.photo.unavailable')}</p>}
-      <p>{t(`matches.teamMode.${value.teamMode}`)}</p>
-      {value.courtBooked && <p>{t('matchCreate.fields.courtBooked')}</p>}
-      {value.paymentNote && <p>{value.paymentNote}</p>}
-      {value.maximumRegistrations && (
-        <p>
-          {t('matchCreate.fields.maximumRegistrations')}: {value.maximumRegistrations}
+      {previewFailed === photo && (
+        <p role="alert" {...stylex.props(s.formMessage)}>
+          {t('matchCreate.photo.unavailable')}
         </p>
       )}
-      <p>
-        {t('matchCreate.invitees.selected')}: {count}
-      </p>
     </section>
   );
 }

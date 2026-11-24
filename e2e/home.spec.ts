@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { waitForHydratedPage } from './auth-helpers';
 import { watchBrowserErrors } from './browser-error-gate';
+import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
 import { copies, fixtures, sql, type Actor } from './matches-management-fixtures';
 
 const BASE_URL = 'http://127.0.0.1:4173';
@@ -14,7 +16,7 @@ const homepageLocales = ['en', 'es', 'pt-BR'] as const;
 
 function homepageCopy(locale: string): {
   auth: { welcomeTitle: string; or: string; accountPrompt: string; privacyLink: string };
-  privacy: { title: string };
+  privacy: { title: string; backHome: string };
   publicHomepage: {
     hero: { title: string };
     actions: { signIn: string; createAccount: string };
@@ -159,6 +161,32 @@ test.describe('public homepage at root', () => {
   });
 });
 
+test('privacy keeps the existing policy layout and public preferences at 320px', async ({
+  page
+}) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.context().addCookies([
+    { name: 'locale', value: 'en', url: BASE_URL },
+    { name: 'theme', value: 'light', url: BASE_URL }
+  ]);
+  await page.goto('/privacy');
+  await waitForHydratedPage(page);
+  await expect(page.locator('[data-public-homepage]')).toHaveCount(0);
+  await expect(page.getByRole('main').locator('section[aria-labelledby]').first()).toBeVisible();
+  // Privacy frame (QqUGZ): the header "Back to home" link replaces the old sign-in footer link.
+  await expect(
+    page.getByRole('link', { name: homepageCopy('en').privacy.backHome })
+  ).toHaveAttribute('href', '/');
+  await page.locator('#locale').selectOption('es');
+  await page.locator('#theme').selectOption('dark');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+    homepageCopy('es').privacy.title
+  );
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(320);
+});
+
 test('login keeps its localized Welcome screen when loaded directly', async ({ page }) => {
   for (const locale of homepageLocales) {
     const copy = homepageCopy(locale);
@@ -180,7 +208,8 @@ test('login controls retain design typography across themes', async ({ page }) =
     await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
     const submit = page.locator('form button[type="submit"]');
     await expect(submit).toBeVisible();
-    expect(await submit.evaluate((element) => getComputedStyle(element).fontSize)).toBe('13px');
+    // Clubhouse frame B3Uqv: 16px bold button labels (control.styles.ts).
+    expect(await submit.evaluate((element) => getComputedStyle(element).fontSize)).toBe('16px');
   }
 });
 
@@ -332,11 +361,17 @@ test.describe('community Home', () => {
     const switcher = page.getByRole('combobox', { name: new RegExp(home.switcherLabel) });
     await expect(switcher).toContainText('Home Alpha Club');
     const next = page.getByRole('region', { name: home.nextMatch.title });
-    await expect(
-      next
-        .getByRole('heading', { level: 4 })
-        .getByRole('link', { name: 'Management court', exact: true })
-    ).toBeVisible();
+    const card = next.getByRole('article', { name: 'Management court' });
+    await expect(card.getByRole('link', { name: home.nextMatch.open })).toHaveAttribute(
+      'href',
+      /^\/matches\/[0-9a-f-]{36}$/
+    );
+    // Open matches are not repeated on Home: the Matches list stays one tap away.
+    await expect(next.getByRole('link', { name: home.available.all })).toHaveAttribute(
+      'href',
+      '/matches'
+    );
+    await expect(page.getByText(home.available.title, { exact: true })).toHaveCount(0);
 
     await switcher.focus();
     await page.keyboard.press('Enter');
@@ -344,7 +379,7 @@ test.describe('community Home', () => {
     await expect(page).toHaveURL(new RegExp(`/dashboard\\?community=${second}$`));
     await expect(switcher).toContainText('Home Beta Club');
     await expect(next.getByText(home.nextMatch.empty)).toBeVisible();
-    await expect(next.getByRole('link', { name: 'Management court' })).toHaveCount(0);
+    await expect(next.getByRole('article')).toHaveCount(0);
 
     // Deep link and reload keep the selected community.
     await page.reload();
@@ -356,6 +391,25 @@ test.describe('community Home', () => {
     await expect(
       page.getByRole('combobox', { name: new RegExp(home.switcherLabel) })
     ).toContainText('Home Alpha Club');
+
+    await page
+      .getByRole('navigation', { name: copies.en.appShell.navigation })
+      .getByRole('link', { name: copies.en.appShell.nav.community })
+      .click();
+    const overview = page.locator('[data-community-view="overview"]');
+    const communitySwitcher = overview.getByRole('combobox', {
+      name: new RegExp(home.switcherLabel)
+    });
+    await expect(communitySwitcher).toContainText('Home Alpha Club');
+    await communitySwitcher.focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('option', { name: 'Home Beta Club' }).click();
+    await expect(page).toHaveURL(new RegExp(`/community/${second}/?$`));
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Home Beta Club');
+    await expect(page.getByRole('link', { name: home.ranking.title, exact: true })).toHaveAttribute(
+      'href',
+      `/community/${second}/ranking`
+    );
   });
 
   test('a stale or foreign selection falls back without naming any community', async () => {
@@ -382,13 +436,17 @@ test.describe('community Home', () => {
   test('keeps profile, community and notification entries and gives every nav item a target', async () => {
     const page = await f.page(member);
     await expect(page.getByRole('link', { name: /Notifications/ })).toBeVisible();
-    const nav = page.getByRole('navigation', { name: copies.en.matches.results.navigation });
-    for (const key of ['home', 'matches', 'community', 'ranking', 'profile'] as const)
-      await expect(
-        nav.getByRole('link', { name: copies.en.matches.results.nav[key] })
-      ).toBeVisible();
-    await nav.getByRole('link', { name: copies.en.matches.results.nav.ranking }).click();
-    await expect(page.locator('#home-ranking')).toBeVisible();
+    const nav = page.getByRole('navigation', { name: copies.en.appShell.navigation });
+    const { nav: labels } = copies.en.appShell;
+    for (const name of [labels.home, labels.matches, labels.create, labels.community, labels.me])
+      await expect(nav.getByRole('link', { name, exact: true })).toBeVisible();
+    await expect(nav.getByRole('link')).toHaveCount(5);
+    await expect(page.getByRole('region', { name: home.ranking.title })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: home.activity.title })).toHaveCount(0);
+    await nav.getByRole('link', { name: labels.community }).click();
+    await expect(page).toHaveURL(/\/community\/?$/);
+    await expect(page.locator('[data-community-view="overview"]')).toBeVisible();
+    await expect(page.getByRole('link', { name: home.ranking.title, exact: true })).toBeVisible();
     for (const link of await nav.getByRole('link').all()) {
       const box = await link.boundingBox();
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
@@ -397,7 +455,7 @@ test.describe('community Home', () => {
 
   test('keeps the bottom navigation visible at the top and after scrolling to the end', async () => {
     const page = await f.page(member);
-    const nav = page.getByRole('navigation', { name: copies.en.matches.results.navigation });
+    const nav = page.getByRole('navigation', { name: copies.en.appShell.navigation });
     const viewport = page.viewportSize();
     const withinViewport = async () => {
       const box = await nav.boundingBox();
@@ -414,9 +472,7 @@ test.describe('community Home', () => {
 
   test('gives every Home text link a 44px target in both dimensions', async () => {
     const page = await f.page(member);
-    for (const link of await page
-      .locator('#home-actions a, #home-next-match a, #home-ranking a')
-      .all()) {
+    for (const link of await page.locator('#home-actions a, #home-next-match a').all()) {
       const box = await link.boundingBox();
       expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
@@ -426,7 +482,7 @@ test.describe('community Home', () => {
 
 // --- F28: Home structural + visual regression evidence -------------------------------------
 // Pencil frames hKncV (mobile) and AlfRD (desktop): header title/subtitle/bell, level hero,
-// attention cards, next-match card, ranking, activity and the fixed bottom navigation. Two layers:
+// attention cards, next-match card and the fixed bottom navigation. Two layers:
 //  1. exact structural probes over live DOM rectangles (strict, never relaxed): containment, order,
 //     no overlap, no text clipping, >=44px targets, fixed nav visible at top and end of scroll;
 //  2. screenshot references (viewport) per theme x viewport x translated locale. Pixels are only a
@@ -441,9 +497,25 @@ test.describe('community Home', () => {
 //    and never relaxed. The pixel budget is not a structural gate.
 //  - The 1% budget exists solely to absorb font-rasterization drift within the supported CI
 //    renderer (one pinned Chromium config, raster flags fixed in playwright.config.ts).
-//  - Measured Chromium residuals against the stored references (2026-11-10): home-mobile-light 0,
-//    home-mobile-dark 0, home-desktop-light 0, home-desktop-dark 0, home-mobile-pt-br 0,
-//    home-mobile-es 0. The budget is a ceiling over a measured zero.
+//  - Baselines were deliberately regenerated for PAF-202 (Clubhouse redesign) because the true
+//    rendering changed: Figtree replaced Inter/Manrope (different glyph metrics), the Home sections
+//    were recomposed (greeting hero, next match, attention; profile/admin surfaces
+//    moved to /me and the Community surface) and the shell bar was added. Residuals of the old
+//    references against the new rendering were home-mobile-light 17.8%, home-mobile-dark 11.5%,
+//    home-desktop-light 5.9%, home-desktop-dark 3.7%, home-mobile-pt-br 18.3%, home-mobile-es 17.9%.
+//    That delta is the intended redesign, not a defect: the strict structural probes above (which
+//    pass) are the structural gate; the screenshots were re-baselined to the new rendering and the
+//    budget was NOT widened.
+//  - Removing the hero rank line in U9 moved all content below it. Old-reference residuals
+//    were 6.95%, 4.74%, 2.59%, 1.82%, 7.64% and 7.43% in the order listed above.
+//    Baselines reflect that intended removal; the 1% budget is unchanged.
+//  - Round 4 (F24) restyled Home to hKncV/AlfRD/OdU52 (community pill, 48px bell, date + 30/800
+//    greeting, surface level card with real rank and reliability meter, green next-match tile,
+//    attention rows with glyph tiles). Old-reference residuals against the new rendering were
+//    home-mobile-light 40.1%, home-mobile-dark 23.2%, home-desktop-light 13.5%, home-desktop-dark
+//    7.8%, home-mobile-pt-br 40.6% and home-mobile-es 40.4%: the intended redesign, so those
+//    baselines were regenerated and the 1% budget is unchanged. The design layer is the
+//    hash-pinned frame-region gate (e2e/references/paf-202-home), not these snapshots.
 //  - Cross-renderer (WebKit/Firefox) residuals: not measured (unavailable in the verification
 //    environment: no non-Chromium Playwright project is configured). Cross-renderer pixel equality
 //    (including Pencil vs Chromium font rasterization) is explicitly out of scope per AGENTS.md.
@@ -467,25 +539,33 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
     if (doc.scrollWidth - doc.clientWidth > 0)
       failures.push('horizontal overflow ' + (doc.scrollWidth - doc.clientWidth) + 'px');
 
-    // Header: title, subtitle(s) stacked, bell beside or below, all contained.
+    // Clubhouse Home (hKncV/AlfRD): header row (community pill + bell), then date + greeting h1,
+    // then the light level card, next-match tile and attention list.
     const title = document.querySelector('#home-top h1');
     if (document.querySelectorAll('#home-top h1').length !== 1) failures.push('expected one h1');
-    const titles = title?.parentElement ?? null;
-    const headerRow = titles?.parentElement ?? null;
+    const headerRow = document.querySelector('#home-top > div:first-child');
+    const pill = headerRow?.querySelector('button[role="combobox"]') ?? null;
     const bell = headerRow?.querySelector('a[href="/notifications"]') ?? null;
-    const dateLine = titles?.querySelector('time') ?? null;
-    const communityLine = titles?.querySelector('p') ?? null;
-    if (!visible(title) || !visible(dateLine) || !visible(communityLine) || !visible(bell))
-      failures.push('header title/date/community/bell must all be visible');
-    else if (titles && headerRow) {
-      if (rect(dateLine).top < rect(title).bottom - 0.5) failures.push('date overlaps title');
-      if (rect(communityLine).top < rect(dateLine).bottom - 0.5)
-        failures.push('community line overlaps date');
-      const side = rect(bell).left >= rect(titles).right - 0.5;
-      const below = rect(bell).top >= rect(titles).bottom - 0.5;
-      if (!side && !below) failures.push('bell overlaps title block');
-      if (rect(bell).width < 44 || rect(bell).height < 44)
-        failures.push('bell target ' + rect(bell).width + 'x' + rect(bell).height);
+    const greeting = document.querySelector('#home-top > div:nth-child(2)');
+    const dateLine = greeting?.querySelector('time') ?? null;
+    if (!visible(title) || !visible(dateLine) || !visible(pill) || !visible(bell))
+      failures.push('header pill/bell, date and greeting must all be visible');
+    else {
+      if (greeting && rect(greeting).top < rect(headerRow!).bottom - 0.5)
+        failures.push('greeting block overlaps the header row');
+      if (rect(title).top < rect(dateLine).bottom - 0.5) failures.push('greeting overlaps date');
+      if (rect(bell).left < rect(pill).right - 0.5)
+        failures.push('bell overlaps the community pill');
+      if (rect(bell).width !== 48 || rect(bell).height !== 48)
+        failures.push(
+          'bell target ' + rect(bell).width + 'x' + rect(bell).height + ' (frame 48x48)'
+        );
+      if (rect(pill).height < 44) failures.push('pill target height ' + rect(pill).height);
+      if (!pill.querySelector('[aria-hidden="true"]')) failures.push('pill avatar missing');
+      if (parseFloat(getComputedStyle(title).fontSize) !== 30)
+        failures.push('greeting font size ' + getComputedStyle(title).fontSize + ' (frame 30)');
+      if (getComputedStyle(title).fontWeight !== '800')
+        failures.push('greeting weight ' + getComputedStyle(title).fontWeight + ' (frame 800)');
     }
 
     // The app-wide language/theme chips are absolutely positioned over the page's top right; no
@@ -495,7 +575,7 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
       for (const [name, element] of [
         ['title', title],
         ['date', dateLine],
-        ['community', communityLine],
+        ['pill', pill],
         ['bell', bell]
       ] as const) {
         if (!element) continue;
@@ -510,16 +590,31 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
           failures.push(name + ' is covered by the language/theme controls');
       }
 
-    // Level hero: below the header, carries the level figure.
-    const heroHeading = document.querySelector('#home-level-heading');
-    const hero = heroHeading?.closest('section') ?? null;
+    // Token surfaces: the level card is the light surface, the next match the green tile.
+    const resolve = (token: string, property: 'backgroundColor' | 'color') => {
+      const probe = document.createElement('i');
+      probe.style[property] = 'var(' + token + ')';
+      document.body.append(probe);
+      const value = getComputedStyle(probe)[property];
+      probe.remove();
+      return value;
+    };
+
+    // Level card: below the greeting, carries the level figure, the reliability meter and My statistics.
+    const hero = document.querySelector('#home-top > section');
     if (!visible(hero) || !visible(hero.querySelector('strong')))
-      failures.push('level hero with level figure must be visible');
-    else if (headerRow && rect(hero).top < rect(headerRow).bottom - 0.5)
-      failures.push('level hero overlaps header');
+      failures.push('level card with level figure must be visible');
+    else {
+      if (greeting && rect(hero).top < rect(greeting).bottom - 0.5)
+        failures.push('level card overlaps greeting');
+      if (getComputedStyle(hero).backgroundColor !== resolve('--color-surface', 'backgroundColor'))
+        failures.push('level card is not the surface token');
+      if (!visible(hero.querySelector('meter'))) failures.push('reliability meter missing');
+      if (!hero.querySelector('a[href^="/players/"]')) failures.push('My statistics link missing');
+    }
 
     // Home sections: ordered, non-overlapping, contained.
-    const sectionIds = ['home-actions', 'home-next-match', 'home-ranking', 'home-activity'];
+    const sectionIds = ['home-next-match', 'home-actions'];
     let previous: Element | null = hero;
     for (const id of sectionIds) {
       const section = document.getElementById(id);
@@ -532,18 +627,28 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
       previous = section;
     }
 
-    // Attention cards (reserve standby fixture) and next-match card.
+    // Attention rows (reserve standby fixture): one full-row link with glyph tile and chevron.
     const attention = [...document.querySelectorAll('#home-actions li')];
-    if (attention.length < 1) failures.push('no attention cards');
-    for (const card of attention) {
-      if (!visible(card)) failures.push('attention card hidden');
-      const link = card.querySelector('a');
+    if (attention.length < 1) failures.push('no attention rows');
+    for (const row of attention) {
+      if (!visible(row)) failures.push('attention row hidden');
+      const link = row.querySelector('a');
       if (!visible(link) || rect(link).width < 44 || rect(link).height < 44)
-        failures.push('attention card link under 44px');
+        failures.push('attention row link under 44px');
+      else if (link.querySelectorAll('[aria-hidden="true"]').length !== 2)
+        failures.push('attention row needs a glyph tile and a chevron');
     }
     const next = document.querySelector('#home-next-match article');
-    if (!visible(next) || !visible(next.querySelector('h3 a')))
-      failures.push('next-match card with venue link must be visible');
+    if (!visible(next) || !visible(next.querySelector('a[href^="/matches/"]')))
+      failures.push('next-match tile with open-match link must be visible');
+    else {
+      if (getComputedStyle(next).backgroundColor !== resolve('--color-green', 'backgroundColor'))
+        failures.push('next-match tile is not the green token');
+      if (getComputedStyle(next).color !== resolve('--color-on-green', 'color'))
+        failures.push('next-match text is not the on-green token');
+      if (rect(next.querySelector('a[href^="/matches/"]')!).height < 48)
+        failures.push('open-match button is shorter than the frame 48px');
+    }
 
     // Containment, text clipping and 44px links across the whole Home block.
     const home = document.getElementById('home-top');
@@ -554,7 +659,10 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
         element.tagName.toLowerCase() + '"' + (element.textContent ?? '').trim().slice(0, 24) + '"';
       if (box.right > doc.clientWidth + 0.5 || box.left < -0.5) failures.push('escaped ' + name);
       const style = getComputedStyle(element);
+      // Visually hidden labels (screen-reader text) are 1px clipped boxes by design.
       if (
+        box.width > 1 &&
+        box.height > 1 &&
         element.children.length === 0 &&
         (element.textContent ?? '').trim() !== '' &&
         ((/(hidden|clip)/.test(style.overflowX) && element.scrollWidth > element.clientWidth + 1) ||
@@ -569,7 +677,7 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
     }
 
     // Fixed bottom navigation: five targets, viewport-fixed, centered, visible at top and at end.
-    const nav = document.querySelector('main > nav');
+    const nav = document.querySelector('nav[data-app-nav]');
     if (!nav) return [...failures, 'no bottom navigation'];
     if (getComputedStyle(nav).position !== 'fixed') failures.push('nav is not position:fixed');
     const links = [...nav.querySelectorAll('a')];
@@ -593,8 +701,8 @@ async function homeStructureFailures(page: Page): Promise<string[]> {
     inViewport('at top');
     window.scrollTo(0, doc.scrollHeight);
     inViewport('at end');
-    const community = document.getElementById('home-community');
-    if (community && rect(community).bottom > navBox().top + 0.5)
+    const lastSection = home?.lastElementChild;
+    if (lastSection && rect(lastSection).bottom > navBox().top + 0.5)
       failures.push('content is covered by the nav at the end of the page');
     window.scrollTo(0, 0);
     return failures;
@@ -690,15 +798,71 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
         await expect(page.locator('#home-actions li').first()).toBeVisible();
         await expect(page.locator('#home-next-match article').first()).toBeVisible();
         await expect(page.getByRole('heading', { level: 1 })).toContainText(player.name);
-        await expect(page.locator('#home-top h1 + time')).toContainText('UTC');
+        await expect(page.locator('#home-top > div:nth-child(2) time')).toContainText('UTC');
 
         const failures = await homeStructureFailures(page);
         expect(failures, failures.join('\n')).toEqual([]);
 
+        // Reliability meter paints token colours: the track is --color-surface-2 and the fill the solid
+        // --color-green (no UA gradient). The fill sits in a UA pseudo-element no computed-style read
+        // reaches, so sample the rendered pixels at both ends of the bar.
+        const meter = page.locator('meter').first();
+        await expect(meter).toBeVisible();
+        const expected = await page.evaluate(() => {
+          const resolve = (token: string) => {
+            const node = document.createElement('span');
+            node.style.color = 'var(' + token + ')';
+            document.body.append(node);
+            const rgb = getComputedStyle(node).color.match(/\d+/g)!.slice(0, 3).map(Number);
+            node.remove();
+            return rgb;
+          };
+          return { fill: resolve('--color-green'), track: resolve('--color-surface-2') };
+        });
+        const bar = await meter.screenshot({ animations: 'disabled', caret: 'hide' });
+        const sampled = await page.evaluate(async (base64) => {
+          const bitmap = await createImageBitmap(
+            await (await fetch('data:image/png;base64,' + base64)).blob()
+          );
+          const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+          const context = canvas.getContext('2d')!;
+          context.drawImage(bitmap, 0, 0);
+          const at = (x: number) =>
+            Array.from(context.getImageData(x, Math.floor(bitmap.height / 2), 1, 1).data).slice(
+              0,
+              3
+            );
+          return { fill: at(Math.min(6, bitmap.width - 1)), track: at(bitmap.width - 3) };
+        }, bar.toString('base64'));
+        expect(sampled.fill, 'meter fill is the solid green token').toEqual(expected.fill);
+        expect(sampled.track, 'meter track is the surface-2 token').toEqual(expected.track);
+
+        // F63: tab labels stay on one line and never break mid-word, even at 320 pt-BR/es.
+        const tabs = await page.evaluate(() =>
+          Array.from(document.querySelectorAll('[data-app-nav] a:not([aria-label])')).map(
+            (link) => {
+              const label = Array.from(link.childNodes).find((node) => node.nodeType === 3)!;
+              const range = document.createRange();
+              range.selectNodeContents(label);
+              return {
+                lines: new Set(
+                  Array.from(range.getClientRects()).map((rect) => Math.round(rect.top))
+                ).size,
+                overflow: link.scrollWidth - link.clientWidth
+              };
+            }
+          )
+        );
+        expect(tabs.length).toBeGreaterThan(0);
+        for (const tab of tabs) {
+          expect(tab.lines, config.locale + ' ' + config.width + ': tab label is one line').toBe(1);
+          expect(tab.overflow).toBeLessThanOrEqual(0);
+        }
+
         if (!('shot' in config)) return;
         await page.evaluate((text) => {
           // Header date and activity days follow the wall clock; fixture match times are fixed.
-          for (const time of document.querySelectorAll('#home-top h1 + time, #home-activity time'))
+          for (const time of document.querySelectorAll('#home-top > div:nth-child(2) time'))
             time.textContent = text;
         }, NORMALIZED_DATE);
         await page.evaluate(() => window.scrollTo(0, 0));
@@ -712,5 +876,47 @@ test.describe('Home structure and visual regression', { tag: '@visual' }, () => 
         await expect(page).toHaveScreenshot(name, { maxDiffPixelRatio: HOME_VISUAL_BUDGET });
       }
     );
+  }
+
+  // Pencil frame layer: hash-pinned exports of hKncV (light) and AlfRD (dark) compared region by
+  // region with the live page. Budgets are measured; structure above stays exact.
+  const references: {
+    frames: Record<string, { sha256: string }>;
+    frameRegions: Record<string, Record<string, FrameRegionRecord>>;
+  } = JSON.parse(
+    readFileSync(new URL('./references/paf-202-home/manifest.json', import.meta.url), 'utf8')
+  );
+  for (const [frame, theme] of [
+    ['hKncV', 'light'],
+    ['AlfRD', 'dark']
+  ] as const) {
+    test(`Home regions match Pencil frame ${frame} (${theme})`, async () => {
+      const page = await f.page(player, 'en', 390, theme, 844);
+      await expect(page.locator('#home-next-match article')).toBeVisible();
+      await page.evaluate(() => window.scrollTo(0, 0));
+      const source = readFileSync(
+        new URL(`./references/paf-202-home/${frame}.png`, import.meta.url)
+      );
+      expect(createHash('sha256').update(source).digest('hex')).toBe(
+        references.frames[frame]!.sha256
+      );
+      await assertFrameRegions({
+        page,
+        frame,
+        reference: source,
+        regions: references.frameRegions[frame]!,
+        locators: {
+          pill: page.locator('#home-top button[role="combobox"]'),
+          bell: page.locator('#home-top a[href="/notifications"]'),
+          levelCard: page.locator('#home-top > section').first(),
+          nextCard: page.locator('#home-next-match article'),
+          attentionRow: page.locator('#home-actions li').first()
+        },
+        mask: [
+          page.locator('#home-top a[href="/notifications"] > span[aria-hidden="true"]'),
+          page.locator('#home-top time')
+        ]
+      });
+    });
   }
 });

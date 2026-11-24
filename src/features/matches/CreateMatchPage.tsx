@@ -1,11 +1,14 @@
 import * as stylex from '@stylexjs/stylex';
-import { rootStyles } from '../../root.styles';
+import { Button } from '../../components/ui/Button';
+import { TextLink } from '../../components/ui/TextLink';
+import { TopBar } from '../../components/ui/TopBar';
 import { validMatchMapsUrl } from './match-management-edit';
-import { Link, useNavigate } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MatchDetailsForm } from './MatchDetailsForm';
 import { MatchInviteePicker } from './MatchInviteePicker';
+import { MatchPlayersForm } from './MatchPlayersForm';
 import { MatchPhotoUpload } from './MatchPhotoUpload';
 import { MatchReview } from './MatchReview';
 import { createMatchStyles as s } from './create-match.styles';
@@ -63,8 +66,22 @@ const emptyOptions: MatchCreationOptions = {
 };
 type LeagueOptionsState = { key: string; status: 'ready' | 'error'; leagues: MatchLeagueOption[] };
 type FrozenRequest = { id: string; input: MatchPublishInput; inviteeIds: string[] };
+// Visible, focusable wizard controls: Base UI renders a hidden `aria-hidden` input beside each radio and
+// switch, so those inputs are skipped in favor of the radio/switch element itself.
+const firstControl =
+  'input:not([aria-hidden="true"]), select, button, [role="radio"], [role="switch"]';
+function focusFirstControl(root: HTMLElement | null) {
+  const first = root?.querySelector<HTMLElement>(firstControl);
+  // Within a radio group the checked radio is the one in the tab order.
+  const checked = first
+    ?.closest('[role="radiogroup"]')
+    ?.querySelector<HTMLElement>('[aria-checked="true"]');
+  (checked ?? first)?.focus();
+}
+// Draft fields whose control lives on the Players step; every other validated field is on Details.
+const playersStepErrors = ['minLevel', 'maximumRegistrations'];
 
-export function CreateMatchPage() {
+export function CreateMatchPage({ initialCommunityId }: { initialCommunityId?: string } = {}) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const heading = useRef<HTMLHeadingElement>(null);
@@ -122,7 +139,11 @@ export function CreateMatchPage() {
         if (generation !== optionsGeneration.current) return;
         const next = result;
         setOptions(next);
-        const first = next.communities[0];
+        // A scoped entry starts in its own community when the caller is an eligible member;
+        // the unscoped entry (bottom nav, Home) keeps the first membership.
+        const first =
+          next.communities.find((community) => community.id === initialCommunityId) ??
+          next.communities[0];
         if (first) {
           const id = crypto.randomUUID();
           setCommunityId(first.id);
@@ -160,7 +181,7 @@ export function CreateMatchPage() {
     return () => {
       optionsGeneration.current += 1;
     };
-  }, []);
+  }, [initialCommunityId]);
 
   // Eligible Leagues depend on the community and the intended UTC start. Each request carries a
   // generation so a slow response for an older community/schedule can never overwrite newer state.
@@ -189,7 +210,7 @@ export function CreateMatchPage() {
   const retryLeagueOptions = useCallback(() => setLeagueReload((current) => current + 1), []);
 
   useLayoutEffect(() => {
-    if (step >= 0) formRef.current?.querySelector<HTMLElement>('input, select, button')?.focus();
+    if (step >= 0) focusFirstControl(formRef.current);
   }, [step]);
   useLayoutEffect(() => {
     if (step >= 0 && Object.keys(fieldErrors).length)
@@ -455,7 +476,10 @@ export function CreateMatchPage() {
     )
       next.maximumRegistrations = 'invalidCapacity';
     setFieldErrors(next);
-    if (Object.keys(next).length && step !== 0) setStep(0);
+    // Return to the step that owns the first invalid field; the layout effect focuses its control
+    // once that step has mounted. Already on that step, focus the control directly.
+    const owner = Object.keys(next).some((key) => !playersStepErrors.includes(key)) ? 0 : 1;
+    if (Object.keys(next).length && step !== owner) setStep(owner);
     else formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
     return Object.keys(next).length === 0;
   }
@@ -548,24 +572,42 @@ export function CreateMatchPage() {
     }
   }
 
+  const wizardHeader = (
+    <TopBar
+      title={t('matchCreate.title')}
+      headingRef={heading}
+      back={step > 0 ? undefined : { to: '/matches', label: t('matches.back') }}
+      backAction={
+        step > 0
+          ? { label: t('matchCreate.previousStep'), onClick: () => setStep(step - 1) }
+          : undefined
+      }
+    />
+  );
   if (optionsLoading && !options.communities.length)
-    return <main {...stylex.props(s.page)} aria-busy="true" />;
+    return <main data-route-chrome="navigation" {...stylex.props(s.page)} aria-busy="true" />;
   if (optionsError && !options.communities.length)
     return (
-      <main {...stylex.props(s.page)}>
-        <h1 {...stylex.props(s.title)}>{t('matchCreate.title')}</h1>
-        <p role="alert">{t('matchCreate.errors.optionsUnavailable')}</p>
-        <button type="button" {...stylex.props(s.button)} onClick={() => window.location.reload()}>
-          {t('matches.retry')}
-        </button>
+      <main data-route-chrome="navigation" {...stylex.props(s.page)}>
+        {wizardHeader}
+        <div {...stylex.props(s.centered)}>
+          <p role="alert" {...stylex.props(s.formMessage)}>
+            {t('matchCreate.errors.optionsUnavailable')}
+          </p>
+          <Button variant="secondary" onClick={() => window.location.reload()}>
+            {t('matches.retry')}
+          </Button>
+        </div>
       </main>
     );
   if (!options.communities.length)
     return (
-      <main {...stylex.props(s.page)}>
-        <h1 {...stylex.props(s.title)}>{t('matchCreate.title')}</h1>
-        <p>{t('matchCreate.noCommunities')}</p>
-        <Link to="/onboarding/community">{t('matchCreate.discoverCommunities')}</Link>
+      <main data-route-chrome="navigation" {...stylex.props(s.page)}>
+        {wizardHeader}
+        <div {...stylex.props(s.centered)}>
+          <p {...stylex.props(s.body)}>{t('matchCreate.noCommunities')}</p>
+          <TextLink to="/onboarding/community">{t('matchCreate.discoverCommunities')}</TextLink>
+        </div>
       </main>
     );
   // A competition error recorded at validation time goes stale once the League list or the
@@ -581,135 +623,170 @@ export function CreateMatchPage() {
     competitionError && competitionErrorActive ? fieldErrors : otherErrors;
   const requiredInvalid = Object.keys(activeErrors).length > 0;
   return (
-    <main {...stylex.props(s.page)}>
-      <header {...stylex.props(rootStyles.pageHeader)}>
-        <h1 {...stylex.props(s.title)} ref={heading} tabIndex={-1}>
-          {t('matchCreate.title')}
-        </h1>
-        <p>{t('matchCreate.subtitle')}</p>
-        <p>{t(`matchCreate.steps.${headingLabels[step]}`)}</p>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(s.page)}>
+      {wizardHeader}
       {optionsError && (
-        <>
-          <p role="alert">{t('matchCreate.errors.optionsUnavailable')}</p>
-          <button
-            type="button"
-            disabled={optionsLoading}
-            {...stylex.props(s.button)}
-            onClick={retryScopedOptions}
-          >
+        <div {...stylex.props(s.centered)}>
+          <p role="alert" {...stylex.props(s.formMessage)}>
+            {t('matchCreate.errors.optionsUnavailable')}
+          </p>
+          <Button variant="secondary" disabled={optionsLoading} onClick={retryScopedOptions}>
             {t('matches.retry')}
-          </button>
-        </>
+          </Button>
+        </div>
       )}
       <div ref={formRef} {...stylex.props(s.form)}>
-        {step === 0 && (
-          <>
-            <MatchDetailsForm
-              value={{ ...value, community_id: communityId }}
-              options={options}
-              errors={activeErrors}
-              competition={competition}
-              change={<K extends keyof MatchDraft>(key: K, next: MatchDraft[K]) => {
-                if (key === 'community_id' && typeof next === 'string') selectCommunity(next);
-                else change(key, next);
-              }}
-            />
-            <MatchPhotoUpload
-              key={`${communityId}:${eventId}`}
-              communityId={communityId}
-              eventId={eventId}
-              photo={photo}
-              onChange={changePhoto}
-              onBusyChange={setPhotoBusy}
-              copying={photoCopyBusy}
-              copyFailed={photoCopyError}
-              invalid={Boolean(fieldErrors.photo)}
-            />
-          </>
-        )}
-        {step === 1 && (
-          <MatchInviteePicker
-            communityId={communityId}
-            selected={invitees}
-            onChange={(next) => {
-              if (frozen.current) frozen.current = null;
-              setInvitees(next);
-            }}
-          />
-        )}
-        {step === 2 && (
-          <fieldset>
-            <legend>{t('matchCreate.helpers.teamMode')}</legend>
-            {(['PREDEFINED_TEAMS', 'POST_MATCH_TEAMS'] as const).map((mode) => (
-              <label key={mode} {...stylex.props(s.touchLabel)}>
-                <input
-                  type="radio"
-                  name="teamMode"
-                  checked={(value.teamMode ?? 'POST_MATCH_TEAMS') === mode}
-                  onChange={() => change('teamMode', mode)}
-                />
-                {t(`matches.teamMode.${mode}`)}
-              </label>
+        <div {...stylex.props(s.content)}>
+          <ol aria-hidden="true" {...stylex.props(s.progress)}>
+            {headingLabels.map((label, index) => (
+              <li
+                key={label}
+                data-step-state={index < step ? 'done' : index === step ? 'current' : 'todo'}
+                {...stylex.props(index <= step ? s.segmentDone : s.segmentTodo)}
+              />
             ))}
-          </fieldset>
-        )}
-        {step === 3 && (
-          <>
-            <MatchReview
-              value={{
-                ...value,
-                timezone,
-                cutoffInstant: cutoffInstant
-                  ? `${dateFormatter.format(cutoffInstant)} · ${timezone}`
-                  : ''
-              }}
-              photo={photo}
-              count={invitees.length}
-              competition={resolution}
-            />
-            {fieldErrors.cutoff && (
-              <p {...stylex.props(s.formMessage)} role="alert">
-                {t(`matchCreate.errors.${fieldErrors.cutoff}`)}
-              </p>
-            )}
-            <p {...stylex.props(s.formMessage)}>{t('matchCreate.helpers.invitesOnPublish')}</p>
-          </>
-        )}
-        {error && (
-          <p {...stylex.props(s.formMessage)} role="alert">
-            {t(`matchCreate.errors.${error}`)}
+          </ol>
+          <p {...stylex.props(s.stepLabel)}>
+            {t('matchCreate.stepOf', { current: step + 1, total: headingLabels.length })} ·{' '}
+            <span>{t(`matchCreate.steps.${headingLabels[step]}`)}</span>
           </p>
-        )}
-        {requiredInvalid && (
-          <output aria-live="polite">{t('matchCreate.errors.invalidInput')}</output>
-        )}
-        <div {...stylex.props(s.row)}>
-          {step > 0 && (
-            <button type="button" {...stylex.props(s.button)} onClick={() => setStep(step - 1)}>
+          {step === 0 && (
+            <>
+              <MatchDetailsForm
+                value={{ ...value, community_id: communityId }}
+                options={options}
+                errors={activeErrors}
+                competition={competition}
+                change={<K extends keyof MatchDraft>(key: K, next: MatchDraft[K]) => {
+                  if (key === 'community_id' && typeof next === 'string') selectCommunity(next);
+                  else change(key, next);
+                }}
+              />
+              <MatchPhotoUpload
+                key={`${communityId}:${eventId}`}
+                communityId={communityId}
+                eventId={eventId}
+                photo={photo}
+                onChange={changePhoto}
+                onBusyChange={setPhotoBusy}
+                copying={photoCopyBusy}
+                copyFailed={photoCopyError}
+                invalid={Boolean(fieldErrors.photo)}
+              />
+            </>
+          )}
+          {step === 1 && (
+            <>
+              <MatchPlayersForm
+                value={value}
+                levelDefaults={options.level_defaults}
+                errors={activeErrors}
+                change={change}
+              />
+              <section aria-labelledby="match-invite-heading" {...stylex.props(s.fields)}>
+                <span id="match-invite-heading" {...stylex.props(s.choiceLabel)}>
+                  {t('matchCreate.fields.invitePlayers')}
+                </span>
+                <MatchInviteePicker
+                  communityId={communityId}
+                  selected={invitees}
+                  onChange={(next) => {
+                    if (frozen.current) frozen.current = null;
+                    setInvitees(next);
+                  }}
+                />
+              </section>
+            </>
+          )}
+          {step === 2 && (
+            <fieldset {...stylex.props(s.group)}>
+              <legend {...stylex.props(s.legend)}>{t('matchCreate.helpers.teamMode')}</legend>
+              <div {...stylex.props(s.segmented)}>
+                {(['POST_MATCH_TEAMS', 'PREDEFINED_TEAMS'] as const).map((mode) => (
+                  <label key={mode} {...stylex.props(s.segment)}>
+                    <input
+                      type="radio"
+                      name="teamMode"
+                      {...stylex.props(stylex.defaultMarker(), s.segmentInput)}
+                      checked={(value.teamMode ?? 'POST_MATCH_TEAMS') === mode}
+                      onChange={() => change('teamMode', mode)}
+                    />
+                    {t(`matches.teamMode.${mode}`)}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
+          {step === 3 && (
+            <>
+              <MatchReview
+                value={{
+                  ...value,
+                  timezone,
+                  cutoffInstant: cutoffInstant
+                    ? `${dateFormatter.format(cutoffInstant)} · ${timezone}`
+                    : ''
+                }}
+                photo={photo}
+                count={invitees.length}
+                competition={resolution}
+              />
+              {fieldErrors.cutoff && (
+                <p {...stylex.props(s.formMessage)} role="alert">
+                  {t(`matchCreate.errors.${fieldErrors.cutoff}`)}
+                </p>
+              )}
+              <p {...stylex.props(s.muted)}>{t('matchCreate.helpers.invitesOnPublish')}</p>
+            </>
+          )}
+          {error && (
+            <p {...stylex.props(s.formMessage)} role="alert">
+              {t(`matchCreate.errors.${error}`)}
+            </p>
+          )}
+          {requiredInvalid && (
+            <output aria-live="polite" {...stylex.props(s.formMessage)}>
+              {t('matchCreate.errors.invalidInput')}
+            </output>
+          )}
+        </div>
+        <div {...stylex.props(s.actions)}>
+          {step > 0 ? (
+            <Button
+              variant="secondary"
+              xstyle={s.secondaryAction}
+              onClick={() => setStep(step - 1)}
+            >
               {t('matchCreate.previous')}
-            </button>
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              xstyle={s.secondaryAction}
+              onClick={() => void navigate({ to: '/matches' })}
+            >
+              {t('matchCreate.cancel')}
+            </Button>
           )}
           {step < 3 ? (
-            <button
-              type="button"
-              {...stylex.props(s.button, s.primaryButton)}
+            <Button
+              xstyle={s.primaryAction}
               onClick={() => {
                 setError('');
                 setStep(step + 1);
               }}
             >
               {t('matchCreate.next')}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              disabled={busy || photoBusy || photoCopyBusy || !photo}
-              {...stylex.props(s.button, s.primaryButton)}
+            <Button
+              xstyle={s.primaryAction}
+              busy={busy}
+              disabled={photoBusy || photoCopyBusy || !photo}
               onClick={() => void publish(Date.now())}
             >
               {t(busy ? 'matchCreate.publishing' : 'matchCreate.publish')}
-            </button>
+            </Button>
           )}
         </div>
       </div>

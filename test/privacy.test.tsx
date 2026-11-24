@@ -117,6 +117,21 @@ describe('skip link target', () => {
     const target = targets[0];
     expect(target?.getAttribute('tabindex')).toBe('-1');
     expect(target?.querySelector('main')).not.toBeNull();
+    // Frames QqUGZ / pHgfV: the legal sections follow a brand header with a Back to home link; no
+    // homepage hero or footer spills into the policy.
+    expect(target?.querySelectorAll('main > section')).toHaveLength(PRIVACY_SECTIONS.length);
+    expect(target?.querySelector('main > header a')?.getAttribute('href')).toBe('/');
+    expect(target?.querySelector('main > footer, [data-public-homepage]')).toBeNull();
+    // D8: the header carries the owner-approved app icon asset (decorative; the wordmark is adjacent).
+    const logo = target?.querySelector('main > header img');
+    expect(logo?.getAttribute('src')).toContain('padel-friends-app-icon.png');
+    expect(logo?.getAttribute('alt')).toBe('');
+    // Public chrome of the frames: icon chips (language, theme) instead of text pills.
+    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: en.language }).value).toBe('en');
+    expect(screen.getByRole('combobox', { name: en.theme })).toBeTruthy();
+    expect(
+      screen.queryByRole('link', { name: en.publicHomepage.actions.createAccount })
+    ).toBeNull();
 
     const skip = await screen.findByRole('link', { name: en.accessibility.skipToContent });
     expect(skip.getAttribute('href')).toBe('#main-content');
@@ -186,11 +201,11 @@ describe('PrivacyPolicy page', () => {
     expect(link.getAttribute('href')).toBe(`mailto:${PRIVACY_CONTACT_EMAIL}`);
   });
 
-  it('links back to sign-in', async () => {
-    await renderPolicy('es');
+  it.each(supportedLocales)('links back to the public homepage in %s', async (locale) => {
+    await renderPolicy(locale);
 
-    const link = screen.getByRole('link', { name: es.auth.backToSignIn });
-    expect(link.getAttribute('href')).toBe('/login');
+    const link = screen.getByRole('link', { name: catalogs[locale].privacy.backHome });
+    expect(link.getAttribute('href')).toBe('/');
   });
 });
 

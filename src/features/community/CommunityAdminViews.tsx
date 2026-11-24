@@ -1,15 +1,21 @@
 import { useUpdateGuard } from '../pwa/update-guard';
 import { isOffline, isTransportFailure } from '../../lib/connectivity';
 import * as stylex from '@stylexjs/stylex';
-import { rootStyles } from '../../root.styles';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import { Dialog } from '@base-ui/react/dialog';
 import { Select } from '@base-ui/react/select';
 import { Switch } from '@base-ui/react/switch';
-import { Link, useParams, useRouter } from '@tanstack/react-router';
+import {
+  Link,
+  Outlet,
+  useParams,
+  useRouter,
+  type ErrorComponentProps
+} from '@tanstack/react-router';
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -20,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
+import { TopBar } from '../../components/ui/TopBar';
 import {
   addCommunityVenue,
   archiveCommunityVenue,
@@ -50,8 +57,17 @@ import { styles } from './community-admin.styles';
 import { VenuePhotoUpload } from './VenuePhotoUpload';
 import { InviteeSearch } from './InviteeSearch';
 
+// Set when the member sheet is opened from the mounted roster (history entry behind it). Kept in
+// memory, not in history.state: history.state survives a document reload, which must fall back
+// to the explicit Members route instead of popping an arbitrary entry.
+let rosterOriginOpen = false;
+
 type ScreenName = CommunityAdminScreenProps['screen'];
 type ViewProps<Screen extends ScreenName> = Extract<CommunityAdminScreenProps, { screen: Screen }>;
+
+type MemberCounts = Partial<
+  Record<CommunityAdminMember['status'], { total: number; exact: boolean }>
+>;
 
 function MembersView({ community, members }: ViewProps<'members'>) {
   const matchSummary = unsupportedCommunityMatchSummary();
@@ -69,6 +85,9 @@ function MembersView({ community, members }: ViewProps<'members'>) {
   } | null>(null);
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasLoadedMoreMembers, setHasLoadedMoreMembers] = useState(false);
+  // Counts come only from unfiltered result sets already read (exact when the list is complete,
+  // a lower bound while more pages exist); a filter that was never opened has no count.
+  const [knownCounts, setKnownCounts] = useState<MemberCounts>({});
   const searchRequest = useRef(0);
   const membersSourceRef = useRef(members);
   const hasSearchedMembers = useRef(false);
@@ -90,6 +109,14 @@ function MembersView({ community, members }: ViewProps<'members'>) {
     (submittedQuery !== '' && !currentSearch) ||
     (memberFilter !== 'active' && !currentSearch);
 
+  const currentCount =
+    submittedQuery === '' && !searchingMembers && (currentSearch || initialActiveResults)
+      ? { total: visibleMembers.length, exact: !canLoadMore }
+      : null;
+  const counts: MemberCounts = currentCount
+    ? { ...knownCounts, [memberFilter]: currentCount }
+    : knownCounts;
+
   useEffect(() => {
     if (membersSourceRef.current === members) return;
     membersSourceRef.current = members;
@@ -97,6 +124,7 @@ function MembersView({ community, members }: ViewProps<'members'>) {
     setSearchResults(null);
     setSearchLoading(false);
     setHasLoadedMoreMembers(false);
+    setKnownCounts({});
   }, [members]);
 
   const fetchMembers = useCallback(
@@ -167,17 +195,8 @@ function MembersView({ community, members }: ViewProps<'members'>) {
 
   return (
     <AdminViewFrame communityId={communityId} communityName={community.name} screen="members">
-      {community.visibility === 'private' ? (
+      {community.visibility === 'private' && (
         <InviteeSearch key={communityId} communityId={communityId} />
-      ) : (
-        <Button
-          disabled
-          aria-label={t('communityAdmin.inviteUnavailable')}
-          title={t('communityAdmin.inviteeSearchPrivateOnly')}
-          xstyle={styles.unavailableInvite}
-        >
-          {t('communityAdmin.inviteUnavailable')}
-        </Button>
       )}
       <form onSubmit={(event) => event.preventDefault()} {...stylex.props(styles.searchForm)}>
         <div {...stylex.props(styles.searchField)}>
@@ -201,10 +220,24 @@ function MembersView({ community, members }: ViewProps<'members'>) {
             key={status}
             type="button"
             aria-pressed={memberFilter === status}
-            onClick={() => setMemberFilter(status)}
+            onClick={() => {
+              setKnownCounts(counts);
+              setMemberFilter(status);
+            }}
             {...stylex.props(styles.filterTab, memberFilter === status && styles.filterTabSelected)}
           >
-            {t(`communityAdmin.status.${status}`)}
+            {memberFilter === status && <span aria-hidden="true">✓ </span>}
+            {counts[status]
+              ? t(
+                  counts[status].exact
+                    ? 'communityAdmin.filterCount'
+                    : 'communityAdmin.filterCountAtLeast',
+                  {
+                    label: t(`communityAdmin.status.${status}`),
+                    total: new Intl.NumberFormat(locale).format(counts[status].total)
+                  }
+                )
+              : t(`communityAdmin.status.${status}`)}
           </button>
         ))}
       </fieldset>
@@ -213,38 +246,53 @@ function MembersView({ community, members }: ViewProps<'members'>) {
           {t('communityAdmin.searchLoading')}
         </output>
       )}
-      <div {...stylex.props(styles.list, styles.memberList)}>
-        {visibleMembers.map((person) => (
-          <SurfaceCard
-            key={person.membership_id}
-            data-testid="community-member-card"
-            xstyle={[styles.card, styles.memberCard]}
-          >
-            <span aria-hidden="true" {...stylex.props(styles.avatar)}>
-              {initials(person.display_name)}
-            </span>
-            <div {...stylex.props(styles.memberDetails)}>
-              <div {...stylex.props(styles.memberRowHeader)}>
-                <Link
-                  to="/community/$communityId/admin/members/$membershipId"
-                  params={{ communityId, membershipId: person.membership_id }}
-                  {...stylex.props(styles.memberLink)}
-                >
-                  <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
-                </Link>
-                <span {...stylex.props(styles.roleBadge)}>
-                  {t(`communityAdmin.role.${person.role}`)}
-                </span>
+      {visibleMembers.length > 0 && (
+        <div {...stylex.props(styles.listSurface)}>
+          {visibleMembers.map((person) => (
+            <SurfaceCard
+              key={person.membership_id}
+              data-testid="community-member-card"
+              xstyle={[styles.card, styles.listRow]}
+            >
+              <span aria-hidden="true" {...stylex.props(styles.avatar)}>
+                {initials(person.display_name)}
+              </span>
+              <div {...stylex.props(styles.memberDetails)}>
+                <div {...stylex.props(styles.memberRowHeader)}>
+                  <Link
+                    to="/community/$communityId/admin/members/$membershipId"
+                    params={{ communityId, membershipId: person.membership_id }}
+                    onClick={(event) => {
+                      if (
+                        event.button === 0 &&
+                        !event.metaKey &&
+                        !event.ctrlKey &&
+                        !event.shiftKey &&
+                        !event.altKey
+                      )
+                        rosterOriginOpen = true;
+                    }}
+                    data-member-link={person.membership_id}
+                    {...stylex.props(styles.memberLink)}
+                  >
+                    <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
+                  </Link>
+                  <span {...stylex.props(styles.roleBadge)}>
+                    {t(`communityAdmin.role.${person.role}`)}
+                  </span>
+                </div>
+                <p {...stylex.props(styles.copy)}>
+                  {t('communityAdmin.memberJoined', { date: dateLabel(person.valid_from, locale) })}
+                </p>
+                <p {...stylex.props(styles.copy)}>{ratingLabel(person, t, locale)}</p>
               </div>
-              <p {...stylex.props(styles.copy)}>
-                {t('communityAdmin.memberJoined', { date: dateLabel(person.valid_from, locale) })}
-              </p>
-              <p {...stylex.props(styles.copy)}>{ratingLabel(person, t, locale)}</p>
-            </div>
-          </SurfaceCard>
-        ))}
-        {!visibleMembers.length && !searchingMembers && <p>{t('communityAdmin.empty.members')}</p>}
-      </div>
+            </SurfaceCard>
+          ))}
+        </div>
+      )}
+      {!visibleMembers.length && !searchingMembers && (
+        <p {...stylex.props(styles.copy, styles.emptyState)}>{t('communityAdmin.empty.members')}</p>
+      )}
       {matchSummary.status === 'unsupported' && (
         <p {...stylex.props(styles.note)}>{t('communityAdmin.matchCountUnavailable')}</p>
       )}
@@ -273,6 +321,7 @@ function MembersView({ community, members }: ViewProps<'members'>) {
           {t('communityAdmin.retry')}
         </Button>
       )}
+      <Outlet />
     </AdminViewFrame>
   );
 }
@@ -386,23 +435,42 @@ function RequestsView(props: ViewProps<'requests'>) {
     }
   }
 
+  const waiting = members.length + additionalRequests.length;
+  const waitingLabel = t(
+    hasMoreRequests ? 'communityAdmin.requestsWaitingAtLeast' : 'communityAdmin.requestsWaiting',
+    { community: community.name, count: waiting }
+  );
+
   return (
-    <AdminViewFrame communityId={communityId} communityName={community.name} screen="requests">
+    <AdminViewFrame
+      communityId={communityId}
+      communityName={community.name}
+      screen="requests"
+      subtitle={waitingLabel}
+    >
       <p {...stylex.props(styles.banner)}>{t('communityAdmin.requestBanner')}</p>
       <div {...stylex.props(styles.list)}>
         {[...members, ...additionalRequests].map((person) => (
-          <SurfaceCard key={person.membership_id} xstyle={[styles.card, styles.requestCard]}>
-            <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
-            <p {...stylex.props(styles.copy, styles.requestRating)}>
-              {ratingLabel(person, t, locale)}
-            </p>
+          <SurfaceCard
+            key={person.membership_id}
+            data-testid="community-request-card"
+            xstyle={[styles.card, styles.requestCard]}
+          >
+            <div {...stylex.props(styles.requestHeader)}>
+              <span aria-hidden="true" {...stylex.props(styles.avatar, styles.avatarLarge)}>
+                {initials(person.display_name)}
+              </span>
+              <div {...stylex.props(styles.requestIdentity)}>
+                <h3 {...stylex.props(styles.cardCompactTitle)}>{person.display_name}</h3>
+                <p {...stylex.props(styles.copy)}>{ratingLabel(person, t, locale)}</p>
+              </div>
+              <RequestMessageComposer
+                communityId={community.id}
+                membershipId={person.membership_id}
+                t={t}
+              />
+            </div>
             <div {...stylex.props(styles.actions, styles.requestActions)}>
-              <Button
-                busy={busy || pageLoading}
-                onClick={() => void memberAction(person, 'approve')}
-              >
-                {t('communityAdmin.action.approve')}
-              </Button>
               <Button
                 variant="secondary"
                 busy={busy || pageLoading}
@@ -410,12 +478,13 @@ function RequestsView(props: ViewProps<'requests'>) {
               >
                 {t('communityAdmin.action.deny')}
               </Button>
+              <Button
+                busy={busy || pageLoading}
+                onClick={() => void memberAction(person, 'approve')}
+              >
+                {t('communityAdmin.action.approve')}
+              </Button>
             </div>
-            <RequestMessageComposer
-              communityId={community.id}
-              membershipId={person.membership_id}
-              t={t}
-            />
             <p {...stylex.props(styles.copy, styles.requestMeta)}>
               {t('communityAdmin.requestMeta', {
                 date: communityDateLabel(person.valid_from, locale, timezone),
@@ -425,7 +494,9 @@ function RequestsView(props: ViewProps<'requests'>) {
           </SurfaceCard>
         ))}
         {!members.length && !additionalRequests.length && (
-          <p>{t('communityAdmin.empty.requests')}</p>
+          <p {...stylex.props(styles.copy, styles.emptyState)}>
+            {t('communityAdmin.empty.requests')}
+          </p>
         )}
         {hasMoreRequests ? (
           <Button
@@ -477,14 +548,15 @@ function AdminViewFrame({
   communityId,
   communityName,
   screen,
-  children,
-  headingRef
+  subtitle,
+  children
 }: {
   communityId: string;
   communityName: string;
-  screen: 'requests' | 'members' | 'member' | 'settings' | 'venues' | 'audit';
+  screen: 'requests' | 'members' | 'settings' | 'venues' | 'audit';
+  /** Replaces the default "community · Admin only" line (e.g. with the real waiting count). */
+  subtitle?: string;
   children: ReactNode;
-  headingRef?: React.RefObject<HTMLHeadingElement | null>;
 }) {
   const { t } = useTranslation();
   const items = [
@@ -497,32 +569,18 @@ function AdminViewFrame({
   return (
     <section
       aria-labelledby="admin-screen-title"
-      {...stylex.props(styles.content, screen === 'venues' && styles.venueContent)}
+      data-route-chrome="navigation"
+      {...stylex.props(styles.content)}
     >
-      <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
-        <div {...stylex.props(styles.screenHeading)}>
-          <Link
-            to="/dashboard"
-            aria-label={t('communityAdmin.backToDashboard')}
-            {...stylex.props(styles.backLink)}
-          >
-            <span aria-hidden="true">‹</span>
-          </Link>
-          <div {...stylex.props(styles.titleGroup)}>
-            <h1
-              ref={headingRef}
-              tabIndex={-1}
-              id="admin-screen-title"
-              {...stylex.props(styles.title)}
-            >
-              {t(`communityAdmin.title.${screen}`)}
-            </h1>
-            <p {...stylex.props(styles.subtitle)}>
-              {t('communityAdmin.communityAdminSubtitle', { community: communityName })}
-            </p>
-          </div>
-        </div>
-      </header>
+      <TopBar
+        xstyle={styles.topBar}
+        headingId="admin-screen-title"
+        title={t(`communityAdmin.title.${screen}`)}
+        back={{ to: '/dashboard', label: t('communityAdmin.backToDashboard') }}
+      />
+      <p {...stylex.props(styles.subtitle)}>
+        {subtitle ?? t('communityAdmin.communityAdminSubtitle', { community: communityName })}
+      </p>
       {children}
       <nav aria-label={t('communityAdmin.navigation')} {...stylex.props(styles.bottomNav)}>
         {items.map((item) => (
@@ -541,13 +599,246 @@ function AdminViewFrame({
   );
 }
 
-function MemberView(props: ViewProps<'member'>) {
-  const { community, member, membershipId } = props;
-  const matchSummary = unsupportedCommunityMatchSummary();
-  const { t, i18n } = useTranslation();
+type MemberActionName = 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote';
+
+const membersPath = '/community/$communityId/admin/members';
+
+// Row glyphs follow the jQDkx frame's text glyphs; they are decorative (aria-hidden).
+const actionGlyphs: Record<MemberActionName, string> = {
+  approve: '✓',
+  deny: '✕',
+  reactivate: '↺',
+  promote: '★',
+  demote: '☆',
+  remove: '✕'
+};
+
+function memberSheetActions(member: CommunityAdminMember): MemberActionName[] {
+  if (member.status === 'pending') return ['approve', 'deny'];
+  if (member.status === 'inactive') return ['reactivate'];
+  return [member.role === 'admin' ? 'demote' : 'promote', 'remove'];
+}
+
+function MemberSheetFrame({
+  title,
+  description,
+  busy = false,
+  membershipId,
+  titleRef,
+  popupRef,
+  children
+}: {
+  title: string;
+  description?: ReactNode;
+  busy?: boolean;
+  membershipId: string;
+  titleRef: React.RefObject<HTMLHeadingElement | null>;
+  popupRef: React.RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
+  const { t } = useTranslation();
   const router = useRouter();
   const params = useParams({ strict: false });
   const communityId = params.communityId ?? '';
+  const closing = useRef(false);
+  const fromRoster = useRef(rosterOriginOpen);
+  const originId = useRef(membershipId);
+  useEffect(() => {
+    originId.current = membershipId;
+  }, [membershipId]);
+
+  // The sheet is derived from the route. Closing from a roster visit pops that history entry
+  // (the mounted roster keeps its filter, rows and scroll); a deep link or reload has no roster
+  // entry behind it, so closing replaces the route with the Members screen instead of leaving.
+  function closeSheet() {
+    if (closing.current) return;
+    closing.current = true;
+    if (fromRoster.current) {
+      router.history.back();
+      return;
+    }
+    void router.navigate({ to: membersPath, params: { communityId }, replace: true }).catch(() => {
+      closing.current = false;
+    });
+  }
+
+  // Every exit path (close, Escape, backdrop, browser Back) unmounts the sheet: return focus to
+  // the originating roster row; a deep link or reload has no origin row and lands on the Members
+  // heading (as does a roster origin whose row is no longer on screen).
+  useEffect(
+    () => () => {
+      rosterOriginOpen = false;
+      // The modal layer releases its inert/focus handling after this cleanup; retry for a few
+      // frames until the target accepts focus.
+      let attempts = 0;
+      const restore = () => {
+        const row = fromRoster.current
+          ? Array.from(document.querySelectorAll<HTMLElement>('[data-member-link]')).find(
+              (element) => element.dataset.memberLink === originId.current
+            )
+          : undefined;
+        const target = row ?? document.getElementById('admin-screen-title');
+        target?.focus();
+        if (target && document.activeElement !== target && attempts++ < 10)
+          window.requestAnimationFrame(restore);
+      };
+      window.setTimeout(restore, 0);
+    },
+    []
+  );
+
+  return (
+    <Dialog.Root
+      open
+      onOpenChange={(open) => {
+        if (!open && !busy) closeSheet();
+      }}
+    >
+      <Dialog.Portal>
+        <Dialog.Backdrop {...stylex.props(styles.confirmBackdrop)} />
+        <Dialog.Viewport {...stylex.props(styles.sheetViewport)}>
+          <Dialog.Popup
+            ref={popupRef}
+            data-testid="community-member-sheet"
+            initialFocus={titleRef}
+            finalFocus={false}
+            {...stylex.props(styles.sheetPopup)}
+          >
+            <div aria-hidden="true" {...stylex.props(styles.sheetGrabber)}>
+              <span {...stylex.props(styles.sheetGrab)} />
+            </div>
+            <div {...stylex.props(styles.sheetHead)}>
+              <Dialog.Title ref={titleRef} tabIndex={-1} {...stylex.props(styles.sheetTitle)}>
+                {title}
+              </Dialog.Title>
+              {description}
+            </div>
+            {children}
+            <Dialog.Close {...stylex.props(styles.sheetClose)}>
+              {t('communityAdmin.sheetClose')}
+            </Dialog.Close>
+          </Dialog.Popup>
+        </Dialog.Viewport>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function MemberSheetRow({
+  glyph,
+  title,
+  hint,
+  destructive = false,
+  busy = false,
+  rowRef,
+  onClick
+}: {
+  glyph: string;
+  title: string;
+  hint?: string;
+  destructive?: boolean;
+  busy?: boolean;
+  rowRef?: React.Ref<HTMLButtonElement>;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}) {
+  const titleId = useId();
+  const hintId = useId();
+  return (
+    <button
+      ref={rowRef}
+      type="button"
+      data-sheet-row=""
+      aria-labelledby={titleId}
+      aria-describedby={hint === undefined ? undefined : hintId}
+      aria-disabled={busy || undefined}
+      aria-busy={busy || undefined}
+      onClick={(event) => {
+        if (!busy) onClick(event);
+      }}
+      {...stylex.props(styles.sheetRow, hint !== undefined && styles.sheetRowDescribed)}
+    >
+      <span aria-hidden="true" {...stylex.props(styles.sheetGlyph)}>
+        {glyph}
+      </span>
+      <span {...stylex.props(styles.sheetRowText)}>
+        <span
+          id={titleId}
+          {...stylex.props(styles.sheetRowTitle, destructive && styles.sheetRowTitleDanger)}
+        >
+          {title}
+        </span>
+        {hint !== undefined && (
+          <span id={hintId} {...stylex.props(styles.sheetRowHint)}>
+            {hint}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+export function CommunityAdminMemberError({ error, reset }: ErrorComponentProps) {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const params = useParams({ strict: false });
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  const [busy, setBusy] = useState(false);
+  const denied = error instanceof Error && error.message === 'NOT_COMMUNITY_ADMIN';
+  const missing = error instanceof Error && error.message === 'COMMUNITY_MEMBER_NOT_FOUND';
+  async function retry() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await router.invalidate();
+      reset();
+    } catch {
+      // Keep the error visible when the refresh fails.
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <MemberSheetFrame
+      title={t(
+        denied
+          ? 'communityAdmin.accessDeniedTitle'
+          : missing
+            ? 'communityAdmin.title.member'
+            : 'communityAdmin.errorTitle'
+      )}
+      busy={busy}
+      membershipId={params.membershipId ?? ''}
+      titleRef={titleRef}
+      popupRef={popupRef}
+      description={
+        <Dialog.Description role="alert" {...stylex.props(styles.sheetMeta)}>
+          {t(
+            denied
+              ? 'communityAdmin.accessDenied'
+              : missing
+                ? 'communityAdmin.empty.member'
+                : 'communityAdmin.error.generic'
+          )}
+        </Dialog.Description>
+      }
+    >
+      {!denied && !missing && (
+        <MemberSheetRow
+          glyph="↺"
+          title={t('communityAdmin.retry')}
+          busy={busy}
+          onClick={() => void retry()}
+        />
+      )}
+    </MemberSheetFrame>
+  );
+}
+
+function MemberView(props: ViewProps<'member'>) {
+  const { community, member, membershipId } = props;
+  const { t, i18n } = useTranslation();
+  const router = useRouter();
   const { busy, setBusy, message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
   const [confirmation, setConfirmation] = useState<'demote' | 'remove' | null>(null);
   const [completedConfirmation, setCompletedConfirmation] = useState<{
@@ -555,14 +846,24 @@ function MemberView(props: ViewProps<'member'>) {
     membershipId: string;
   } | null>(null);
   const [refreshError, setRefreshError] = useState(false);
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const locale = i18n.resolvedLanguage || i18n.language;
 
-  async function memberAction(
-    action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote'
-  ): Promise<boolean> {
+  // A refresh can remove the action row that held focus (role change, completed removal): move
+  // focus to the sheet heading instead of letting it fall to the document.
+  const actionKey = `${membershipId}:${member.status}:${member.role}:${String(completedConfirmation?.action)}`;
+  const seenActionKey = useRef(actionKey);
+  useEffect(() => {
+    if (seenActionKey.current === actionKey || confirmation) return;
+    seenActionKey.current = actionKey;
+    const active = document.activeElement;
+    if (popupRef.current && (!active || active === document.body)) titleRef.current?.focus();
+  });
+
+  async function memberAction(action: MemberActionName): Promise<boolean> {
     if (busy) return false;
     if (!navigator.onLine) {
       setErrorKey('offline');
@@ -603,7 +904,8 @@ function MemberView(props: ViewProps<'member'>) {
       ) {
         await router.navigate({
           to: '/community/$communityId/admin/members/$membershipId',
-          params: { communityId: community.id, membershipId: result.membership_id }
+          params: { communityId: community.id, membershipId: result.membership_id },
+          replace: true
         });
       }
     } catch {
@@ -614,10 +916,7 @@ function MemberView(props: ViewProps<'member'>) {
     return true;
   }
 
-  function requestMemberAction(
-    action: 'approve' | 'deny' | 'remove' | 'reactivate' | 'promote' | 'demote',
-    trigger?: HTMLButtonElement
-  ) {
+  function requestMemberAction(action: MemberActionName, trigger?: HTMLButtonElement) {
     if (action === 'remove' || action === 'demote') {
       if (trigger) triggerRef.current = trigger;
       setConfirmation(action);
@@ -651,105 +950,58 @@ function MemberView(props: ViewProps<'member'>) {
     }
   }
 
+  const completed = (action: 'demote' | 'remove') =>
+    completedConfirmation?.membershipId === membershipId && completedConfirmation.action === action;
+  const actions = memberSheetActions(member).filter(
+    (action) => !((action === 'demote' || action === 'remove') && completed(action))
+  );
+
   return (
-    <AdminViewFrame
-      communityId={communityId}
-      communityName={community.name}
-      screen="member"
-      headingRef={headingRef}
+    <MemberSheetFrame
+      title={member.display_name}
+      busy={busy}
+      membershipId={membershipId}
+      titleRef={titleRef}
+      popupRef={popupRef}
+      description={
+        <Dialog.Description render={<div />}>
+          <p {...stylex.props(styles.sheetMeta)}>
+            {t('communityAdmin.memberMeta', {
+              status: t(`communityAdmin.status.${member.status}`),
+              role: t(`communityAdmin.role.${member.role}`),
+              date: dateLabel(member.valid_from, locale)
+            })}
+          </p>
+          <p {...stylex.props(styles.sheetMeta)}>{ratingLabel(member, t, locale)}</p>
+        </Dialog.Description>
+      }
     >
       {member.status === 'active' && (
-        <p {...stylex.props(styles.banner)}>{t('communityAdmin.memberActiveBanner')}</p>
+        <Link
+          to="/players/$playerId"
+          params={{ playerId: member.user_id }}
+          data-sheet-row=""
+          {...stylex.props(styles.sheetRow)}
+        >
+          <span aria-hidden="true" {...stylex.props(styles.sheetGlyph)}>
+            ↗
+          </span>
+          <span {...stylex.props(styles.sheetRowText)}>
+            <span {...stylex.props(styles.sheetRowTitle)}>{t('communityAdmin.viewProfile')}</span>
+          </span>
+        </Link>
       )}
-      <SurfaceCard
-        data-testid="community-member-profile"
-        xstyle={[styles.card, styles.memberProfileCard]}
-      >
-        <h3 {...stylex.props(styles.memberProfileTitle)}>
-          {member.display_level === null || member.reliability_percent === null
-            ? t('communityAdmin.memberAdminProfileMissing', { name: member.display_name })
-            : t('communityAdmin.memberAdminProfile', {
-                name: member.display_name,
-                level: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }).format(
-                  member.display_level
-                ),
-                reliability: new Intl.NumberFormat(locale).format(member.reliability_percent)
-              })}
-        </h3>
-        {matchSummary.status === 'unsupported' && (
-          <p {...stylex.props(styles.memberMatchUnavailable)}>
-            {t('communityAdmin.matchCountUnavailable')}
-          </p>
-        )}
-        <p {...stylex.props(styles.copy)}>
-          {t('communityAdmin.memberMeta', {
-            status: t(`communityAdmin.status.${member.status}`),
-            role: t(`communityAdmin.role.${member.role}`),
-            date: dateLabel(member.valid_from, locale)
-          })}
-        </p>
-      </SurfaceCard>
-      <SurfaceCard data-testid="community-member-role-panel" xstyle={styles.rolePanel}>
-        <p {...stylex.props(styles.rolePanelTitle)}>{t('communityAdmin.rolePanelTitle')}</p>
-        <p {...stylex.props(styles.rolePanelCopy)}>
-          {t('communityAdmin.rolePanelActive', { role: t(`communityAdmin.role.${member.role}`) })}
-        </p>
-        <p {...stylex.props(styles.rolePanelCopy)}>{t('communityAdmin.rolePanelInactive')}</p>
-      </SurfaceCard>
-      <div {...stylex.props(styles.form, styles.actions)}>
-        {member.status === 'pending' && (
-          <>
-            <Button busy={busy} onClick={() => requestMemberAction('approve')}>
-              {t('communityAdmin.action.approve')}
-            </Button>
-            <Button variant="secondary" busy={busy} onClick={() => requestMemberAction('deny')}>
-              {t('communityAdmin.action.deny')}
-            </Button>
-          </>
-        )}
-        {member.status === 'inactive' && (
-          <Button busy={busy} onClick={() => requestMemberAction('reactivate')}>
-            {t('communityAdmin.action.reactivate')}
-          </Button>
-        )}
-        {member.status === 'active' && member.role === 'member' && (
-          <Button
-            variant="secondary"
-            busy={busy}
-            xstyle={styles.softAction}
-            onClick={() => requestMemberAction('promote')}
-          >
-            {t('communityAdmin.action.promote')}
-          </Button>
-        )}
-        {member.status === 'active' &&
-          member.role === 'admin' &&
-          !(
-            completedConfirmation?.membershipId === membershipId &&
-            completedConfirmation.action === 'demote'
-          ) && (
-            <Button
-              variant="secondary"
-              busy={busy}
-              onClick={(event) => requestMemberAction('demote', event.currentTarget)}
-            >
-              {t('communityAdmin.action.demote')}
-            </Button>
-          )}
-        {member.status === 'active' &&
-          !(
-            completedConfirmation?.membershipId === membershipId &&
-            completedConfirmation.action === 'remove'
-          ) && (
-            <Button
-              variant="secondary"
-              busy={busy}
-              onClick={(event) => requestMemberAction('remove', event.currentTarget)}
-            >
-              {t('communityAdmin.action.remove')}
-            </Button>
-          )}
-      </div>
+      {actions.map((action) => (
+        <MemberSheetRow
+          key={action}
+          glyph={actionGlyphs[action]}
+          title={t(`communityAdmin.action.${action}`)}
+          hint={t(`communityAdmin.actionHint.${action}`)}
+          destructive={action === 'remove'}
+          busy={busy}
+          onClick={(event) => requestMemberAction(action, event.currentTarget)}
+        />
+      ))}
       <AlertDialog.Root
         open={confirmation !== null}
         onOpenChange={(open) => {
@@ -762,7 +1014,7 @@ function MemberView(props: ViewProps<'member'>) {
             <AlertDialog.Popup
               initialFocus={() => cancelRef.current}
               finalFocus={() =>
-                triggerRef.current?.isConnected ? triggerRef.current : headingRef.current
+                triggerRef.current?.isConnected ? triggerRef.current : titleRef.current
               }
               onKeyDown={(event) => {
                 if (event.key !== 'Tab') return;
@@ -825,7 +1077,7 @@ function MemberView(props: ViewProps<'member'>) {
           </AlertDialog.Viewport>
         </AlertDialog.Portal>
       </AlertDialog.Root>
-      <p {...stylex.props(styles.note)}>{t('communityAdmin.levelReadOnly')}</p>
+      <p {...stylex.props(styles.sheetMeta)}>{t('communityAdmin.sheetAudited')}</p>
       {message && <output {...stylex.props(styles.status)}>{message}</output>}
       {errorKey && (!confirmation || refreshError) && (
         <p role="alert" {...stylex.props(styles.error)}>
@@ -833,11 +1085,14 @@ function MemberView(props: ViewProps<'member'>) {
         </p>
       )}
       {errorKey && (!confirmation || refreshError) && (
-        <Button variant="secondary" busy={busy} onClick={() => void retryRefresh()}>
-          {t('communityAdmin.retry')}
-        </Button>
+        <MemberSheetRow
+          glyph="↺"
+          title={t('communityAdmin.retry')}
+          busy={busy}
+          onClick={() => void retryRefresh()}
+        />
       )}
-    </AdminViewFrame>
+    </MemberSheetFrame>
   );
 }
 
@@ -892,6 +1147,14 @@ function SettingsView(props: ViewProps<'settings'>) {
         onSubmit={(event) => void saveSettings(event)}
         {...stylex.props(styles.form, styles.settingsForm)}
       >
+        <TextField
+          id="community-admin-name"
+          label={t('communityAdmin.settings.name')}
+          value={settings.name}
+          maxLength={80}
+          onChange={(event) => setSettings({ ...settings, name: event.target.value })}
+          required
+        />
         <SurfaceCard data-testid="settings-visibility-label" xstyle={styles.settingsCard}>
           <span {...stylex.props(styles.fieldLabel)}>
             {t('communityAdmin.settings.visibility')}
@@ -1033,14 +1296,6 @@ function SettingsView(props: ViewProps<'settings'>) {
           </summary>
           <div {...stylex.props(styles.form)}>
             <TextField
-              id="community-admin-name"
-              label={t('communityAdmin.settings.name')}
-              value={settings.name}
-              maxLength={80}
-              onChange={(event) => setSettings({ ...settings, name: event.target.value })}
-              required
-            />
-            <TextField
               id="community-admin-city"
               label={t('communityAdmin.settings.city')}
               value={settings.city_label}
@@ -1116,11 +1371,11 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
   const [hasLoadedMoreVenues, setHasLoadedMoreVenues] = useState(false);
   const [hasMoreVenues, setHasMoreVenues] = useState(venues.length === 50);
   const [venueDraft, setVenueDraft] = useState({ id: '', name: '', address: '', maps_url: '' });
-  const [venueFormOpen, setVenueFormOpen] = useState(false);
   const [paginationPending, setPaginationPending] = useState(false);
   const sourceRef = useRef(venues);
   const requestGeneration = useRef(0);
   const { busy, setBusy, message, setMessage, errorKey, setErrorKey } = useAdminMutationState();
+  const resetDraft = () => setVenueDraft({ id: '', name: '', address: '', maps_url: '' });
 
   useEffect(() => {
     if (sourceRef.current === venues) return;
@@ -1176,10 +1431,7 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
           : addCommunityVenue({ data }),
       t(venueDraft.id ? 'communityAdmin.result.venueUpdated' : 'communityAdmin.result.venueAdded')
     );
-    if (saved) {
-      setVenueFormOpen(false);
-      setVenueDraft({ id: '', name: '', address: '', maps_url: '' });
-    }
+    if (saved) resetDraft();
   }
 
   async function loadMoreVenues() {
@@ -1207,130 +1459,129 @@ function VenuesView({ community, venues }: ViewProps<'venues'>) {
     }
   }
 
+  const venueRows = [...venues, ...additionalVenues];
+  const editing = venueDraft.id !== '';
   return (
     <AdminViewFrame communityId={communityId} communityName={community.name} screen="venues">
-      {!venueFormOpen && (
-        <Button busy={busy || paginationPending} onClick={() => setVenueFormOpen(true)}>
-          {t('communityAdmin.venue.add')}
-        </Button>
+      {venueRows.length > 0 ? (
+        <ul {...stylex.props(styles.listSurface, styles.plainList)}>
+          {venueRows.map((venue) => (
+            <li
+              key={venue.id}
+              data-testid="community-venue-card"
+              {...stylex.props(styles.venueRow)}
+            >
+              <div {...stylex.props(styles.venueHead)}>
+                {venue.photo_signed_url ? (
+                  <img src={venue.photo_signed_url} alt="" {...stylex.props(styles.venuePhoto)} />
+                ) : (
+                  <span aria-hidden="true" {...stylex.props(styles.venuePhoto)} />
+                )}
+                <div {...stylex.props(styles.memberDetails)}>
+                  <h3 {...stylex.props(styles.cardCompactTitle)}>{venue.name}</h3>
+                  <p {...stylex.props(styles.copy)}>
+                    {venue.address || community.city_label || t('communityAdmin.cityUnavailable')}
+                  </p>
+                </div>
+              </div>
+              <div {...stylex.props(styles.venueActions)}>
+                {venue.maps_url && (
+                  <a
+                    href={venue.maps_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    {...stylex.props(styles.memberLink, styles.inlineLink, styles.venueAction)}
+                  >
+                    {t('communityAdmin.venue.openMap')}
+                  </a>
+                )}
+                <Button
+                  variant="secondary"
+                  xstyle={styles.venueButton}
+                  busy={busy || paginationPending}
+                  onClick={() => {
+                    setVenueDraft({
+                      id: venue.id,
+                      name: venue.name,
+                      address: venue.address ?? '',
+                      maps_url: venue.maps_url ?? ''
+                    });
+                  }}
+                >
+                  {t('communityAdmin.venue.edit')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  xstyle={styles.venueButton}
+                  busy={busy || paginationPending}
+                  onClick={() =>
+                    void run(
+                      () =>
+                        archiveCommunityVenue({
+                          data: { community_id: community.id, venue_id: venue.id }
+                        }),
+                      t('communityAdmin.result.venueArchived')
+                    )
+                  }
+                >
+                  {t('communityAdmin.venue.archive')}
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p {...stylex.props(styles.copy, styles.emptyState)}>{t('communityAdmin.empty.venues')}</p>
       )}
-      {venueFormOpen && (
-        <SurfaceCard xstyle={styles.card}>
-          <h3 {...stylex.props(styles.cardTitle)}>
-            {t(venueDraft.id ? 'communityAdmin.venue.edit' : 'communityAdmin.venue.add')}
-          </h3>
-          <form onSubmit={(event) => void saveVenue(event)} {...stylex.props(styles.form)}>
-            <TextField
-              id="venue-name"
-              label={t('communityAdmin.venue.name')}
-              value={venueDraft.name}
-              maxLength={120}
-              required
-              onChange={(event) => setVenueDraft({ ...venueDraft, name: event.target.value })}
+      <SurfaceCard xstyle={styles.card}>
+        <h3 {...stylex.props(styles.cardTitle)}>
+          {t(editing ? 'communityAdmin.venue.edit' : 'communityAdmin.venue.add')}
+        </h3>
+        <form onSubmit={(event) => void saveVenue(event)} {...stylex.props(styles.form)}>
+          <TextField
+            id="venue-name"
+            label={t('communityAdmin.venue.name')}
+            value={venueDraft.name}
+            maxLength={120}
+            required
+            onChange={(event) => setVenueDraft({ ...venueDraft, name: event.target.value })}
+          />
+          <TextField
+            id="venue-address"
+            label={t('communityAdmin.venue.address')}
+            value={venueDraft.address}
+            maxLength={300}
+            onChange={(event) => setVenueDraft({ ...venueDraft, address: event.target.value })}
+          />
+          <TextField
+            id="venue-map"
+            label={t('communityAdmin.venue.mapsUrl')}
+            value={venueDraft.maps_url}
+            maxLength={2048}
+            type="url"
+            onChange={(event) => setVenueDraft({ ...venueDraft, maps_url: event.target.value })}
+          />
+          {editing && (
+            <VenuePhotoUpload
+              key={venueDraft.id}
+              communityId={community.id}
+              venueId={venueDraft.id}
+              photoUrl={
+                venueRows.find((venue) => venue.id === venueDraft.id)?.photo_signed_url ?? null
+              }
+              onUploaded={() => void router.invalidate()}
             />
-            <TextField
-              id="venue-address"
-              label={t('communityAdmin.venue.address')}
-              value={venueDraft.address}
-              maxLength={300}
-              onChange={(event) => setVenueDraft({ ...venueDraft, address: event.target.value })}
-            />
-            <TextField
-              id="venue-map"
-              label={t('communityAdmin.venue.mapsUrl')}
-              value={venueDraft.maps_url}
-              maxLength={2048}
-              type="url"
-              onChange={(event) => setVenueDraft({ ...venueDraft, maps_url: event.target.value })}
-            />
-            {venueDraft.id && (
-              <VenuePhotoUpload
-                key={venueDraft.id}
-                communityId={community.id}
-                venueId={venueDraft.id}
-                photoUrl={
-                  [...venues, ...additionalVenues].find((venue) => venue.id === venueDraft.id)
-                    ?.photo_signed_url ?? null
-                }
-                onUploaded={() => void router.invalidate()}
-              />
-            )}
-            <Button type="submit" busy={busy || paginationPending}>
-              {t('communityAdmin.save')}
-            </Button>
-          </form>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setVenueFormOpen(false);
-              setVenueDraft({ id: '', name: '', address: '', maps_url: '' });
-            }}
-          >
+          )}
+          <Button type="submit" busy={busy || paginationPending}>
+            {t('communityAdmin.save')}
+          </Button>
+        </form>
+        {editing && (
+          <Button variant="secondary" onClick={resetDraft}>
             {t('communityAdmin.cancel')}
           </Button>
-        </SurfaceCard>
-      )}
-      <div {...stylex.props(styles.list)}>
-        {[...venues, ...additionalVenues].map((venue) => (
-          <SurfaceCard
-            key={venue.id}
-            data-testid="community-venue-card"
-            xstyle={[styles.card, styles.venueCard]}
-          >
-            <h3 {...stylex.props(styles.cardCompactTitle)}>{venue.name}</h3>
-            <div {...stylex.props(styles.venueMeta)}>
-              <p {...stylex.props(styles.copy)}>
-                {venue.address || community.city_label || t('communityAdmin.cityUnavailable')}
-              </p>
-              {venue.maps_url && (
-                <a
-                  href={venue.maps_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  {...stylex.props(styles.memberLink, styles.venueMapLink)}
-                >
-                  {t('communityAdmin.venue.openMap')}
-                </a>
-              )}
-            </div>
-            <div {...stylex.props(styles.venueActions)}>
-              <Button
-                variant="secondary"
-                xstyle={styles.venueAction}
-                busy={busy || paginationPending}
-                onClick={() => {
-                  setVenueDraft({
-                    id: venue.id,
-                    name: venue.name,
-                    address: venue.address ?? '',
-                    maps_url: venue.maps_url ?? ''
-                  });
-                  setVenueFormOpen(true);
-                }}
-              >
-                {t('communityAdmin.venue.edit')}
-              </Button>
-              <Button
-                variant="secondary"
-                xstyle={styles.venueAction}
-                busy={busy || paginationPending}
-                onClick={() =>
-                  void run(
-                    () =>
-                      archiveCommunityVenue({
-                        data: { community_id: community.id, venue_id: venue.id }
-                      }),
-                    t('communityAdmin.result.venueArchived')
-                  )
-                }
-              >
-                {t('communityAdmin.venue.archive')}
-              </Button>
-            </div>
-          </SurfaceCard>
-        ))}
-        {!venues.length && !additionalVenues.length && <p>{t('communityAdmin.empty.venues')}</p>}
-      </div>
+        )}
+      </SurfaceCard>
       {hasMoreVenues ? (
         <Button
           variant="secondary"
@@ -1557,35 +1808,45 @@ function AuditView(props: ViewProps<'audit'>) {
     <AdminViewFrame communityId={communityId} communityName={community.name} screen="audit">
       <div {...stylex.props(styles.list)}>
         <p {...stylex.props(styles.banner)}>{t('communityAdmin.audit.recentChanges')}</p>
-        {auditRows.map((event) => (
-          <SurfaceCard
-            key={event.id}
-            data-testid="community-audit-event"
-            xstyle={[styles.card, styles.auditCard]}
-          >
-            <p {...stylex.props(styles.auditAction)}>
-              {t(auditEventKey(event), { defaultValue: t('communityAdmin.audit.unknown') })}
-              {auditMemberDetails(event) &&
-                ` · ${t(`communityAdmin.role.${auditMemberDetails(event)?.role}`)} · ${t(`communityAdmin.status.${auditMemberDetails(event)?.status}`)}`}
-            </p>
-            <p {...stylex.props(styles.copy)}>
-              {t('communityAdmin.audit.unknownActor')} · {auditDateLabel(event.occurred_at, locale)}
-            </p>
-            {event.entity === 'community_members' && (
-              <Link
-                to="/community/$communityId/admin/members/$membershipId"
-                params={{ communityId, membershipId: event.entity_id }}
-                {...stylex.props(styles.memberLink)}
+        {auditRows.length > 0 && (
+          <div {...stylex.props(styles.listSurface)}>
+            {auditRows.map((event) => (
+              <SurfaceCard
+                key={event.id}
+                data-testid="community-audit-event"
+                xstyle={[styles.card, styles.listRow]}
               >
-                {t('communityAdmin.audit.openMember')}
-              </Link>
-            )}
-          </SurfaceCard>
-        ))}
-        <p {...stylex.props(styles.copy, styles.auditUnsupportedNotice)}>
+                <span aria-hidden="true" {...stylex.props(styles.auditDot)} />
+                <div {...stylex.props(styles.memberDetails)}>
+                  <p {...stylex.props(styles.auditAction)}>
+                    {t(auditEventKey(event), { defaultValue: t('communityAdmin.audit.unknown') })}
+                    {auditMemberDetails(event) &&
+                      ` · ${t(`communityAdmin.role.${auditMemberDetails(event)?.role}`)} · ${t(`communityAdmin.status.${auditMemberDetails(event)?.status}`)}`}
+                  </p>
+                  <p {...stylex.props(styles.copy)}>
+                    {t('communityAdmin.audit.unknownActor')} ·{' '}
+                    {auditDateLabel(event.occurred_at, locale)}
+                  </p>
+                  {event.entity === 'community_members' && (
+                    <Link
+                      to="/community/$communityId/admin/members/$membershipId"
+                      params={{ communityId, membershipId: event.entity_id }}
+                      {...stylex.props(styles.memberLink, styles.inlineLink)}
+                    >
+                      {t('communityAdmin.audit.openMember')}
+                    </Link>
+                  )}
+                </div>
+              </SurfaceCard>
+            ))}
+          </div>
+        )}
+        <p {...stylex.props(styles.note)}>
           {t('communityAdmin.audit.leagueCorrectionsUnavailable')}
         </p>
-        {!auditRows.length && <p>{t('communityAdmin.empty.audit')}</p>}
+        {!auditRows.length && (
+          <p {...stylex.props(styles.copy, styles.emptyState)}>{t('communityAdmin.empty.audit')}</p>
+        )}
         {hasMoreAudit ? (
           <Button variant="secondary" busy={paginationPending} onClick={() => void loadMoreAudit()}>
             {t('communityAdmin.loadMore')}

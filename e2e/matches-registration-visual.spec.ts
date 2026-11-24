@@ -17,6 +17,7 @@ import {
   runCleanupInOrder,
   runMatchFixtureCleanup
 } from './match-fixture-cleanup';
+import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
 
 // Pixel baselines superseded by the PAF-6 frame-driven redesign; re-baselining requires product approval.
 // PAF-5.6 structural gate (PAF-83). Companion to e2e/matches-registration.spec.ts — the
@@ -61,12 +62,15 @@ type Copy = {
     management: { leave: string };
     detail: {
       title: string;
+      barTitle: string;
       visibility: { community_open: string; invite_only: string };
       overview: string;
       participation: string;
       participants: string;
       accepted: string;
       registrationClosed: string;
+      share: string;
+      hero: { shareHeader: string };
     };
     counts: Record<string, string>;
   };
@@ -160,47 +164,8 @@ const ptBr = localeCopy('pt-BR');
 const es = localeCopy('es');
 
 // ---------------------------------------------------------------------------
-// Historical Pencil exports retain runtime digest checks. Current source design
-// and full-frame certification belong to PAF-6; no snapshot files are consumed.
-// ---------------------------------------------------------------------------
-
-type VisualManifest = {
-  sourceDesign: { path: string; sha256: string };
-  approvedReferences: Record<string, { frameId: string; sha256: string; derivation: string }>;
-};
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isVisualManifest(value: unknown): value is VisualManifest {
-  if (!isRecord(value) || !isRecord(value.sourceDesign) || !isRecord(value.approvedReferences))
-    return false;
-  return Object.values(value.approvedReferences).every(
-    (reference) => isRecord(reference) && typeof reference.sha256 === 'string'
-  );
-}
-
-const visualManifest: VisualManifest = (() => {
-  const raw: unknown = JSON.parse(
-    readFileSync(new URL('./references/paf-5/manifest.json', import.meta.url), 'utf8')
-  );
-  if (!isVisualManifest(raw)) throw new Error('Invalid PAF-5 visual provenance manifest');
-  return raw;
-})();
-
-function digestFile(path: URL): string {
-  return createHash('sha256').update(readFileSync(path)).digest('hex');
-}
-
-function assertManifestProvenance(): void {
-  // Source-design digest is historical: PAF-6 owns the current .pen digest.
-  for (const [reference, approved] of Object.entries(visualManifest.approvedReferences)) {
-    expect(
-      digestFile(new URL(`./references/paf-5/${reference}`, import.meta.url)),
-      `${reference} must match its reviewed Pencil export digest`
-    ).toBe(approved.sha256);
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -585,15 +550,11 @@ async function ready(page: Page): Promise<void> {
   await page.evaluate(async () => {
     // Text-driven font loading is lazy: force the exact faces the app renders with
     // so screenshots never race a pending webfont.
-    await Promise.all([
-      document.fonts.load('400 12px Inter'),
-      document.fonts.load('500 12px Inter'),
-      document.fonts.load('600 12px Inter'),
-      document.fonts.load('700 12px Inter'),
-      document.fonts.load('400 12px Manrope'),
-      document.fonts.load('600 12px Manrope'),
-      document.fonts.load('700 24px Manrope')
-    ]);
+    await Promise.all(
+      ['400', '500', '600', '700', '800'].map((weight) =>
+        document.fonts.load(`${weight} 16px Figtree`)
+      )
+    );
     await document.fonts.ready;
     await Promise.all(
       Array.from(document.images, async (image) => {
@@ -602,13 +563,11 @@ async function ready(page: Page): Promise<void> {
     );
   });
   const fonts = await page.evaluate(() => ({
-    inter: document.fonts.check('400 12px Inter') && document.fonts.check('600 12px Inter'),
-    manrope: document.fonts.check('700 24px Manrope')
+    figtree: ['400', '600', '700', '800'].every((weight) =>
+      document.fonts.check(`${weight} 16px Figtree`)
+    )
   }));
-  expect(fonts, 'Inter and Manrope must be available before screenshot').toEqual({
-    inter: true,
-    manrope: true
-  });
+  expect(fonts, 'Figtree must be available before screenshot').toEqual({ figtree: true });
 }
 
 // ---------------------------------------------------------------------------
@@ -667,13 +626,13 @@ async function assertPrimaryHitTargets(
   }
 }
 
-/** Reference measurement (manifest fact): every frame aligns content to one
- * shared axis inset exactly 18px per side at 390px. Gated on the detail surface
+/** Clubhouse measurement: every detail frame aligns content to one shared axis inset exactly
+ * 20px per side at 390px (paf-202 hero frames; the PAF-5 18px axis is superseded). Gated on the detail surface
  * exactly as the PAF-4 gate does (padding + measured border per side). */
 async function assertGutterAxis(page: Page, label: string): Promise<void> {
-  const expectedInset = await tokenValue(page, '--space-18');
+  const expectedInset = await tokenValue(page, '--space-20');
   const metrics = await page.evaluate(() => {
-    const main = document.querySelector('main');
+    const main = document.querySelector('main > div');
     if (!main) return null;
     const innerWidth = window.innerWidth;
     const mainStyle = getComputedStyle(main);
@@ -682,16 +641,23 @@ async function assertGutterAxis(page: Page, label: string): Promise<void> {
       paddingRight: mainStyle.paddingRight,
       borderLeft: mainStyle.borderLeftWidth,
       borderRight: mainStyle.borderRightWidth,
-      blocks: Array.from(main.children, (node) => {
-        const box = node.getBoundingClientRect();
-        return { left: box.left, right: innerWidth - box.right };
-      })
+      // The sticky action bar bleeds past the gutter by design (asserted in matches-visual).
+      blocks: Array.from(main.children)
+        .filter(
+          (node) =>
+            !node.hasAttribute('data-match-action-bar') &&
+            getComputedStyle(node).display !== 'contents'
+        )
+        .map((node) => {
+          const box = node.getBoundingClientRect();
+          return { left: box.left, right: innerWidth - box.right };
+        })
     };
   });
   expect(metrics, `${label}: main must be present`).not.toBeNull();
   expect(
     metrics!.paddingLeft,
-    `${label}: main gutter must equal --space-18 exactly (manifest fact: 18px shared axis)`
+    `${label}: main gutter must equal --space-20 exactly (Clubhouse 20px shared axis)`
   ).toBe(expectedInset);
   expect(metrics!.paddingRight, `${label}: main gutter must be symmetric`).toBe(expectedInset);
   const inset =
@@ -753,8 +719,12 @@ function numberClose(measured: number, expected: number): boolean {
   return Math.abs(measured - expected) < 0.05;
 }
 
+// The registration status card and its sticky action bar are one logical panel (F25): the one
+// existing action control sits in the bar, the heading and copy in the card.
 function registrationPanel(page: Page): Locator {
-  return page.locator('section[aria-labelledby="match-registration-heading"]');
+  return page.locator(
+    'section[aria-labelledby="match-registration-heading"], [data-match-action-bar]'
+  );
 }
 
 function rosterRegion(page: Page, copy: Copy): Locator {
@@ -785,39 +755,33 @@ async function assertRegistrationCta(
   if (options.disabled) await expect(action).toBeDisabled();
   else await expect(action).toBeEnabled();
   const green = await tokenColor(page, '--color-green');
-  const copy = await tokenColor(page, '--color-bg');
-  const surface2 = await tokenColor(page, '--color-surface-2');
-  const muted = await tokenColor(page, '--color-muted');
+  const copy = await tokenColor(page, '--color-on-green');
   const style = await action.evaluate((node) => {
     const computed = getComputedStyle(node);
     const box = node.getBoundingClientRect();
     return {
       backgroundColor: computed.backgroundColor,
       color: computed.color,
+      opacity: Number.parseFloat(computed.opacity),
       minHeight: computed.minHeight,
       height: box.height,
       width: box.width
     };
   });
-  if (options.disabled) {
-    expect(
-      style.backgroundColor,
-      `${label}: disabled CTA must render the explicit surface-2 treatment`
-    ).toBe(surface2);
-    expect(style.color, `${label}: disabled CTA copy must be --color-muted`).toBe(muted);
-  } else {
-    expect(
-      style.backgroundColor,
-      `${label}: registration CTA background must be --color-green (reference #0e714d)`
-    ).toBe(green);
-    expect(style.color, `${label}: registration CTA copy must be --color-bg`).toBe(copy);
-  }
+  // The shared Button primitive keeps the green fill and on-green copy; disabled is the primitive's
+  // dimmed treatment (native disabled + opacity), never a live-looking action.
+  expect(style.backgroundColor, `${label}: registration CTA background must be --color-green`).toBe(
+    green
+  );
+  expect(style.color, `${label}: registration CTA copy must be --color-on-green`).toBe(copy);
+  if (options.disabled)
+    expect(style.opacity, `${label}: disabled CTA must read as dimmed`).toBeLessThan(1);
   expect(
     Math.max(Number.parseFloat(style.minHeight), style.height),
     `${label}: registration CTA must meet the 44px target (manifest fact: 44px-tall CTA blocks)`
   ).toBeGreaterThanOrEqual(44);
   await test.info().attach(`${label} — measured CTA box vs frame fact`, {
-    body: `rendered ${Math.round(style.width)}x${Math.round(style.height)}; frame fact: 354x44 full-content-width block${options.disabled ? ' (disabled treatment)' : ''}`
+    body: `rendered ${Math.round(style.width)}x${Math.round(style.height)}; Clubhouse fact: full-content-width 52px control${options.disabled ? ' (disabled treatment)' : ''}`
   });
 }
 
@@ -1025,10 +989,10 @@ async function assertRequesterState(
     muted: { color: string; background: string };
     danger: { color: string; background: string };
   } = {
-    playing: { color: '--color-green', background: '--color-green-soft' },
+    playing: { color: '--color-green-ink', background: '--color-green-soft' },
     reserve: { color: '--color-text', background: '--color-surface-2' },
     muted: { color: '--color-muted', background: '--color-surface-2' },
-    danger: { color: '--color-red', background: '--color-surface-2' }
+    danger: { color: '--color-red', background: '--color-red-soft' }
   };
   const badge = panel.getByText(state.badge, { exact: true }).first();
   await expect(badge).toBeVisible();
@@ -1627,6 +1591,51 @@ async function ensureNotificationFixtures(): Promise<void> {
 // Screens
 // ---------------------------------------------------------------------------
 
+/** Pencil-region layer (manifest.frameRegions.fo8Zn): measured frame-relative gates for the match
+ * detail top bar, hero and sticky action bar. Structural probes elsewhere stay authoritative. */
+const detailReferences: {
+  frames: Record<string, { sha256: string }>;
+  frameRegions: Record<string, Record<string, FrameRegionRecord>>;
+} = JSON.parse(
+  readFileSync(new URL('./references/paf-202-match-detail/manifest.json', import.meta.url), 'utf8')
+);
+
+test('PAF-202 match detail references are hash-pinned and cover all twelve frames', () => {
+  const manifest: unknown = JSON.parse(
+    readFileSync(
+      new URL('./references/paf-202-match-detail/manifest.json', import.meta.url),
+      'utf8'
+    )
+  );
+  if (!isRecord(manifest) || !isRecord(manifest.frames))
+    throw new Error('Invalid PAF-202 match detail manifest');
+  const ids = [
+    'JLqMT',
+    'eYIgj',
+    'nNzWb',
+    'fo8Zn',
+    'SYMLa',
+    'tYXlh',
+    'CLn9x',
+    'Za6r4',
+    'xC04T',
+    'Cpd7L',
+    't1ywa',
+    'Fyhbv'
+  ];
+  expect(Object.keys(manifest.frames).sort()).toEqual([...ids].sort());
+  for (const id of ids) {
+    const frame = manifest.frames[id];
+    if (!isRecord(frame)) throw new Error(`Missing frame ${id}`);
+    const source = readFileSync(
+      new URL(`./references/paf-202-match-detail/${id}.png`, import.meta.url)
+    );
+    expect(createHash('sha256').update(source).digest('hex'), `${id} export digest`).toBe(
+      frame.sha256
+    );
+  }
+});
+
 test('match fixture cleanup waits for database deletion before photo removal', async () => {
   const completed: string[] = [];
   await runCleanupInOrder([
@@ -1662,7 +1671,6 @@ test('match fixture cleanup treats a no-op photo removal as residue', async () =
 test.describe.serial('PAF-5 registration visual and structural QA', () => {
   test.beforeAll(() => {
     test.setTimeout(240_000);
-    assertManifestProvenance();
   });
 
   test('Match detail — direct join state replays the approved fo8Zn frame', async ({ browser }) => {
@@ -1679,12 +1687,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await ready(page);
 
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${VENUES.join} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: VENUES.join, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Registration state (manifest fo8Zn facts: join CTA block + capacity fact
     // "2 of 8 places left" + level range + instant-confirmation note).
@@ -1702,6 +1710,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
       )
     ).toBeVisible();
     // Instant-confirmation copy now lives in the place card; no separate legacy note.
+    // F25: the one registration action sits in the sticky bar, not in the status card.
+    await expect(
+      page
+        .locator('[data-match-action-bar]')
+        .getByRole('button', { name: en.matchRegistration.join.button })
+    ).toBeVisible();
     await assertRegistrationCta(
       page,
       panel.getByRole('button', { name: en.matchRegistration.join.button }),
@@ -1737,6 +1751,45 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await assertPrimaryHitTargets(page, 'fo8Zn detail 390x872');
   });
 
+  test('Match detail — direct join top bar, hero and action bar are gated against fo8Zn regions', async ({
+    browser
+  }) => {
+    test.setTimeout(480_000);
+    await ensureVisualFixtures();
+    // 390x844: the frame regions compare in the same 844px capture the other Clubhouse lanes use.
+    const context = await newContext(browser, { viewport: { width: 390, height: 844 } });
+    family.contexts.push(context);
+    const page = await context.newPage();
+    await signIn(page, family.joinViewer!);
+    await page.goto(`/matches/${family.joinEventId}`);
+    await ready(page);
+    await expect(page.locator('[data-match-action-bar]')).toBeVisible();
+
+    const source = readFileSync(
+      new URL('./references/paf-202-match-detail/fo8Zn.png', import.meta.url)
+    );
+    expect(createHash('sha256').update(source).digest('hex'), 'fo8Zn export digest').toBe(
+      detailReferences.frames['fo8Zn']!.sha256
+    );
+    const hero = page.locator('section[aria-labelledby="match-overview-heading"]');
+    await assertFrameRegions({
+      page,
+      frame: 'fo8Zn',
+      reference: source,
+      regions: detailReferences.frameRegions['fo8Zn']!,
+      locators: {
+        topBar: page.locator('main > header'),
+        heroPhoto: hero.locator('img'),
+        heroChip: hero.locator('> div').first().locator('> *').first(),
+        heroTitle: hero.locator('> div').nth(1),
+        stats: hero.locator('xpath=following-sibling::div[1]'),
+        actionBar: page.locator('[data-match-action-bar]')
+      },
+      // The fixture date follows the run date; the frame sample date is event copy.
+      mask: [hero.locator('h2 + p')]
+    });
+  });
+
   test('Match detail — registration full state replays the approved SYMLa frame', async ({
     browser
   }) => {
@@ -1750,12 +1803,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await ready(page);
 
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${VENUES.full} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: VENUES.full, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Registration state (manifest SYMLa facts: capacity badge [18,561,95,23]
     // + disabled button [18,591,354,44] + explicit MATCH FULL surface).
@@ -1811,12 +1864,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await ready(page);
 
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${VENUES.closed} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: VENUES.closed, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Frame-driven closed place card: cutoff badge, finalized counts and note,
     // with no join action. Permission and server-count checks remain below.
@@ -1841,6 +1894,8 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
         .getByText(en.matches.detail.registrationClosed, { exact: true })
     ).toBeVisible();
     await expect(panel.getByRole('button')).toHaveCount(0);
+    // F25: closed has no registration control, so there is no sticky bar to invent.
+    await expect(page.locator('[data-match-action-bar]')).toHaveCount(0);
 
     // Roster visibility contract (recorded deviation, same as fo8Zn).
     await expect(rosterRegion(page, en)).toHaveCount(0);
@@ -1955,13 +2010,15 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
       await expect(
         page.getByRole('heading', {
           level: 1,
-          name: en.matches.detail.title,
+          name: en.matches.detail.barTitle,
           exact: true
         })
       ).toBeVisible();
       const venue = state.label === 'Za6r4 expired' ? VENUES.closed : VENUES.join;
       await expect(
-        page.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, { exact: true })
+        page
+          .getByRole('region', { name: venue, exact: true })
+          .getByText(en.matches.detail.visibility.community_open, { exact: true })
       ).toBeVisible();
       await assertRequesterState(page, en, state.label, state.expected);
 
@@ -2083,12 +2140,12 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await page.goto(`/matches/${family.rosterEventId}`);
     await ready(page);
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${VENUES.roster} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: VENUES.roster, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Participation determines sections: playing groups, then live reserves
     // with #1/#2/#3 FIFO positions. The real cutoff-processed CLOSED event
@@ -2367,6 +2424,130 @@ test.describe.serial('PAF-5 registration visual and structural QA', () => {
     await assertNoHorizontalOverflow(cutoffPage, 'Z0gRd notifications');
     await assertPrimaryHitTargets(cutoffPage, 'Z0gRd notifications');
     await cutoffContext.close();
+  });
+
+  test('Match detail — 320px pt-BR top bar and hero stay readable without collisions', async ({
+    browser
+  }) => {
+    test.setTimeout(480_000);
+    await ensureVisualFixtures();
+    const context = await newContext(browser, {
+      viewport: { width: 320, height: 844 },
+      locale: 'pt-BR'
+    });
+    family.contexts.push(context);
+    const page = await context.newPage();
+    await signIn(page, family.joinViewer!, ptBr);
+    await page.goto(`/matches/${family.joinEventId}`);
+    await ready(page);
+
+    const header = page.locator('main > header');
+    const back = header.getByRole('link', { name: ptBr.matches.back, exact: true });
+    const title = header.getByRole('heading', { level: 1, name: ptBr.matches.detail.barTitle });
+    const share = header.getByRole('button', { name: ptBr.matches.detail.share, exact: true });
+    // The long visible label ("Compartilhar") is the End slot content the 72px minimum must tolerate.
+    await expect(share).toHaveText(ptBr.matches.detail.hero.shareHeader);
+    await expect(title).toBeVisible();
+
+    const measure = (locator: Locator) =>
+      locator.evaluate((node) => {
+        const box = node.getBoundingClientRect();
+        return {
+          left: box.left,
+          right: box.right,
+          top: box.top,
+          bottom: box.bottom,
+          width: box.width,
+          height: box.height,
+          clipped: node.scrollWidth > node.clientWidth + 1
+        };
+      });
+    const [backBox, titleBox, shareBox, headerBox] = await Promise.all([
+      measure(back),
+      measure(title),
+      measure(share),
+      measure(header)
+    ]);
+    expect(backBox.right, '320 pt-BR: back must not touch the title').toBeLessThanOrEqual(
+      titleBox.left
+    );
+    expect(
+      titleBox.right,
+      '320 pt-BR: Compartilhar must not collide with the title'
+    ).toBeLessThanOrEqual(shareBox.left);
+    expect(shareBox.left, '320 pt-BR: Share stays right of the back target').toBeGreaterThanOrEqual(
+      backBox.right
+    );
+    expect(shareBox.right, '320 pt-BR: Share stays inside the viewport').toBeLessThanOrEqual(320);
+    expect(shareBox.left, '320 pt-BR: Share stays inside the bar').toBeGreaterThanOrEqual(
+      headerBox.left
+    );
+    expect(shareBox.clipped, '320 pt-BR: Compartilhar is wrapped or fits, never clipped').toBe(
+      false
+    );
+    expect(titleBox.clipped, '320 pt-BR: title is never clipped').toBe(false);
+    expect(
+      Math.min(backBox.height, shareBox.height),
+      '320 pt-BR: back and Share keep ≥44px height'
+    ).toBeGreaterThanOrEqual(44);
+    expect(
+      Math.min(backBox.width, shareBox.width),
+      '320 pt-BR: back and Share keep ≥44px width'
+    ).toBeGreaterThanOrEqual(44);
+    for (const box of [backBox, titleBox, shareBox])
+      expect(
+        box.bottom <= headerBox.bottom + 1 && box.top >= headerBox.top - 1,
+        '320 pt-BR: top bar items stay inside the bar row'
+      ).toBe(true);
+
+    // Hero stats strip: three columns, translated labels fully readable, no column collision.
+    const hero = page.locator('section[aria-labelledby="match-overview-heading"]');
+    await expect(hero.getByRole('heading', { level: 2, name: VENUES.join })).toBeVisible();
+    const strip = hero.locator('xpath=following-sibling::div[1]');
+    const metrics = await strip.evaluate((node) => {
+      const stripBox = node.getBoundingClientRect();
+      return {
+        strip: { left: stripBox.left, right: stripBox.right },
+        columns: Array.from(node.children, (column) => {
+          const box = column.getBoundingClientRect();
+          return {
+            left: box.left,
+            right: box.right,
+            clipped: Array.from(column.querySelectorAll('p')).some(
+              (text) => text.scrollWidth > text.clientWidth + 1
+            ),
+            smallestFont: Math.min(
+              ...Array.from(column.querySelectorAll('p'), (text) =>
+                Number.parseFloat(getComputedStyle(text).fontSize)
+              )
+            )
+          };
+        })
+      };
+    });
+    expect(metrics.columns, '320 pt-BR: playing, level and price columns').toHaveLength(3);
+    for (const [index, column] of metrics.columns.entries()) {
+      expect(column.clipped, `320 pt-BR: stats column ${index} text is not clipped`).toBe(false);
+      expect(
+        column.smallestFont,
+        `320 pt-BR: stats column ${index} stays readable`
+      ).toBeGreaterThanOrEqual(13);
+      expect(
+        column.left,
+        `320 pt-BR: stats column ${index} inside the strip`
+      ).toBeGreaterThanOrEqual(metrics.strip.left - 1);
+      expect(column.right, `320 pt-BR: stats column ${index} inside the strip`).toBeLessThanOrEqual(
+        metrics.strip.right + 1
+      );
+      if (index > 0)
+        expect(
+          column.left,
+          `320 pt-BR: stats column ${index} does not overlap the previous`
+        ).toBeGreaterThanOrEqual(metrics.columns[index - 1]!.right - 1);
+    }
+
+    await assertNoHorizontalOverflow(page, '320 pt-BR match detail');
+    await assertPrimaryHitTargets(page, '320 pt-BR match detail');
   });
 
   test('Variant invariants — 320 / desktop / dark / pt-BR / es (no approved frames: invariants only)', async ({

@@ -15,7 +15,7 @@ export function LeagueEntries({ communities }: { communities: LeagueCommunityEnt
       </h2>
       <ul {...stylex.props(styles.list)}>
         {communities.map((community) => (
-          <li key={community.id}>
+          <li key={community.id} {...stylex.props(styles.entryGroup)}>
             <Link
               to="/community/$communityId/leagues"
               params={{ communityId: community.id }}

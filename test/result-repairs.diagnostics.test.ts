@@ -71,6 +71,42 @@ function mount(status: ResultRepairDiagnosticJob['status']) {
   return { ...view, refresh };
 }
 describe('repair diagnostics refresh and announcements', () => {
+  it.each(['community', 'platform'] as const)(
+    'orders the %s queue before detail and keeps the complete correlation identifier',
+    (kind) => {
+      const read = vi
+        .mocked(getResultRepairAttempts)
+        .mockReset()
+        .mockReturnValue(new Promise(() => {}));
+      const { container } = render(
+        createElement(ResultRepairDiagnostics, {
+          diagnostics: {
+            jobs: [job],
+            scheduler: {
+              pg_cron_installed: false,
+              provisioned: false,
+              overdue_jobs: 1,
+              jobs: []
+            }
+          },
+          scope: kind === 'platform' ? { kind } : { kind, communityId: job.community_id },
+          onRefresh: vi.fn<() => void>()
+        })
+      );
+      const queue = container.querySelector('[data-repair-region="queue"]');
+      const detail = container.querySelector('[data-repair-region="detail"]');
+      expect(queue?.nextElementSibling).toBe(detail);
+      expect(detail?.querySelector('[data-repair-identifier]')?.textContent).toBe(job.job_id);
+      expect(queue?.querySelector('[data-repair-select]')?.getAttribute('aria-current')).toBe(
+        'true'
+      );
+      expect(screen.queryByRole('alert')?.textContent?.trim()).toBe(
+        kind === 'platform' ? 'matches.corrections.diagnostics.schedulerUnavailable' : undefined
+      );
+      expect(read).toHaveBeenCalledTimes(kind === 'platform' ? 1 : 0);
+    }
+  );
+
   it('refreshes open attempt evidence after retry and refuses an incomplete audit response', async () => {
     const read = vi
       .mocked(getResultRepairAttempts)
@@ -414,7 +450,7 @@ describe('repair diagnostics refresh and announcements', () => {
       expect(detail().textContent).not.toContain('matches.corrections.diagnostics.timeline');
     });
   });
-  it('gives Retry the primary emphasis and keeps other actions neutral', () => {
+  it('opens confirmation without submitting when the queue retry control is pressed', async () => {
     vi.mocked(retryResultRepair).mockReset();
     render(
       createElement(ResultRepairDiagnostics, {
@@ -427,10 +463,16 @@ describe('repair diagnostics refresh and announcements', () => {
       })
     );
     const retry = screen.getByRole('button', { name: 'matches.corrections.repair.retry' });
-    const reload = screen.getByRole('button', { name: 'matches.results.reload' });
-    expect(retry.getAttribute('data-emphasis')).toBe('primary');
-    expect(reload.getAttribute('data-emphasis')).toBeNull();
-    expect(retry.className).not.toBe(reload.className);
+    await userEvent.click(retry);
+    const dialog = await screen.findByRole('dialog', {
+      name: 'matches.corrections.repair.confirmTitle'
+    });
+    expect(
+      within(dialog).getByRole('button', {
+        name: 'matches.corrections.repair.confirmAction'
+      })
+    ).toBeTruthy();
+    expect(retryResultRepair).not.toHaveBeenCalled();
   });
   it('offers translated Reload and live status without moving focus', () => {
     const { refresh } = mount('running');

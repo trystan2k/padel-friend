@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResultRepairStatus } from '../result-repairs/ResultRepairStatus';
 import type { MatchEventDetail } from './match-contracts';
+import { matchResultReviewStyles as reviewStyles } from './match-result.styles';
 import type { ResultPlayer, ResultRejectionReason, ResultSetRow } from './match-result-model';
 import type { ResultAmendment } from './result-amendment-model';
 import {
@@ -122,7 +123,7 @@ export function MatchResultAmendmentCard({
           aria-label={t('matches.corrections.proposed')}
           {...stylex.props(c.card, c.proposed)}
         >
-          <h4 {...stylex.props(c.factLabel)}>
+          <h4 {...stylex.props(c.factLabel, c.proposedLabel)}>
             {t('matches.corrections.proposedVersion', { version: candidate.version })}
           </h4>
           <p {...stylex.props(c.newScore)}>{scoreLine(candidate.sets)}</p>
@@ -193,7 +194,7 @@ export function MatchResultAmendmentCard({
         </output>
       )}
 
-      <div {...stylex.props(c.actions)}>
+      <div {...stylex.props(reviewing ? reviewStyles.sheetActions : c.actions)}>
         {amendment.can_submit_candidate && (
           <Link
             to="/matches/$eventId/record"
@@ -223,7 +224,7 @@ export function MatchResultAmendmentCard({
             ref={rejectTrigger}
             type="button"
             disabled={command.pending}
-            {...stylex.props(c.action, c.danger)}
+            {...stylex.props(c.action, c.danger, c.reviewReject)}
             onClick={() => setRejectOpen(true)}
           >
             {t('matches.results.review.reject')}

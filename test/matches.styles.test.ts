@@ -6,26 +6,24 @@ describe('match styles', () => {
   it('keeps detail photos fixed-height, roster rows compact, and cancelled badges inline', () => {
     const shell = readFileSync('src/features/matches/match-detail-shell.styles.ts', 'utf8');
     expect(shell).toMatch(
-      /image: \{[^}]*height: 'calc\(var\(--space-40\) \* 3 \+ var\(--space-8\)\)'/
+      /image: \{[^}]*height: 'calc\(var\(--space-40\) \* 3 \+ var\(--space-12\)\)'/
     );
     expect(shell).toMatch(
       /cancelledBadge: \{\s*display: 'flex',\s*justifyContent: 'flex-start',\s*minHeight: 'calc\(var\(--space-20\) \+ var\(--space-4\)\)'/
     );
     const registration = readFileSync('src/features/matches/match-registration.styles.ts', 'utf8');
+    expect(registration).toMatch(/playerRow: \{[^}]*minHeight: control/);
     expect(registration).toMatch(
-      /playerRow: \{[^}]*minHeight: 'calc\(var\(--space-40\) \+ var\(--space-4\)\)'/
-    );
-    expect(registration).toMatch(
-      /passivePlayerRow: \{[^}]*minHeight: 'calc\(var\(--space-20\) \+ var\(--space-12\)\)'/
+      /passivePlayerRow: \{ minHeight: 'calc\(var\(--space-40\) \+ var\(--space-8\)\)' \}/
     );
     expect(readFileSync('src/features/matches/MatchRosterCard.tsx', 'utf8')).toContain(
       '!participants && s.passivePlayerRow'
     );
     expect(registration).toMatch(/playerRow: \{[^}]*paddingBlock: 0/);
-    expect(registration).toMatch(/rosterSection: \{[^}]*gap: 'var\(--space-4\)'/);
+    expect(registration).toMatch(/rosterSection: \{[^}]*gap: 'var\(--space-8\)'/);
     expect(registration).toMatch(/roster: \{[^}]*gap: 'var\(--space-4\)'/);
     expect(registration).toMatch(
-      /initials: \{[^}]*width: 'calc\(var\(--space-20\) \+ var\(--space-4\)\)'/
+      /initials: \{[^}]*width: 'calc\(var\(--space-20\) \+ var\(--space-16\)\)'/
     );
   });
   it('uses flat surface edit fields and unbevelled buttons despite StyleX shorthand resets', () => {
@@ -38,12 +36,13 @@ describe('match styles', () => {
     expect(edit).toMatch(
       /button: \{[^}]*appearance: 'none'[^}]*borderWidth: 0[^}]*borderStyle: 'none'/
     );
-    expect(edit).toContain('backdrop: { opacity: 0.97 }');
+    const management = readFileSync('src/features/matches/match-management.styles.ts', 'utf8');
+    expect(management).toMatch(/popup: \{[^}]*overscrollBehavior: 'contain'/);
   });
-  it('uses Inter body/card content and semibold card headings, retaining Manrope venue headings', () => {
+  it('uses body-family card content and bold card headings, retaining the heading-family venue heading', () => {
     const shell = readFileSync('src/features/matches/match-detail-shell.styles.ts', 'utf8');
     expect(shell).toMatch(/page: \{[^}]*fontFamily: 'var\(--font-family-body\)'/);
-    expect(shell).toMatch(/title: \{[^}]*fontWeight: 'var\(--font-weight-semibold\)'/);
+    expect(shell).toMatch(/title: \{[^}]*fontWeight: 'var\(--font-weight-bold\)'/);
     expect(shell).toMatch(/venue: \{[^}]*fontFamily: 'var\(--font-family-heading\)'/);
     for (const name of [
       'match-edit',
@@ -52,18 +51,24 @@ describe('match styles', () => {
       'match-invitation'
     ]) {
       const source = readFileSync(`src/features/matches/${name}.styles.ts`, 'utf8');
-      expect(source).not.toContain('var(--font-family-heading)');
       expect(source).toContain('var(--font-family-body)');
     }
+    const management = readFileSync('src/features/matches/match-management.styles.ts', 'utf8');
+    expect(management).toMatch(/dialogTitle: \{[^}]*fontFamily: 'var\(--font-family-heading\)'/);
+    expect(management).not.toMatch(/cardTitle: \{[^}]*fontFamily: 'var\(--font-family-heading\)'/);
   });
   it('reserves global chip width on non-detail headers without changing detail composition', () => {
     const root = readFileSync('src/root.styles.ts', 'utf8');
+    // Conditional: no reserve on wide viewports (default 0), chip reserve only under 880px.
     expect(root).toMatch(
-      /pageHeader: \{[^}]*paddingInlineEnd: 'calc\(var\(--space-40\) \* 2 \+ var\(--space-8\) \* 3\)'/
+      /pageHeader: \{[^]*?paddingInlineEnd: \{\s*default: 0,\s*'@media \(max-width: 879px\)': 'calc\(var\(--space-40\) \* 2 \+ var\(--space-8\) \* 3\)'\s*\}/
     );
-    expect(root).toMatch(/pageHeader: \{[^}]*overflowWrap: 'anywhere'/);
+    expect(root).toMatch(
+      /pageHeader: \{[^]*?paddingInlineEnd: \{[^}]*\},\s*overflowWrap: 'anywhere'/
+    );
+    // The global language/theme chips still float top-right, so the Clubhouse header reserves them.
     expect(readFileSync('src/features/matches/MatchesPage.tsx', 'utf8')).toContain(
-      's.heading, rootStyles.pageHeader'
+      's.header, rootStyles.pageHeader'
     );
     expect(readFileSync('src/features/matches/MatchDetailPage.tsx', 'utf8')).not.toContain(
       'rootStyles.pageHeader'
@@ -71,9 +76,7 @@ describe('match styles', () => {
   });
   it('gives detail map actions the existing tokenized touch-target link style', () => {
     const source = readFileSync('src/features/matches/MatchDetailPage.tsx', 'utf8');
-    expect(source).toMatch(
-      /href=\{event\.maps_url\}[\s\S]*?stylex\.props\(s\.link, s\.cardLink, shell\.maps\)/
-    );
+    expect(source).toMatch(/href=\{event\.maps_url\}[\s\S]*?stylex\.props\(shell\.maps\)/);
   });
   it('allows management fieldsets and controls to shrink inside narrow translated dialogs', () => {
     const source = readFileSync('src/features/matches/match-management.styles.ts', 'utf8');
@@ -123,12 +126,12 @@ describe('match styles', () => {
     expect(management).toContain("minWidth: 'calc(var(--space-40) + var(--space-4))'");
     expect(management).toContain("minHeight: 'calc(var(--space-40) * 2)'");
     expect(management).toMatch(
-      /menuItem: \{[^}]*minHeight: 'calc\(var\(--space-40\) \+ var\(--space-4\)\)'/
+      /menuItem: \{[^}]*minHeight: 'calc\(var\(--space-40\) \+ var\(--space-12\)\)'/
     );
     const registration = readFileSync('src/features/matches/match-registration.styles.ts', 'utf8');
-    expect(
-      registration.match(/minHeight: 'calc\(var\(--space-40\) \+ var\(--space-4\)\)'/g)?.length
-    ).toBeGreaterThanOrEqual(2);
+    expect(registration).toContain("const target = 'calc(var(--space-40) + var(--space-4))'");
+    expect(registration).toContain("const control = 'calc(var(--space-40) + var(--space-12))'");
+    expect(registration.match(/minHeight: (?:target|control)/g)?.length).toBeGreaterThanOrEqual(2);
     for (const component of MANAGEMENT_COMPONENTS) {
       const source = readFileSync(`src/features/matches/${component}.tsx`, 'utf8');
       expect(source, `Inline style: ${component}`).not.toMatch(/\bstyle\s*=/);
@@ -139,7 +142,7 @@ describe('match styles', () => {
       ];
       for (const control of controls)
         expect(control[2], `Control style: ${component}`).toMatch(
-          /stylex\.props\((?:s\.(?:button|input|menuItem)|(?:buttons|card)\.(?:primaryButton|secondaryButton))/
+          /stylex\.props\((?:s\.(?:button|input|menuItem)|page\.back|(?:buttons|card)\.(?:primaryButton|secondaryButton))|render=\{<Button/
         );
     }
   });
@@ -155,42 +158,52 @@ describe('match styles', () => {
     const touchMinimum = 'calc(var(--space-40) + var(--space-4))';
     expect(styles).toContain('var(--border-width-lg) solid var(--color-green)');
     expect(styles).toContain(touchMinimum); // detail input and unavailable/back links
-    expect(createStyles).toContain(touchMinimum); // file control and team radio labels
+    expect(createStyles).toContain(touchMinimum); // checkbox label and chip targets
     expect(createStyles).toContain('touchLabel');
-    expect(createStyles).toContain("minInlineSize: 'calc(var(--space-40) + var(--space-4))'");
-    expect(createStyles).toContain("minBlockSize: 'calc(var(--space-40) + var(--space-4))'");
+    expect(createStyles).toContain('minInlineSize: target');
+    expect(createStyles).toContain('minBlockSize: control');
     expect(createStyles).toContain('fileInput');
     expect(createStyles).toContain('minInlineSize: 0');
     expect(createStyles).toContain("maxInlineSize: '100%'");
     expect(createStyles).toContain("inlineSize: '100%'");
+    // Remove chips and result rows are the invitee picker's controls (rows 56, chips 44 minimum).
     expect(readFileSync('src/features/matches/MatchInviteePicker.tsx', 'utf8')).toContain(
-      'stylex.props(s.button)'
+      'stylex.props(s.chip)'
     );
   });
   it('matches the measured match surfaces, rhythm, tab treatment, and card radius', () => {
-    const styles = readFileSync('src/features/matches/matches.styles.ts', 'utf8');
+    const list = readFileSync('src/features/matches/match-list.styles.ts', 'utf8');
     const createStyles = readFileSync('src/features/matches/create-match.styles.ts', 'utf8');
-    expect(styles).toContain("padding: 'var(--space-18)'");
-    expect(styles).toContain("gap: 'var(--space-8)',\n    width: '100%'");
-    expect(styles).toContain("gap: 'var(--space-8)' },");
-    expect(styles).toContain("backgroundColor: 'var(--color-surface-2)'");
-    expect(styles).toContain("backgroundColor: 'var(--color-surface)',\n    fontWeight");
-    expect(styles).toContain("borderRadius: 'var(--radius-12)'");
-    expect(createStyles).toContain("padding: 'var(--space-18)'");
-    expect(createStyles).toContain("form: { display: 'grid', gap: 'var(--space-10)' }");
-    expect(createStyles).toContain("width: '100%',\n    backgroundColor: 'var(--color-green)'");
-    expect(readFileSync('src/features/matches/CreateMatchPage.tsx', 'utf8')).toContain(
-      'stylex.props(s.button, s.primaryButton)'
+    // Clubhouse lists (ENn8Q/uePpj/w25dY): 20px safe-area gutter, 12px rhythm, 56px segment track
+    // on surface-2 holding surface pills, 18px cards.
+    expect(list).toContain("paddingInlineStart: 'max(var(--space-20), env(safe-area-inset-left))'");
+    expect(list).toContain("gap: 'var(--space-12)',\n    width: '100%'");
+    expect(list).toMatch(/segments: \{[^}]*backgroundColor: 'var\(--color-surface-2\)'/);
+    expect(list).toMatch(/segmentActive: \{ backgroundColor: 'var\(--color-surface\)'/);
+    expect(list).toMatch(/card: \{[^}]*borderRadius: 'var\(--radius-18\)'/);
+    expect(list).toMatch(
+      /segment: \{[^}]*minHeight: 'calc\(var\(--space-40\) \+ var\(--space-8\)\)'/
     );
+    // Create wizard (wHaAb/vAxZh/b5RR4/RDV2r): 20-unit safe-area gutter, 14-unit content rhythm, 52-unit
+    // controls, surface-2 segmented tracks, 18-unit list cards and a sticky surface action bar.
+    expect(createStyles).toContain(
+      "const gutterStart = 'max(var(--space-20), env(safe-area-inset-left))'"
+    );
+    expect(createStyles).toMatch(/content: \{[^}]*gap: 'var\(--space-14\)'/);
+    expect(createStyles).toMatch(/segmented: \{[^}]*backgroundColor: 'var\(--color-surface-2\)'/);
+    expect(createStyles).toMatch(/list: \{[^}]*borderRadius: 'var\(--radius-18\)'/);
+    expect(createStyles).toMatch(/actions: \{[^}]*position: 'sticky'/);
+    const page = readFileSync('src/features/matches/CreateMatchPage.tsx', 'utf8');
+    expect(page).toContain('xstyle={s.primaryAction}');
+    expect(page).toContain('xstyle={s.secondaryAction}');
   });
   it('matches rebuilt detail shell card rhythm and compact native global controls', () => {
     const shell = readFileSync('src/features/matches/match-detail-shell.styles.ts', 'utf8');
     expect(shell).toContain("gap: 'var(--space-12)'");
-    expect(shell).toContain("gap: 'var(--space-10)'");
-    expect(shell).toContain("padding: 'var(--space-14)'");
-    expect(shell).toContain("borderRadius: 'var(--radius-16)'");
-    expect(shell).toContain("borderRadius: 'var(--radius-12)'");
-    expect(shell).toContain("textTransform: 'uppercase'");
+    expect(shell).toContain("padding: 'var(--space-16)'");
+    expect(shell).toContain("borderRadius: 'var(--radius-18)'");
+    expect(shell).toContain("borderRadius: 'var(--radius-14)'");
+    expect(shell).not.toContain('textTransform');
     const root = readFileSync('src/root.styles.ts', 'utf8');
     expect(root).toContain("appearance: 'none'");
     expect(root).toContain("borderRadius: '50%'");
@@ -205,7 +218,7 @@ describe('match styles', () => {
     for (const file of ['match-management', 'match-edit']) {
       const styles = readFileSync(`src/features/matches/${file}.styles.ts`, 'utf8');
       expect(styles).toMatch(
-        /backgroundColor: 'var\(--color-green\)',\s*color: 'var\(--color-bg\)'/
+        /backgroundColor: 'var\(--color-green\)',\s*color: 'var\(--color-on-green\)'/
       );
       expect(styles).not.toContain('var(--color-on-hero)');
     }
@@ -214,9 +227,9 @@ describe('match styles', () => {
     expect(
       styles.match(/backgroundColor: 'var\(--color-green\)',\s*color: 'var\(--color-bg\)'/g)
     ).toHaveLength(2);
-    expect(createStyles).toContain(
-      "backgroundColor: 'var(--color-green)',\n    color: 'var(--color-bg)'"
-    );
+    // The wizard's primary action is the shared Button primitive (green fill, on-green label); the
+    // background foreground is only used for the inverted selected chip (text fill), never on green.
+    expect(createStyles).not.toMatch(/color-green\)',\s*color: 'var\(--color-bg\)'/);
     expect(readFileSync('design-tokens/dist/tokens.css', 'utf8')).toContain(
       '--color-bg: var(--palette-bg-dark)'
     );

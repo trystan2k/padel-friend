@@ -1,6 +1,8 @@
+import { Switch } from '@base-ui/react/switch';
 import * as stylex from '@stylexjs/stylex';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../components/ui/Button';
 import { createMatchStyles as s } from './create-match.styles';
 import { formatMatchLeaguePeriod, type MatchCompetitionState } from './match-league-selection';
 import type { MatchDraft } from './match-contracts';
@@ -8,15 +10,20 @@ import type { MatchDraft } from './match-contracts';
 type DraftChange = <K extends keyof MatchDraft>(key: K, value: MatchDraft[K]) => void;
 
 /**
- * Ranked/Unranked control plus the eligible League selector for a Competitive draft.
- * The deliberate Unranked choice is stored on the draft and survives option reloads.
+ * Ranked switch (frame Switch · Ranked) plus the eligible League selector for a Competitive draft.
+ * Switching Ranked off stores the deliberate Unranked choice on the draft; it survives option
+ * reloads. While the League list is not ready the switch shows the stored intent, so a player can
+ * opt out of Ranked even when the list is loading or failed; it is only locked once the list is
+ * ready and no League covers the schedule.
  */
 export function MatchCompetitionField({
   competition,
+  choice,
   change,
   error
 }: {
   competition: MatchCompetitionState;
+  choice: MatchDraft['competitionChoice'];
   change: DraftChange;
   error?: string;
 }) {
@@ -37,38 +44,40 @@ export function MatchCompetitionField({
               ? 'defaultOne'
               : 'chooseOne';
   const rankedAvailable = status === 'ready' && candidates.length > 0;
+  const checked = status === 'ready' ? ranked : choice !== 'unranked';
+  const locked = status === 'ready' && !rankedAvailable;
+  const leagueSelect = ranked && rankedAvailable;
   return (
     <fieldset
-      {...stylex.props(s.field)}
+      {...stylex.props(s.group)}
       aria-describedby={`${id}-guidance${error ? ` ${id}-error` : ''}`}
     >
-      <legend>{t('matchCreate.competition.legend')}</legend>
-      <label {...stylex.props(s.touchLabel)}>
-        <input
-          type="radio"
-          name={`${id}-competition`}
-          checked={ranked}
-          disabled={!rankedAvailable}
-          onChange={() => change('competitionChoice', 'ranked')}
-        />
-        {t('matches.competition.ranked')}
-      </label>
-      <label {...stylex.props(s.touchLabel)}>
-        <input
-          type="radio"
-          name={`${id}-competition`}
-          checked={!ranked}
-          onChange={() => change('competitionChoice', 'unranked')}
-          // Unranked can already be the effective choice (no or unavailable Leagues), where no
-          // change event fires: a click still records the deliberate opt-out. When switching from
-          // Ranked, onChange already records it, so the click stays silent.
-          onClick={() => {
-            if (!ranked) change('competitionChoice', 'unranked');
-          }}
-        />
-        {t('matches.competition.unranked')}
-      </label>
-      {ranked && rankedAvailable && (
+      <legend {...stylex.props(s.hidden)}>{t('matchCreate.competition.legend')}</legend>
+      <Switch.Root
+        checked={checked}
+        disabled={locked}
+        aria-labelledby={`${id}-title`}
+        aria-describedby={`${id}-meta`}
+        aria-invalid={Boolean(error) && !leagueSelect}
+        onCheckedChange={(next) => change('competitionChoice', next ? 'ranked' : 'unranked')}
+        render={<div />}
+        {...stylex.props(stylex.defaultMarker(), s.switchCard)}
+      >
+        <span {...stylex.props(s.switchText)}>
+          <span id={`${id}-title`} {...stylex.props(s.switchTitle)}>
+            {t('matches.competition.ranked')}
+          </span>
+          <span id={`${id}-meta`} {...stylex.props(s.switchMeta)}>
+            {resolution.league
+              ? t('matchCreate.competition.switchMetaLeague', { league: resolution.league.name })
+              : t('matchCreate.competition.switchMeta')}
+          </span>
+        </span>
+        <span aria-hidden="true" {...stylex.props(s.switchTrack)}>
+          <Switch.Thumb {...stylex.props(s.switchThumb)} />
+        </span>
+      </Switch.Root>
+      {leagueSelect && (
         <label {...stylex.props(s.field)}>
           {t('matchCreate.competition.league')}
           <select
@@ -98,14 +107,16 @@ export function MatchCompetitionField({
       </p>
       {status === 'error' && (
         <>
-          <p role="alert">{t('matchCreate.errors.leagueOptionsUnavailable')}</p>
-          <button type="button" {...stylex.props(s.button)} onClick={competition.retry}>
+          <p role="alert" {...stylex.props(s.fieldError)}>
+            {t('matchCreate.errors.leagueOptionsUnavailable')}
+          </p>
+          <Button variant="secondary" onClick={competition.retry}>
             {t('matches.retry')}
-          </button>
+          </Button>
         </>
       )}
       {error && (
-        <span id={`${id}-error`} role="alert">
+        <span id={`${id}-error`} role="alert" {...stylex.props(s.fieldError)}>
           {t(`matchCreate.errors.${error}`)}
         </span>
       )}

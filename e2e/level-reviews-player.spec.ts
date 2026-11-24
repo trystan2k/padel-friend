@@ -74,12 +74,19 @@ async function expectTouchTargets(page: Page) {
 
 test('profile entry opens the request form with a read-only current level', async () => {
   const page = await f.page(exact);
-  await expect(page.getByRole('region', { name: lr.entry.title })).toBeVisible();
+  // The level review entry lives on Me (D5), not on Home.
+  await open(page, '/me');
+  await expect(page.getByRole('link', { name: lr.entry.request })).toBeVisible();
   await page.getByRole('link', { name: lr.entry.request }).click();
   await expect(page).toHaveURL(/\/level-reviews\/new$/);
   await waitForHydratedPage(page);
   await expect(page.getByRole('heading', { level: 1, name: lr.request.title })).toBeVisible();
-  await expect(page.getByText('Your current level is 3.20')).toBeVisible();
+  await expect(page.getByText(lr.request.intro, { exact: true })).toBeVisible();
+  await expect(page.getByText(/^3\.20 · /)).toBeVisible();
+  await expect(page.getByRole('link', { name: lr.request.backLabel })).toHaveAttribute(
+    'href',
+    '/me'
+  );
   await expect(page.getByText(lr.request.currentHelper)).toBeVisible();
   // The current level is text, never a field.
   await expect(page.locator('input[value="3.20"], textarea:has-text("3.20")')).toHaveCount(0);
@@ -226,7 +233,8 @@ test('the lifecycle is shown to the owner: under review, then approved with the 
   await expect(page.getByRole('button', { name: lr.detail.cancel })).toHaveCount(0);
 
   await page.getByRole('link', { name: lr.detail.appliedLink }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  // The rating journey lives on Me (D5).
+  await expect(page).toHaveURL(/\/me$/);
   await waitForHydratedPage(page);
   const journey = page.getByRole('region', { name: ratingCopy.journey.title });
   const row = journey.getByRole('listitem').filter({ hasText: ratingCopy.history.adjustmentTitle });
@@ -252,7 +260,7 @@ test('a rejection shows the review note and leaves the level unchanged', async (
   await expect(page.getByText('Not enough evidence yet.')).toBeVisible();
   await expect(page.getByText(lr.detail.approvedLevel)).toHaveCount(0);
   await expect(page.getByRole('button', { name: lr.detail.cancel })).toHaveCount(0);
-  await open(page, '/dashboard');
+  await open(page, '/me');
   await expect(page.getByText(ratingCopy.history.adjustmentTitle)).toHaveCount(0);
   await expect(
     page.getByText('Global level').locator('xpath=following-sibling::strong')
@@ -267,8 +275,10 @@ test('history shows an explicit empty state and every request with its status', 
 
   const other = await f.page(decided);
   await open(other, '/level-reviews');
-  await expect(other.getByRole('listitem')).toHaveCount(1);
-  await expect(other.getByRole('listitem').first()).toContainText(lr.status.approved);
+  // Scoped to the page content: the app shell navigation also renders list items.
+  const requests = other.getByRole('main').getByRole('listitem');
+  await expect(requests).toHaveCount(1);
+  await expect(requests.first()).toContainText(lr.status.approved);
   await expectTouchTargets(other);
 });
 

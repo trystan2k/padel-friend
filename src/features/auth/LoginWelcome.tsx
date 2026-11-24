@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import brandIcon from '../../../docs/design/padel-friends-app-icon.png';
 import { AccountPrompt } from '../../components/ui/AccountPrompt';
 import { Button } from '../../components/ui/Button';
 import { OrDivider } from '../../components/ui/OrDivider';
@@ -12,6 +13,7 @@ import { TurnstileWidget } from '../../components/ui/TurnstileWidget';
 import { useCaptcha } from '../../lib/captcha';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { useHydrated } from '../../lib/use-hydrated';
+import { chromeStyles } from './auth-chrome.styles';
 import { styles } from './login-welcome.styles';
 import { navigateAfterAuth } from './navigate';
 import { PASSWORD_MIN_LENGTH, isPasswordValid } from './password-policy';
@@ -96,80 +98,76 @@ export function LoginWelcome({
   return (
     <>
       <main {...stylex.props(styles.page)}>
-        <header {...stylex.props(styles.header)}>
-          <span {...stylex.props(styles.brand)}>{t('auth.welcomeBrand')}</span>
-          <h1 {...stylex.props(styles.title)}>{t('auth.welcomeTitle')}</h1>
-          <p {...stylex.props(styles.subtitle)}>{t('auth.welcomeSubtitle')}</p>
-        </header>
+        <div {...stylex.props(styles.brandBlock)}>
+          <img src={brandIcon} alt="" aria-hidden="true" {...stylex.props(styles.logo)} />
+          <span {...stylex.props(styles.brand)}>{t('auth.loginBrand')}</span>
+        </div>
+        <h1 {...stylex.props(chromeStyles.title)}>{t('auth.welcomeTitle')}</h1>
+        <p {...stylex.props(chromeStyles.body)}>{t('auth.welcomeSubtitle')}</p>
 
         {resetSent && (
           <output aria-live="polite" {...stylex.props(styles.notice)}>
-            <h2 {...stylex.props(styles.noticeTitle)}>{t('auth.inboxNoticeTitle')}</h2>
+            <span aria-hidden="true" {...stylex.props(styles.noticeIcon)}>
+              ✉
+            </span>
             <p {...stylex.props(styles.noticeCopy)}>{t('auth.inboxNoticeCopy')}</p>
           </output>
         )}
 
-        <div {...stylex.props(styles.actions)}>
-          <Button
-            variant="secondary"
-            size="large"
-            busy={busy}
-            onClick={() => void signInWithGoogle()}
-          >
-            <span aria-hidden="true" {...stylex.props(styles.googleMark)}>
-              G
-            </span>
-            {t('signInWithGoogle')}
+        <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
+          <TextField
+            id="login-email"
+            name="email"
+            type="email"
+            label={t('auth.loginEmailLabel')}
+            placeholder={t('auth.loginEmailPlaceholder')}
+            autoComplete="email"
+            required
+            disabled={!ready || busy}
+          />
+          <PasswordField
+            id="login-password"
+            name="password"
+            label={t('auth.loginPasswordLabel')}
+            placeholder={t('auth.loginPasswordPlaceholder')}
+            required
+            autoComplete="current-password"
+            disabled={!ready || busy}
+            helper={
+              legacyPassword
+                ? t('auth.passwordLegacyHint', { min: PASSWORD_MIN_LENGTH })
+                : undefined
+            }
+            onChange={(event) =>
+              setLegacyPassword(event.target.value !== '' && !isPasswordValid(event.target.value))
+            }
+          />
+          <TurnstileWidget {...captcha.widgetProps} />
+          <div {...stylex.props(styles.forgotRow, styles.targetRow)}>
+            <TextLink
+              to="/forgot-password"
+              search={returnPath ? { next } : undefined}
+              xstyle={styles.forgotLink}
+            >
+              {t('auth.forgotLink')}
+            </TextLink>
+          </div>
+          <Button type="submit" disabled={!ready} busy={busy}>
+            {t('auth.loginSubmit')}
           </Button>
-          <OrDivider label={t('auth.or')} />
-          <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
-            <TextField
-              id="login-email"
-              name="email"
-              type="email"
-              label={t('auth.loginEmailLabel')}
-              placeholder={t('auth.loginEmailPlaceholder')}
-              autoComplete="email"
-              required
-              disabled={!ready || busy}
-            />
-            <PasswordField
-              id="login-password"
-              name="password"
-              label={t('auth.loginPasswordLabel')}
-              placeholder={t('auth.loginPasswordPlaceholder')}
-              required
-              autoComplete="current-password"
-              disabled={!ready || busy}
-              helper={
-                legacyPassword
-                  ? t('auth.passwordLegacyHint', { min: PASSWORD_MIN_LENGTH })
-                  : undefined
-              }
-              onChange={(event) =>
-                setLegacyPassword(event.target.value !== '' && !isPasswordValid(event.target.value))
-              }
-            />
-            <TurnstileWidget {...captcha.widgetProps} />
-            <div {...stylex.props(styles.forgotRow, styles.targetRow)}>
-              <TextLink
-                to="/forgot-password"
-                search={returnPath ? { next } : undefined}
-                xstyle={styles.forgotLink}
-              >
-                {t('auth.forgotLink')}
-              </TextLink>
-            </div>
-            <Button type="submit" size="large" disabled={!ready} busy={busy}>
-              {t('auth.loginSubmit')}
-            </Button>
-          </form>
-          {(message || authError || expired) && (
-            <p role="alert" {...stylex.props(styles.error)}>
-              {t(message || (expired ? 'auth.sessionExpired' : 'googleSignInError'))}
-            </p>
-          )}
-        </div>
+        </form>
+        {(message || authError || expired) && (
+          <p role="alert" {...stylex.props(chromeStyles.error)}>
+            {t(message || (expired ? 'auth.sessionExpired' : 'googleSignInError'))}
+          </p>
+        )}
+        <OrDivider label={t('auth.or')} />
+        <Button variant="secondary" busy={busy} onClick={() => void signInWithGoogle()}>
+          <span aria-hidden="true" {...stylex.props(styles.googleMark)}>
+            G
+          </span>
+          {t('signInWithGoogle')}
+        </Button>
 
         <div {...stylex.props(styles.targetRow)}>
           <AccountPrompt

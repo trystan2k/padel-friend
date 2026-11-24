@@ -1,0 +1,408 @@
+{
+  "runtimeEnforcement": {
+    "approvedReferencePngDigests": "Runtime-enforced by auth-d1-visual.spec.ts (beforeAll) and test/auth.d1-visual-references.test.ts for all 20 exports.",
+    "derivedBaselineDigests": "Pixel-compared frames: each baseline is re-derived from its export (status bar removed) and compared byte for byte before and after every screenshot, so --update-snapshots can never overwrite one silently.",
+    "perFrameAllowance": "maxDiffPixelRatio per screenshot, read by the spec from this manifest."
+  },
+  "sourceDesign": {
+    "path": "docs/design/padel-friend-clubhouse.pen",
+    "exportCommand": "Pencil MCP Export([\"b7ymtm\",\"y1fm4F\",\"syxBk\",\"T0bxQ\",\"wdEqM\",\"kN4R3\",\"KZhFq\",\"tPCZE\",\"LzVgj\",\"YAthZ\",\"j6753\",\"iBhT9\",\"uo9wF\",\"XVW28\",\"ewmqC\",\"xmK3X\",\"qGOYb\",\"GEURU\",\"e8xIw1\",\"UfaOW\"], \"png\", \"<repo>/e2e/references/paf-202-d1-auth\", {scale:1})",
+    "provenanceNote": "Twenty D1 frames (invitation confirmation, claim password, claim verify; light and dark) exported read-only at scale 1 (390x844) and committed unchanged. They were designed after D1 left these surfaces blocked in docs/design/clubhouse-approval-matrix.md and approved by the issue owner."
+  },
+  "comparison": {
+    "viewport": "390×800 CSS px, deviceScaleFactor 1, viewport screenshot. The pen frame is 390×844: its top 44px is the OS status bar the app never renders, so the baseline is the export with exactly those rows removed (deriveCroppedTopPng).",
+    "diff": {
+      "comparator": "playwright pixelmatch",
+      "threshold": 0.1
+    },
+    "environment": "Chromium with the playwright.config.ts deterministic raster flags, service worker blocked, reduced motion, Figtree 400-800 loaded before capture. Dark frames use the theme=dark cookie.",
+    "structuralProbes": "Exact geometry (±1px, bar ±2px): top bar 56px with centered 17px title; 56×56 tile at x20 y72 radius 12; 52px controls at x20 width 350; sticky action bar 12/20/24 inset with 1px hairline top border; four 4px strength segments; no text-transform; 320px and 1280px control fit with ≥44px targets."
+  },
+  "calibration": {
+    "date": "2026-11-20",
+    "environment": "macOS (Darwin), Playwright Chromium, pnpm test:e2e e2e/auth-d1-visual.spec.ts with every allowance 0 so each nonzero residual is reported by the comparator",
+    "allowancePolicy": "Measured ratio rounded up to 0.05pp, plus 0.25pp headroom for Pencil-vs-Chromium rasterization drift across OS (Linux CI measurement not available locally). Geometry probes stay exact and are never widened.",
+    "justification": "Residual is dominated by documented, intentional divergences (knownDivergences) plus text antialiasing and half-pixel placement. Structure is gated by the geometry probes, not by the pixel budget. The Figtree typeface and Clubhouse chrome come from the U2/U3 units.",
+    "measured": {
+      "invite-default-light": {
+        "differing": 37850,
+        "total": 312000,
+        "ratio": 0.121314
+      },
+      "invite-default-dark": {
+        "differing": 38295,
+        "total": 312000,
+        "ratio": 0.12274
+      },
+      "invite-expired-light": {
+        "differing": 6206,
+        "total": 312000,
+        "ratio": 0.019891
+      },
+      "invite-expired-dark": {
+        "differing": 5546,
+        "total": 312000,
+        "ratio": 0.017776
+      },
+      "invite-busy-light": {
+        "differing": 1063,
+        "total": 312000,
+        "ratio": 0.003407
+      },
+      "invite-busy-dark": {
+        "differing": 1191,
+        "total": 312000,
+        "ratio": 0.003817
+      },
+      "claim-password-light": {
+        "differing": 25067,
+        "total": 312000,
+        "ratio": 0.080343
+      },
+      "claim-password-dark": {
+        "differing": 24539,
+        "total": 312000,
+        "ratio": 0.078651
+      },
+      "claim-password-strong-light": {
+        "differing": 9824,
+        "total": 312000,
+        "ratio": 0.031487
+      },
+      "claim-password-strong-dark": {
+        "differing": 9287,
+        "total": 312000,
+        "ratio": 0.029766
+      },
+      "claim-password-error-light": {
+        "differing": 26209,
+        "total": 312000,
+        "ratio": 0.084003
+      },
+      "claim-password-error-dark": {
+        "differing": 25761,
+        "total": 312000,
+        "ratio": 0.082567
+      }
+    },
+    "knownDivergences": {
+      "invite-default": [
+        "Frame b7ymtm reads \"Invitation accepted / Continue to sign in\": it shows a completed acceptance. The real default is the pre-acceptance confirmation (one-use POST), so the real copy (Confirm your invitation, Accept invitation) is kept; no state is shown as accepted before the POST.",
+        "The app keeps its secondary \"Cancel and keep current account\" action (and the account-switch warning when a session exists), so the sticky bar is 148px instead of 88px: that 60px strip plus the shifted accept button is most of the residual.",
+        "The frame draws a back chevron; there is no safe back destination (no invented exit), so only the title is drawn, as in the U6 auth frames."
+      ],
+      "invite-expired": [
+        "Frame text differs from the real, truthful copy (confirmation unavailable, open the original invitation again).",
+        "\"Contact support\" opens a mailto link to the existing privacy contact address; the app has no dedicated support route."
+      ],
+      "invite-busy": [
+        "The frame loader icon is static here (no spinner animation under reduced motion); the real POST navigates away, so the busy screen is transient."
+      ],
+      "claim-password": [
+        "The frame draws disabled Continue (surface-2 button) until both rules pass and an eye (show password) control on each field. The app keeps submit-time validation (behavior preserved: no live-disabled submit, no show-password toggle), so the button is the enabled primary CTA labelled \"Save password\" and the eye controls are absent; the 52px button strip is about 5.8pp of the residual.",
+        "Rule 1 is the real policy copy (D2 truthful) and wraps to two lines; the frame shows \"At least 10 characters\" on one line.",
+        "Labels use the shared copy (\"Repeat password\"); the frame says \"Confirm password\".",
+        "The first field is drawn focused in the frame; the app focuses the heading on mount (screen-reader announcement, unchanged behavior)."
+      ],
+      "claim-password-strong": [
+        "Same label/placeholder/policy-copy differences as the empty state; the button matches (enabled primary)."
+      ],
+      "claim-password-error": [
+        "The frame pairs the mismatch error with strength Fair; the app only reports a mismatch after the policy passed, so the same state shows strength Strong with rule 1 met and rule 2 unmet. Disabled Continue and eye controls as in the empty state."
+      ],
+      "claim-verify": [
+        "No pixel comparison: the frame draws a six-digit code entry, \"Resend code\" and a \"Verify email\" button. The app has no code entry (verification is an emailed recovery link). The implemented screen keeps the chip, heading, options card and sticky \"Email me a link\" action in the frame structure. Requires no behavior change; not invented."
+      ]
+    }
+  },
+  "frames": {
+    "invite-default-light": {
+      "frameId": "b7ymtm",
+      "frameName": "invite-confirmation",
+      "theme": "light",
+      "appState": "/auth/confirm-invite with a pending invitation: explicit one-use confirmation form (POST /auth/callback)",
+      "source": "b7ymtm.png",
+      "sourceSha256": "fc8d2c7bd3a91671814143e017bc9772739d04b55e861209f983145a794dd9d2",
+      "sourceBytes": 21710,
+      "baselineSha256": "4a0d353069fe0fbe47654e63aad761ef70a8b54046a891e18380b24aa7fec063",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.124
+    },
+    "invite-default-dark": {
+      "frameId": "y1fm4F",
+      "frameName": "invite-confirmation — dark",
+      "theme": "dark",
+      "appState": "/auth/confirm-invite with a pending invitation: explicit one-use confirmation form (POST /auth/callback)",
+      "source": "y1fm4F.png",
+      "sourceSha256": "3f79dcb29433d397435e3159d7b6d004a12b75617715cf2b66dfdc30245379d3",
+      "sourceBytes": 21493,
+      "baselineSha256": "6af87d34aeab3ee01ee983a41d79895c338619da19d2f462866250c7eababd13",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.1255
+    },
+    "invite-invalid-light": {
+      "frameId": "syxBk",
+      "frameName": "invite-confirmation — invalid",
+      "theme": "light",
+      "appState": "/auth/confirm-invite {error: verification_failed}: implemented (red tile, help card, Back to sign in) and covered by test/auth.invite-confirmation.test.tsx; not reachable through a stable browser fixture (needs a pending invite cookie with a failing session lookup)",
+      "source": "syxBk.png",
+      "sourceSha256": "32f5689e06ff938fd54d1f1efdc4ee598b23f0fa176bf88b6083a6d25d06562e",
+      "sourceBytes": 28343,
+      "baselineSha256": null,
+      "width": 390,
+      "height": 844,
+      "comparison": "frame-only",
+      "frameOnlyReason": "not browser-reachable",
+      "maxDiffPixelRatio": null
+    },
+    "invite-invalid-dark": {
+      "frameId": "T0bxQ",
+      "frameName": "invite-confirmation — invalid — dark",
+      "theme": "dark",
+      "appState": "/auth/confirm-invite {error: verification_failed}: implemented (red tile, help card, Back to sign in) and covered by test/auth.invite-confirmation.test.tsx; not reachable through a stable browser fixture (needs a pending invite cookie with a failing session lookup)",
+      "source": "T0bxQ.png",
+      "sourceSha256": "5dcf29b1481c31e09ed8cbd1b2df090265ef9dc38581686b2768094dd9f47174",
+      "sourceBytes": 28158,
+      "baselineSha256": null,
+      "width": 390,
+      "height": 844,
+      "comparison": "frame-only",
+      "frameOnlyReason": "not browser-reachable",
+      "maxDiffPixelRatio": null
+    },
+    "invite-expired-light": {
+      "frameId": "wdEqM",
+      "frameName": "invite-confirmation — expired",
+      "theme": "light",
+      "appState": "/auth/confirm-invite with no pending invitation (confirmation null)",
+      "source": "wdEqM.png",
+      "sourceSha256": "441807c00992b6539038cb3e3fbbe0eb94bc0da1fa046dda36580e57b11ce4aa",
+      "sourceBytes": 27317,
+      "baselineSha256": "97221504ac4562dabff70d9d7a15dbc9b811e821168476954f527e3ad400cf8a",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.0225
+    },
+    "invite-expired-dark": {
+      "frameId": "kN4R3",
+      "frameName": "invite-confirmation — expired — dark",
+      "theme": "dark",
+      "appState": "/auth/confirm-invite with no pending invitation (confirmation null)",
+      "source": "kN4R3.png",
+      "sourceSha256": "2d4c4cee8701498ac4f945d261d8792f1ff337126eb8f865d44a409ba1647c30",
+      "sourceBytes": 27112,
+      "baselineSha256": "228a880041ccfd086d2c6e5b4d39e6f2d5adb23071f308fccd4a9b353173f536",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.0205
+    },
+    "invite-busy-light": {
+      "frameId": "KZhFq",
+      "frameName": "invite-confirmation — busy",
+      "theme": "light",
+      "appState": "/auth/confirm-invite after submit: native document POST in flight (button busy + disabled, form kept mounted)",
+      "source": "KZhFq.png",
+      "sourceSha256": "a97a279f82fe3383dc72c90933fed6b7be65c5f5d4a5d1a2adef59bcabeb3d80",
+      "sourceBytes": 21298,
+      "baselineSha256": "ae229493a34c8d4c09c44413a421d1798f93064053422d918fd799e4f2e0f380",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.006
+    },
+    "invite-busy-dark": {
+      "frameId": "tPCZE",
+      "frameName": "invite-confirmation — busy — dark",
+      "theme": "dark",
+      "appState": "/auth/confirm-invite after submit: native document POST in flight (button busy + disabled, form kept mounted)",
+      "source": "tPCZE.png",
+      "sourceSha256": "833734e822d93141877f18466f1bafe15d76598589f1931c7f1a9130e7eeb303",
+      "sourceBytes": 21095,
+      "baselineSha256": "4f97a5512beef37dac62cbfb6448d19cbb676dd58dd1ff68cfd560458da59845",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.0065
+    },
+    "claim-password-light": {
+      "frameId": "LzVgj",
+      "frameName": "claim-password",
+      "theme": "light",
+      "appState": "ClaimPasswordStep, empty form",
+      "source": "LzVgj.png",
+      "sourceSha256": "9c2cdfc7f9a2ca8a49eeac288ef38182a889a60831fefdab753e4151a0aa99e2",
+      "sourceBytes": 32707,
+      "baselineSha256": "28573c7c3337b1547dc214aa4412e8cd18ea3a73e3cfd1c6cb6fdd8d64e93be9",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.083
+    },
+    "claim-password-dark": {
+      "frameId": "YAthZ",
+      "frameName": "claim-password — dark",
+      "theme": "dark",
+      "appState": "ClaimPasswordStep, empty form",
+      "source": "YAthZ.png",
+      "sourceSha256": "70b682a48026cf0c4eeceeafe2f87889bff7e95634421002a02013572b429e20",
+      "sourceBytes": 32110,
+      "baselineSha256": "6e596dd4e31452bcb9a18ecf17a73dd27dd973ab78288a15c26b0c455670cd23",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.0815
+    },
+    "claim-password-strong-light": {
+      "frameId": "j6753",
+      "frameName": "claim-password — strong password",
+      "theme": "light",
+      "appState": "ClaimPasswordStep, policy met with matching confirmation (strength Strong)",
+      "source": "j6753.png",
+      "sourceSha256": "b76f6a08c8558794075cfdbc81ef44a6f29950cb776836bd41e481d4094da838",
+      "sourceBytes": 29635,
+      "baselineSha256": "38c2eff6a5c69d63634d6271e492a33565ceeafbc6eb59931547b7c858df6c12",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.034
+    },
+    "claim-password-strong-dark": {
+      "frameId": "iBhT9",
+      "frameName": "claim-password — strong password — dark",
+      "theme": "dark",
+      "appState": "ClaimPasswordStep, policy met with matching confirmation (strength Strong)",
+      "source": "iBhT9.png",
+      "sourceSha256": "b35f2e8df2a5217945ff916005d8aae243bd56d266cfd9a725e35df51dcb65a1",
+      "sourceBytes": 29577,
+      "baselineSha256": "9adf8d3990f4cf9e8eedb1a33c21447b68b8349328bddbd8e88ff4d7cf2f9494",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.0325
+    },
+    "claim-password-error-light": {
+      "frameId": "uo9wF",
+      "frameName": "claim-password — error",
+      "theme": "light",
+      "appState": "ClaimPasswordStep, submit with a valid password and a different confirmation (inline mismatch error)",
+      "source": "uo9wF.png",
+      "sourceSha256": "ab5b2328f4be71a6ec16c95e92a0eb74adafd67c83240a2cdc28b226e94ba8c1",
+      "sourceBytes": 30665,
+      "baselineSha256": "8ce2cba5b64ecc3b1e3f886374837a08c0f9cc33ac46a6be3859edeb96735212",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.087
+    },
+    "claim-password-error-dark": {
+      "frameId": "XVW28",
+      "frameName": "claim-password — error — dark",
+      "theme": "dark",
+      "appState": "ClaimPasswordStep, submit with a valid password and a different confirmation (inline mismatch error)",
+      "source": "XVW28.png",
+      "sourceSha256": "6f968d560e64ca4f8fd533ecb2fc1436cd3d8a39e8c91cf9e6d2964b5142491b",
+      "sourceBytes": 30345,
+      "baselineSha256": "4ef0ffa3474a6c50876be8a3e5b69bba65b80465462d7a0684024c2e280892d4",
+      "width": 390,
+      "height": 800,
+      "comparison": "pixel",
+      "maxDiffPixelRatio": 0.0855
+    },
+    "claim-verify-light": {
+      "frameId": "ewmqC",
+      "frameName": "claim-verify",
+      "theme": "light",
+      "appState": "ProvisionalClaimVerify implemented structurally (top bar, chip, heading, options card, sticky action); the frame draws a six-digit code entry the app does not have",
+      "source": "ewmqC.png",
+      "sourceSha256": "91fb1e5d3ac765347ff039241a55fa4869bc6fb3519482300ea9eec34103b01f",
+      "sourceBytes": 28487,
+      "baselineSha256": null,
+      "width": 390,
+      "height": 844,
+      "comparison": "frame-only",
+      "frameOnlyReason": "no app counterpart: verification is by emailed link",
+      "maxDiffPixelRatio": null
+    },
+    "claim-verify-dark": {
+      "frameId": "xmK3X",
+      "frameName": "claim-verify — dark",
+      "theme": "dark",
+      "appState": "ProvisionalClaimVerify implemented structurally (top bar, chip, heading, options card, sticky action); the frame draws a six-digit code entry the app does not have",
+      "source": "xmK3X.png",
+      "sourceSha256": "f7787e8348bfaf1a80968c31639264120751a2681ec0062368577058a1f2fc9b",
+      "sourceBytes": 28144,
+      "baselineSha256": null,
+      "width": 390,
+      "height": 844,
+      "comparison": "frame-only",
+      "frameOnlyReason": "no app counterpart: verification is by emailed link",
+      "maxDiffPixelRatio": null
+    },
+    "claim-verify-invalid-code-light": {
+      "frameId": "qGOYb",
+      "frameName": "claim-verify — invalid code",
+      "theme": "light",
+      "appState": "no app counterpart: there is no six-digit code entry, so no incorrect-code state; the closest real state is the failed link request (verifyFailed alert)",
+      "source": "qGOYb.png",
+      "sourceSha256": "9b7dd80307dec515f17b8f6e0b0be4cef83b2881a0ec713863e24cef4e196c28",
+      "sourceBytes": 31105,
+      "baselineSha256": null,
+      "width": 390,
+      "height": 844,
+      "comparison": "frame-only",
+      "frameOnlyReason": "no app counterpart",
+      "maxDiffPixelRatio": null
+    },
+    "claim-verify-invalid-code-dark": {
+      "frameId": "GEURU",
+      "frameName": "claim-verify — invalid code — dark",
+      "theme": "dark",
+      "appState": "no app counterpart: there is no six-digit code entry, so no incorrect-code state; the closest real state is the failed link request (verifyFailed alert)",
+      "source": "GEURU.png",
+      "sourceSha256": "4852ed64be49b8ef342575319182dbd090b90c069ddb6e2f3d07aeb02fd4bd03",
+      "sourceBytes": 30943,
+      "baselineSha256": null,
+      "width": 390,
+      "height": 844,
+      "comparison": "frame-only",
+      "frameOnlyReason": "no app counterpart",
+      "maxDiffPixelRatio": null
+    },
+    "claim-verify-expired-code-light": {
+      "frameId": "e8xIw1",
+      "frameName": "claim-verify — expired code",
+      "theme": "light",
+      "appState": "no app counterpart: there is no code and no code expiry, so no expired-code state or resend-code link",
+      "source": "e8xIw1.png",
+      "sourceSha256": "77b6bb1a60a35f89ca180fcf39022e89006225c4ef9f9f3239915785c78a43fa",
+      "sourceBytes": 32506,
+      "baselineSha256": null,
+      "width": 390,
+      "height": 844,
+      "comparison": "frame-only",
+      "frameOnlyReason": "no app counterpart",
+      "maxDiffPixelRatio": null
+    },
+    "claim-verify-expired-code-dark": {
+      "frameId": "UfaOW",
+      "frameName": "claim-verify — expired code — dark",
+      "theme": "dark",
+      "appState": "no app counterpart: there is no code and no code expiry, so no expired-code state or resend-code link",
+      "source": "UfaOW.png",
+      "sourceSha256": "e5029c18d7fa5f54955c10687e24e141bdb9c8a90adcd1a3aa46349dff259d03",
+      "sourceBytes": 32171,
+      "baselineSha256": null,
+      "width": 390,
+      "height": 844,
+      "comparison": "frame-only",
+      "frameOnlyReason": "no app counterpart",
+      "maxDiffPixelRatio": null
+    }
+  }
+}

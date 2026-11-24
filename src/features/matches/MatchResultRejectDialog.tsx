@@ -86,16 +86,17 @@ export function MatchResultRejectDialog({
     >
       <Dialog.Portal>
         <Dialog.Backdrop {...stylex.props(s.reviewBackdrop)} />
-        <Dialog.Viewport {...stylex.props(s.reviewViewport)}>
+        <Dialog.Viewport {...stylex.props(s.sheetViewport)}>
           <Dialog.Popup
             initialFocus={radioRef}
             finalFocus={() =>
               triggerRef.current?.isConnected ? triggerRef.current : fallbackFocusRef.current
             }
-            {...stylex.props(s.reviewPopup)}
+            {...stylex.props(s.sheetPopup)}
           >
+            <div aria-hidden="true" {...stylex.props(s.sheetGrabber)} />
             <header {...stylex.props(s.dialogHeader)}>
-              <Dialog.Title {...stylex.props(s.dialogTitle)}>
+              <Dialog.Title {...stylex.props(s.sheetTitle)}>
                 {t('matches.results.reject.title')}
               </Dialog.Title>
               <Dialog.Description {...stylex.props(s.dialogDescription)}>
@@ -119,7 +120,7 @@ export function MatchResultRejectDialog({
                   {t('matches.results.reject.reasonLabel')}
                 </legend>
                 {RESULT_REJECTION_REASONS.map((reason, index) => (
-                  <label key={reason} {...stylex.props(s.reasonOption)}>
+                  <label key={reason} {...stylex.props(s.sheetOption)}>
                     <input
                       ref={index === 0 ? radioRef : undefined}
                       type="radio"
@@ -184,26 +185,26 @@ export function MatchResultRejectDialog({
                   {feedbackMessage}
                 </p>
               )}
-              <p {...stylex.props(s.dialogNotice)}>
+              <p {...stylex.props(s.sheetNotice)}>
                 {t('matches.results.reject.autoConfirmNotice')}
               </p>
-              <div {...stylex.props(s.dialogActions)}>
-                <Dialog.Close
-                  disabled={pending}
-                  type="button"
-                  {...stylex.props(base.button, s.dialogAction)}
-                >
-                  {t('matches.results.reject.cancel')}
-                </Dialog.Close>
+              <div {...stylex.props(s.sheetActions)}>
                 <button
                   type="submit"
                   disabled={pending}
-                  {...stylex.props(base.button, s.dialogAction, s.dialogSubmit)}
+                  {...stylex.props(base.button, s.sheetAction, s.sheetDanger)}
                 >
                   {t(
                     pending ? 'matches.results.reject.submitting' : 'matches.results.reject.submit'
                   )}
                 </button>
+                <Dialog.Close
+                  disabled={pending}
+                  type="button"
+                  {...stylex.props(base.button, s.sheetAction)}
+                >
+                  {t('matches.results.reject.cancel')}
+                </Dialog.Close>
               </div>
             </form>
           </Dialog.Popup>

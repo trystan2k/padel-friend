@@ -6,7 +6,6 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { Button } from '../../components/ui/Button';
-import { StepBadge } from '../../components/ui/StepBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import { TextField } from '../../components/ui/TextField';
 import { stripEdgeWhitespace } from '../../lib/edge-whitespace';
@@ -192,20 +191,31 @@ export function CommunityOnboarding({
 
   const create = search.view === 'create';
   return (
-    <main {...stylex.props(ui.page)}>
-      <div {...stylex.props(ui.top)}>
-        <StepBadge>
-          {t(create ? 'communityOnboarding.createStep' : 'communityOnboarding.step')}
-        </StepBadge>
-        <header {...stylex.props(ui.header)}>
-          <h1 {...stylex.props(ui.title)}>
-            {t(create ? 'communityOnboarding.createTitle' : 'communityOnboarding.title')}
-          </h1>
-          <p {...stylex.props(ui.subtitle)}>
-            {t(create ? 'communityOnboarding.createSubtitle' : 'communityOnboarding.subtitle')}
+    <main {...stylex.props(ui.page)} data-community-screen={create ? 'creation' : 'discovery'}>
+      {!create && (
+        <header {...stylex.props(ui.top)}>
+          {/* Back leaves discovery for the validated return path (default dashboard), never history. */}
+          <Button
+            variant="secondary"
+            xstyle={ui.back}
+            onClick={finish}
+            aria-label={t('communityOnboarding.discoveryBack')}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none">
+              <path
+                d="m15 6-6 6 6 6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Button>
+          <p {...stylex.props(ui.topTitle, ui.discoveryTopTitle)}>
+            {t('communityOnboarding.title')}
           </p>
         </header>
-      </div>
+      )}
       {create ? (
         <CreateCommunityView
           onFinish={finish}
@@ -222,20 +232,34 @@ export function CommunityOnboarding({
         />
       ) : (
         <div {...stylex.props(ui.content)}>
-          <div {...stylex.props(ui.intro)}>
-            <h2 {...stylex.props(ui.lead)}>{t('communityOnboarding.lead')}</h2>
-            <p {...stylex.props(ui.help)}>{t('communityOnboarding.help')}</p>
+          <div aria-hidden="true" {...stylex.props(ui.progress)}>
+            <span {...stylex.props(ui.segment)} />
+            <span {...stylex.props(ui.segment)} />
+            <span {...stylex.props(ui.segment)} />
           </div>
-          <div {...stylex.props(ui.search)}>
+          <p aria-current="step" {...stylex.props(ui.step)}>
+            {t('communityOnboarding.step')}
+          </p>
+          <h1 {...stylex.props(ui.title)}>{t('communityOnboarding.lead')}</h1>
+          <p {...stylex.props(ui.help)}>{t('communityOnboarding.help')}</p>
+          <search {...stylex.props(ui.search)}>
             <label htmlFor="community-search" {...stylex.props(ui.hidden)}>
               {t('communityOnboarding.searchLabel')}
             </label>
-            <span aria-hidden="true" {...stylex.props(ui.searchIcon)}>
-              ⌕
-            </span>
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              {...stylex.props(ui.searchIcon)}
+            >
+              <circle cx="10.5" cy="10.5" r="6.5" stroke="currentColor" strokeWidth="2" />
+              <path d="m16 16 4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+            </svg>
             <input
               id="community-search"
-              aria-label={t('communityOnboarding.searchLabel')}
+              name="q"
+              autoCapitalize="none"
+              spellCheck={false}
               type="search"
               value={draft}
               maxLength={80}
@@ -247,9 +271,9 @@ export function CommunityOnboarding({
                 setDraft(event.target.value);
                 setPageError(null);
               }}
-              {...stylex.props(ui.optionalInput, ui.searchInput)}
+              {...stylex.props(ui.searchInput)}
             />
-          </div>
+          </search>
           {listError && (
             <p role="alert" {...stylex.props(ui.error)}>
               {t('communityOnboarding.loadFailed')}
@@ -278,38 +302,35 @@ export function CommunityOnboarding({
             )}
             {rows.map((community) => (
               <SurfaceCard key={community.id} xstyle={ui.card}>
-                <h3 {...stylex.props(ui.cardTitle)}>{community.name}</h3>
-                <p {...stylex.props(ui.meta)}>
-                  {t('communityOnboarding.cityPolicy', {
-                    city: community.city_label || t('communityOnboarding.cityUnknown'),
-                    policy: t(
-                      community.join_policy === 'instant'
-                        ? 'communityOnboarding.openJoin'
-                        : 'communityOnboarding.approvalRequired'
-                    )
-                  })}
-                </p>
-                <p {...stylex.props(ui.memberCount)}>
-                  {t('communityOnboarding.memberCount', {
-                    count: community.member_count,
-                    formattedCount: new Intl.NumberFormat(i18n.resolvedLanguage).format(
-                      community.member_count
-                    )
-                  })}
-                </p>
-                {results[community.id] && (
-                  <output
-                    {...stylex.props(results[community.id] === 'joinFailed' ? ui.error : ui.status)}
-                  >
-                    {t(`communityOnboarding.${results[community.id]}`)}
-                  </output>
-                )}
+                <span aria-hidden="true" {...stylex.props(ui.glyph)}>
+                  {Array.from(community.name)[0]?.toLocaleUpperCase(i18n.resolvedLanguage)}
+                </span>
+                <div {...stylex.props(ui.cardDetails)}>
+                  <h2 {...stylex.props(ui.cardTitle)}>{community.name}</h2>
+                  <p {...stylex.props(ui.meta)}>
+                    <span>
+                      {t('communityOnboarding.cityPolicy', {
+                        city: community.city_label || t('communityOnboarding.cityUnknown'),
+                        policy: t(
+                          community.join_policy === 'instant'
+                            ? 'communityOnboarding.openJoin'
+                            : 'communityOnboarding.approvalRequired'
+                        )
+                      })}
+                    </span>
+                    {' · '}
+                    <span>
+                      {t('communityOnboarding.memberCount', {
+                        count: community.member_count,
+                        formattedCount: new Intl.NumberFormat(i18n.resolvedLanguage).format(
+                          community.member_count
+                        )
+                      })}
+                    </span>
+                  </p>
+                </div>
                 <Button
-                  variant="secondary"
-                  xstyle={[
-                    ui.cardAction,
-                    community.join_policy === 'admin_approval' && ui.requestAction
-                  ]}
+                  xstyle={ui.cardAction}
                   busy={joining === community.id}
                   disabled={
                     Boolean(results[community.id]) &&
@@ -327,6 +348,18 @@ export function CommunityOnboarding({
                         : 'communityOnboarding.requestToJoin'
                   )}
                 </Button>
+                {results[community.id] && (
+                  <output
+                    {...stylex.props(
+                      ui.cardStatus,
+                      ['joinFailed', 'offline'].includes(results[community.id] ?? '')
+                        ? ui.error
+                        : ui.status
+                    )}
+                  >
+                    {t(`communityOnboarding.${results[community.id]}`)}
+                  </output>
+                )}
               </SurfaceCard>
             ))}
           </div>
@@ -336,6 +369,7 @@ export function CommunityOnboarding({
             </Button>
           )}
           <Button
+            variant="secondary"
             onClick={() => {
               navigationOrigin.current = { query: draft.trim(), revision: editRevision.current };
               void navigate({
@@ -350,9 +384,13 @@ export function CommunityOnboarding({
           >
             {t('communityOnboarding.createEntry')}
           </Button>
-          <Button variant="secondary" xstyle={ui.transparentAction} onClick={finish}>
-            {t('communityOnboarding.skip')}
-          </Button>
+          <footer {...stylex.props(ui.actions)} data-community-actions>
+            {/* One Finish with the same finish/return semantics as skip; skip stays available. */}
+            <Button onClick={finish}>{t('communityOnboarding.done')}</Button>
+            <Button variant="secondary" xstyle={ui.transparentAction} onClick={finish}>
+              {t('communityOnboarding.skip')}
+            </Button>
+          </footer>
         </div>
       )}
     </main>
@@ -411,108 +449,115 @@ function CreateCommunityView({ onBack, onFinish }: { onBack: () => void; onFinis
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)} noValidate {...stylex.props(ui.form)}>
-      <div {...stylex.props(ui.intro, ui.createIntro)}>
-        <h2 {...stylex.props(ui.lead)}>{t('communityOnboarding.createLead')}</h2>
-        <p {...stylex.props(ui.help)}>{t('communityOnboarding.createHelp')}</p>
-      </div>
-      {created ? (
-        <>
-          <output {...stylex.props(ui.status)}>{t('communityOnboarding.created')}</output>
-          <Button onClick={onFinish}>{t('communityOnboarding.finish')}</Button>
-        </>
-      ) : (
-        <>
-          <TextField
-            id="community-name"
-            ref={nameRef}
-            label={t('communityOnboarding.nameLabel')}
-            placeholder={t('communityOnboarding.nameExample')}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            maxLength={80}
-            required
-            error={nameError ? t('communityOnboarding.invalidName') : undefined}
-          />
-          <SurfaceCard xstyle={ui.visibilityCard}>
-            <span id="community-visibility-label" {...stylex.props(ui.label)}>
-              {t('communityOnboarding.visibilityLegend')}
-            </span>
-            <RadioGroup
-              aria-labelledby="community-visibility-label"
-              name="visibility"
-              value={visibility}
-              onValueChange={(value) => setVisibility(value)}
-              {...stylex.props(ui.radioGroup)}
-            >
-              {(['public', 'private'] as const).map((option) => (
-                <label
-                  key={option}
-                  htmlFor={`visibility-${option}`}
-                  {...stylex.props(ui.option, visibility === option && ui.selected)}
-                >
-                  <Radio.Root
-                    id={`visibility-${option}`}
-                    value={option}
-                    {...stylex.props(ui.radio)}
-                  />
-                  <span {...stylex.props(ui.optionText)}>
-                    <span
-                      {...stylex.props(ui.optionTitle, visibility === option && ui.selectedTitle)}
-                    >
-                      {t(`communityOnboarding.${option}`)}
-                    </span>
-                    <span {...stylex.props(ui.optionHelp)}>
-                      {t(`communityOnboarding.${option}Help`)}
-                    </span>
-                  </span>
-                </label>
-              ))}
-            </RadioGroup>
-          </SurfaceCard>
-          <SurfaceCard xstyle={ui.optional}>
-            <span {...stylex.props(ui.label, ui.optionalHeading)}>
-              {t('communityOnboarding.optionalDetails')}
-            </span>
-            <div {...stylex.props(ui.optionalField)}>
-              <label {...stylex.props(ui.floatingLabel)} htmlFor="community-description">
-                {t('communityOnboarding.descriptionLabel')}
-              </label>
-              <input
-                id="community-description"
-                {...stylex.props(ui.optionalInput, ui.labeledInput)}
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                maxLength={500}
+    <>
+      <header {...stylex.props(ui.top)}>
+        {!created && (
+          <Button
+            variant="secondary"
+            xstyle={ui.back}
+            onClick={onBack}
+            aria-label={t('communityOnboarding.back')}
+          >
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24" fill="none">
+              <path
+                d="m15 6-6 6 6 6"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            </div>
-            <div {...stylex.props(ui.optionalField, ui.divider)}>
-              <label {...stylex.props(ui.floatingLabel)} htmlFor="community-city">
-                {t('communityOnboarding.cityLabel')}
-              </label>
-              <input
-                id="community-city"
-                {...stylex.props(ui.optionalInput, ui.labeledInput)}
-                value={city}
-                onChange={(event) => setCity(event.target.value)}
-                maxLength={120}
-              />
-            </div>
-          </SurfaceCard>
-          <p {...stylex.props(ui.help)}>{t('communityOnboarding.adminNote')}</p>
-          {createError && (
-            <p role="alert" {...stylex.props(ui.error)}>
-              {t(`communityOnboarding.${createError}`)}
-            </p>
-          )}
-          <Button type="submit" busy={creating}>
-            {t(creating ? 'communityOnboarding.creating' : 'communityOnboarding.createSubmit')}
+            </svg>
           </Button>
-          <Button variant="secondary" xstyle={ui.transparentAction} onClick={onBack}>
-            {t('communityOnboarding.back')}
-          </Button>
-        </>
-      )}
-    </form>
+        )}
+        <p {...stylex.props(ui.topTitle)}>{t('communityOnboarding.createTitle')}</p>
+      </header>
+      <form onSubmit={(event) => void submit(event)} noValidate {...stylex.props(ui.form)}>
+        <h1 {...stylex.props(ui.title)}>{t('communityOnboarding.createLead')}</h1>
+        {created ? (
+          <>
+            <output {...stylex.props(ui.status)}>{t('communityOnboarding.created')}</output>
+            <Button onClick={onFinish}>{t('communityOnboarding.finish')}</Button>
+          </>
+        ) : (
+          <>
+            <TextField
+              id="community-name"
+              name="name"
+              ref={nameRef}
+              label={t('communityOnboarding.nameLabel')}
+              placeholder={t('communityOnboarding.nameExample')}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={80}
+              required
+              error={nameError ? t('communityOnboarding.invalidName') : undefined}
+            />
+            <TextField
+              id="community-city"
+              name="city"
+              label={t('communityOnboarding.cityLabel')}
+              placeholder={t('communityOnboarding.cityExample')}
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              maxLength={120}
+            />
+            <TextField
+              id="community-description"
+              name="description"
+              label={t('communityOnboarding.descriptionLabel')}
+              placeholder={t('communityOnboarding.descriptionExample')}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              maxLength={500}
+            />
+            <div {...stylex.props(ui.visibilityCard)}>
+              <span id="community-visibility-label" {...stylex.props(ui.label)}>
+                {t('communityOnboarding.visibilityLegend')}
+              </span>
+              <RadioGroup
+                aria-labelledby="community-visibility-label"
+                name="visibility"
+                value={visibility}
+                onValueChange={(value) => setVisibility(value)}
+                {...stylex.props(ui.radioGroup)}
+              >
+                {(['public', 'private'] as const).map((option) => (
+                  <label
+                    key={option}
+                    htmlFor={`visibility-${option}`}
+                    {...stylex.props(ui.option, visibility === option && ui.selected)}
+                  >
+                    <Radio.Root
+                      id={`visibility-${option}`}
+                      value={option}
+                      {...stylex.props(ui.radio)}
+                    />
+                    <span {...stylex.props(ui.optionText)}>
+                      <span {...stylex.props(ui.optionTitle)}>
+                        {t(`communityOnboarding.${option}`)}
+                      </span>
+                      <span {...stylex.props(ui.optionHelp)}>
+                        {t(`communityOnboarding.${option}Help`)}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </RadioGroup>
+            </div>
+            <footer {...stylex.props(ui.actions)} data-community-actions>
+              <p {...stylex.props(ui.adminNote)}>{t('communityOnboarding.adminNote')}</p>
+              {createError && (
+                <p role="alert" {...stylex.props(ui.error)}>
+                  {t(`communityOnboarding.${createError}`)}
+                </p>
+              )}
+              <Button type="submit" busy={creating}>
+                {t(creating ? 'communityOnboarding.creating' : 'communityOnboarding.createSubmit')}
+              </Button>
+            </footer>
+          </>
+        )}
+      </form>
+    </>
   );
 }

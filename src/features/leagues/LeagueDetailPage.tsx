@@ -5,7 +5,7 @@ import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
-import { rootStyles } from '../../root.styles';
+import { TopBar } from '../../components/ui/TopBar';
 import type {
   LeagueDetailResult,
   LeagueDto,
@@ -96,6 +96,7 @@ export function LeagueDetailPage({
   // standings still disagreeing, the page offers a retry instead of waiting forever.
   const [reloading, setReloading] = useState(false);
   const closeTrigger = useRef<HTMLButtonElement>(null);
+  const keepOpen = useRef<HTMLButtonElement>(null);
   const period = useLeaguePeriodText(league);
   useRefreshWhenVisible(
     () => router.invalidate(),
@@ -181,35 +182,24 @@ export function LeagueDetailPage({
   };
 
   return (
-    <main {...stylex.props(styles.page)}>
-      <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
-        <div {...stylex.props(styles.headingRow)}>
-          {former ? (
-            <Link
-              to="/matches/past"
-              aria-label={t('leagues.former.back')}
-              {...stylex.props(styles.backLink)}
-            >
-              <span aria-hidden="true">‹</span>
-            </Link>
-          ) : (
-            <Link
-              to="/community/$communityId/leagues"
-              params={{ communityId: community.id }}
-              aria-label={t('leagues.back')}
-              {...stylex.props(styles.backLink)}
-            >
-              <span aria-hidden="true">‹</span>
-            </Link>
-          )}
-          <h1 id="league-heading" {...stylex.props(styles.title)}>
-            {league.name}
-          </h1>
-        </div>
-        <p {...stylex.props(styles.context)}>
-          {t('leagues.communityContext', { community: community.name })}
-        </p>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(styles.page)}>
+      <TopBar
+        xstyle={styles.barFrame}
+        headingId="league-heading"
+        title={league.name}
+        back={
+          former
+            ? { to: '/matches/past', label: t('leagues.former.back') }
+            : {
+                to: '/community/$communityId/leagues',
+                params: { communityId: community.id },
+                label: t('leagues.back')
+              }
+        }
+      />
+      <p {...stylex.props(styles.context, styles.contextCenter)}>
+        {t('leagues.communityContext', { community: community.name })}
+      </p>
 
       <div {...stylex.props(styles.content)}>
         <output
@@ -226,20 +216,22 @@ export function LeagueDetailPage({
 
         {former && (
           <SurfaceCard xstyle={styles.formerNotice} data-testid="former-participant-notice">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              data-testid="former-participant-icon"
-              {...stylex.props(styles.formerIcon)}
-            >
-              <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
+            <span {...stylex.props(styles.formerGlyph)}>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                data-testid="former-participant-icon"
+                {...stylex.props(styles.formerIcon)}
+              >
+                <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            </span>
             <div {...stylex.props(styles.formerCopy)}>
               <h2 {...stylex.props(styles.formerTitle)}>{t('leagues.former.title')}</h2>
               <p {...stylex.props(styles.muted)}>{t('leagues.former.body')}</p>
@@ -359,7 +351,7 @@ export function LeagueDetailPage({
             {canClose && (
               <Button
                 ref={closeTrigger}
-                variant="secondary"
+                variant="destructive"
                 disabled={busy}
                 onClick={() => setCloseOpen(true)}
               >
@@ -403,11 +395,15 @@ export function LeagueDetailPage({
         <AlertDialog.Portal>
           <AlertDialog.Backdrop {...stylex.props(styles.dialogBackdrop)} />
           <AlertDialog.Viewport {...stylex.props(styles.dialogViewport)}>
-            <AlertDialog.Popup finalFocus={closeTrigger} {...stylex.props(styles.dialog)}>
+            <AlertDialog.Popup
+              initialFocus={keepOpen}
+              finalFocus={closeTrigger}
+              {...stylex.props(styles.dialog)}
+            >
               <AlertDialog.Title {...stylex.props(styles.dialogTitle)}>
                 {t('leagues.detail.closeConfirm.title', { name: league.name })}
               </AlertDialog.Title>
-              <AlertDialog.Description {...stylex.props(styles.text)}>
+              <AlertDialog.Description {...stylex.props(styles.dialogBody)}>
                 {t('leagues.detail.closeConfirm.body')}
               </AlertDialog.Description>
               {feedback?.kind === 'error' && (
@@ -415,14 +411,9 @@ export function LeagueDetailPage({
                   {t(`leagues.errors.${feedback.code}`)}
                 </p>
               )}
-              <div {...stylex.props(styles.actions)}>
-                <AlertDialog.Close
-                  disabled={busy}
-                  render={
-                    <Button variant="secondary">{t('leagues.detail.closeConfirm.cancel')}</Button>
-                  }
-                />
+              <div {...stylex.props(styles.dialogActions)}>
                 <Button
+                  xstyle={styles.destructiveSolid}
                   busy={busy}
                   onClick={async () => {
                     const closed = await run(
@@ -437,6 +428,14 @@ export function LeagueDetailPage({
                 >
                   {t('leagues.detail.closeConfirm.confirm')}
                 </Button>
+                <AlertDialog.Close
+                  disabled={busy}
+                  render={
+                    <Button ref={keepOpen} variant="secondary">
+                      {t('leagues.detail.closeConfirm.cancel')}
+                    </Button>
+                  }
+                />
               </div>
             </AlertDialog.Popup>
           </AlertDialog.Viewport>

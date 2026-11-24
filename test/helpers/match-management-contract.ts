@@ -21,7 +21,7 @@ export const MANAGEMENT_COMPONENTS = [
   'MatchOrganizerActions',
   'MatchTransferDialog',
   'MatchCancelDialog',
-  'MatchEditDialog',
+  'MatchEditPage',
   'MatchReconfirmationPanel',
   'MatchManagementUnavailable'
 ] as const;

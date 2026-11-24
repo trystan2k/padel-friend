@@ -49,6 +49,12 @@ export const addPlayerStyles = stylex.create({
   noteIcon: { width: 'var(--space-15)', height: 'var(--space-15)', flexShrink: 0 },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
   action: { flexGrow: 1, flexBasis: 0, minWidth: 'calc(var(--space-40) * 2)' },
-  status: { margin: 0, minHeight: 0, fontSize: 'var(--font-size-13)' },
+  feedback: {
+    margin: 0,
+    padding: 'var(--space-12)',
+    backgroundColor: 'var(--color-surface-2)',
+    borderRadius: 'var(--radius-12)',
+    fontSize: 'var(--font-size-14)'
+  },
   success: { color: 'var(--color-green)' }
 });

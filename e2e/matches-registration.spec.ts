@@ -28,6 +28,7 @@ type Copy = {
     unavailable: string;
     detail: {
       title: string;
+      barTitle: string;
       visibility: { community_open: string; invite_only: string };
       accepted: string;
       participation: string;
@@ -39,7 +40,7 @@ type Copy = {
   matchCreate: {
     title: string;
     next: string;
-    review: string;
+    readyTitle: string;
     publish: string;
     steps: { players: string; teams: string };
     fields: {
@@ -449,14 +450,11 @@ async function publishMatchViaUi(
   await openCreateWizard(page);
   await page.getByLabel(en.matchCreate.fields.date).fill(options.date ?? ymd(3));
   await page.getByLabel(en.matchCreate.fields.startTime).fill(options.startTime ?? '19:30');
-  await page.getByLabel(en.matchCreate.fields.visibility).selectOption('community_open');
   await page.getByLabel(en.matchCreate.fields.venueName).fill(options.venue);
   await page
     .getByLabel(en.matchCreate.fields.mapsUrl)
     .fill(`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(options.venue)}`);
   if (options.price) await page.getByLabel(en.matchCreate.fields.price).fill(options.price);
-  if (options.maximum)
-    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill(options.maximum);
   await page
     .getByLabel(en.matchCreate.fields.photo)
     .setInputFiles({ name: 'venue.png', mimeType: 'image/png', buffer: matchPhoto() });
@@ -465,13 +463,15 @@ async function publishMatchViaUi(
   });
   await page.getByRole('button', { name: en.matchCreate.next }).click();
   await expect(page.getByText(en.matchCreate.steps.players, { exact: true })).toBeVisible();
+  if (options.maximum)
+    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill(options.maximum);
   await page.getByRole('button', { name: en.matchCreate.next }).click();
   await expect(page.getByText(en.matchCreate.steps.teams, { exact: true })).toBeVisible();
   await page
     .getByRole('radio', { name: en.matches.teamMode[options.teamMode ?? 'POST_MATCH_TEAMS'] })
     .check();
   await page.getByRole('button', { name: en.matchCreate.next }).click();
-  await expect(page.getByRole('heading', { name: en.matchCreate.review })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
   await page.getByRole('button', { name: en.matchCreate.publish }).click();
   await expect(page).toHaveURL(/\/matches$/);
   await waitForHydratedPage(page);
@@ -676,12 +676,12 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await page.goto(`/matches/${eventId}`);
     await waitForHydratedPage(page);
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${family.venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      page
+        .getByRole('region', { name: family.venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     await expect(
       page.getByRole('heading', { name: en.matchRegistration.join.sectionTitle })
@@ -1095,12 +1095,12 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await adminPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(adminPage);
     await expect(
-      adminPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      adminPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      adminPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      adminPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
   });
 
@@ -1576,7 +1576,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await requesterPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(requesterPage);
     await expect(
-      requesterPage.getByText(en.matchRegistration.closed.badge, { exact: true })
+      requesterPage
+        .locator('section[aria-labelledby="match-registration-heading"]')
+        .getByText(en.matchRegistration.closed.badge, { exact: true })
     ).toBeVisible();
     await expect(
       requesterPage.getByText(
@@ -1597,7 +1599,9 @@ test.describe.serial('registration, FIFO and cutoff journeys', () => {
     await requesterPage.getByRole('link', { name: en.notifications.match.openEvent }).click();
     await expect(requesterPage).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      requesterPage.getByText(en.matchRegistration.closed.badge, { exact: true })
+      requesterPage
+        .locator('section[aria-labelledby="match-registration-heading"]')
+        .getByText(en.matchRegistration.closed.badge, { exact: true })
     ).toBeVisible();
 
     // A viewer without a registration row sees the explicit closed state with the

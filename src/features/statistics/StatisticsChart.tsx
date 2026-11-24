@@ -25,7 +25,8 @@ export function StatisticsChart({
   points,
   plotLimit,
   formatValue,
-  descriptionId
+  descriptionId,
+  headingLevel: Heading = 'h3'
 }: {
   title: string;
   headerLabel: string;
@@ -36,6 +37,8 @@ export function StatisticsChart({
   formatValue: (value: number) => string;
   /** Id of a sibling note that qualifies the series (for example a truncated window). */
   descriptionId?: string;
+  /** Heading element of the figure title; h2 when the chart leads its own page section. */
+  headingLevel?: 'h2' | 'h3';
 }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -54,9 +57,9 @@ export function StatisticsChart({
       aria-describedby={descriptionId}
       {...stylex.props(c.figure)}
     >
-      <h3 id={headingId} {...stylex.props(s.subheading)}>
+      <Heading id={headingId} {...stylex.props(s.subheading)}>
         {title}
-      </h3>
+      </Heading>
       <p {...stylex.props(c.summary)}>
         {t('statistics.charts.summary', {
           count: points.length,

@@ -1,12 +1,15 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { TopBar } from '../../components/ui/TopBar';
 import type { MatchEventDetail } from './match-contracts';
 import type { ResultProposal } from './match-result-model';
 import { MatchResultCorrections, type ResultCorrectionsData } from './MatchResultCorrections';
 import { MatchResultReview } from './MatchResultReview';
-import { MatchResultNavigation } from './MatchResultNavigation';
 import { MatchResultRatingChanges } from './MatchResultRatingChanges';
+import { matchDetailShellStyles as shell } from './match-detail-shell.styles';
 import {
   matchResultReviewStyles as reviewStyles,
   matchResultStyles as s
@@ -29,6 +32,8 @@ export function MatchResultDetail({
   corrections?: ResultCorrectionsData;
 }) {
   const { t, i18n } = useTranslation();
+  // The sticky action bar's mount point: the single-result review renders Approve / secondary there (sLXK7).
+  const [actionBarSlot, setActionBarSlot] = useState<HTMLElement | null>(null);
   useMatchResultFreshness({
     eventId: event.event_id,
     asOf: event.as_of,
@@ -56,72 +61,67 @@ export function MatchResultDetail({
     timeZone: event.timezone
   });
   return (
-    <main data-result-route="lifecycle" data-route-chrome="navigation" {...stylex.props(s.page)}>
-      <header {...stylex.props(s.routeHeader)}>
-        <Link to="/matches" aria-label={t('matches.back')} {...stylex.props(s.routeBack)}>
-          ‹
-        </Link>
-        <h1 {...stylex.props(s.routeTitle)}>{t('matches.detail.title')}</h1>
-        <p {...stylex.props(s.copy)}>
-          {event.community_name} · {t(`matches.detail.visibility.${event.visibility}`)}
-        </p>
-      </header>
-      <div {...stylex.props(s.form)}>
-        {event.photo_url && (
-          <section {...stylex.props(s.hero)}>
+    <main
+      data-result-route="lifecycle"
+      data-route-chrome="navigation"
+      {...stylex.props(stylex.defaultMarker(), shell.page)}
+    >
+      <TopBar
+        title={t('matches.detail.barTitle')}
+        headingId="match-detail-heading"
+        back={{ to: '/matches', label: t('matches.back') }}
+      />
+      <div {...stylex.props(shell.groups)}>
+        <section aria-labelledby="match-overview-heading" {...stylex.props(shell.hero)}>
+          {event.photo_url && (
             <img
               src={event.photo_url}
               alt={t('matches.card.photoAlt')}
-              {...stylex.props(s.heroImage)}
+              {...stylex.props(shell.image)}
             />
-            <div {...stylex.props(s.heroCopy)}>
-              <span {...stylex.props(s.label, s.heroLabel)}>{event.venue_name}</span>
-              <h2 {...stylex.props(s.heroTitle)}>{t('matches.results.venueHeadline')}</h2>
-              <a
-                href={event.maps_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                {...stylex.props(s.heroLink)}
-              >
-                <span>
-                  <span aria-hidden="true">📍&nbsp; </span>
-                  {event.court_notes && <>{event.court_notes} &nbsp;·&nbsp; </>}
-                  {t('matches.results.openMap')}
-                </span>
-              </a>
-            </div>
-          </section>
-        )}
-        <section {...stylex.props(s.card, s.overview)}>
-          <div {...stylex.props(s.row, s.overviewBadges)}>
-            <span
-              {...stylex.props(
-                s.statePill,
-                s.overviewBadge,
-                event.event_type === 'competitive' ? s.positive : s.neutral
-              )}
-            >
+          )}
+          <div {...stylex.props(shell.chips)}>
+            <StatusBadge tone={event.event_type === 'competitive' ? 'positive' : 'neutral'}>
               {t(`matches.type.${event.event_type}`)}
-            </span>
-            <span {...stylex.props(s.statePill, s.neutral, s.overviewBadge)}>
+            </StatusBadge>
+            <StatusBadge>
               {t(
                 event.event_type === 'competitive'
                   ? 'matches.results.globalRating'
                   : 'matches.results.friendlyType'
               )}
-            </span>
+            </StatusBadge>
+            <StatusBadge>{t(`matches.detail.visibility.${event.visibility}`)}</StatusBadge>
           </div>
-          <h2 {...stylex.props(s.overviewTitle)}>{event.notes ?? event.venue_name}</h2>
-          <p {...stylex.props(s.copy, s.overviewTime)}>
-            {t('matches.results.overviewDate', {
-              weekday: weekday.format(starts),
-              date: date.format(starts)
-            })}{' '}
-            · {time.format(starts)}
-            {event.duration_minutes !== null && (
-              <>–{time.format(new Date(starts.getTime() + event.duration_minutes * 60_000))}</>
-            )}
-          </p>
+          <div {...stylex.props(shell.heroBody)}>
+            <h2 id="match-overview-heading" {...stylex.props(shell.title, shell.venue)}>
+              {event.notes ?? event.venue_name}
+            </h2>
+            <p {...stylex.props(shell.schedule)}>
+              {t('matches.results.overviewDate', {
+                weekday: weekday.format(starts),
+                date: date.format(starts)
+              })}{' '}
+              · {time.format(starts)}
+              {event.duration_minutes !== null && (
+                <>–{time.format(new Date(starts.getTime() + event.duration_minutes * 60_000))}</>
+              )}
+            </p>
+          </div>
+          <div {...stylex.props(shell.venueCard)}>
+            <span {...stylex.props(shell.venueText)}>
+              <span {...stylex.props(shell.venueName)}>{event.venue_name}</span>
+              {event.court_notes && <span {...stylex.props(shell.note)}>{event.court_notes}</span>}
+            </span>
+            <a
+              href={event.maps_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              {...stylex.props(shell.maps)}
+            >
+              {t('matches.results.openMap')}
+            </a>
+          </div>
         </section>
         {!singlePendingGroup && (
           <section
@@ -174,6 +174,7 @@ export function MatchResultDetail({
                     timezone={event.timezone}
                     asOf={event.as_of}
                     compact={expectedGroups > 1}
+                    actionSlot={singlePendingGroup ? actionBarSlot : undefined}
                     onRefresh={onRefresh}
                   />
                 </div>
@@ -227,8 +228,8 @@ export function MatchResultDetail({
               )}
             />
           )}
+        {singlePendingGroup && <div ref={setActionBarSlot} {...stylex.props(shell.barSlot)} />}
       </div>
-      <MatchResultNavigation />
     </main>
   );
 }

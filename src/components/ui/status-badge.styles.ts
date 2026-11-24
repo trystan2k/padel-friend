@@ -1,23 +1,24 @@
 import * as stylex from '@stylexjs/stylex';
 
+// Clubhouse chips: 13px semibold sentence-case. Casing belongs to the translated copy, so there is
+// no text-transform or tracking here. Soft-green chips carry green-ink for contrast.
 export const styles = stylex.create({
   badge: {
     display: 'inline-flex',
     alignItems: 'center',
-    paddingBlock: 'var(--space-1)',
-    paddingInline: 'var(--space-3)',
-    borderRadius: 'var(--radius-8)',
+    paddingBlock: 'var(--space-4)',
+    paddingInline: 'var(--space-10)',
+    borderRadius: 'var(--radius-12)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-11)',
+    fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-semibold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)',
-    textTransform: 'uppercase'
+    lineHeight: 'var(--font-line-height-snug)'
   },
-  positive: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
+  positive: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green-ink)' },
   neutral: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-text)' },
   muted: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-muted)' },
   danger: {
-    backgroundColor: 'var(--color-surface-2)',
+    backgroundColor: 'var(--color-red-soft)',
     color: 'var(--color-red)',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
@@ -25,19 +26,19 @@ export const styles = stylex.create({
   },
   guest: { backgroundColor: 'var(--color-amber)', color: 'var(--color-bg)' },
   provisional: {
-    backgroundColor: 'var(--color-surface-2)',
+    backgroundColor: 'var(--color-amber-soft)',
     color: 'var(--color-amber)',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
     borderColor: 'var(--color-amber)',
-    gap: 'var(--space-2)'
+    gap: 'var(--space-4)'
   },
   summary: {
     display: 'inline-flex',
-    padding: 'var(--space-2) var(--space-3)',
+    padding: 'var(--space-4) var(--space-10)',
     borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)'
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-13)'
   }
 });

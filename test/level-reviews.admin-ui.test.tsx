@@ -104,7 +104,7 @@ function setup(value = detail) {
 }
 async function approve() {
   fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
-  await screen.findByRole('button', { name: 'Confirm decision' });
+  await screen.findByRole('button', { name: /^Confirm (approval|denial)$/ });
 }
 function fill() {
   fireEvent.change(screen.getByLabelText('Approved target level'), { target: { value: '4.25' } });
@@ -123,7 +123,7 @@ it('rejects a decision offline at confirmation and preserves draft and update bl
   fill();
   await approve();
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: false });
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await screen.findAllByText(/Offline. Nothing sent/);
   expect(mocks.resolve).not.toHaveBeenCalled();
   expect(screen.getByLabelText<HTMLInputElement>('Decision note').value).toBe('Verified');
@@ -142,7 +142,7 @@ it('validates range and focuses first error', () => {
 });
 it('requires note to reject', () => {
   setup();
-  fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Deny' }));
   expect(screen.getByLabelText('Decision note').getAttribute('aria-invalid')).toBe('true');
 });
 it('defaults to preserve and approves with a committed event', async () => {
@@ -171,7 +171,7 @@ it('defaults to preserve and approves with a committed event', async () => {
       'Level 3.00 (internal μ 3.00) → 4.25 (internal μ 4.25); reliability 50% → 50%.'
     )
   ).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await waitFor(() => expect(screen.getByText('Committed adjustment event: event')).toBeTruthy());
   // The committed event is a navigable, labeled audit section with the stored internal state.
   const link = screen.getByRole('link', { name: 'Committed adjustment event: event' });
@@ -217,7 +217,7 @@ it('freezes approval inputs during a delayed preview and confirms captured value
   expect(note.value).toBe('Verified');
   deliver(preview);
   await screen.findByRole('alertdialog');
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await waitFor(() => expect(mocks.resolve).toHaveBeenCalledTimes(1));
   expect(mocks.resolve.mock.calls[0]?.[0].data).toMatchObject({
     target_level: 4.25,
@@ -247,7 +247,7 @@ it('preserves internal mu precision in preview and audit', async () => {
     request: { ...detail.request, status: 'approved' },
     adjustment: { ...adjustment, before_mu: 3.3333, after_mu: 4.4444 }
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await screen.findByText(/internal μ 3.3333.*internal μ 4.4444/);
 });
 it('labels the forward-only explanation', () => {
@@ -293,9 +293,9 @@ it('refreshes a stale rating and requires another confirmation', async () => {
   setup();
   fill();
   await approve();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await screen.findByText('Rating changed. Preview refreshed; review and confirm again.');
-  expect(screen.queryByRole('button', { name: 'Confirm decision' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Confirm (approval|denial)$/ })).toBeNull();
   expect(screen.getByText(/Internal μ 3.5/)).toBeTruthy();
 });
 it('locks controls on conflicting decision', async () => {
@@ -303,7 +303,7 @@ it('locks controls on conflicting decision', async () => {
   setup();
   fill();
   await approve();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await screen.findByText('This request was already closed or changed elsewhere.');
   expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
 });
@@ -314,10 +314,10 @@ it('retries uncertain responses with the same command', async () => {
   });
   setup();
   fireEvent.change(screen.getByLabelText('Decision note'), { target: { value: 'Verified' } });
-  fireEvent.click(screen.getByRole('button', { name: 'Reject' }));
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Deny' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await screen.findAllByText('The result could not be confirmed. Retry the same decision safely.');
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await waitFor(() => expect(mocks.resolve).toHaveBeenCalledTimes(2));
   expect(mocks.resolve.mock.calls[0]?.[0]).toEqual(mocks.resolve.mock.calls[1]?.[0]);
 });
@@ -343,7 +343,7 @@ it('closes an open confirmation when revalidation moves the rating revision', as
     ui({ ...detail, current: { ...detail.current!, revision: 3, mu: 3.5, display_level: 3.5 } })
   );
   await screen.findByText('Rating changed. Preview refreshed; review and confirm again.');
-  expect(screen.queryByRole('button', { name: 'Confirm decision' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Confirm (approval|denial)$/ })).toBeNull();
   expect(mocks.resolve).not.toHaveBeenCalled();
 });
 it('refreshes instead of confirming when the server preview is from a newer revision', async () => {
@@ -353,7 +353,7 @@ it('refreshes instead of confirming when the server preview is from a newer revi
   fill();
   fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
   await screen.findByText('Rating changed. Preview refreshed; review and confirm again.');
-  expect(screen.queryByRole('button', { name: 'Confirm decision' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Confirm (approval|denial)$/ })).toBeNull();
   expect(screen.getByText(/Revision 7/)).toBeTruthy();
   expect(mocks.resolve).not.toHaveBeenCalled();
 });
@@ -363,7 +363,7 @@ it('sends the server preview revision with the decision and never composes a pre
   setup({ ...detail, current: { ...detail.current!, revision: 7 } });
   fill();
   await approve();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await waitFor(() => expect(mocks.resolve).toHaveBeenCalledTimes(1));
   expect(mocks.resolve.mock.calls[0]?.[0].data.expected_revision).toBe(7);
 });
@@ -373,7 +373,7 @@ it('reports a failed preview without opening the confirmation', async () => {
   fill();
   fireEvent.click(screen.getByRole('button', { name: 'Approve' }));
   await screen.findByText('Could not compute the preview. Try again.');
-  expect(screen.queryByRole('button', { name: 'Confirm decision' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Confirm (approval|denial)$/ })).toBeNull();
   expect(mocks.resolve).not.toHaveBeenCalled();
 });
 it('renders recent rating history and a translated empty state', () => {
@@ -416,13 +416,13 @@ it('returns focus to the trigger after a keyboard cancel of the reject confirmat
   const user = userEvent.setup();
   setup();
   await user.type(screen.getByLabelText('Decision note'), 'No');
-  screen.getByRole('button', { name: 'Reject' }).focus();
+  screen.getByRole('button', { name: 'Deny' }).focus();
   await user.keyboard(' ');
-  await screen.findByRole('alertdialog', { name: 'Confirm rejection?' });
+  await screen.findByRole('alertdialog', { name: 'Review denial' });
   await user.keyboard('{Escape}');
   await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
   await waitFor(() =>
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Reject' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Deny' }))
   );
 });
 it('denies and locks the form when the admin role is revoked before the preview', async () => {
@@ -433,7 +433,7 @@ it('denies and locks the form when the admin role is revoked before the preview'
   await screen.findByText("You can't request or see this review.");
   expect(screen.queryByRole('alertdialog')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
-  expect(screen.queryByRole('button', { name: 'Reject' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Deny' })).toBeNull();
   expect(mocks.resolve).not.toHaveBeenCalled();
 });
 it('denies the decision when the admin role is revoked between preview and confirmation', async () => {
@@ -441,7 +441,7 @@ it('denies the decision when the admin role is revoked between preview and confi
   setup();
   fill();
   await approve();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await screen.findByText("You can't request or see this review.");
   expect(screen.queryByRole('alertdialog')).toBeNull();
   expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
@@ -458,7 +458,7 @@ it('reports an expired session as a translated error and locks the form', async 
   setup();
   fill();
   await approve();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await screen.findByText('Your session expired. Sign in again.');
   expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull();
 });
@@ -467,13 +467,13 @@ it('shows a translated resolve failure inside the open confirmation and keeps it
   setup();
   fill();
   await approve();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   const alert = await screen.findByRole('alert');
   expect(alert.textContent).toBe(
     'The result could not be confirmed. Retry the same decision safely.'
   );
   expect(screen.getByRole('alertdialog')).toBeTruthy();
-  expect(screen.getByRole('button', { name: 'Confirm decision' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ })).toBeTruthy();
 });
 it('shows a translated failure when the stale-rating refresh itself fails', async () => {
   mocks.resolve.mockRejectedValueOnce(new Error('LEVEL_REVIEW_STALE_RATING'));
@@ -481,9 +481,9 @@ it('shows a translated failure when the stale-rating refresh itself fails', asyn
   setup();
   fill();
   await approve();
-  fireEvent.click(screen.getByRole('button', { name: 'Confirm decision' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Confirm (approval|denial)$/ }));
   await screen.findByText('Could not refresh the preview. Reload before deciding.');
-  expect(screen.queryByRole('button', { name: 'Confirm decision' })).toBeNull();
+  expect(screen.queryByRole('button', { name: /^Confirm (approval|denial)$/ })).toBeNull();
 });
 it('reports the preview failure translated in a non-English locale', async () => {
   mocks.preview.mockRejectedValue(new Error('LEVEL_REVIEW_UNAVAILABLE'));

@@ -16,7 +16,8 @@ import { PARALLEL_INTEGRATION_FILES } from '../integration-partition';
 import {
   e2eBuildEnv,
   requireTestBuildEnv,
-  resolveTestBuildEnv
+  resolveTestBuildEnv,
+  writeE2ePreviewVars
 } from '../scripts/e2e-build-env.mjs';
 import { TEST_TUPLE, testStatusOutput } from './helpers/test-stack-status';
 import {
@@ -228,6 +229,26 @@ describe('e2e build env contract', () => {
       WEB_PUSH_VAPID_KEY_ID: 'e2e-test'
     });
     expect(e2eBuildEnv(undefined)).toEqual({});
+  });
+
+  it('replaces generated preview vars with only the test Worker bindings for an E2E build', () => {
+    const write = vi.fn<(path: string, content: string) => void>();
+    writeE2ePreviewVars({ ...TEST_TUPLE, APP_ORIGIN: 'http://127.0.0.1:3000' }, write);
+    expect(write).not.toHaveBeenCalled();
+
+    const env = e2eBuildEnv(TEST_TUPLE);
+    writeE2ePreviewVars({ ...env, UNRELATED_DEV_SECRET: 'must-not-be-copied' }, write);
+    expect(write).toHaveBeenCalledExactlyOnceWith(
+      'dist/server/.dev.vars',
+      [
+        'SUPABASE_SERVICE_ROLE_KEY=' + TEST_TUPLE.SUPABASE_SERVICE_ROLE_KEY,
+        'APP_ORIGIN=http://127.0.0.1:4173',
+        'WEB_PUSH_ENABLED=true',
+        'WEB_PUSH_VAPID_PUBLIC_KEY=' + env.WEB_PUSH_VAPID_PUBLIC_KEY,
+        'WEB_PUSH_VAPID_KEY_ID=e2e-test',
+        ''
+      ].join('\n')
+    );
   });
 
   it('resolves the tuple from the pinned test status, replacing a mismatching inherited key', () => {

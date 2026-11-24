@@ -1,126 +1,120 @@
 import * as stylex from '@stylexjs/stylex';
 
+// Clubhouse community administration (frames wFqGR members, jQDkx member actions, RgqPq requests,
+// N18Mu4 settings, A5Vio venues, E5CS5K audit). Every screen: 20px side padding, 56px bar with a
+// 48px back target, 12px section gap, 52px controls, hairline list surfaces.
+const tap = 'calc(var(--space-40) + var(--space-8))';
+const control = 'calc(var(--space-40) + var(--space-12))';
+const focus = {
+  outline: 'var(--focus-width) solid var(--color-focus)',
+  outlineOffset: 'var(--focus-offset)'
+};
+const sheetRadius =
+  'calc(var(--space-20) + var(--space-8)) calc(var(--space-20) + var(--space-8)) 0 0';
+const navClearance = 'calc(var(--space-20) + var(--space-40) + var(--space-16) + var(--space-40))';
+
 export const styles = stylex.create({
   page: {
     boxSizing: 'border-box',
     height: '100vh',
     minHeight: '100vh',
-    maxWidth: 'calc(var(--space-40) * 12)',
+    maxWidth: 'calc(var(--space-40) * 16)',
     marginInline: 'auto',
-    padding: 'var(--space-18) var(--space-18) var(--space-14)',
-    paddingBottom: 'calc(var(--space-18) + var(--space-40) + var(--space-16) + var(--space-40))',
+    paddingBlockStart: 'max(var(--space-4), env(safe-area-inset-top))',
+    paddingInlineStart: 'max(var(--space-20), env(safe-area-inset-left))',
+    paddingInlineEnd: 'max(var(--space-20), env(safe-area-inset-right))',
+    paddingBlockEnd: `calc(${navClearance} + env(safe-area-inset-bottom))`,
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-10)',
+    gap: 'var(--space-12)',
     backgroundColor: 'var(--color-bg)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
     overflowY: 'auto',
-    // The 100vh scrollport starts below the wrapping locale/theme controls. Clear
-    // their offset as well as the fixed navigation when native Tab focus scrolls.
-    scrollPaddingBottom:
-      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-40))'
+    // The 100vh scrollport starts below the wrapping locale/theme controls. Clear their offset as
+    // well as the fixed navigation when native Tab focus scrolls.
+    scrollPaddingBottom: `calc(${navClearance} + var(--space-40))`
   },
-  header: { display: 'flex', flexDirection: 'column', gap: 0 },
+  // The shared top bar sits inside the page gutter and top inset, so it bleeds back out to the edges
+  // and leaves the inset to the page.
+  topBar: { marginInline: 'calc(-1 * var(--space-20))', paddingBlockStart: 0 },
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
     fontSize: 'var(--font-size-20)',
     fontWeight: 'var(--font-weight-bold)',
+    lineHeight: 'var(--font-line-height-snug)',
     overflowWrap: 'anywhere'
   },
   subtitle: {
     margin: 0,
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
+    textAlign: 'center',
     overflowWrap: 'anywhere'
   },
-  content: { display: 'flex', flexDirection: 'column', gap: 'var(--space-8)', minWidth: 0 },
+  content: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)', minWidth: 0 },
   confirmBackdrop: {
     position: 'fixed',
+    zIndex: 2,
     inset: 0,
     backgroundColor: 'var(--color-text)',
     opacity: 0.6
   },
   confirmViewport: {
     position: 'fixed',
+    zIndex: 2,
     inset: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 'var(--space-8)',
+    padding: 'var(--space-16)',
     overflowY: 'auto'
   },
   confirmDialog: {
     boxSizing: 'border-box',
     display: 'flex',
     flexDirection: 'column',
-    gap: 'var(--space-8)',
+    gap: 'var(--space-12)',
     width: 'min(100%, calc(var(--space-40) * 9))',
-    padding: 'var(--space-12)',
-    borderRadius: 'var(--radius-12)',
+    padding: 'var(--space-16)',
+    borderRadius: 'var(--radius-20)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
-    borderColor: 'var(--color-line)',
+    borderColor: 'var(--color-hairline)',
     overflowWrap: 'anywhere'
   },
   confirmTitle: {
     margin: 0,
-    fontSize: 'var(--font-size-14)',
-    lineHeight: 'var(--font-size-20)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-18)',
+    fontWeight: 'var(--font-weight-bold)',
     overflowWrap: 'anywhere'
   },
-  messageForm: { display: 'grid', gap: 'var(--space-6)' },
+  messageForm: { display: 'grid', gap: 'var(--space-8)' },
   messageTextarea: {
     boxSizing: 'border-box',
     width: '100%',
-    minHeight: 'calc(var(--space-40) * 2)',
-    padding: 'var(--space-12)',
+    minHeight: 'calc(var(--space-40) * 3)',
+    padding: 'var(--space-12) var(--space-14)',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
     borderColor: 'var(--color-line)',
-    borderRadius: 'var(--radius-8)',
+    borderRadius: 'var(--radius-14)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-14)',
-    resize: 'vertical'
-  },
-  venueContent: { gap: 'var(--space-10)' },
-  screenHeading: { display: 'flex', alignItems: 'center', gap: 'var(--space-6)' },
-  titleGroup: { display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', minWidth: 0 },
-  backLink: {
-    boxSizing: 'border-box',
-    width: 'calc(var(--space-40) + var(--space-4))',
-    minWidth: 'calc(var(--space-40) + var(--space-4))',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    color: 'var(--color-text)',
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-20)',
-    fontWeight: 'var(--font-weight-bold)',
-    // Decorative aria-hidden chevron uses a unitless single-em line box for glyph centering; its 44px hit box is independent of line-height. The tight (1.1) and body (1.5) tokens are text-leading metrics, not equivalent icon metrics.
-    lineHeight: 1,
-    textDecoration: 'none',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
+    fontSize: 'var(--font-size-16)',
+    resize: 'vertical',
+    ':focus-visible': focus
   },
   banner: {
     margin: 0,
-    padding: 'var(--space-8) var(--space-10)',
-    borderRadius: 'var(--radius-10)',
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-11)',
-    fontWeight: 'var(--font-weight-bold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)',
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere'
   },
   sectionTitle: {
@@ -132,114 +126,212 @@ export const styles = stylex.create({
   copy: {
     margin: 0,
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
-    lineHeight: 'var(--font-size-15)',
+    fontSize: 'var(--font-size-14)',
+    lineHeight: 'var(--font-line-height-snug)',
     overflowWrap: 'anywhere'
   },
-  list: { display: 'flex', flexDirection: 'column', gap: 'var(--space-10)' },
+  list: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)' },
   card: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'stretch',
-    gap: 'var(--space-6)',
+    gap: 'var(--space-12)',
     padding: 'var(--space-14)'
   },
-  errorActions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' },
+  emptyState: { color: 'var(--color-muted)', textAlign: 'center' },
+  errorActions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
   errorAction: {
     boxSizing: 'border-box',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: control,
+    flex: '1 1 auto',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingInline: 'var(--space-10)',
-    borderWidth: 0,
-    borderRadius: 'var(--radius-10)',
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
+    paddingInline: 'var(--space-16)',
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
     font: 'inherit',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-bold)',
+    textAlign: 'center',
     textDecoration: 'none',
     overflowWrap: 'anywhere',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    },
+    ':focus-visible': focus,
     ':disabled': { opacity: 0.6 }
   },
-  requestCard: {
-    height: 'calc(var(--space-40) * 5)',
-    minHeight: 'calc(var(--space-40) * 5)',
-    boxSizing: 'border-box',
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) auto',
-    alignContent: 'start'
+  requestCard: { gap: 'var(--space-12)' },
+  requestHeader: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)', minWidth: 0 },
+  requestIdentity: {
+    display: 'flex',
+    flex: 1,
+    flexDirection: 'column',
+    gap: 'var(--space-2)',
+    minWidth: 0
   },
   requestMessageTrigger: {
-    gridColumn: '2',
-    gridRow: '1 / span 2',
-    width: 'calc(var(--space-40) + var(--space-4))',
-    minWidth: 'calc(var(--space-40) + var(--space-4))',
+    flexShrink: 0,
+    width: tap,
+    minWidth: tap,
+    minHeight: tap,
     paddingInline: 0
   },
-  requestMeta: { minHeight: 'calc(var(--font-size-15) * 2)', gridColumn: '1 / -1' },
-  requestRating: { gridColumn: '1', gridRow: '2' },
+  requestMeta: { fontSize: 'var(--font-size-13)' },
   cardTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-16)',
+    fontSize: 'var(--font-size-18)',
     fontWeight: 'var(--font-weight-bold)',
     overflowWrap: 'anywhere'
   },
   cardCompactTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-12)',
-    lineHeight: 'var(--font-size-15)',
+    fontSize: 'var(--font-size-16)',
+    lineHeight: 'var(--font-line-height-snug)',
     fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere'
   },
-  memberProfileTitle: {
-    margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-14)',
-    lineHeight: 'var(--font-size-17)',
-    fontWeight: 'var(--font-weight-semibold)',
+  sheetViewport: {
+    position: 'fixed',
+    zIndex: 2,
+    inset: 0,
+    display: 'flex',
+    alignItems: 'flex-end',
+    justifyContent: 'center'
+  },
+  sheetPopup: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-8)',
+    width: '100%',
+    maxWidth: 'calc(var(--space-40) * 16)',
+    maxHeight: '100%',
+    overflowY: 'auto',
+    paddingBlockStart: 'var(--space-10)',
+    paddingInlineStart: 'max(var(--space-16), env(safe-area-inset-left))',
+    paddingInlineEnd: 'max(var(--space-16), env(safe-area-inset-right))',
+    paddingBlockEnd: 'calc(var(--space-20) + var(--space-8) + env(safe-area-inset-bottom))',
+    borderRadius: sheetRadius,
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
     overflowWrap: 'anywhere'
   },
-  memberProfileCard: {
-    position: 'relative',
-    minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-6))'
+  sheetGrabber: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 'calc(var(--space-12) + var(--space-2))'
   },
-  rolePanel: {
+  sheetGrab: {
+    width: 'var(--space-40)',
+    height: 'var(--space-5)',
+    borderRadius: 'var(--space-3)',
+    backgroundColor: 'var(--color-hairline)'
+  },
+  sheetHead: {
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--space-2)',
-    padding: 'var(--space-12)',
+    paddingBlockStart: 0,
+    paddingInline: 'var(--space-8)',
+    paddingBlockEnd: 'var(--space-6)'
+  },
+  sheetTitle: {
+    margin: 0,
+    fontFamily: 'var(--font-family-heading)',
+    fontSize: 'var(--font-size-20)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-snug)',
+    overflowWrap: 'anywhere',
+    ':focus-visible': focus
+  },
+  sheetMeta: {
+    margin: 0,
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-14)',
+    lineHeight: 'var(--font-line-height-snug)',
+    overflowWrap: 'anywhere'
+  },
+  sheetRow: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-12)',
+    width: '100%',
+    minHeight: 'calc(var(--space-40) + var(--space-16))',
+    paddingBlock: 'var(--space-8)',
+    paddingInline: 'var(--space-12)',
+    borderWidth: 0,
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'transparent',
+    color: 'var(--color-text)',
+    fontFamily: 'var(--font-family-body)',
+    textAlign: 'start',
+    textDecoration: 'none',
+    cursor: 'pointer',
+    ':focus-visible': focus,
+    '[aria-disabled="true"]': { cursor: 'default', opacity: 0.6 }
+  },
+  sheetRowDescribed: { minHeight: 'calc(var(--space-40) + var(--space-20))' },
+  sheetGlyph: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 'calc(var(--space-40) - var(--space-4))',
+    height: 'calc(var(--space-40) - var(--space-4))',
     borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-surface-2)'
+    backgroundColor: 'var(--color-surface-2)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 1
   },
-  rolePanelTitle: {
-    margin: 0,
+  sheetRowText: {
+    display: 'flex',
+    flexDirection: 'column',
+    flexGrow: 1,
+    gap: 'var(--space-1)',
+    minWidth: 0
+  },
+  sheetRowTitle: {
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-semibold)',
+    lineHeight: 'var(--font-line-height-snug)'
+  },
+  sheetRowTitleDanger: { color: 'var(--color-red)' },
+  sheetRowHint: {
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-bold)'
+    fontSize: 'var(--font-size-13)',
+    lineHeight: 'var(--font-line-height-snug)'
   },
-  rolePanelCopy: {
-    margin: 0,
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
-    lineHeight: 'var(--font-size-15)'
+  sheetClose: {
+    position: 'absolute',
+    width: 'var(--space-1)',
+    height: 'var(--space-1)',
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
+    ':focus-visible': {
+      position: 'static',
+      width: 'auto',
+      height: 'auto',
+      minHeight: tap,
+      clipPath: 'none',
+      ...focus
+    }
   },
-  actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-4)' },
-  requestActions: {
-    gap: 'var(--space-6)',
-    gridColumn: '1 / -1',
-    gridRow: 4,
-    position: 'relative',
-    top: 'calc(0px - var(--space-8))'
-  },
-  searchForm: { display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 'var(--space-6)' },
+  actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-8)' },
+  requestActions: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
+  searchForm: { display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: 'var(--space-8)' },
   visuallyHidden: {
     position: 'absolute',
     width: 'var(--space-1)',
@@ -247,18 +339,31 @@ export const styles = stylex.create({
     overflow: 'hidden',
     clipPath: 'inset(50%)'
   },
-  unavailableInvite: {
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    ':disabled': { opacity: 1 }
+  listSurface: {
+    boxSizing: 'border-box',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0,
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-20)',
+    backgroundColor: 'var(--color-surface)',
+    overflow: 'hidden'
   },
-  memberList: { gap: 'var(--space-10)' },
-  memberCard: {
+  listRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 'var(--space-8)',
+    gap: 'var(--space-12)',
     boxSizing: 'border-box',
-    minHeight: 'calc(var(--space-40) + var(--space-20) + var(--space-11))',
-    padding: 'var(--space-6) var(--space-10)'
+    minHeight: 'calc(var(--space-40) * 2 - var(--space-12))',
+    padding: 'var(--space-12) var(--space-16)',
+    borderWidth: 0,
+    borderBlockEndWidth: { default: 'var(--border-width-sm)', ':last-child': 0 },
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: 'var(--color-hairline)',
+    borderRadius: 0,
+    backgroundColor: 'transparent'
   },
   memberDetails: {
     display: 'flex',
@@ -269,66 +374,71 @@ export const styles = stylex.create({
   },
   avatar: {
     flexShrink: 0,
-    width: 'calc(var(--space-20) + var(--space-14))',
-    height: 'calc(var(--space-20) + var(--space-14))',
+    width: 'calc(var(--space-20) + var(--space-16))',
+    height: 'calc(var(--space-20) + var(--space-16))',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 'var(--radius-36)',
     backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-11)',
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-bold)'
+  },
+  avatarLarge: {
+    width: 'calc(var(--space-40) + var(--space-4))',
+    height: 'calc(var(--space-40) + var(--space-4))',
+    fontSize: 'var(--font-size-16)'
   },
   filterTabs: {
     display: 'flex',
-    gap: 'var(--space-4)',
+    flexWrap: 'wrap',
+    gap: 'var(--space-8)',
     minWidth: 0,
     margin: 0,
     padding: 0,
     borderWidth: 0
   },
   filterTab: {
-    flex: 1,
+    boxSizing: 'border-box',
     minHeight: 'calc(var(--space-40) + var(--space-4))',
-    paddingInline: 'var(--space-8)',
-    borderWidth: 0,
-    borderRadius: 'var(--radius-10)',
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-muted)',
+    paddingInline: 'var(--space-16)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-36)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
     font: 'inherit',
-    fontSize: 'var(--font-size-12)',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-semibold)',
+    cursor: 'pointer',
+    ':focus-visible': focus
   },
-  filterTabSelected: { backgroundColor: 'var(--color-green-soft)', color: 'var(--color-green)' },
+  filterTabSelected: {
+    borderColor: 'var(--color-text)',
+    backgroundColor: 'var(--color-text)',
+    color: 'var(--color-bg)'
+  },
   memberRowHeader: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 'var(--space-6)'
+    gap: 'var(--space-8)'
   },
   roleBadge: {
     flexShrink: 0,
-    padding: 'var(--space-4) var(--space-8)',
-    borderRadius: 'var(--radius-10)',
+    padding: 'var(--space-4) var(--space-10)',
+    borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-11)',
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-semibold)'
-  },
-  softAction: {
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    borderWidth: 0
   },
   memberLink: {
     position: 'relative',
-    color: 'var(--color-green)',
-    textDecoration: 'underline',
-    textUnderlineOffset: 'var(--space-2)',
+    color: 'var(--color-text)',
+    textDecoration: 'none',
     overflowWrap: 'anywhere',
     '::before': {
       content: "''",
@@ -337,318 +447,310 @@ export const styles = stylex.create({
       top: '50%',
       transform: 'translateY(-50%)',
       width: 'calc(100% + var(--space-8))',
-      minWidth: 'calc(var(--space-40) + var(--space-4))',
-      height: 'calc(var(--space-40) + var(--space-4))'
+      minWidth: tap,
+      height: tap
     },
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    },
+    ':focus-visible': focus,
     '@media (max-width: 360px)': {
       display: 'inline-flex',
       alignItems: 'center',
       boxSizing: 'border-box',
-      minWidth: 'calc(var(--space-40) + var(--space-4))',
-      minHeight: 'calc(var(--space-40) + var(--space-4))',
+      minWidth: tap,
+      minHeight: tap,
       paddingInline: 'var(--space-4)'
     }
   },
-  venueActions: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-4)' },
-  venueCard: {
-    boxSizing: 'border-box',
-    minHeight: 'calc(var(--space-40) * 2 + var(--space-20) + var(--space-14))',
-    gap: 'var(--space-6)',
-    padding: 'var(--space-14)'
+  inlineLink: {
+    color: 'var(--color-green-ink)',
+    fontWeight: 'var(--font-weight-semibold)',
+    textDecoration: 'underline',
+    textUnderlineOffset: 'var(--space-2)'
+  },
+  plainList: { listStyle: 'none', margin: 0, paddingInline: 0 },
+  // A5Vio: venues are hairline-separated rows inside one surface, not a card per venue.
+  venueRow: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--space-8)',
+    padding: 'var(--space-12) var(--space-16)',
+    borderBlockEndWidth: { default: 'var(--border-width-sm)', ':last-child': 0 },
+    borderBlockEndStyle: 'solid',
+    borderBlockEndColor: 'var(--color-hairline)'
+  },
+  venueActions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 'var(--space-8)'
   },
   venueAction: {
-    backgroundColor: 'var(--color-surface-2)',
-    borderWidth: 0,
-    '@media (max-width: 360px)': {
-      minWidth: 'calc(var(--space-40) + var(--space-4))',
-      minHeight: 'calc(var(--space-40) + var(--space-4))'
-    }
-  },
-  venueMeta: {
-    display: 'flex',
+    display: 'inline-flex',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 'var(--space-6)',
-    flexWrap: 'wrap'
+    minHeight: tap,
+    paddingInline: 'var(--space-4)'
   },
-  venueMapLink: { fontSize: 'var(--font-size-12)', lineHeight: 'var(--font-size-15)' },
-  form: { display: 'flex', flexDirection: 'column', gap: 'var(--space-6)', minWidth: 0 },
+  venueButton: {
+    width: 'auto',
+    minHeight: tap,
+    paddingBlock: 'var(--space-4)',
+    paddingInline: 'var(--space-12)',
+    fontSize: 'var(--font-size-14)'
+  },
+  venueHead: { display: 'flex', alignItems: 'center', gap: 'var(--space-12)', minWidth: 0 },
+  venuePhoto: {
+    flexShrink: 0,
+    boxSizing: 'border-box',
+    width: 'calc(var(--space-40) + var(--space-20) + var(--space-4))',
+    height: 'calc(var(--space-40) + var(--space-12))',
+    objectFit: 'cover',
+    borderRadius: 'var(--radius-12)',
+    backgroundColor: 'var(--color-green-soft)'
+  },
+  form: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)', minWidth: 0 },
   searchField: { flex: 1, minWidth: 0 },
-  settingsForm: { gap: 'var(--space-10)' },
+  settingsForm: { gap: 'var(--space-14)' },
   fieldLabel: {
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-12)',
-    fontWeight: 'var(--font-weight-semibold)'
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere'
   },
   settingsCard: {
     boxSizing: 'border-box',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    display: 'flex',
-    flexDirection: 'column',
+    minHeight: tap,
     justifyContent: 'center',
     gap: 'var(--space-6)',
-    padding: 'var(--space-12)'
+    padding: 'var(--space-12) var(--space-16)'
   },
   settingChoice: {
     boxSizing: 'border-box',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: control,
     width: '100%',
-    paddingInline: 'var(--space-10)',
-    borderWidth: 0,
-    borderRadius: 'var(--radius-10)',
-    backgroundColor: 'var(--color-surface-2)',
+    paddingInline: 'var(--space-14)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     font: 'inherit',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-16)',
     fontWeight: 'var(--font-weight-semibold)',
-    textAlign: 'center',
-    scrollMarginBottom:
-      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-4))',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
+    textAlign: 'start',
+    scrollMarginBottom: `calc(${navClearance} + var(--space-4))`,
+    ':focus-visible': focus
   },
-  settingsDefaultsCard: {
-    boxSizing: 'border-box',
-    minHeight: 'calc((var(--space-40) + var(--space-4)) * 2 + var(--space-20) + var(--space-1))',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-2)',
-    padding: '0 var(--space-10)'
-  },
+  settingsDefaultsCard: { gap: 'var(--space-4)', padding: 'var(--space-8) var(--space-16)' },
   settingsTimezoneRow: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 'var(--space-8)',
-    height: 'calc(var(--space-40) + var(--space-4))',
-    minHeight: 'calc(var(--space-40) + var(--space-4))'
+    gap: 'var(--space-12)',
+    minHeight: control
   },
   settingsCurrencyRow: {
-    boxSizing: 'border-box',
-    minHeight: 'var(--space-20)',
     margin: 0,
+    paddingBlockEnd: 'var(--space-8)',
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-10)',
-    lineHeight: 'var(--font-size-15)',
+    fontSize: 'var(--font-size-13)',
+    lineHeight: 'var(--font-line-height-snug)',
     overflowWrap: 'anywhere'
   },
   settingsLeagueRow: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 'var(--space-8)',
-    height: 'calc(var(--space-40) + var(--space-4))',
-    minHeight: 'calc(var(--space-40) + var(--space-4))'
+    gap: 'var(--space-12)',
+    minHeight: control
   },
   settingsLeagueCopy: {
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
-    gap: 0,
+    gap: 'var(--space-2)',
     minWidth: 0
   },
   settingsLeagueNote: {
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-10)',
-    lineHeight: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
+    lineHeight: 'var(--font-line-height-snug)',
     overflowWrap: 'anywhere'
   },
   settingsFooterNote: {
     flex: 1,
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-10)',
-    lineHeight: 'var(--font-size-12)',
-    textAlign: 'right'
+    fontSize: 'var(--font-size-13)',
+    lineHeight: 'var(--font-line-height-snug)',
+    textAlign: 'end'
   },
-  settingsTimezoneSelect: {
-    width: 'min(60%, 14rem)',
-    minHeight: 'calc(var(--space-40) + var(--space-4))'
-  },
-  settingsSaveControl: {
-    scrollMarginBottom:
-      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-4))'
-  },
+  settingsTimezoneSelect: { width: 'min(60%, 14rem)' },
+  settingsSaveControl: { scrollMarginBottom: `calc(${navClearance} + var(--space-4))` },
   settingsSwitch: {
     boxSizing: 'border-box',
-    width: 'calc(var(--space-40) + var(--space-4))',
-    minWidth: 'calc(var(--space-40) + var(--space-4))',
-    height: 'calc(var(--space-40) + var(--space-4))',
+    flexShrink: 0,
+    width: tap,
+    minWidth: tap,
+    // 48px hit box around the 28px frame track (content box only carries the track fill).
+    height: tap,
     display: 'inline-flex',
     alignItems: 'center',
-    padding: 'var(--space-2)',
-    borderRadius: 'var(--radius-20)',
-    backgroundColor: 'var(--color-muted)',
+    paddingBlock: 'var(--space-10)',
+    paddingInline: 0,
+    borderWidth: 0,
+    borderRadius: 'var(--radius-36)',
+    backgroundClip: 'content-box',
+    backgroundColor: 'var(--color-line)',
     transition: 'background-color 150ms ease',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
+    ':focus-visible': focus
   },
   settingsSwitchThumb: {
     width: 'var(--space-20)',
     height: 'var(--space-20)',
     borderRadius: 'var(--radius-20)',
+    marginInlineStart: 'var(--space-4)',
     backgroundColor: 'var(--color-surface)',
     transform: 'translateX(0)',
     transition: 'transform 150ms ease'
   },
   settingsSwitchChecked: { backgroundColor: 'var(--color-green)' },
-  settingsSwitchThumbChecked: { transform: 'translateX(var(--space-16))' },
+  settingsSwitchThumbChecked: { transform: 'translateX(var(--space-20))' },
   settingsTimezonePopup: {
     zIndex: 10,
-    minWidth: 'calc(var(--space-40) * 3)',
-    padding: 'var(--space-2)',
+    minWidth: 'calc(var(--space-40) * 4)',
+    padding: 'var(--space-4)',
     borderWidth: 'var(--border-width-sm)',
     borderStyle: 'solid',
     borderColor: 'var(--color-line)',
-    borderRadius: 'var(--radius-8)',
+    borderRadius: 'var(--radius-14)',
     backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-14)'
+    fontSize: 'var(--font-size-16)'
   },
   settingsTimezoneItem: {
     boxSizing: 'border-box',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: tap,
     display: 'flex',
     alignItems: 'center',
-    paddingInline: 'var(--space-10)',
-    borderRadius: 'var(--radius-6)',
+    paddingInline: 'var(--space-12)',
+    borderRadius: 'var(--radius-10)',
     cursor: 'pointer',
     ':hover': { backgroundColor: 'var(--color-surface-2)' },
     ':focus': { backgroundColor: 'var(--color-surface-2)', outline: 'none' }
   },
   settingTimezoneSelected: {
-    color: 'var(--color-green)',
+    color: 'var(--color-green-ink)',
     fontWeight: 'var(--font-weight-bold)'
   },
-  memberMatchUnavailable: {
-    position: 'absolute',
-    top: 'calc(var(--space-14) + var(--font-size-17) + var(--space-4))',
-    left: 'var(--space-10)',
-    right: 'var(--space-10)',
-    margin: 0,
-    padding: 0,
-    backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-text)',
-    fontSize: 'var(--font-size-10)',
-    lineHeight: 'var(--font-size-12)',
-    overflowWrap: 'anywhere'
-  },
-  details: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-8)',
-    minWidth: 0
-  },
+  details: { display: 'flex', flexDirection: 'column', gap: 'var(--space-12)', minWidth: 0 },
   detailsSummary: {
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: tap,
     display: 'flex',
     alignItems: 'center',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)',
+    gap: 'var(--space-12)',
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-14)',
     fontWeight: 'var(--font-weight-semibold)',
     cursor: 'pointer',
-    scrollMarginBottom:
-      'calc(var(--space-14) + var(--space-40) + var(--space-16) + var(--space-40) + var(--space-4))',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
+    scrollMarginBottom: `calc(${navClearance} + var(--space-4))`,
+    ':focus-visible': focus
   },
   note: {
     margin: 0,
-    padding: 'var(--space-10)',
-    borderRadius: 'var(--radius-10)',
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-text)',
-    fontSize: 'var(--font-size-12)',
-    lineHeight: 'var(--font-size-15)',
+    color: 'var(--color-muted)',
+    fontSize: 'var(--font-size-13)',
+    lineHeight: 'var(--font-line-height-snug)',
     overflowWrap: 'anywhere'
   },
-  auditCard: { gap: 'var(--space-4)' },
-  auditUnsupportedNotice: {
-    margin: 0,
-    marginBottom: 'calc(0px - var(--space-10))'
+  auditDot: {
+    flexShrink: 0,
+    width: 'var(--space-10)',
+    height: 'var(--space-10)',
+    borderRadius: 'var(--radius-36)',
+    backgroundColor: 'var(--color-green)'
   },
   auditAction: {
     margin: 0,
     color: 'var(--color-text)',
-    fontSize: 'var(--font-size-12)',
-    lineHeight: 'var(--font-size-15)',
+    fontSize: 'var(--font-size-16)',
+    lineHeight: 'var(--font-line-height-snug)',
     fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere'
   },
-  status: { margin: 0, color: 'var(--color-green)', fontSize: 'var(--font-size-14)' },
-  error: { margin: 0, color: 'var(--color-red)', fontSize: 'var(--font-size-14)' },
+  status: {
+    margin: 0,
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere'
+  },
+  error: {
+    margin: 0,
+    color: 'var(--color-red)',
+    fontSize: 'var(--font-size-14)',
+    fontWeight: 'var(--font-weight-semibold)',
+    overflowWrap: 'anywhere'
+  },
   adminEntries: {
     boxSizing: 'border-box',
     width: '100%',
-    maxWidth: 'calc(var(--space-40) * 12)',
+    maxWidth: 'calc(var(--space-40) * 16)',
     marginInline: 'auto',
-    padding: 'var(--space-10) var(--space-18)',
+    padding: 'var(--space-10) var(--space-20)',
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--space-4)',
     backgroundColor: 'var(--color-surface)'
   },
   adminEntryLink: {
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    minHeight: tap,
     display: 'flex',
     alignItems: 'center',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-12)',
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-14)',
     fontWeight: 'var(--font-weight-semibold)',
     overflowWrap: 'anywhere',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
+    ':focus-visible': focus
   },
   bottomNav: {
     position: 'fixed',
     zIndex: 1,
     left: '50%',
-    bottom: 'var(--space-14)',
+    bottom: 'max(var(--space-14), env(safe-area-inset-bottom))',
     transform: 'translateX(-50%)',
     boxSizing: 'border-box',
-    width: 'min(calc(100% - var(--space-18) - var(--space-18)), calc(var(--space-40) * 12))',
+    width: 'min(calc(100% - var(--space-20) - var(--space-20)), calc(var(--space-40) * 16))',
     minHeight: 'calc(var(--space-40) + var(--space-16))',
     display: 'flex',
     alignItems: 'stretch',
     gap: 'var(--space-2)',
-    padding: 'var(--space-4)',
-    borderRadius: 'var(--radius-18)',
+    padding: 'var(--space-3) var(--space-4)',
+    borderWidth: 'var(--border-width-sm)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-hairline)',
+    borderRadius: 'var(--radius-20)',
     backgroundColor: 'var(--color-surface)'
   },
   bottomNavLink: {
     flex: 1,
     minWidth: 0,
-    minHeight: 'var(--space-40)',
+    minHeight: tap,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     paddingInline: 'var(--space-2)',
-    borderRadius: 'var(--radius-10)',
+    borderRadius: 'var(--radius-14)',
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-10)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-semibold)',
     textAlign: 'center',
     textDecoration: 'none',
     overflowWrap: 'anywhere',
     '[aria-current="page"]': {
       backgroundColor: 'var(--color-green-soft)',
-      color: 'var(--color-green)',
+      color: 'var(--color-green-ink)',
       fontWeight: 'var(--font-weight-bold)'
     },
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-2)'
-    }
+    ':focus-visible': focus
   }
 });

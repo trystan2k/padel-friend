@@ -2,8 +2,8 @@ import * as stylex from '@stylexjs/stylex';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { rootStyles } from '../../root.styles';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import type { LeagueListResult } from './league-contracts';
 import { isOffline } from '../../lib/connectivity';
 import { leagueErrorCode } from './league-errors';
@@ -40,37 +40,42 @@ export function CreateLeaguePage({ data, today }: { data: LeagueListResult; toda
   };
 
   return (
-    <main {...stylex.props(styles.page)}>
-      <header {...stylex.props(styles.header, rootStyles.pageHeader)}>
-        <div {...stylex.props(styles.headingRow)}>
-          <Link
-            to="/community/$communityId/leagues"
-            params={{ communityId: community.id }}
-            aria-label={t('leagues.back')}
-            {...stylex.props(styles.backLink)}
-          >
-            <span aria-hidden="true">‹</span>
-          </Link>
-          <h1 {...stylex.props(styles.title)}>{t('leagues.form.title')}</h1>
-        </div>
-        <p {...stylex.props(styles.context)}>
-          {t('leagues.communityContext', { community: community.name })}
-        </p>
-      </header>
+    <main data-route-chrome="navigation" {...stylex.props(styles.page)}>
+      <TopBar
+        xstyle={styles.barFrame}
+        title={t('leagues.form.title')}
+        back={{
+          to: '/community/$communityId/leagues',
+          params: { communityId: community.id },
+          label: t('leagues.back')
+        }}
+      />
+      <p {...stylex.props(styles.context, styles.contextCenter)}>
+        {t('leagues.communityContext', { community: community.name })}
+      </p>
       {community.can_create ? (
         <>
           {active && (
             <SurfaceCard role="note" xstyle={styles.conflict}>
-              <p {...stylex.props(styles.strongText)}>
-                {t('leagues.form.conflict.title', { name: active.name })}
-              </p>
-              <p {...stylex.props(styles.errorText)}>{t('leagues.form.conflict.body')}</p>
+              <div {...stylex.props(styles.conflictHeader)}>
+                <span aria-hidden="true" {...stylex.props(styles.conflictGlyph)}>
+                  !
+                </span>
+                <div {...stylex.props(styles.formerCopy)}>
+                  <p {...stylex.props(styles.strongText)}>
+                    {t('leagues.form.conflict.title', { name: active.name })}
+                  </p>
+                  <p {...stylex.props(styles.muted)}>
+                    {t('leagues.form.conflict.body', { name: active.name })}
+                  </p>
+                </div>
+              </div>
               <Link
                 to="/community/$communityId/leagues/$leagueId"
                 params={{ communityId: community.id, leagueId: active.id }}
-                {...stylex.props(styles.actionLink)}
+                {...stylex.props(styles.primaryLink, styles.secondaryLink)}
               >
-                {t('leagues.form.conflict.review')} →
+                {t('leagues.form.conflict.review', { name: active.name })}
               </Link>
             </SurfaceCard>
           )}

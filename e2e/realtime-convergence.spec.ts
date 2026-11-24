@@ -7,6 +7,7 @@ import {
   openRecord,
   resultFixtures,
   review,
+  reviewAction,
   type Actor
 } from './matches-results-fixtures';
 
@@ -110,7 +111,7 @@ test('a proposal and its confirmation converge to every mounted client', async (
   const proposal = await proposalFor(eventId);
   const reviewer = await f.page(opposingReviewers(proposal)[0]!);
   await f.open(reviewer, eventId);
-  await groupCard(reviewer).getByRole('button', { name: r.review.approve, exact: true }).click();
+  await reviewAction(groupCard(reviewer), r.review.approve).click();
 
   await expect(groupCard(submitter)).toHaveAttribute('data-result-status', 'confirmed', {
     timeout: CONVERGENCE_BUDGET_MS
@@ -134,13 +135,9 @@ test('a stale approval after another reviewer rejected converges to the current 
   const stalePage = await f.page(stale!);
   await f.open(rejectingPage, eventId);
   await f.open(stalePage, eventId);
-  await expect(
-    groupCard(stalePage).getByRole('button', { name: r.review.approve, exact: true })
-  ).toBeVisible();
+  await expect(reviewAction(groupCard(stalePage), r.review.approve)).toBeVisible();
 
-  await groupCard(rejectingPage)
-    .getByRole('button', { name: r.review.reject, exact: true })
-    .click();
+  await reviewAction(groupCard(rejectingPage), r.review.reject).click();
   const dialog = rejectingPage.getByRole('dialog', { name: r.reject.title, exact: true });
   await dialog.getByRole('radio', { name: r.reject.reasons.scoreIncorrect, exact: true }).check();
   await dialog.getByRole('button', { name: r.reject.submit, exact: true }).click();
@@ -150,9 +147,7 @@ test('a stale approval after another reviewer rejected converges to the current 
   await expect(groupCard(stalePage)).toHaveAttribute('data-result-status', 'disputed', {
     timeout: CONVERGENCE_BUDGET_MS
   });
-  await expect(
-    groupCard(stalePage).getByRole('button', { name: r.review.approve, exact: true })
-  ).toHaveCount(0);
+  await expect(reviewAction(groupCard(stalePage), r.review.approve)).toHaveCount(0);
   const current = await proposalFor(eventId);
   expect(current).toMatchObject({ status: 'disputed', version: 1 });
 });

@@ -5,9 +5,9 @@ export const styles = stylex.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: 'var(--space-2)',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    paddingInline: 'var(--space-3)',
-    borderRadius: 'var(--radius-8)',
+    minHeight: 'calc(var(--space-40) + var(--space-12))',
+    paddingInline: 'var(--space-12)',
+    borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-surface)'
   },
   highlighted: {
@@ -15,7 +15,13 @@ export const styles = stylex.create({
     borderInlineStartStyle: 'solid',
     borderInlineStartColor: 'var(--color-green)'
   },
-  name: { margin: 0, fontWeight: 'var(--font-weight-semibold)' },
+  name: {
+    margin: 0,
+    minWidth: 0,
+    overflowWrap: 'anywhere',
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-semibold)'
+  },
   header: {
     display: 'flex',
     flexWrap: 'wrap',

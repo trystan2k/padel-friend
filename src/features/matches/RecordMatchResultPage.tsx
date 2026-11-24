@@ -1,8 +1,9 @@
-import { Button } from '@base-ui/react/button';
+import { Button } from '../../components/ui/Button';
+import { controlStyles } from '../../components/ui/control.styles';
 import { NumberField } from '@base-ui/react/number-field';
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
-import { Fragment, useEffect, useRef, useState, type RefObject } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MatchEventDetail } from './match-contracts';
 import type { ManagementParticipant, MatchEventManagement } from './match-management-model';
@@ -30,8 +31,8 @@ import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 import { MatchResultPending } from './MatchResultPending';
 import { MatchResultReview } from './MatchResultReview';
 import { MatchResultScores, resultSetWins } from './MatchResultFacts';
-import { MatchResultNavigation } from './MatchResultNavigation';
 import { matchResultStyles as s } from './match-result.styles';
+import { recordResultStyles as r } from './record-match-result.styles';
 
 type Props = {
   event: MatchEventDetail | null;
@@ -90,11 +91,9 @@ export function RecordMatchResultPage(props: Props) {
   const heading = useRef<HTMLHeadingElement>(null);
   if (!event || props.loadError)
     return (
-      <main {...stylex.props(s.page)}>
+      <main {...stylex.props(s.page, r.page)}>
         <p role="alert">{t('matches.results.errors.unavailable')}</p>
-        <Button {...stylex.props(s.button)} onClick={onReload}>
-          {t('matches.results.reload')}
-        </Button>
+        <Button onClick={onReload}>{t('matches.results.reload')}</Button>
       </main>
     );
   if (
@@ -102,7 +101,7 @@ export function RecordMatchResultPage(props: Props) {
     event.status === 'cancelled'
   )
     return (
-      <main {...stylex.props(s.page)}>
+      <main {...stylex.props(s.page, r.page)}>
         <MatchManagementUnavailable
           reason={
             event.status === 'cancelled'
@@ -124,45 +123,40 @@ export function RecordMatchResultPage(props: Props) {
     );
   const players = resultGroupPlayers(roster, participants, group);
   return (
-    <main data-result-route="record" data-route-chrome="navigation" {...stylex.props(s.page)}>
-      <header {...stylex.props(s.routeHeader)}>
+    <main
+      data-result-route="record"
+      data-route-chrome="navigation"
+      {...stylex.props(s.page, r.page)}
+    >
+      <header {...stylex.props(r.header)}>
         {step > 0 ? (
           <Button
-            type="button"
             aria-label={t('matches.results.back')}
-            {...stylex.props(s.routeBack)}
+            xstyle={r.back}
+            variant="secondary"
             onClick={() => setStep(step - 1)}
           >
-            ‹
+            <span aria-hidden="true">‹</span>
           </Button>
         ) : (
           <Link
             to="/matches/$eventId"
             params={{ eventId: event.event_id }}
             aria-label={t('matches.management.unavailable.backToMatch')}
-            {...stylex.props(s.routeBack)}
+            {...stylex.props(s.routeBack, r.back, controlStyles.focusRing)}
           >
-            ‹
+            <span aria-hidden="true">‹</span>
           </Link>
         )}
-        <h1 ref={heading} tabIndex={-1} {...stylex.props(s.routeTitle)}>
-          {t(
-            correctionRequested
-              ? 'matches.results.correctTitle'
-              : step === 2
-                ? 'matches.results.preview'
-                : 'matches.results.title'
-          )}
+        <h1 ref={heading} tabIndex={-1} {...stylex.props(r.title)}>
+          {t(correctionRequested ? 'matches.results.correctTitle' : 'matches.results.title')}
         </h1>
-        <p {...stylex.props(s.copy)}>
-          {event.venue_name} · {t('matches.results.group', { number: group })}
-        </p>
       </header>
       {!correctionRequested && groups.length > 1 && (
         <label {...stylex.props(s.field)}>
           {t('matches.results.groupLabel')}
           <select
-            {...stylex.props(s.input)}
+            {...stylex.props(s.input, controlStyles.size)}
             value={group}
             onChange={(e) => {
               setGroup(Number(e.target.value));
@@ -181,6 +175,7 @@ export function RecordMatchResultPage(props: Props) {
         <MatchResultReview
           eventId={event.event_id}
           proposal={proposals.find((p) => p.group_number === group)!}
+          recording
           timezone={event.timezone}
           asOf={event.as_of}
           onRefresh={onReload}
@@ -204,7 +199,6 @@ export function RecordMatchResultPage(props: Props) {
       ) : (
         <p role="alert">{t('matches.results.errors.invalidGroup')}</p>
       )}
-      <MatchResultNavigation />
     </main>
   );
 }
@@ -240,6 +234,14 @@ function ResultForm({
       : players.map((p) => p.user_id)
   );
   const [editing, setEditing] = useState(false);
+  const stepHeading = useRef<HTMLHeadingElement>(null);
+  const previousStep = useRef(step);
+  useEffect(() => {
+    if (previousStep.current !== step) {
+      previousStep.current = step;
+      stepHeading.current?.focus();
+    }
+  }, [step]);
   const [sets, setSets] = useState<ResultSetRow[]>(() =>
     correctionProposal
       ? correctionProposal.sets.map((set) => ({ ...set }))
@@ -307,7 +309,6 @@ function ResultForm({
   function move(next: number) {
     setStep(next);
     setFailure(null);
-    heading.current?.focus();
   }
   function showFailure(error: Failure) {
     setFailure(error);
@@ -444,6 +445,60 @@ function ResultForm({
         ? { ...rawDetail, side: 'team_a' as const }
         : rawDetail;
   const wins = resultSetWins(sets);
+  const friendly = event.event_type === 'friendly';
+  const incomplete = outcome === 'incomplete';
+  const competitiveEffect = !friendly && outcome !== null && !incomplete;
+  const teamNames = sides.map((_, sideIndex) =>
+    new Intl.ListFormat(i18n.language).format(
+      order
+        .slice(sideIndex * 2, sideIndex * 2 + 2)
+        .map(
+          (id) =>
+            players.find((player) => player.user_id === id)?.display_name ??
+            t('matches.results.unknownPlayer')
+        )
+    )
+  );
+  const preview = step > 0 && !scoreBlocked && (
+    <section
+      data-result-section="outcome"
+      {...stylex.props(
+        s.card,
+        r.card,
+        r.outcome,
+        competitiveEffect && r.outcomeWin,
+        !friendly && incomplete && r.outcomeIncomplete
+      )}
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      <span aria-hidden="true" {...stylex.props(r.outcomeIcon)}>
+        {!outcome || incomplete ? '◐' : '✓'}
+      </span>
+      <div {...stylex.props(r.outcomeCopy)}>
+        <h3 {...stylex.props(s.heading)}>
+          {t(
+            outcome
+              ? `matches.results.record.outcome.${outcome}`
+              : 'matches.results.outcome.invalid',
+            {
+              winnerSets: outcome === 'team_b' ? wins.team_b : wins.team_a,
+              loserSets: outcome === 'team_b' ? wins.team_a : wins.team_b
+            }
+          )}
+        </h3>
+        <p {...stylex.props(s.copy)}>
+          {t(
+            friendly
+              ? 'matches.results.ratingEffectNone'
+              : competitiveEffect
+                ? 'matches.results.record.ratingUnavailable'
+                : 'matches.results.ratingEffectIncomplete'
+          )}
+        </p>
+      </div>
+    </section>
+  );
   const playedLabel =
     date && time
       ? `${new Intl.DateTimeFormat(i18n.language === 'en' ? 'en-GB' : i18n.language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${date}T${time}Z`))} · ${time}`
@@ -460,7 +515,7 @@ function ResultForm({
       <p
         id={index === null ? `team-error-${side}` : `set-error-${index}`}
         role="alert"
-        {...stylex.props(s.error)}
+        {...stylex.props(s.error, index !== null && r.setError)}
       >
         {index === null
           ? t('matches.results.teamError', {
@@ -493,36 +548,42 @@ function ResultForm({
         else void submit();
       }}
     >
-      <ol {...stylex.props(s.steps)}>
-        {['players', 'score', 'review'].map((key, index) => (
-          <li key={key} aria-current={step === index ? 'step' : undefined}>
-            {t(`matches.results.steps.${key}`)}
-            {'  '}
-            {index < step ? '✓' : index + 1}
-            {index < 2 ? '     ' : ''}
+      <ol {...stylex.props(r.progress)}>
+        {(['players', 'score', 'review'] as const).map((key, index) => (
+          <li
+            key={key}
+            aria-current={step === index ? 'step' : undefined}
+            {...stylex.props(r.progressSegment, index <= step && r.progressReached)}
+          >
+            <span {...stylex.props(s.srOnly)}>{t(`matches.results.steps.${key}`)}</span>
           </li>
         ))}
       </ol>
-      <h2 {...stylex.props(s.heading)} hidden={step > 0}>
+      <h2 ref={stepHeading} tabIndex={-1} {...stylex.props(r.sectionTitle)}>
         {t(
           step === 0
             ? 'matches.results.confirmPlayers'
             : step === 1
-              ? 'matches.results.sets'
-              : 'matches.results.preview'
+              ? 'matches.results.record.scoreTitle'
+              : 'matches.results.record.reviewTitle'
         )}
       </h2>
+      {step === 1 && (
+        <p {...stylex.props(s.copy)}>
+          {event.venue_name} · {t('matches.results.group', { number: group })} · {playedLabel}
+          {court && ` · ${court}`}
+        </p>
+      )}
       <fieldset disabled={pending || blocked} {...stylex.props(s.setRow, s.form)}>
-        {
-          <section {...stylex.props(s.card, s.teamCard)}>
-            {step > 0 && (
-              <h2 {...stylex.props(s.heading)}>{t('matches.results.confirmPlayers')}</h2>
-            )}
-            {step === 0 && <p {...stylex.props(s.copy)}>{t('matches.results.suggested')}</p>}
+        {step === 0 && (
+          <section data-result-section="teams" {...stylex.props(s.card, r.card, r.selection)}>
+            <p {...stylex.props(s.copy, r.selectionWide)}>{t('matches.results.suggested')}</p>
             {sides.map((side, sideIndex) => (
               <section key={side} {...stylex.props(s.teamGroup)}>
-                <h3 {...stylex.props(s.label)}>{t(`matches.results.teams.${side}`)}</h3>
-                <div {...stylex.props(s.row, s.chipRow)}>
+                <h3 {...stylex.props(s.label, r.plainLabel)}>
+                  {t(`matches.results.teams.${side}`)}
+                </h3>
+                <div {...stylex.props(r.selectionNames)}>
                   {[0, 1].map((seat) => {
                     const position = sideIndex * 2 + seat;
                     const name =
@@ -535,7 +596,7 @@ function ResultForm({
                           number: seat + 1
                         })}
                         <select
-                          {...stylex.props(s.input)}
+                          {...stylex.props(s.input, controlStyles.size)}
                           value={order[position]}
                           aria-invalid={detail?.set_index === null && detail.side === side}
                           aria-describedby={
@@ -571,7 +632,8 @@ function ResultForm({
             {step === 0 && (
               <Button
                 type="button"
-                {...stylex.props(s.button)}
+                variant="secondary"
+                xstyle={r.selectionWide}
                 aria-expanded={editing}
                 onClick={() => setEditing(!editing)}
               >
@@ -581,7 +643,8 @@ function ResultForm({
             {step === 0 && sets.length > 1 && (
               <Button
                 type="button"
-                {...stylex.props(s.button)}
+                variant="secondary"
+                xstyle={r.selectionWide}
                 onClick={() => {
                   setSets(sets.slice(0, -1));
                   setFailure(null);
@@ -591,11 +654,21 @@ function ResultForm({
               </Button>
             )}
           </section>
-        }
+        )}
         {step === 1 && (
           <>
-            <section {...stylex.props(s.card)} aria-label={t('matches.results.sets')}>
-              <h2 {...stylex.props(s.heading)}>{t('matches.results.sets')}</h2>
+            <section
+              data-result-section="sets"
+              {...stylex.props(r.sets)}
+              aria-label={t('matches.results.sets')}
+            >
+              <div {...stylex.props(r.matchups)}>
+                {teamNames.map((team, index) => (
+                  <p key={sides[index]} {...stylex.props(s.copy)}>
+                    {team}
+                  </p>
+                ))}
+              </div>
               {sets.map((set, index) => (
                 <fieldset
                   key={set.position}
@@ -607,19 +680,59 @@ function ResultForm({
                   <legend {...stylex.props(s.srOnly)}>
                     {t('matches.results.setNumber', { number: set.position })}
                   </legend>
-                  <div {...stylex.props(s.scoreRow)}>
-                    <span aria-hidden="true" {...stylex.props(s.label)}>
-                      {t('matches.results.setNumber', { number: set.position })}
-                    </span>
-                    {sides.map((side) => (
-                      <Fragment key={side}>
-                        {side === 'team_b' && (
-                          <span aria-hidden="true" {...stylex.props(s.copy)}>
-                            —
-                          </span>
+                  <div {...stylex.props(r.setCard)}>
+                    <div {...stylex.props(r.setHeading)}>
+                      <span aria-hidden="true" {...stylex.props(s.label, r.plainLabel)}>
+                        {t('matches.results.setNumber', { number: set.position })}
+                      </span>
+                      <button
+                        type="button"
+                        {...stylex.props(
+                          s.stateControl,
+                          controlStyles.size,
+                          controlStyles.focusRing
                         )}
+                        aria-pressed={set.completed}
+                        aria-label={`${t(
+                          detail?.set_index === set.position
+                            ? 'matches.results.setState.invalid'
+                            : set.completed
+                              ? 'matches.results.setState.complete'
+                              : 'matches.results.setState.inProgress'
+                        )} · ${t('matches.results.setStateLabel', { number: set.position })}`}
+                        onClick={() => {
+                          setSets(
+                            sets.map((row, i) =>
+                              i === index ? { ...row, completed: !row.completed } : row
+                            )
+                          );
+                          setFailure(null);
+                        }}
+                      >
+                        <span
+                          {...stylex.props(
+                            s.statePill,
+                            detail?.set_index === set.position
+                              ? s.neutral
+                              : set.completed
+                                ? s.positive
+                                : s.neutral,
+                            detail?.set_index === set.position && s.invalidState
+                          )}
+                        >
+                          {t(
+                            detail?.set_index === set.position
+                              ? 'matches.results.setState.invalid'
+                              : set.completed
+                                ? 'matches.results.setState.complete'
+                                : 'matches.results.setState.inProgress'
+                          )}
+                        </span>
+                      </button>
+                    </div>
+                    <div {...stylex.props(r.matchups, r.scorePair)}>
+                      {sides.map((side) => (
                         <NumberField.Root
-                          {...stylex.props(s.scoreControl)}
                           key={side}
                           min={0}
                           max={7}
@@ -637,10 +750,26 @@ function ResultForm({
                           <label htmlFor={`score-${index}-${side}`} {...stylex.props(s.srOnly)}>
                             {t(`matches.results.teams.${side}`)}
                           </label>
-                          <NumberField.Group>
+                          <p aria-hidden="true" {...stylex.props(s.copy, r.mobileScoreLabel)}>
+                            {teamNames[side === 'team_a' ? 0 : 1]}
+                          </p>
+                          <NumberField.Group {...stylex.props(r.field)}>
+                            <NumberField.Decrement
+                              aria-label={t('matches.results.decrease', {
+                                number: set.position,
+                                team: t(`matches.results.teams.${side}`)
+                              })}
+                              {...stylex.props(
+                                r.stepButton,
+                                controlStyles.size,
+                                controlStyles.focusRing
+                              )}
+                            >
+                              −
+                            </NumberField.Decrement>
                             <NumberField.Input
                               id={`score-${index}-${side}`}
-                              {...stylex.props(s.compactNumber)}
+                              {...stylex.props(s.compactNumber, r.number, controlStyles.focusRing)}
                               aria-invalid={
                                 detail?.set_index === set.position &&
                                 (detail.side === side || detail.side === null)
@@ -651,71 +780,39 @@ function ResultForm({
                                   : undefined
                               }
                             />
+                            <NumberField.Increment
+                              aria-label={t('matches.results.increase', {
+                                number: set.position,
+                                team: t(`matches.results.teams.${side}`)
+                              })}
+                              {...stylex.props(
+                                r.stepButton,
+                                controlStyles.size,
+                                controlStyles.focusRing
+                              )}
+                            >
+                              +
+                            </NumberField.Increment>
                           </NumberField.Group>
                         </NumberField.Root>
-                      </Fragment>
-                    ))}
-                    <Button
-                      type="button"
-                      {...stylex.props(s.stateControl)}
-                      aria-pressed={set.completed}
-                      aria-label={`${t(
-                        detail?.set_index === set.position
-                          ? 'matches.results.setState.invalid'
-                          : set.completed
-                            ? 'matches.results.setState.complete'
-                            : 'matches.results.setState.inProgress'
-                      )} · ${t('matches.results.setStateLabel', { number: set.position })}`}
-                      onClick={() => {
-                        setSets(
-                          sets.map((row, i) =>
-                            i === index ? { ...row, completed: !row.completed } : row
-                          )
-                        );
-                        setFailure(null);
-                      }}
-                    >
-                      <span
-                        {...stylex.props(
-                          s.statePill,
-                          detail?.set_index === set.position
-                            ? s.neutral
-                            : set.completed
-                              ? s.positive
-                              : s.neutral,
-                          detail?.set_index === set.position && s.invalidState
-                        )}
-                      >
-                        {t(
-                          detail?.set_index === set.position
-                            ? 'matches.results.setState.invalid'
-                            : set.completed
-                              ? 'matches.results.setState.complete'
-                              : 'matches.results.setState.inProgress'
-                        )}
-                      </span>
-                    </Button>
+                      ))}
+                    </div>
+                    {inlineError(set.position)}
                   </div>
-                  {inlineError(set.position)}
                 </fieldset>
               ))}
               {[2, 3]
                 .filter((position) => position > sets.length)
                 .map((position) => (
-                  <div key={position} {...stylex.props(s.scoreRow)}>
-                    <span {...stylex.props(s.label)}>
+                  <div key={position} {...stylex.props(r.setCard, r.setHeading)}>
+                    <span {...stylex.props(s.label, r.plainLabel)}>
                       {t('matches.results.setNumber', { number: position })}
                     </span>
-                    <span {...stylex.props(s.scoreValue)}>—</span>
-                    <span aria-hidden="true" {...stylex.props(s.copy)}>
-                      —
-                    </span>
-                    <span {...stylex.props(s.scoreValue)}>—</span>
-                    <Button
+                    <button
                       type="button"
                       aria-label={`${t('matches.results.setState.notPlayed')} · ${t('matches.results.setNumber', { number: position })} · ${t(position === sets.length + 1 ? 'matches.results.addSet' : 'matches.results.setStateLabel', { number: position })}`}
                       disabled={position !== sets.length + 1 || !sets.at(-1)?.completed}
-                      {...stylex.props(s.stateControl)}
+                      {...stylex.props(s.stateControl, controlStyles.size, controlStyles.focusRing)}
                       onClick={() =>
                         setSets([
                           ...sets,
@@ -724,13 +821,17 @@ function ResultForm({
                       }
                     >
                       <span {...stylex.props(s.statePill, s.neutral)}>
-                        {t('matches.results.setState.notPlayed')}
+                        {t(
+                          position === sets.length + 1
+                            ? 'matches.results.addSet'
+                            : 'matches.results.setState.notPlayed'
+                        )}
                       </span>
-                    </Button>
+                    </button>
                   </div>
                 ))}
             </section>
-            <section {...stylex.props(s.card, s.detailsCard)}>
+            <section data-result-section="details" {...stylex.props(s.card, r.card, s.detailsCard)}>
               <h2 {...stylex.props(s.heading)}>{t('matches.results.matchDetails')}</h2>
               <div {...stylex.props(s.inputField)}>
                 <span>{t('matches.results.playedAtLabel')}</span>
@@ -747,7 +848,7 @@ function ResultForm({
                   <label {...stylex.props(s.field)}>
                     {t('matches.results.playedAt', { timezone: event.timezone })}
                     <input
-                      {...stylex.props(s.input)}
+                      {...stylex.props(s.input, controlStyles.size)}
                       type="datetime-local"
                       required
                       value={date && time ? `${date}T${time}` : ''}
@@ -769,7 +870,7 @@ function ResultForm({
                 <label {...stylex.props(s.field)}>
                   {t('matches.results.playedAtOffset')}
                   <select
-                    {...stylex.props(s.input)}
+                    {...stylex.props(s.input, controlStyles.size)}
                     required
                     value={offset}
                     onChange={(e) => setOffset(e.target.value)}
@@ -786,7 +887,7 @@ function ResultForm({
               <label {...stylex.props(s.inputField)}>
                 {t('matches.results.courtLabel')}
                 <input
-                  {...stylex.props(s.input)}
+                  {...stylex.props(s.input, controlStyles.size)}
                   maxLength={100}
                   value={court}
                   onChange={(e) => setCourt(e.target.value)}
@@ -797,84 +898,58 @@ function ResultForm({
         )}
         {step === 2 && (
           <>
-            <MatchResultScores sets={sets} />
-            <section {...stylex.props(s.card)}>
-              <h2 {...stylex.props(s.heading)}>{t('matches.results.matchRecap')}</h2>
-              <dl {...stylex.props(s.recap)}>
-                <div {...stylex.props(s.fact)}>
-                  <dt {...stylex.props(s.label)}>{t('matches.results.community')}</dt>
+            <MatchResultScores sets={sets} teamNames={teamNames} />
+            {preview}
+            <section
+              data-result-section="facts"
+              {...stylex.props(s.card, r.card, r.recapCard)}
+              aria-label={t('matches.results.matchRecap')}
+            >
+              <dl {...stylex.props(s.recap, r.recap)}>
+                <div {...stylex.props(s.fact, r.fact)}>
+                  <dt {...stylex.props(s.label, r.plainLabel)}>{t('matches.results.community')}</dt>
                   <dd {...stylex.props(s.factValue)}>{event.community_name}</dd>
                 </div>
-                <div {...stylex.props(s.fact)}>
-                  <dt {...stylex.props(s.label)}>{t('matches.results.venueGroup')}</dt>
+                <div {...stylex.props(s.fact, r.fact)}>
+                  <dt {...stylex.props(s.label, r.plainLabel)}>
+                    {t('matches.results.venueGroup')}
+                  </dt>
                   <dd {...stylex.props(s.factValue)}>
                     {event.venue_name} · {t('matches.results.group', { number: group })}
                   </dd>
                 </div>
-                <div {...stylex.props(s.fact)}>
-                  <dt {...stylex.props(s.label)}>{t('matches.results.playedAtLabel')}</dt>
+                <div {...stylex.props(s.fact, r.fact)}>
+                  <dt {...stylex.props(s.label, r.plainLabel)}>
+                    {t('matches.results.playedAtLabel')}
+                  </dt>
                   <dd {...stylex.props(s.factValue)}>{playedLabel}</dd>
                 </div>
-                <div {...stylex.props(s.fact)}>
-                  <dt {...stylex.props(s.label)}>{t('matches.results.court')}</dt>
+                <div {...stylex.props(s.fact, r.fact)}>
+                  <dt {...stylex.props(s.label, r.plainLabel)}>{t('matches.results.court')}</dt>
                   <dd {...stylex.props(s.factValue)}>
                     {court || t('matches.results.notProvided')}
                   </dd>
                 </div>
-                <div {...stylex.props(s.fact)}>
-                  <dt {...stylex.props(s.label)}>{t('matches.results.eventType')}</dt>
+                <div {...stylex.props(s.fact, r.fact)}>
+                  <dt {...stylex.props(s.label, r.plainLabel)}>{t('matches.results.eventType')}</dt>
                   <dd {...stylex.props(s.factValue)}>
                     {t(
                       event.event_type === 'friendly'
                         ? 'matches.results.friendlyType'
-                        : 'matches.results.competitiveType'
+                        : event.competition_status === 'ranked'
+                          ? 'matches.results.competitiveType'
+                          : event.competition_status === 'unranked'
+                            ? 'matches.results.record.competitiveUnranked'
+                            : 'matches.results.record.competitive'
                     )}
                   </dd>
                 </div>
               </dl>
             </section>
+            <p {...stylex.props(s.copy)}>{t('matches.results.record.confirmationNote')}</p>
           </>
         )}
-        {step > 0 && !scoreBlocked && (
-          <section {...stylex.props(s.card)} aria-live="polite" aria-atomic="true">
-            <h3 {...stylex.props(s.label)}>{t('matches.results.outcomeLabel')}</h3>
-            <p {...stylex.props(s.heading)}>
-              {t(
-                outcome ? `matches.results.outcome.${outcome}` : 'matches.results.outcome.invalid',
-                {
-                  winnerSets: outcome === 'team_b' ? wins.team_b : wins.team_a,
-                  loserSets: outcome === 'team_b' ? wins.team_a : wins.team_b
-                }
-              )}
-            </p>
-            {outcome && (
-              <p {...stylex.props(s.copy)}>
-                {t(
-                  event.event_type === 'friendly'
-                    ? 'matches.results.friendlyHelper'
-                    : `matches.results.outcomeHelper.${outcome}`
-                )}
-              </p>
-            )}
-            <p
-              {...stylex.props(
-                s.statePill,
-                event.event_type === 'competitive' && outcome && outcome !== 'incomplete'
-                  ? s.positive
-                  : s.neutral,
-                s.effect
-              )}
-            >
-              {t(
-                event.event_type === 'competitive' && outcome && outcome !== 'incomplete'
-                  ? 'matches.results.ratingEffect'
-                  : event.event_type === 'friendly'
-                    ? 'matches.results.ratingEffectNone'
-                    : 'matches.results.ratingEffectIncomplete'
-              )}
-            </p>
-          </section>
-        )}
+        {step === 1 && preview}
       </fieldset>
       {step === 1 && scoreBlocked && (
         <p {...stylex.props(s.copy)}>
@@ -909,35 +984,65 @@ function ResultForm({
           })}
         </output>
       )}
+      <MatchResultNavigation
+        step={step}
+        blocked={blocked}
+        pending={pending}
+        disabled={!online || (step > 0 && scoreBlocked)}
+        correcting={!!correctionProposal}
+        onBack={() => move(step - 1)}
+        onReload={onReload}
+      />
+    </form>
+  );
+}
+
+function MatchResultNavigation({
+  step,
+  blocked,
+  pending,
+  disabled,
+  correcting,
+  onBack,
+  onReload
+}: {
+  step: number;
+  blocked: boolean;
+  pending: boolean;
+  disabled: boolean;
+  correcting: boolean;
+  onBack: () => void;
+  onReload: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <footer data-result-section="actions" {...stylex.props(r.sticky)}>
       {blocked ? (
-        <Button type="button" {...stylex.props(s.button)} onClick={onReload}>
-          {t('matches.results.reload')}
-        </Button>
+        <Button onClick={onReload}>{t('matches.results.reload')}</Button>
       ) : (
         <>
-          <Button
-            type="submit"
-            disabled={pending || !online || (step > 0 && scoreBlocked)}
-            {...stylex.props(s.button, s.primary)}
-          >
+          {step > 0 && (
+            <Button variant="secondary" xstyle={r.footerBack} disabled={pending} onClick={onBack}>
+              {t('matches.results.back')}
+            </Button>
+          )}
+          <Button type="submit" busy={pending} disabled={disabled} xstyle={r.footerNext}>
             {t(
               pending
-                ? correctionProposal
+                ? correcting
                   ? 'matches.results.correcting'
                   : 'matches.results.submitting'
                 : step === 0
                   ? 'matches.results.confirmTeams'
                   : step === 1
-                    ? correctionProposal
-                      ? 'matches.results.correctSubmit'
-                      : 'matches.results.submit'
-                    : correctionProposal
+                    ? 'matches.results.record.reviewAction'
+                    : correcting
                       ? 'matches.results.correctSubmit'
                       : 'matches.results.submit'
             )}
           </Button>
         </>
       )}
-    </form>
+    </footer>
   );
 }

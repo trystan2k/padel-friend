@@ -2,11 +2,18 @@ import { Outlet, createFileRoute, redirect } from '@tanstack/react-router';
 import { optionalReturnPath } from '../features/auth/return-path';
 import { useAuthIdentityGuard } from '../lib/use-auth-identity-guard';
 import { getOnboardingStatus } from '../features/player/player.functions';
+import { AppShell } from '../features/app-shell/AppShell';
 
 // Retires every mounted private view the moment the browser identity ends or is replaced.
 function ProtectedLayout() {
   useAuthIdentityGuard(Route.useRouteContext({ select: (context) => context.authUserId }));
-  return <Outlet />;
+  // The shell mounts once here; it hides itself on wizard, overlay and nested screens.
+  return (
+    <>
+      <Outlet />
+      <AppShell />
+    </>
+  );
 }
 
 export const Route = createFileRoute('/_protected')({

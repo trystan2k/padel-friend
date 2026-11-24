@@ -1,14 +1,10 @@
 import * as stylex from '@stylexjs/stylex';
 
-// Pencil frames: 18px rails, 32px major gap, 16px hero gap, 8px CTA inset / 12px row gap,
-// 14px card padding / 16px radius / 40px icon tile, 24px footer top inset, 32px bottom inset.
-// Space tokens stop at 20 and 40, so larger steps are composed from them.
-const target = 'calc(var(--space-40) + var(--space-4))';
-
-const focusRing = {
-  outline: 'var(--border-width-lg) solid var(--color-green)',
-  outlineOffset: 'var(--space-2)'
-} as const;
+const rail = 'calc(var(--space-12) * 2)';
+const majorGap = 'calc(var(--space-16) * 2)';
+const tile = 'calc(var(--space-40) + var(--space-4))';
+const pageRailLeft = 'max(calc(var(--space-12) * 2), env(safe-area-inset-left, 0px))';
+const pageRailRight = 'max(calc(var(--space-12) * 2), env(safe-area-inset-right, 0px))';
 
 export const styles = stylex.create({
   page: {
@@ -17,91 +13,80 @@ export const styles = stylex.create({
     fontFamily: 'var(--font-family-body)',
     minHeight: '100dvh',
     width: '100%',
-    boxSizing: 'border-box',
-    // Same bounded column as the other public pages; centered on desktop.
     maxWidth: 'calc(var(--space-40) * 12)',
-    marginInline: 'auto',
-    // Top inset clears the language/theme controls that float above the page.
-    padding: 'calc(var(--space-40) + var(--space-16)) var(--space-18) calc(var(--space-16) * 2)',
+    marginInline: 'auto'
+  },
+  header: {
+    paddingTop: 'calc(var(--space-16) + env(safe-area-inset-top, 0px))',
+    paddingBottom: 'var(--space-16)',
+    paddingLeft: pageRailLeft,
+    paddingRight: pageRailRight,
+    boxSizing: 'border-box',
     display: 'flex',
-    flexDirection: 'column',
-    gap: 'calc(var(--space-16) * 2)'
+    alignItems: 'center',
+    minHeight: 'calc(var(--space-40) + var(--space-18) * 2 + env(safe-area-inset-top, 0px))'
   },
   brand: {
-    display: 'block',
+    maxWidth: 'calc(100% - var(--space-40) * 2 - var(--space-14) * 2)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--space-10)',
     color: 'var(--color-green)',
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-bold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)'
+    lineHeight: '1.2',
+    overflowWrap: 'break-word'
+  },
+  logo: {
+    width: 'var(--space-40)',
+    height: 'var(--space-40)',
+    flexShrink: 0
   },
   main: {
     display: 'flex',
     flexDirection: 'column',
-    gap: 'calc(var(--space-16) * 2)',
-    minWidth: 0
+    gap: majorGap,
+    paddingTop: 'var(--space-20)',
+    paddingBottom: majorGap,
+    paddingLeft: pageRailLeft,
+    paddingRight: pageRailRight
   },
-  hero: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-16)',
-    minWidth: 0
-  },
+  hero: { display: 'flex', flexDirection: 'column', gap: 'var(--space-14)' },
   title: {
     margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-32)',
-    fontWeight: 'var(--font-weight-bold)',
-    lineHeight: 'var(--font-line-height-snug)',
+    fontSize: 'calc(var(--font-size-15) * 2)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-line-height-tight)',
     overflowWrap: 'break-word'
   },
   description: {
     margin: 0,
     color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-15)',
-    lineHeight: 'var(--font-line-height-body)',
+    fontSize: 'var(--font-size-16)',
+    lineHeight: 'var(--font-size-23)',
     overflowWrap: 'break-word'
   },
   actions: {
     display: 'flex',
     flexDirection: 'column',
     gap: 'var(--space-12)',
-    marginTop: 'var(--space-8)'
+    paddingTop: 'var(--space-10)'
   },
-  cta: {
-    boxSizing: 'border-box',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    minWidth: 0,
-    // 49px designed row, never below the 44px target.
-    minHeight: 'calc(var(--space-40) + var(--space-9))',
-    paddingInline: 'var(--space-12)',
-    borderStyle: 'solid',
-    borderWidth: 'var(--border-width-sm)',
-    borderRadius: 'var(--radius-12)',
-    fontFamily: 'var(--font-family-body)',
+  cta: { textDecoration: 'none', overflowWrap: 'break-word' },
+  signedInNote: {
+    margin: 0,
+    color: 'var(--color-muted)',
     fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-bold)',
-    textAlign: 'center',
-    textDecoration: 'none',
-    overflowWrap: 'break-word',
-    ':focus-visible': focusRing
+    lineHeight: 'var(--font-size-17)'
   },
-  ctaPrimary: {
-    backgroundColor: 'var(--color-green)',
-    borderColor: 'var(--color-green)',
-    color: 'var(--color-bg)'
+  features: { display: 'flex', flexDirection: 'column', gap: 'var(--space-14)' },
+  sectionTitle: {
+    margin: 0,
+    fontSize: 'var(--font-size-18)',
+    fontWeight: 'var(--font-weight-extrabold)',
+    lineHeight: 'var(--font-size-22)'
   },
-  // The Pencil stroke sits outside the 49px box, so it is a spread shadow, not layout.
-  ctaSecondary: {
-    backgroundColor: 'var(--color-surface)',
-    borderColor: 'transparent',
-    boxShadow: '0 0 0 var(--border-width-sm) var(--color-line)',
-    color: 'var(--color-text)'
-  },
-  features: {
+  featureList: {
     listStyle: 'none',
     margin: 0,
     padding: 0,
@@ -110,76 +95,61 @@ export const styles = stylex.create({
     gap: 'var(--space-12)'
   },
   card: {
-    boxSizing: 'border-box',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-10)',
-    minWidth: 0,
-    padding: 'var(--space-14)',
-    borderRadius: 'var(--radius-16)',
-    backgroundColor: 'var(--color-surface)'
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 'var(--space-14)',
+    // Pencil strokes are not included in auto-layout padding.
+    padding: 'calc(var(--space-16) - var(--border-width-sm))'
   },
   iconTile: {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
+    display: 'grid',
+    placeItems: 'center',
     flexShrink: 0,
-    width: 'var(--space-40)',
-    height: 'var(--space-40)',
+    width: tile,
+    height: tile,
     borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-green-soft)',
     color: 'var(--color-green)'
   },
-  icon: {
-    width: 'var(--space-20)',
-    height: 'var(--space-20)'
-  },
+  icon: { width: 'var(--font-size-22)', height: 'var(--font-size-22)' },
+  cardCopy: { display: 'grid', gap: 'var(--space-4)', minWidth: 0 },
   cardTitle: {
     margin: 0,
-    fontFamily: 'var(--font-family-heading)',
-    fontSize: 'var(--font-size-16)',
+    fontSize: 'var(--font-size-15)',
     fontWeight: 'var(--font-weight-bold)',
+    lineHeight: '1.2',
     overflowWrap: 'break-word'
   },
-  cardDescription: {
+  body: {
     margin: 0,
     color: 'var(--color-muted)',
     fontSize: 'var(--font-size-14)',
-    lineHeight: 'var(--font-line-height-comfortable)',
+    lineHeight: 'var(--font-size-20)',
     overflowWrap: 'break-word'
   },
-  // Pencil footer: 24px above the divider (on top of the 32px major gap), then 8px between rows.
   footer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--space-8)',
-    minWidth: 0,
-    marginTop: 'calc(var(--space-12) * 2)',
-    paddingTop: 'var(--space-8)',
-    borderTopStyle: 'solid',
-    borderTopWidth: 'var(--border-width-sm)',
-    borderTopColor: 'var(--color-line)'
+    display: 'grid',
+    gap: 'var(--space-16)',
+    backgroundColor: 'var(--color-surface)',
+    borderTop: 'var(--border-width-sm) solid var(--color-hairline)',
+    paddingTop: 'calc(' + rail + ' - var(--border-width-sm))',
+    paddingBottom: 'max(calc(var(--space-16) * 2), env(safe-area-inset-bottom, 0px))',
+    paddingLeft: pageRailLeft,
+    paddingRight: pageRailRight
   },
-  contact: { display: 'flex', flexDirection: 'column', minWidth: 0 },
-  // Link rows are real 44px targets, as in the Pencil footer rows.
-  footerLink: {
+  footerLinks: { display: 'grid', justifyItems: 'start', gap: 'var(--space-4)' },
+  contact: {
     display: 'flex',
     alignItems: 'center',
-    boxSizing: 'border-box',
-    minHeight: target,
-    color: 'var(--color-green)',
-    fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-14)',
-    fontWeight: 'var(--font-weight-bold)',
-    textDecoration: 'none',
-    overflowWrap: 'anywhere',
-    ':focus-visible': focusRing
+    flexWrap: 'wrap',
+    columnGap: 'var(--space-8)',
+    minWidth: 0
   },
-  footerText: {
+  contactLabel: {
     margin: 0,
-    color: 'var(--color-muted)',
-    fontSize: 'var(--font-size-13)',
-    overflowWrap: 'break-word'
+    fontSize: 'var(--font-size-15)',
+    fontWeight: 'var(--font-weight-bold)'
   },
-  footerNote: { lineHeight: 'var(--font-line-height-comfortable)' }
+  contactLink: { overflowWrap: 'anywhere', maxWidth: '100%' },
+  operator: { display: 'grid', gap: 'var(--space-6)' }
 });

@@ -1,12 +1,14 @@
 import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { MatchResultPending } from './MatchResultPending';
 import { MatchResultRankedBlocked } from './MatchResultRankedBlocked';
 import { MatchResultRejectDialog } from './MatchResultRejectDialog';
 import { MatchResultTeams, resultSetWins } from './MatchResultFacts';
 import type { ResultProposal, ResultRejectionReason } from './match-result-model';
+import { matchDetailShellStyles as shell } from './match-detail-shell.styles';
 import { matchResultReviewStyles as s, matchResultStyles as base } from './match-result.styles';
 import { useMatchResultReview } from './use-match-result-review';
 
@@ -24,6 +26,8 @@ export function MatchResultReview({
   timezone,
   asOf,
   compact = false,
+  recording = false,
+  actionSlot,
   onRefresh
 }: {
   eventId: string;
@@ -31,6 +35,13 @@ export function MatchResultReview({
   timezone: string;
   asOf: string;
   compact?: boolean;
+  recording?: boolean;
+  /**
+   * Frame sLXK7: the single-result detail hosts Approve above the secondary action in its sticky bar.
+   * An element renders them there through this same controller (null until the slot mounts);
+   * omitted, they stay in the card (multi-group cards, GMcbD).
+   */
+  actionSlot?: HTMLElement | null;
   onRefresh: () => void | Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
@@ -85,6 +96,21 @@ export function MatchResultReview({
                 ? 'matches.corrections.adminOverride'
                 : 'matches.results.confirmation.manual'
           );
+
+  const showApprove =
+    proposal.can_approve &&
+    !(
+      review.feedback?.kind === 'recorded' &&
+      review.feedback.decision === 'approve' &&
+      review.feedback.version === proposal.version
+    );
+  const showReject =
+    proposal.can_reject &&
+    !(
+      review.feedback?.kind === 'recorded' &&
+      review.feedback.decision === 'reject' &&
+      review.feedback.version === proposal.version
+    );
 
   async function submitReject(reasonCode: ResultRejectionReason, reasonNote: string | null) {
     return review.reject(reasonCode, reasonNote);
@@ -295,7 +321,7 @@ export function MatchResultReview({
         </section>
       )}
       {proposal.status !== 'confirmed' && (
-        <MatchResultRankedBlocked eventId={eventId} proposal={proposal} />
+        <MatchResultRankedBlocked eventId={eventId} proposal={proposal} recording={recording} />
       )}
       {feedbackCopy && !rejectOpen && review.feedback?.kind !== 'stale' && (
         <output
@@ -327,43 +353,33 @@ export function MatchResultReview({
           review.feedback.status !== 'pending'
         ) &&
         (review.online ? (
-          <div {...stylex.props(s.actionRow)}>
-            {proposal.can_approve &&
-              !(
-                review.feedback?.kind === 'recorded' &&
-                review.feedback.decision === 'approve' &&
-                review.feedback.version === proposal.version
-              ) && (
-                <button
-                  type="button"
-                  disabled={review.pending}
-                  {...stylex.props(base.button, s.reviewApprove, s.action)}
-                  onClick={() => void review.approve()}
-                >
-                  {t(
-                    review.pending
-                      ? 'matches.results.review.approving'
-                      : 'matches.results.review.approve'
-                  )}
-                </button>
-              )}
-            {proposal.can_reject &&
-              !(
-                review.feedback?.kind === 'recorded' &&
-                review.feedback.decision === 'reject' &&
-                review.feedback.version === proposal.version
-              ) && (
-                <button
-                  ref={rejectTrigger}
-                  type="button"
-                  disabled={review.pending}
-                  {...stylex.props(base.button, s.action, s.rejectAction)}
-                  onClick={() => setRejectOpen(true)}
-                >
-                  {t('matches.results.review.reject')}
-                </button>
-              )}
-          </div>
+          <ReviewActionHost slot={actionSlot} empty={!showApprove && !showReject}>
+            {showApprove && (
+              <button
+                type="button"
+                disabled={review.pending}
+                {...stylex.props(base.button, s.reviewApprove, s.action)}
+                onClick={() => void review.approve()}
+              >
+                {t(
+                  review.pending
+                    ? 'matches.results.review.approving'
+                    : 'matches.results.review.approve'
+                )}
+              </button>
+            )}
+            {showReject && (
+              <button
+                ref={rejectTrigger}
+                type="button"
+                disabled={review.pending}
+                {...stylex.props(base.button, s.action, s.rejectAction)}
+                onClick={() => setRejectOpen(true)}
+              >
+                {t('matches.results.review.reject')}
+              </button>
+            )}
+          </ReviewActionHost>
         ) : review.feedback?.kind !== 'offline' ? (
           <output aria-live="polite" {...stylex.props(s.inlineFeedback, s.feedbackError)}>
             {t('matches.results.review.offline')}
@@ -395,6 +411,27 @@ export function MatchResultReview({
         />
       )}
     </article>
+  );
+}
+
+// Single-result actions sit in the detail's sticky bar when a slot element is given (Approve above the
+// secondary action, sLXK7); without a slot they share one wrapping row inside the card.
+function ReviewActionHost({
+  slot,
+  empty,
+  children
+}: {
+  slot: HTMLElement | null | undefined;
+  empty: boolean;
+  children: ReactNode;
+}) {
+  if (slot === undefined) return <div {...stylex.props(s.actionRow)}>{children}</div>;
+  if (!slot || empty) return null;
+  return createPortal(
+    <div data-match-action-bar="" {...stylex.props(shell.actionBar)}>
+      <div {...stylex.props(shell.barAction)}>{children}</div>
+    </div>,
+    slot
   );
 }
 

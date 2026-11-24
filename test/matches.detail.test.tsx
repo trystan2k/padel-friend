@@ -182,16 +182,12 @@ describe('match detail surface', () => {
       });
       mount(match, locale);
       expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
-        i18n.t('matches.detail.title')
+        i18n.t('matches.detail.barTitle')
       );
       const back = screen.getByRole('link', { name: i18n.t('matches.back') });
       expect(back.getAttribute('href')).toBe('/matches');
       expect(back.textContent).toBe('');
-      expect(
-        screen.getByText(
-          `${match.venue_name} · ${i18n.t('matches.detail.visibility.community_open')}`
-        )
-      ).toBeTruthy();
+      expect(screen.getByText(i18n.t('matches.detail.visibility.community_open'))).toBeTruthy();
       expect(screen.getByRole('region', { name: match.venue_name })).toBeTruthy();
       expect(
         screen.getByRole('link', {

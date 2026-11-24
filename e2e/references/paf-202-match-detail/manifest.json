@@ -1,0 +1,196 @@
+{
+  "sourceDesign": "docs/design/Padel-friend App Redesign/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export([12 frame ids], 'png', '<repo>/e2e/references/paf-202-match-detail', {scale:1})",
+  "width": 390,
+  "frames": {
+    "JLqMT": {
+      "state": "Match detail — public guest (visuals reused for authorized non-member only; D3)",
+      "route": "/matches/$eventId (signed-in non-member / reserve-bound caller)",
+      "probe": "structural: hero order, request action only, no anonymous access",
+      "sha256": "cea6e1bda39c23dc03358c98af2334e93ba2345c25050b41bdd5974cf3fef5ef"
+    },
+    "eYIgj": {
+      "state": "Match detail — friendly, approval required",
+      "route": "/matches/$eventId (request state)",
+      "probe": "structural (F25): centered Match top bar with Share on the end, hero (photo, chips, 28/800 venue title, date line), playing/level/price strip, roster/status, one sticky request action, 14px rhythm",
+      "sha256": "6eb7b734be81351783fffe7dd9339c7d60e7acb84b25e13246e280b1fd9417e6"
+    },
+    "nNzWb": {
+      "state": "Match detail — competitive unranked, approval required",
+      "route": "/matches/$eventId (request state, Unranked chip)",
+      "probe": "structural: chips, request action",
+      "sha256": "7591cf0d2099a9a6fdd7fd275eecb4ee1ade22e8277ed8f827cd7e061e839600"
+    },
+    "fo8Zn": {
+      "state": "Match detail — direct join",
+      "route": "/matches/$eventId (join state)",
+      "probe": "structural: join CTA, capacity, level range",
+      "sha256": "f32426684587d4474ebe50c597fd83ea065b244f35b2c94f70936552b6ba2933"
+    },
+    "SYMLa": {
+      "state": "Match detail — registration full",
+      "route": "/matches/$eventId (full state)",
+      "probe": "structural: disabled Match full action (no reserve-join mutation exists)",
+      "sha256": "adb8e1afe32f04983b3cc26097aa1f8426f1ae3d55378a635c686dc71a479834"
+    },
+    "tYXlh": {
+      "state": "Match detail — registration closed",
+      "route": "/matches/$eventId (closed state)",
+      "probe": "structural: no join/request action, closed copy",
+      "sha256": "1b050011fc0780878abf871d152f303d266037e029a00ca2574f6df2c5c5b839"
+    },
+    "CLn9x": {
+      "state": "Match requests — organizer",
+      "route": "/matches/$eventId (MatchRequestQueue, creator only)",
+      "probe": "structural: Decline | Approve pair, newest first",
+      "sha256": "de26a553029279696d2066818b0c3006269da54695a90e24dc6fe30810912563"
+    },
+    "Za6r4": {
+      "state": "Match requests — requester states",
+      "route": "/matches/$eventId (pending / approved / declined / expired)",
+      "probe": "state board: one state per fixture",
+      "sha256": "3744719ab6b1a0cdc16d83a38f0aa7c41ec10c9bd3c39a81f2ed8da894928ba0"
+    },
+    "xC04T": {
+      "state": "Match roster — participation states",
+      "route": "/matches/$eventId (MatchRosterCard, accepted viewers)",
+      "probe": "state board: playing → reserve → not playing",
+      "sha256": "691374df11c4b4b3c9b68b795e5143ad1fb11cd5c6b526d08d7dfaf0643effb1"
+    },
+    "Cpd7L": {
+      "state": "Match participation — quartet filled",
+      "route": "/matches/$eventId (accepted playing/promoted)",
+      "probe": "state board: playing / promoted copy",
+      "sha256": "66f73c62cab08a80f7da368536c4f600a7f2cc6bb0b0f7f8fb25ff26bd39d407"
+    },
+    "t1ywa": {
+      "state": "Match participation — status variants",
+      "route": "/matches/$eventId (playing / reserve / promoted / removed / not playing)",
+      "probe": "state board",
+      "sha256": "326aeccb2217b58d87ba5ab873153f461409dca3c5c3b39959e5a7f69030cb32"
+    },
+    "Fyhbv": {
+      "state": "Match invitation — invited player",
+      "route": "/matches/$eventId (MatchInvitationPanel)",
+      "probe": "structural: Accept | Decline stacked in the sticky action bar (no Join), expiry hint in the card",
+      "sha256": "48b190fad35e96534207ca8c5f66b3e7e1fcf7efd7e2072e3b313fa2973ede79"
+    }
+  },
+  "frameRegions": {
+    "fo8Zn": {
+      "topBar": {
+        "status": "gated",
+        "reference": {
+          "x": 0,
+          "y": 44,
+          "width": 390,
+          "height": 56
+        },
+        "offsetY": 44,
+        "budget": 0.045,
+        "classification": "Match top bar (48px back, centered 17/700 Match title, Share 15/700 green on the end) against the fo8Zn bar under the 44px status bar. Text and icons are identical; the residual is font raster only. Observed residual 0.0314 on the full 390x56 bar; 0.045 margin. All four geometry axes gated exactly (measured delta 0)."
+      },
+      "heroPhoto": {
+        "status": "finding",
+        "reference": {
+          "x": 20,
+          "y": 104,
+          "width": 350,
+          "height": 132
+        },
+        "offsetY": 44,
+        "geometry": ["x", "y", "width", "height"],
+        "pixels": "none",
+        "pixelsReason": "The fixture photo is a 1x1 stub PNG stretched to the 350x132 frame, while the frame draws a labelled placeholder tile, so pixels carry no design signal; the rect itself is gated.",
+        "classification": "132px hero photo rect: x, y, width and height gated exactly (measured delta 0). Pixels intentionally not compared (real-data difference: fixture stub photo vs the frame placeholder)."
+      },
+      "heroChip": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 250,
+          "width": 110,
+          "height": 24
+        },
+        "offsetY": 44,
+        "geometry": ["x", "y"],
+        "budget": 0.245,
+        "classification": "First chip (Competitive) vs the frame chip. F50 fixed: MatchCompetitionBadge rendered its Ranked/Unranked chip inside a <p> that kept the UA 1em block margins (shared s.chips had no margin reset), so the nested chips row grew to about 51px (frame 24px) and the first chip sat 14px low (raw residual 0.2269 at y +14, heroTitle y +26.94). s.chips now sets margin 0. Gated: x and y exact (measured delta 0). Residual 0.2269 on the 110x24 crop, budget 0.245: the remainder is the real-data chip difference, not layout (no leading dot glyph so width -16.14, height -1.06 from the app badge line box, font raster); width and height are not gated."
+      },
+      "heroTitle": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 288,
+          "width": 350,
+          "height": 60
+        },
+        "offsetY": 44,
+        "geometry": ["x", "y", "width"],
+        "geometryTolerance": 1.5,
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 350,
+          "height": 60
+        },
+        "budget": 0.31,
+        "classification": "28/800 venue title + date line block. Real-data adaptation: the frame shows a match name and an end time; the app renders the venue and a localized start date (masked: 38% of the crop). F50 fixed: y was +26.94 because the inflated chips row pushed the body down; it is now -1.06 (22.94px app chip row vs the 24px frame chip), gated at 1.5px tolerance together with x and width (measured 0). Height 47.38 vs 60 is not gated: the frame block draws a match name plus a time line, the app renders venue plus date. Residual 0.2898 on the 350x60 crop (venue text vs frame sample text under the date mask), budget 0.31. Title typography/size stays asserted structurally."
+      },
+      "stats": {
+        "status": "gated",
+        "reference": {
+          "x": 20,
+          "y": 444,
+          "width": 350,
+          "height": 76
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 350,
+          "height": 64
+        },
+        "budget": 0.1,
+        "classification": "Playing / level / price strip, top 64px (white surface, 16px radius, three centered columns). Real-data adaptation: fixture counts and price (EUR 12) differ from the frame sample (6/8, EUR 8.50), and the level reads the fixture range. Observed residual 0.0833 on the 350x64 crop; 0.10 margin. x/width gated exactly. Documented divergences, not gated: y -7.69 because the frame venue card is not drawn (recorded deviation F25), and live height 65.3 vs frame 76 (-10.7). F50 adjudication: not a default-style bug. The strip is authored on tokens (paddingBlock --space-12, value 18/800 per U3 spec, 13px label, gap --space-2); the frame measures about 16px block padding plus a 1px hairline stroke around the same content. Left as a deliberate density adaptation (no frame stroke or 16px padding is drawn), pending an owner decision; not gated on height."
+      },
+      "actionBar": {
+        "status": "gated",
+        "reference": {
+          "x": 0,
+          "y": 730,
+          "width": 390,
+          "height": 142
+        },
+        "offsetY": 44,
+        "geometry": ["x", "width"],
+        "crop": {
+          "dx": 0,
+          "dy": 0,
+          "width": 390,
+          "height": 110
+        },
+        "budget": 0.11,
+        "classification": "Sticky action bar top 110px (hairline edge, capacity pill, 52px Join match button) for the direct-join open state. Real-data adaptation: capacity copy wording and the join CTA text come from the app copy. Observed residual 0.0919 on the 390x110 crop; 0.11 margin. x/width gated exactly (full-bleed 390). y +19.75 and height -3.75 are not gated: the live capture is 390x844 (bar sits on the viewport bottom) while the frame is 872 tall under a 44px status bar; bar position at the viewport bottom is asserted structurally."
+      }
+    }
+  },
+  "decisions": {
+    "D3": "JLqMT shows anonymous 'public guest' access. Not approved: visuals apply to AUTHORIZED states only; /matches/$eventId stays under _protected (no anonymous route, no onboarding bypass, no auth/RLS change).",
+    "D6": "Hero metrics render real event data: playing/maximum, level range or 'Any', price when present, reserve count. Group average levels (frames) have no source for non-roster viewers and are not rendered.",
+    "deviations": [
+      "SYMLa draws 'Join reserve queue'; no reserve-join mutation exists for a full match, so the control is a disabled 'Match full' action.",
+      "F25 (owner decision RESTYLE): the detail renders the shared TopBar (centered 17/700 Match title, 48px back, Share as a 15/700 green text action on the end) and marks main data-route-chrome=\"navigation\", so the global language/theme chips step aside on this route; preferences stay reachable via Me.",
+      "F25: the frame title is a match name; the app has no match name, so the 28/800 title is the venue and the date line is the localized zoned date and time (no end time). The frame's venue card is not drawn: View court location and the existing notes sit under the date line.",
+      "F25: the stats strip carries playing, level and price (price omitted when absent). The reserve queue row follows the roster; Timezone and the Participation counts are relocated to a lower Participation card, not removed. Organizer and management panels follow the roster; invitation, reconfirmation and status banners stay above the hero as urgent per-state content.",
+      "F25: exactly one sticky action bar exists where the existing registration controller renders a control (join, request, request again, register again, disabled full). Closed, pending and accepted states render no control, so no bar is invented. The bar holds the capacity or request-note line plus the one control and its feedback; it is last in the content column, full-bleed, with safe-area bottom padding.",
+      "R5 F67 (owner decision ALIGN TO FRAME Fyhbv). CTA table, invited caller with a pending invitation: BEFORE community-open = invitation card with Accept/Decline AND the sticky bar's 'Join match' (two competing primaries); invite-only = card with Accept/Decline, no sticky bar. AFTER (both visibilities) = the sticky bar hosts Accept (primary) and Decline (secondary) and nothing else; the Join / request control steps aside (MatchRegistrationPanel invitationPending). The invitation card stays as the informational status plus expiry hint; the 'Your place' registration card steps aside for a caller with no place yet (its open-match copy would offer a Join that no longer shows). The Accept/Decline buttons are still rendered by the one MatchInvitationPanel controller (busy, offline, error and pending-approval handling unchanged) through a portal into a slot at the end of the detail column, so nothing is duplicated or remounted; before hydration the slot is absent and the buttons appear once it mounts. After a response the invitation status banner replaces the card and the registration state decides the one control (accepted/pending: none). A declined or expired invitation no longer suppresses Join / request. The frame's notice ('Accepting joins the queue now. No spot is held...') has no approved copy in the app catalogs and is not rendered (frame-only remainder).",
+      "Roster is gated to accepted viewers (PAF-5.5 recorded deviation, unchanged)."
+    ]
+  },
+  "toleranceEvidence": {
+    "screenshots": "Frame-relative regions (frameRegions.fo8Zn, direct-join open state at 390x844, light/en) gate what pixels can prove: topBar (residual 0.0314, budget 0.045), heroChip (0.2269, budget 0.245), heroTitle (0.2898, budget 0.31), stats strip top 64px (0.0833, budget 0.10) and the sticky actionBar top 110px (0.0919, budget 0.11). heroPhoto geometry is gated exactly with pixels 'none' (fixture stub photo) and stays a documented finding. F50: the competition badge <p> margin (+14px chip, +26.94px title) is fixed by margin 0 on the shared chips style; hero chip and title y axes are gated. Real-data differences (venue name, localized date, fixture counts/price, missing chip dot) stay inside the measured budgets; Structural probes (top bar geometry, hero order, 14px rhythm, gutter, sticky bar, token fills, hit targets) stay authoritative; no budget is widened to mask a defect. eYIgj's request state has the same hero/bar composition and is covered by the same structural probes. 320px pt-BR top bar and hero is asserted by the narrow translated probe in matches-registration-visual.spec.ts."
+  }
+}

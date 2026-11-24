@@ -1,0 +1,124 @@
+{
+  "runtimeEnforcement": {
+    "approvedReferencePngDigests": "Runtime-enforced by auth-visual.spec.ts before screenshot comparisons.",
+    "derivedBaselineDigests": "Runtime-enforced by auth-visual.spec.ts before and after screenshot comparisons; baselines are re-derived from the approved exports and compared byte for byte, so --update-snapshots can never overwrite them silently.",
+    "perFrameAllowance": "maxDiffPixelRatio per screenshot, read by the spec from this manifest."
+  },
+  "sourceDesign": {
+    "path": "docs/design/padel-friend-clubhouse.pen",
+    "exportCommand": "Pencil MCP Export([\"wzWLt\",\"EGb2g\",\"ieoni\",\"FZlHy\",\"ZthyR\"], \"png\", \"<repo>/e2e/references/paf-202-auth\", {scale:1})",
+    "provenanceNote": "Five Clubhouse auth frames exported read-only at scale 1 (390×844) and committed unchanged. D7: FZlHy (\"Login — check your inbox\") is the /login?reset=sent state reached after the forgot-password request. /auth/confirm-invite has no approved frame (D1) and is not covered here."
+  },
+  "comparison": {
+    "viewport": "390×800 CSS px, deviceScaleFactor 1, viewport screenshot. The pen frame is 390×844: its top 44px is the OS status bar (9:41, signal glyphs), device chrome the app never renders, so the baseline is the export with exactly those rows removed (no scaling, no recolor).",
+    "transform": "deriveCroppedTopPng(export, 44) in e2e/png-mask.ts; on wzWLt and FZlHy only, paint the 64×64 illustrative logo tile using authLogoMask. D8 mandates the supplied original PNG; the live spec separately checks its geometry and verifies served-byte identity.",
+    "diff": {
+      "comparator": "playwright pixelmatch",
+      "threshold": 0.1
+    },
+    "environment": "Chromium with the playwright.config.ts deterministic raster flags, service worker blocked, reduced motion, animations disabled, caret hidden, Figtree 400-800 loaded before capture."
+  },
+  "calibration": {
+    "date": "2026-11-19",
+    "environment": "macOS (Darwin), Playwright Chromium, pnpm test:e2e e2e/auth-visual.spec.ts with every allowance 0 so each nonzero residual is reported by the comparator",
+    "allowancePolicy": "Measured ratio rounded up to 0.05pp, plus 0.25pp headroom for Pencil-vs-Chromium rasterization drift across OS (Linux CI measurement not available locally). Geometry probes stay exact (±1px, ±2px only for glyph-metric x/width and Pencil-rounded line heights) and are never widened.",
+    "justification": "The Figtree font swap (U2) and the Clubhouse redesign (new top bar, sticky action bar, 52px controls, sentence-case copy) invalidate every earlier Inter/Manrope-era PAF-1 baseline and hash; the pinned hashes were replaced deliberately by the new approved frame exports. Residual is text antialiasing/half-pixel placement (Pencil lays out fractional y, Chromium snaps) plus 1.5px control strokes, never layout: structure is gated by the geometry probes.",
+    "measured": {
+      "login-welcome.png": {
+        "differing": 4329,
+        "total": 312000,
+        "ratio": 0.013875
+      },
+      "account-signup.png": {
+        "differing": 8239,
+        "total": 312000,
+        "ratio": 0.026407
+      },
+      "forgot-password.png": {
+        "differing": 3356,
+        "total": 312000,
+        "ratio": 0.010756
+      },
+      "login-inbox.png": {
+        "differing": 7396,
+        "total": 312000,
+        "ratio": 0.023705
+      },
+      "reset-password.png": {
+        "differing": 4825,
+        "total": 312000,
+        "ratio": 0.015465
+      }
+    },
+    "knownDivergences": {
+      "account-signup.png": [
+        "EGb2g draws a Google divider+button; the signup route has no OAuth flow and U6 may not add one (behavior-preserving adaptation), so that region is absent and the retained sign-in prompt sits there instead.",
+        "Frame Meta 'At least 8 characters' is one line; the real password policy copy (D2 truthful) wraps to two lines at 390px."
+      ],
+      "reset-password.png": [
+        "Frame rule 1 'At least 8 characters' is one line; the real policy copy (D2 truthful) wraps to two lines at 390px.",
+        "No existing back action; no invented recovery-session exit."
+      ],
+      "login-welcome.png": [
+        "Google 'G' mark uses the text color token instead of Google brand blue (no design token).",
+        "D8 requires the original app icon rather than the illustrative logo tile from Pencil; that exact area is masked and separately verified."
+      ],
+      "login-inbox.png": [
+        "Google 'G' mark uses the text color token instead of Google brand blue (no design token).",
+        "D8 requires the original app icon rather than the illustrative logo tile from Pencil; that exact area is masked and separately verified."
+      ]
+    }
+  },
+  "frames": {
+    "login-welcome.png": {
+      "frameId": "wzWLt",
+      "frameName": "Login — welcome",
+      "source": "wzWLt.png",
+      "sourceSha256": "7a2f435bbdabec8f8c448b1c064fa09263326b2557d79ab2d8b15b8ecf75c6ad",
+      "baselineSha256": "7f16e7a4df5870752e62e5424146a578abd2a6a5a1c5673c216f89eb37d03a1a",
+      "width": 390,
+      "height": 800,
+      "maxDiffPixelRatio": 0.0165
+    },
+    "account-signup.png": {
+      "frameId": "EGb2g",
+      "frameName": "Onboarding — account",
+      "source": "EGb2g.png",
+      "sourceSha256": "d633a58ab65b645bece75d837f6373b80abb8ed83cfec8b841e9e324fb17ffd7",
+      "baselineSha256": "3a36b7c649656475b2c38786320ab645e2093b011beb0b8dd60ee2efbbbb483d",
+      "width": 390,
+      "height": 800,
+      "maxDiffPixelRatio": 0.029
+    },
+    "forgot-password.png": {
+      "frameId": "ieoni",
+      "frameName": "Forgot password",
+      "source": "ieoni.png",
+      "sourceSha256": "f5dbaca97109c579e823a0b9be4a2b9138052ccfffe0352e37512deee685f35b",
+      "baselineSha256": "2774cc81f26ab4a9c9a6c9528dfc2d0b0b880093fa86a921e8debf4b655dba45",
+      "width": 390,
+      "height": 800,
+      "maxDiffPixelRatio": 0.0135
+    },
+    "login-inbox.png": {
+      "frameId": "FZlHy",
+      "frameName": "Login — check your inbox",
+      "source": "FZlHy.png",
+      "sourceSha256": "450ce52165047430f0bd1fd5aba35ca3a31796878324319a2c1addf144623295",
+      "baselineSha256": "f434d388a3da9d59d788969e498af94650132379e82094509483f19f60f2ec6b",
+      "width": 390,
+      "height": 800,
+      "maxDiffPixelRatio": 0.0265
+    },
+    "reset-password.png": {
+      "frameId": "ZthyR",
+      "frameName": "Create new password",
+      "source": "ZthyR.png",
+      "sourceSha256": "f6a00190f2cc01f36320c3463a8ab4db06e0410b601c9ae90f77da1e0c3f5178",
+      "baselineSha256": "ed65982ea89cd196b78b1f928559ffcf1c60719fa2c077bffaf9024efe9b79c8",
+      "width": 390,
+      "height": 800,
+      "maxDiffPixelRatio": 0.018
+    }
+  }
+}

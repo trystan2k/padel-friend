@@ -257,15 +257,15 @@ describe('onboarding availability', () => {
     return user;
   };
 
-  it('sits after the primary action, precise level and bio, and never blocks submit', async () => {
+  it('follows the precise level and bio before the sticky action, and never blocks submit', async () => {
     mountOnboarding();
     const submit = screen.getByRole('button', { name: new RegExp(en.onboarding.save) });
     const precise = screen.getByLabelText(en.onboarding.preciseLevel);
-    const bio = screen.getByLabelText(en.profile.bio);
+    const bio = screen.getByLabelText(en.onboarding.bio);
     const group = screen.getByRole('group', { name: en.profile.availabilityDaysLegend });
     const after = (a: Node, b: Node) =>
       Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(after(submit, group)).toBe(true);
+    expect(after(group, submit)).toBe(true);
     expect(after(precise, group)).toBe(true);
     expect(after(bio, group)).toBe(true);
     expect(screen.getAllByRole<HTMLInputElement>('checkbox').some((box) => box.required)).toBe(

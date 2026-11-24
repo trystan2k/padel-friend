@@ -72,26 +72,31 @@ describe('PublicHomepage', () => {
     expect(screen.getByRole('link', { name: copy.actions.dashboard }).getAttribute('href')).toBe(
       '/dashboard'
     );
+    expect(screen.getByText(copy.actions.signedInNote)).toBeTruthy();
     expect(screen.queryByRole('link', { name: copy.actions.signIn })).toBeNull();
     expect(screen.queryByRole('link', { name: copy.actions.createAccount })).toBeNull();
     // Same public body in both states.
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(copy.hero.title);
-    expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(3);
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(copy.features.heading);
+    expect(screen.getAllByRole('heading', { level: 3 })).toHaveLength(3);
     expect(screen.getByRole('contentinfo')).toBeTruthy();
   });
 
-  it('has header, main and footer landmarks with one h1 and three feature h2 in a list', async () => {
+  it('has header, main and footer landmarks with one h1 and a features section heading and three subordinate card headings', async () => {
     await renderHomepage('en', false);
 
     expect(screen.getAllByRole('banner')).toHaveLength(1);
     expect(screen.getAllByRole('main')).toHaveLength(1);
     expect(screen.getAllByRole('contentinfo')).toHaveLength(1);
-    expect(within(screen.getByRole('banner')).getByText(en.auth.welcomeBrand)).toBeTruthy();
+    expect(within(screen.getByRole('banner')).getByText(en.publicHomepage.brand)).toBeTruthy();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     const main = screen.getByRole('main');
+    expect(within(main).getByRole('heading', { level: 2 }).textContent).toBe(
+      en.publicHomepage.features.heading
+    );
     expect(
       within(main)
-        .getAllByRole('heading', { level: 2 })
+        .getAllByRole('heading', { level: 3 })
         .map((h) => h.textContent)
     ).toEqual(featureKeys.map((key) => en.publicHomepage.features[key].title));
     const items = within(within(main).getByRole('list')).getAllByRole('listitem');
@@ -105,6 +110,9 @@ describe('PublicHomepage', () => {
   it('keeps the decorative icons out of the accessibility tree and has no nested interactives', async () => {
     await renderHomepage('en', false);
 
+    const logo = document.querySelector('header img');
+    expect(logo?.getAttribute('alt')).toBe('');
+    expect(logo?.getAttribute('src')).toContain('padel-friends-app-icon.png');
     const icons = document.querySelectorAll('svg');
     expect(icons).toHaveLength(3);
     for (const icon of icons) expect(icon.closest('[aria-hidden="true"]')).not.toBeNull();
@@ -146,8 +154,11 @@ describe('publicHomepage copy contract', () => {
     'actions.createAccount',
     'actions.dashboard',
     'actions.signIn',
+    'actions.signedInNote',
+    'brand',
     'features.findMatches.description',
     'features.findMatches.title',
+    'features.heading',
     'features.inviteFriends.description',
     'features.inviteFriends.title',
     'features.trackResults.description',
@@ -191,8 +202,8 @@ describe('publicHomepage copy contract', () => {
   it('keeps the approved English copy', () => {
     expect(en.publicHomepage.hero.title).toBe('Find your next padel match.');
     expect(en.publicHomepage.footer.operator).toBe(
-      'Run by Thiago Mendonça, individual operator, Spain.'
+      'Padel Friends is run by Thiago Mendonça, an individual operator based in Spain.'
     );
-    expect(en.publicHomepage.footer.audience).toBe('For players aged 16+.');
+    expect(en.publicHomepage.footer.audience).toBe('For players aged 16 and over.');
   });
 });

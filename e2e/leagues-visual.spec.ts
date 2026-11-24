@@ -1,19 +1,29 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
+import { createHash } from 'node:crypto';
 import { waitForHydratedPage } from './auth-helpers';
+import { assertFrameRegions, type FrameRegionRecord } from './frame-regions';
+import { assertNoUaFieldsetBorders } from './route-chrome';
 import { copies, day, fill, leagueFixtures, sql, type Actor } from './leagues-fixtures';
-import manifest from './references/paf-11/manifest.json' with { type: 'json' };
+import manifest from './references/paf-202-leagues/manifest.json' with { type: 'json' };
 
-// PAF-11 visual + structural certification (U5.2, AC9). Core Pencil frames are compared at the
-// exact half-scale reference size with a documented nonzero budget; exact layout, association,
+// League visual + structural certification. ik5JC and MYsDp are compared with the Clubhouse 1x
+// exports (paf-202-leagues); U13 owns the wHaAb wizard raster comparator. Exact layout, association,
 // keyboard, target-size and locale probes (never relaxed by the budgets) gate the structure.
-type Frame = keyof typeof manifest.visualBudgets.perScreen;
+type Frame = 'ik5JC' | 'MYsDp';
+
+// wHaAb is owned by the create wizard: its Pencil export and measured regions live with the wizard.
+const wizardReferences: {
+  frames: Record<string, { sha256: string }>;
+  frameRegions: Record<string, Record<string, FrameRegionRecord>>;
+} = JSON.parse(
+  readFileSync(new URL('./references/paf-202-create-wizard/manifest.json', import.meta.url), 'utf8')
+);
 type Locale = keyof typeof copies;
 
 const sizes: Record<Frame, { width: number; height: number }> = {
   ik5JC: { width: 390, height: 844 },
-  MYsDp: { width: 431, height: 431 },
-  wHaAb: { width: 390, height: 916 }
+  MYsDp: { width: 430, height: 430 }
 };
 const LONG_NAME = 'Liga Interclubes de Padel Primavera-Verano de los Amigos del Barrio Norte';
 
@@ -68,9 +78,9 @@ async function assertNoOverflow(page: Page, label: string) {
   expect(metrics.clipped, `${label} controls outside viewport`).toEqual([]);
 }
 
-// Reference geometry at half scale (Pencil 2x export / 2): the content column keeps an 18px
-// margin on each side (x 18..372 on 390px).
-const MARGIN = 18;
+// Reference geometry (Clubhouse frames): the content column keeps a 20px margin on each side
+// (x 20..370 on 390px).
+const MARGIN = 20;
 const GEOMETRY_TOLERANCE = 2;
 
 /**
@@ -125,7 +135,7 @@ async function assertColumn(
 async function assertTouchTargets(root: Locator, label: string) {
   const targets = await root
     .locator(
-      'a:visible, button:visible, input:visible:not([type=radio]):not([type=checkbox]), select:visible, textarea:visible, label:has(input[type=radio]), label:has([role=radio])'
+      'a:visible, button:visible, input:visible:not([type=radio]):not([type=checkbox]), select:visible, textarea:visible, label:has(input[type=radio]), label:has([role=radio]), [role=switch]:visible'
     )
     .evaluateAll((nodes) =>
       nodes.map((node) => {
@@ -157,6 +167,10 @@ async function assertTouchTargets(root: Locator, label: string) {
  *    composition (the frame's route adaptation), within ANCHOR_TOLERANCE (12px, just over one
  *    10px reference gap: any section-sized displacement fails, sub-pixel font metrics do not).
  */
+// wHaAb is the create-match Ranked selector, restyled by the Clubhouse create wizard after its PAF-11
+// reference was exported. Its raster is wizard-owned: the Match type control and Ranked switch card are
+// compared with aligned Pencil crops (paf-202-create-wizard frameRegions; measured 0.0442 / 0.0591) and
+// the vertical anchors below were re-measured on the Switch layout. No league surface is involved.
 const RHYTHM_TOLERANCE = 4;
 const ANCHOR_TOLERANCE = 12;
 
@@ -187,9 +201,9 @@ function assertVertical(
     expectNear(boxes[to]!.y - boxes[from]!.bottom, expected, tolerance, `${label} ${from}->${to}`);
 }
 
-type Variant = keyof typeof manifest.visualBudgets.variantBudgets.MYsDp;
+type Variant = 'endNotAfterStart' | 'endRequired';
 
-/** `variant` selects a per-variant budget for frames that certify several states (MYsDp). */
+/** Name the captured MYsDp variant; both variants use the approved frame budget. */
 async function measure(page: Page, frame: Frame, info: TestInfo, variant?: Variant) {
   const { width, height } = sizes[frame];
   const name = variant ? `${frame}-${variant}` : frame;
@@ -199,9 +213,11 @@ async function measure(page: Page, frame: Frame, info: TestInfo, variant?: Varia
     caret: 'hide',
     path: info.outputPath(`${name}-actual.png`)
   });
-  const approved = readFileSync(new URL(`./references/paf-11/${frame}.png`, import.meta.url));
+  const approved = readFileSync(
+    new URL(`./references/paf-202-leagues/${frame}.png`, import.meta.url)
+  );
   const measured = await page.evaluate(
-    async ({ actualUrl, approvedUrl }) => {
+    async ({ actualUrl, approvedUrl, referenceScale }) => {
       async function readPixels(url: string, scale: number) {
         const image = new Image();
         image.src = url;
@@ -220,7 +236,7 @@ async function measure(page: Page, frame: Frame, info: TestInfo, variant?: Varia
       }
       const [rendered, reference] = await Promise.all([
         readPixels(actualUrl, 1),
-        readPixels(approvedUrl, 2)
+        readPixels(approvedUrl, referenceScale)
       ]);
       if (rendered.width !== reference.width || rendered.height !== reference.height)
         return { dimensionMismatch: true, perceptualPixelDifference: null as number | null };
@@ -245,15 +261,14 @@ async function measure(page: Page, frame: Frame, info: TestInfo, variant?: Varia
     },
     {
       actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
-      approvedUrl: `data:image/png;base64,${approved.toString('base64')}`
+      approvedUrl: `data:image/png;base64,${approved.toString('base64')}`,
+      referenceScale: 1
     }
   );
-  console.info(`${name} PAF-11 full-frame measurement: ${JSON.stringify(measured)}`);
-  const budget = variant
-    ? manifest.visualBudgets.variantBudgets.MYsDp[variant]
-    : manifest.visualBudgets.perScreen[frame];
+  console.info(`${name} full-frame measurement: ${JSON.stringify(measured)}`);
+  const budget = manifest.rasterBudgets[frame].maxPerceptualDiff;
   expect
-    .soft(measured.dimensionMismatch, `${frame} dimensions must match the 2x Pencil export`)
+    .soft(measured.dimensionMismatch, `${frame} dimensions must match the Pencil export`)
     .toBe(false);
   expect.soft(budget, `${frame} needs a reviewed nonzero screenshot budget`).toBeGreaterThan(0);
   if (measured.perceptualPixelDifference !== null)
@@ -308,7 +323,7 @@ test('ik5JC League creation: Pencil frame budget and structure', async ({
   expect.soft(submit.height, 'ik5JC submit height').toBeLessThanOrEqual(52);
   await assertColumn(order[7]!, 'ik5JC guidance', { fullWidth: false });
   // Vertical: title, name, mode group, minimum, submit and guidance keep their approved positions;
-  // submit -> guidance is the reference 10px rhythm; the 44-52px submit sits on its own row.
+  // submit -> guidance is the frame's 14px content rhythm; the 52px submit sits on its own row.
   assertVertical(
     {
       title: await docBox(order[0]!),
@@ -318,13 +333,47 @@ test('ik5JC League creation: Pencil frame budget and structure', async ({
       submit: await docBox(order[6]!),
       guidance: await docBox(order[7]!)
     },
-    { title: 29, name: 138, mode: 323, minimum: 677, submit: 777, guidance: 837 },
-    [['submit', 'guidance', 10, RHYTHM_TOLERANCE]],
+    { title: 29, name: 126, mode: 313, minimum: 691, submit: 800, guidance: 866 },
+    [['submit', 'guidance', 14, RHYTHM_TOLERANCE]],
     'ik5JC'
   );
   await assertNoOverflow(page, 'ik5JC');
   await assertTouchTargets(page.locator('main'), 'ik5JC');
 });
+
+// ik5JC lays the end-mode group directly on the page: the UA fieldset border must not render.
+for (const theme of ['light', 'dark'] as const) {
+  test(`ik5JC League creation fieldsets render no border (${theme})`, async () => {
+    const page = await f.page(member, 'en', 390, theme, 844);
+    await openCreateLeague(page);
+    await assertNoUaFieldsetBorders(page, `league create (${theme})`);
+    const borders = await page.locator('main fieldset').evaluateAll((nodes) =>
+      nodes.map((node) => {
+        const style = getComputedStyle(node);
+        return {
+          legend: node.querySelector('legend')?.textContent ?? '',
+          widths: [
+            style.borderTopWidth,
+            style.borderRightWidth,
+            style.borderBottomWidth,
+            style.borderLeftWidth
+          ],
+          styles: [
+            style.borderTopStyle,
+            style.borderRightStyle,
+            style.borderBottomStyle,
+            style.borderLeftStyle
+          ]
+        };
+      })
+    );
+    expect(borders.length).toBeGreaterThan(0);
+    for (const border of borders) {
+      expect(border.widths, border.legend).toEqual(['0px', '0px', '0px', '0px']);
+      expect(border.styles, border.legend).toEqual(['none', 'none', 'none', 'none']);
+    }
+  });
+}
 
 /** Create-match details step with a Competitive draft and the League selector ready. */
 async function openRankedSelector(page: Page, locale: Locale) {
@@ -334,25 +383,45 @@ async function openRankedSelector(page: Page, locale: Locale) {
   await page.getByLabel(m.fields.date, { exact: true }).fill(day(3));
   await page.getByLabel(m.fields.startTime, { exact: true }).fill('10:30');
   await page
-    .getByRole('combobox', { name: m.fields.type, exact: true })
-    .selectOption('competitive');
+    .getByRole('radio', { name: copies[locale].matches.type.competitive, exact: true })
+    .click();
   const group = page.getByRole('group', { name: m.competition.legend });
   await expect(group.getByRole('combobox')).toBeVisible();
   return group;
 }
 
-test('wHaAb Create match Ranked selector: Pencil frame budget and structure', async ({
-  browserName
-}, info) => {
+test('wHaAb Create match Ranked selector: structure and keyboard', async ({ browserName }) => {
   expect(browserName).toBe('chromium');
   await f.createLeague(member, { name: 'Autumn League', start: day(1), end: day(80) });
   const page = await f.page(member, 'en', 390, 'light', 916);
   const t = copies.en;
   const group = await openRankedSelector(page, 'en');
+  const ranked = group.getByRole('switch', { name: t.matches.competition.ranked, exact: true });
+  await expect(ranked).toBeChecked();
+
+  // Frame regions: the Competitive segmented control and the Ranked switch card (state wHaAb draws:
+  // Competitive selected, Ranked on, "Counts for levels and <League>") against the pinned Pencil export.
+  const frame = readFileSync(
+    new URL('./references/paf-202-create-wizard/wHaAb.png', import.meta.url)
+  );
+  expect(createHash('sha256').update(frame).digest('hex')).toBe(
+    wizardReferences.frames.wHaAb!.sha256
+  );
   await expect(
-    group.getByRole('radio', { name: t.matches.competition.ranked, exact: true })
-  ).toBeChecked();
-  await measure(page, 'wHaAb', info);
+    group.getByText(
+      t.matchCreate.competition.switchMetaLeague.replace('{{league}}', 'Autumn League')
+    )
+  ).toBeVisible();
+  await assertFrameRegions({
+    page,
+    frame: 'wHaAb',
+    reference: frame,
+    regions: wizardReferences.frameRegions.wHaAb!,
+    locators: {
+      matchType: page.getByRole('radiogroup', { name: t.matchCreate.fields.type, exact: true }),
+      rankedCard: ranked
+    }
+  });
 
   // Several covering Leagues → explicit selection; selector, guidance and error stay associated.
   const select = group.getByRole('combobox', {
@@ -364,11 +433,10 @@ test('wHaAb Create match Ranked selector: Pencil frame budget and structure', as
   await expect(page.locator(`[id="${guidance!.split(' ')[0]}"]`)).toContainText(
     t.matchCreate.competition.guidance.defaultOne
   );
-  // Section order: type, competition status radios, League selector, guidance.
+  // Section order: type segments, Ranked switch, League selector, guidance.
   const order = [
-    page.getByRole('combobox', { name: t.matchCreate.fields.type, exact: true }),
-    group.getByRole('radio', { name: t.matches.competition.ranked, exact: true }),
-    group.getByRole('radio', { name: t.matches.competition.unranked, exact: true }),
+    page.getByRole('radiogroup', { name: t.matchCreate.fields.type, exact: true }),
+    ranked,
     select,
     group.getByText(t.matchCreate.competition.members)
   ];
@@ -378,22 +446,21 @@ test('wHaAb Create match Ranked selector: Pencil frame budget and structure', as
       boxes[index - 1]!.y - 1
     );
 
-  // Keyboard: arrows move between Ranked and Unranked; the League selector follows.
-  await group.getByRole('radio', { name: t.matches.competition.ranked, exact: true }).focus();
-  await page.keyboard.press('ArrowDown');
-  await expect(
-    group.getByRole('radio', { name: t.matches.competition.unranked, exact: true })
-  ).toBeChecked();
+  // Keyboard: Space toggles Ranked off (Unranked) and back on; the League selector follows.
+  await ranked.focus();
+  await page.keyboard.press('Space');
+  await expect(ranked).not.toBeChecked();
   await expect(select).toHaveCount(0);
-  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Space');
+  await expect(ranked).toBeChecked();
   await expect(select).toBeVisible();
 
   // Exact geometry: competition group and League selector stay inside the reference column, the
-  // radios sit inside the group, and the guidance is a child of the group (association by box).
+  // switch sits inside the group, and the guidance is a child of the group (association by box).
   const groupBox = await assertColumn(group, 'wHaAb competition group', { fullWidth: false });
   const selectBox = await assertColumn(select, 'wHaAb League selector', { fullWidth: false });
   expect.soft(selectBox.width, 'wHaAb League selector is a full-row control').toBeGreaterThan(200);
-  for (const part of [boxes[1]!, boxes[2]!, selectBox, boxes[4]!]) {
+  for (const part of [boxes[1]!, selectBox, boxes[3]!]) {
     expect.soft(part.x, 'wHaAb part inside group left').toBeGreaterThanOrEqual(groupBox.x - 1);
     expect
       .soft(part.right, 'wHaAb part inside group right')
@@ -403,30 +470,29 @@ test('wHaAb Create match Ranked selector: Pencil frame budget and structure', as
       .soft(part.bottom, 'wHaAb part inside group bottom')
       .toBeLessThanOrEqual(groupBox.bottom + 1);
   }
-  // Vertical: type select, status group, radios, League selector and guidance keep their approved
-  // positions; selector -> guidance copy is the reference ~8px gap plus one 15px text line of leading.
+  // Vertical: type segments, status group, Ranked switch, League selector and guidance keep their
+  // approved positions; selector -> guidance copy is the reference ~8px gap (the wizard group gap).
   assertVertical(
     {
       type: await docBox(order[0]!),
       group: await docBox(group),
       ranked: await docBox(order[1]!),
-      unranked: await docBox(order[2]!),
       select: await docBox(select),
-      guidance: await docBox(order[4]!)
+      guidance: await docBox(order[3]!)
     },
-    { type: 469, group: 516, ranked: 559, unranked: 604, select: 653, guidance: 714 },
+    { type: 240, group: 310, ranked: 310, select: 414.5, guidance: 474.5 },
     [
-      ['type', 'group', 3, RHYTHM_TOLERANCE],
-      ['select', 'guidance', 17, RHYTHM_TOLERANCE]
+      ['type', 'group', 14, RHYTHM_TOLERANCE],
+      ['select', 'guidance', 8, RHYTHM_TOLERANCE]
     ],
     'wHaAb'
   );
   await assertNoOverflow(page, 'wHaAb');
   await assertTouchTargets(group, 'wHaAb competition');
-  const radioLabels = await group
-    .locator('label:has(input[type=radio])')
-    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().height));
-  for (const height of radioLabels) expect(height).toBeGreaterThanOrEqual(44);
+  expect(
+    (await box(ranked)).height,
+    'wHaAb Ranked switch card is the 68px hit area'
+  ).toBeGreaterThanOrEqual(64);
 });
 
 test('MYsDp validation and conflict variants: association, live errors, focus', async ({
@@ -439,14 +505,16 @@ test('MYsDp validation and conflict variants: association, live errors, focus', 
     endMode: 'manual',
     start: day(0)
   });
-  const page = await f.page(member, 'en', 431, 'light', 431);
+  const page = await f.page(member, 'en', 430, 'light', 430);
   await openCreateLeague(page);
 
   // Active conflict card names the Active League and links to it.
   const note = page.getByRole('note');
   await expect(note).toContainText(fill(t.form.conflict.title, { name: 'Summer Ladder' }));
-  await expect(note).toContainText(t.form.conflict.body);
-  const review = note.getByRole('link', { name: new RegExp(t.form.conflict.review) });
+  await expect(note).toContainText(fill(t.form.conflict.body, { name: 'Summer Ladder' }));
+  const review = note.getByRole('link', {
+    name: fill(t.form.conflict.review, { name: 'Summer Ladder' })
+  });
   await expect(review).toHaveAttribute('href', new RegExp(`/leagues/${activeId}$`));
 
   // End before start and missing end date: exact copy, associated, announced, focus on first.
@@ -505,11 +573,11 @@ test('MYsDp validation and conflict variants: association, live errors, focus', 
     const alertDoc = await docBox(alert);
     assertVertical(
       { end: endDoc, alert: alertDoc },
-      { end: 654, alert: 725 },
+      { end: 726, alert: 809 },
       [['end', 'alert', 27, RHYTHM_TOLERANCE]],
       `MYsDp ${variant}`
     );
-    await assertColumn(end, `MYsDp ${variant} end field`, { viewport: 431 });
+    await assertColumn(end, `MYsDp ${variant} end field`, { viewport: 430 });
     await assertNoOverflow(page, `MYsDp ${variant}`);
 
     // Frame capture of this variant at the reference viewport.
@@ -520,7 +588,7 @@ test('MYsDp validation and conflict variants: association, live errors, focus', 
 
   const noteBox = await assertColumn(note, 'MYsDp conflict card', {
     fullWidth: false,
-    viewport: 431
+    viewport: 430
   });
   const reviewBox = await box(review);
   expect.soft(reviewBox.y, 'review link follows the conflict body').toBeGreaterThan(noteBox.y);
@@ -535,7 +603,7 @@ test('MYsDp validation and conflict variants: association, live errors, focus', 
   // with the reference ~14px bottom padding (frame: link bottom -> card bottom ~14px).
   const noteDoc = await docBox(note);
   const reviewDoc = await docBox(review);
-  assertVertical({ note: noteDoc, review: reviewDoc }, { note: 92, review: 159 }, [], 'MYsDp card');
+  assertVertical({ note: noteDoc, review: reviewDoc }, { note: 92, review: 200 }, [], 'MYsDp card');
   expectNear(
     noteDoc.bottom - reviewDoc.bottom,
     14,

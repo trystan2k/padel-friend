@@ -7,6 +7,8 @@ import { PasswordField } from '../../components/ui/PasswordField';
 import { getBrowserClient } from '../../lib/supabase/client';
 import { useHydrated } from '../../lib/use-hydrated';
 import { PASSWORD_MIN_LENGTH, isPasswordValid } from './password-policy';
+import { AuthActionBar, AuthTopBar } from './AuthChrome';
+import { chromeStyles } from './auth-chrome.styles';
 import { styles } from './reset-password.styles';
 
 type ValidationError = 'short' | 'mismatch' | null;
@@ -18,6 +20,21 @@ export function ResetPassword() {
   const [busy, setBusy] = useState(false);
   const [validationError, setValidationError] = useState<ValidationError>(null);
   const [requestFailed, setRequestFailed] = useState(false);
+  const [typedPassword, setTypedPassword] = useState('');
+  const [typedConfirmation, setTypedConfirmation] = useState('');
+  // Presentation only: submit() still validates with isPasswordValid and the match check.
+  const rules = [
+    {
+      key: 'policy',
+      met: isPasswordValid(typedPassword),
+      label: t('auth.passwordRequirements', { min: PASSWORD_MIN_LENGTH })
+    },
+    {
+      key: 'match',
+      met: typedConfirmation !== '' && typedConfirmation === typedPassword,
+      label: t('auth.resetRuleMatch')
+    }
+  ];
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,50 +72,70 @@ export function ResetPassword() {
   }
 
   return (
-    <main {...stylex.props(styles.page)}>
-      <header {...stylex.props(styles.header)}>
-        <span {...stylex.props(styles.brand)}>{t('auth.welcomeBrand')}</span>
-        <h1 {...stylex.props(styles.title)}>{t('auth.resetTitle')}</h1>
-        <p {...stylex.props(styles.subtitle)}>{t('auth.resetDescription')}</p>
-      </header>
-
-      <form onSubmit={(event) => void submit(event)} {...stylex.props(styles.form)}>
-        <PasswordField
-          id="reset-password"
-          name="password"
-          label={t('auth.resetNewPasswordLabel')}
-          placeholder={t('auth.resetNewPasswordPlaceholder')}
-          autoComplete="new-password"
-          required
-          disabled={!ready || busy}
-          error={
-            validationError === 'short'
-              ? t('auth.passwordInvalid', { min: PASSWORD_MIN_LENGTH })
-              : undefined
-          }
-          onChange={() => setValidationError(null)}
-        />
-        <PasswordField
-          id="reset-password-confirmation"
-          name="confirmation"
-          label={t('auth.resetConfirmPasswordLabel')}
-          placeholder={t('auth.resetConfirmPlaceholder')}
-          autoComplete="new-password"
-          required
-          disabled={!ready || busy}
-          helper={t('auth.resetRequirements', { min: PASSWORD_MIN_LENGTH })}
-          helperXstyle={styles.requirementsHelper}
-          error={validationError === 'mismatch' ? t('auth.resetMismatch') : undefined}
-          onChange={() => setValidationError(null)}
-        />
-        <Button type="submit" size="large" disabled={!ready} busy={busy}>
-          {t('auth.resetSubmit')}
-        </Button>
-        {requestFailed && (
-          <p role="alert" {...stylex.props(styles.error)}>
-            {t('auth.resetFailed')}
-          </p>
-        )}
+    <main {...stylex.props(chromeStyles.page)}>
+      <AuthTopBar title={t('auth.resetBarTitle')} />
+      <form onSubmit={(event) => void submit(event)} {...stylex.props(chromeStyles.form)}>
+        <div {...stylex.props(chromeStyles.content)}>
+          <h1 {...stylex.props(chromeStyles.title)}>{t('auth.resetTitle')}</h1>
+          <PasswordField
+            id="reset-password"
+            name="password"
+            label={t('auth.resetNewPasswordLabel')}
+            placeholder={t('auth.resetNewPasswordPlaceholder')}
+            autoComplete="new-password"
+            required
+            disabled={!ready || busy}
+            aria-describedby="reset-password-rules"
+            error={
+              validationError === 'short'
+                ? t('auth.passwordInvalid', { min: PASSWORD_MIN_LENGTH })
+                : undefined
+            }
+            onChange={(event) => {
+              setTypedPassword(event.target.value);
+              setValidationError(null);
+            }}
+          />
+          <PasswordField
+            id="reset-password-confirmation"
+            name="confirmation"
+            label={t('auth.resetConfirmPasswordLabel')}
+            placeholder={t('auth.resetConfirmPlaceholder')}
+            autoComplete="new-password"
+            required
+            disabled={!ready || busy}
+            aria-describedby="reset-password-rules"
+            error={validationError === 'mismatch' ? t('auth.resetMismatch') : undefined}
+            onChange={(event) => {
+              setTypedConfirmation(event.target.value);
+              setValidationError(null);
+            }}
+          />
+          <ul id="reset-password-rules" {...stylex.props(styles.rules)}>
+            {rules.map(({ key, met, label }) => (
+              <li key={key} {...stylex.props(styles.rule, met && styles.ruleMet)}>
+                <span aria-hidden="true">{met ? '✓' : '○'}</span>
+                <span>
+                  {label}
+                  <span {...stylex.props(chromeStyles.srOnly)}>
+                    {' '}
+                    {t(met ? 'auth.ruleMet' : 'auth.ruleUnmet')}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {requestFailed && (
+            <p role="alert" {...stylex.props(chromeStyles.error)}>
+              {t('auth.resetFailed')}
+            </p>
+          )}
+        </div>
+        <AuthActionBar>
+          <Button type="submit" disabled={!ready} busy={busy}>
+            {t('auth.resetSubmit')}
+          </Button>
+        </AuthActionBar>
       </form>
     </main>
   );

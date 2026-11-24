@@ -420,11 +420,7 @@ test.describe('real service worker registration', () => {
   });
 });
 
-// Pencil frame tzBrY ("Web Push — PWA install and failure states"): two surface cards. Install
-// guidance = amber uppercase bold 12px heading + 12px body copy; failure = red heading, green
-// in-app fallback line, then the retry action. Structural probes stay exact; the Pencil renderer
-// and Chromium rasterize text differently, so screenshots only guard against regressions of the
-// reviewed baseline with a small nonzero budget.
+// tzBrY uses a sentence-case heading and status glyph inside each surface card.
 const locales = { en: en.push, 'pt-BR': ptBR.push, es: es.push } as const;
 
 async function cardProbe(card: Locator) {
@@ -440,6 +436,8 @@ async function cardProbe(card: Locator) {
     const style = getComputedStyle(element);
     const title = element.querySelector('h2');
     const titleStyle = title ? getComputedStyle(title) : null;
+    const glyph = element.querySelector('div > span[aria-hidden="true"]');
+    const glyphStyle = glyph ? getComputedStyle(glyph) : null;
     const button = element.querySelector('button');
     return {
       order: [...element.children].map(
@@ -449,11 +447,20 @@ async function cardProbe(card: Locator) {
       radius: style.borderRadius,
       padding: style.padding,
       gap: style.rowGap,
-      titleColors: { amber: color('--color-amber'), red: color('--color-red') },
+      tokens: {
+        text: color('--color-text'),
+        red: color('--color-red'),
+        redSoft: color('--color-red-soft'),
+        greenInk: color('--color-green-ink'),
+        greenSoft: color('--color-green-soft')
+      },
+      glyphColor: glyphStyle?.color,
+      glyphBackground: glyphStyle?.backgroundColor,
+      glyphWidth: glyphStyle?.width,
+      glyphHeight: glyphStyle?.height,
       titleColor: titleStyle?.color,
       titleCase: titleStyle?.textTransform,
       titleSize: titleStyle?.fontSize,
-      titleWeight: titleStyle?.fontWeight,
       buttonHeight: button ? button.getBoundingClientRect().height : null,
       overflow: element.scrollWidth - element.clientWidth,
       pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth
@@ -486,20 +493,23 @@ test.describe('Pencil tzBrY structural probes', () => {
           await card.getByRole('button', { name: text.enable }).click();
           await expect(card.getByRole('alert')).toHaveText(text.subscriptionFailed);
           const probe = await cardProbe(card);
-          expect(probe.order).toEqual(['h2', 'output', 'palert', 'p', 'button']);
+          expect(probe.order).toEqual(['div', 'output', 'palert', 'p', 'button']);
           expect(probe).toMatchObject({
             surface: true,
             radius: '16px',
             padding: '14px',
             gap: '4px',
-            titleColor: probe.titleColors.red,
-            titleCase: 'uppercase',
-            titleSize: '12px',
-            titleWeight: '700',
+            titleColor: probe.tokens.text,
+            titleCase: 'none',
+            titleSize: '16px',
+            glyphColor: probe.tokens.red,
+            glyphBackground: probe.tokens.redSoft,
+            glyphWidth: '40px',
+            glyphHeight: '40px',
             overflow: 0,
             pageOverflow: 0
           });
-          expect(probe.buttonHeight).toBeGreaterThanOrEqual(44);
+          expect(probe.buttonHeight).toBeGreaterThanOrEqual(52);
           await expect(card.getByText(text.fallback)).toBeVisible();
         } finally {
           await context.close();
@@ -507,7 +517,7 @@ test.describe('Pencil tzBrY structural probes', () => {
       });
     }
 
-    test('iOS install-required card keeps the amber heading and install guidance order', async ({
+    test('iOS install-required card keeps the setup glyph and leads to install guidance', async ({
       browser
     }) => {
       const actor = await createActor();
@@ -521,15 +531,19 @@ test.describe('Pencil tzBrY structural probes', () => {
         await openPreferences(page, actor);
         const card = panel(page);
         const probe = await cardProbe(card);
-        expect(probe.titleColor).toBe(probe.titleColors.amber);
+        expect(probe.titleColor).toBe(probe.tokens.text);
+        expect(probe.glyphColor).toBe(probe.tokens.greenInk);
+        expect(probe.glyphBackground).toBe(probe.tokens.greenSoft);
         expect(probe).toMatchObject({ surface: true, overflow: 0, pageOverflow: 0 });
         await expect(card.getByRole('status')).toHaveText(copy.installRequired);
         const install = page.getByRole('region', { name: en.pwa.install.title });
         const sections = await page
           .locator('main section')
           .evaluateAll((all) => all.map((section) => section.getAttribute('aria-labelledby')));
-        expect(sections.indexOf('pwa-install-title')).toBeGreaterThanOrEqual(0);
         expect(sections.indexOf('push-device-title')).toBeGreaterThanOrEqual(0);
+        expect(sections.indexOf('pwa-install-title')).toBeGreaterThan(
+          sections.indexOf('push-device-title')
+        );
         await expect(install.getByText(en.pwa.install.iosInstructions)).toBeVisible();
         expect((await cardProbe(install)).overflow).toBe(0);
       } finally {
@@ -567,8 +581,7 @@ test.describe('Pencil tzBrY structural probes', () => {
 
 test.describe('Pencil tzBrY screenshot baselines', { tag: '@visual' }, () => {
   test.use({ serviceWorkers: 'block' });
-  // Budget 3%: element-only 12px text card; measured local rasterization residual stays well under
-  // it. Structural probes above carry the exact assertions, so this never masks layout defects.
+  // Existing 3% cross-platform raster budget stays unchanged; exact card probes run separately.
   const shot = {
     animations: 'disabled',
     caret: 'hide',

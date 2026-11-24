@@ -27,19 +27,12 @@ type Manifest = {
 const manifest: Manifest = JSON.parse(readFileSync(join(directory, 'manifest.json'), 'utf8'));
 const digest = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
 
-const screens = [
-  'qWosG',
-  'OKYtp:pending',
-  'OKYtp:reviewing',
-  'OKYtp:approved',
-  'OKYtp:rejected',
-  'gGNxk'
-];
+const screens = ['gGNxk'];
 
 describe('level review visual references', () => {
   it('uses semantic visible borders for radio tiles and evidence disclosure', () => {
     const styles = readFileSync(
-      join(root, 'src/features/level-reviews/level-review.styles.ts'),
+      join(root, 'src/features/level-reviews/level-review-clubhouse.styles.ts'),
       'utf8'
     );
     for (const name of ['mode', 'disclosureTrigger']) {
@@ -58,7 +51,7 @@ describe('level review visual references', () => {
     expect(manifest.sourceDesign.provenanceNote).toContain('byte-for-byte');
   });
 
-  it.each(['qWosG', 'OKYtp', 'gGNxk'])('records frame %s, image digest and viewport', (id) => {
+  it.each(['gGNxk'])('records frame %s, image digest and viewport', (id) => {
     const reference = manifest.approvedReferences[id];
     expect(reference).toBeDefined();
     if (!reference) throw new Error('Missing reference ' + id);
@@ -108,8 +101,7 @@ describe('level review visual references', () => {
       if (!Array.isArray(value)) throw new Error('Missing geometry probes for ' + frame);
       return value;
     };
-    for (const frame of ['qWosG', 'OKYtp', 'gGNxk', 'shared'])
-      expect(list(frame).length).toBeGreaterThanOrEqual(3);
+    for (const frame of ['gGNxk', 'shared']) expect(list(frame).length).toBeGreaterThanOrEqual(3);
     expect(String(probes['note'])).toContain('independent of the raster budgets');
     expect(list('shared').join(' ')).toContain('44x44');
   });

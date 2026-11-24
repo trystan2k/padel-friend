@@ -1,9 +1,12 @@
 import * as stylex from '@stylexjs/stylex';
-import { useId, type HTMLInputTypeAttribute, type InputHTMLAttributes } from 'react';
+import { useId, useState, type HTMLInputTypeAttribute, type InputHTMLAttributes } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MatchCreationOptions, MatchDraft } from './match-contracts';
 import { createMatchStyles as s } from './create-match.styles';
+import { matchEditStyles as edit } from './match-edit.styles';
+import { MatchChoiceGroup } from './MatchChoiceGroup';
 import { MatchCompetitionField } from './MatchCompetitionField';
+import { matchDatePresets } from './match-date-presets';
 import type { MatchCompetitionState } from './match-league-selection';
 
 type TextField =
@@ -22,11 +25,7 @@ type TextField =
   | 'cutoff';
 type DraftChange = <K extends keyof MatchDraft>(key: K, value: MatchDraft[K]) => void;
 
-const eventTypes = ['competitive', 'friendly'] as const satisfies readonly MatchDraft['type'][];
-const visibilities = [
-  'community_open',
-  'invite_only'
-] as const satisfies readonly MatchDraft['visibility'][];
+const eventTypes = ['friendly', 'competitive'] as const satisfies readonly MatchDraft['type'][];
 const currencies = ['BRL', 'USD', 'EUR'] as const satisfies readonly MatchDraft['currency'][];
 
 export function MatchDetailTextField({
@@ -53,10 +52,10 @@ export function MatchDetailTextField({
   const { t } = useTranslation();
   const id = useId();
   return (
-    <label {...stylex.props(s.field, fieldStyle)}>
+    <label {...stylex.props(fieldStyle ? edit.sharedField : s.field, fieldStyle)}>
       {t(`matchCreate.fields.${name}`)}
       <input
-        {...stylex.props(s.input, inputStyle)}
+        {...stylex.props(inputStyle ? edit.sharedInput : s.input, inputStyle)}
         placeholder={placeholder}
         type={type}
         value={value}
@@ -66,7 +65,7 @@ export function MatchDetailTextField({
         {...constraints}
       />
       {error && (
-        <span id={`${id}-error`} role="alert">
+        <span id={`${id}-error`} role="alert" {...stylex.props(!fieldStyle && s.fieldError)}>
           {t(`matchCreate.errors.${error}`)}
         </span>
       )}
@@ -89,10 +88,10 @@ export function MatchDetailCurrencyField({
   const { t } = useTranslation();
   const id = useId();
   return (
-    <label {...stylex.props(s.field, fieldStyle)}>
+    <label {...stylex.props(fieldStyle ? edit.sharedField : s.field, fieldStyle)}>
       {t('matchCreate.fields.currency')}
       <select
-        {...stylex.props(s.input, inputStyle)}
+        {...stylex.props(inputStyle ? edit.sharedInput : s.input, inputStyle)}
         value={value}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
@@ -106,7 +105,7 @@ export function MatchDetailCurrencyField({
         ))}
       </select>
       {error && (
-        <span id={`${id}-error`} role="alert">
+        <span id={`${id}-error`} role="alert" {...stylex.props(!fieldStyle && s.fieldError)}>
           {t(`matchCreate.errors.${error}`)}
         </span>
       )}
@@ -131,7 +130,9 @@ export function MatchDetailsForm({
   errors: Record<string, string>;
   competition: MatchCompetitionState;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Presets are relative to the moment the step mounts; the date input covers every other day.
+  const [now] = useState(Date.now);
   const field = (
     key: TextField,
     type: HTMLInputTypeAttribute = 'text',
@@ -147,32 +148,11 @@ export function MatchDetailsForm({
       constraints={constraints}
     />
   );
-  const enumSelect = <K extends 'type' | 'visibility'>(
-    key: K,
-    values: readonly MatchDraft[K][]
-  ) => (
-    <label key={key} {...stylex.props(s.field)}>
-      {t(`matchCreate.fields.${key}`)}
-      <select
-        {...stylex.props(s.input)}
-        value={value[key]}
-        onChange={(event) => {
-          const selected = values.find((candidate) => candidate === event.currentTarget.value);
-          if (selected !== undefined) change(key, selected);
-        }}
-      >
-        {values.map((option) => (
-          <option key={option} value={option}>
-            {t(`matches.${key === 'type' ? 'type' : 'visibility'}.${option}`)}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
   const community = options.communities.find((item) => item.id === value.community_id);
+  const datePresets = matchDatePresets(now, community?.timezone ?? 'UTC', i18n.language);
 
   return (
-    <div {...stylex.props(s.fields, s.section)}>
+    <div {...stylex.props(s.fields)}>
       <label {...stylex.props(s.field)}>
         {t('matchCreate.fields.community')}
         <select
@@ -187,20 +167,46 @@ export function MatchDetailsForm({
           ))}
         </select>
       </label>
-      {field('date', 'date')}
-      {field('startTime', 'time')}
-      <p>
-        {t('matchCreate.fields.timezone')}: {community?.timezone ?? ''}
-      </p>
-      {enumSelect('type', eventTypes)}
+      <MatchChoiceGroup
+        variant="segmented"
+        legend={t('matchCreate.fields.type')}
+        value={value.type}
+        choices={eventTypes.map((type) => ({ value: type, label: t(`matches.type.${type}`) }))}
+        onChange={(next) => {
+          const selected = eventTypes.find((candidate) => candidate === next);
+          if (selected) change('type', selected);
+        }}
+      />
       {value.type === 'competitive' && (
         <MatchCompetitionField
           competition={competition}
+          choice={value.competitionChoice}
           change={change}
           error={errors.competition}
         />
       )}
-      {enumSelect('visibility', visibilities)}
+      {datePresets.length > 0 && (
+        <MatchChoiceGroup
+          variant="chips"
+          legend={t('matchCreate.helpers.suggestedDays')}
+          value={value.date}
+          choices={datePresets.map((preset) => ({ value: preset.date, label: preset.label }))}
+          onChange={(next) => change('date', next)}
+        />
+      )}
+      {field('date', 'date')}
+      <p {...stylex.props(s.muted)}>
+        {t('matchCreate.fields.timezone')}: {community?.timezone ?? ''}
+      </p>
+      <div {...stylex.props(s.pair)}>
+        {field('startTime', 'time')}
+        {field('price', 'number', { min: 0, step: '0.01' })}
+      </div>
+      <MatchDetailCurrencyField
+        value={value.currency}
+        onChange={(next) => change('currency', next)}
+        error={errors.currency}
+      />
       <label {...stylex.props(s.field)}>
         {t('matchCreate.fields.savedVenue')}
         <select
@@ -221,39 +227,16 @@ export function MatchDetailsForm({
       {field('courtNotes')}
       {field('duration', 'number', { min: 1, step: 1 })}
       {field('notes')}
-      <fieldset>
-        <legend>{t('matchCreate.fields.levelRestriction')}</legend>
-        <label {...stylex.props(s.touchLabel)}>
-          <input
-            type="checkbox"
-            checked={value.levelRestriction}
-            onChange={(event) => change('levelRestriction', event.currentTarget.checked)}
-          />
-          {t('matchCreate.fields.levelRestriction')}
-        </label>
-        {value.levelRestriction && (
-          <div {...stylex.props(s.row)}>
-            {field('minLevel', 'number', { step: 0.5, min: 0, max: 7 })}
-            {field('maxLevel', 'number', { step: 0.5, min: 0, max: 7 })}
-          </div>
-        )}
-      </fieldset>
       <label {...stylex.props(s.touchLabel)}>
         <input
           type="checkbox"
+          {...stylex.props(s.check)}
           checked={value.courtBooked}
           onChange={(event) => change('courtBooked', event.currentTarget.checked)}
         />
         {t('matchCreate.fields.courtBooked')}
       </label>
-      {field('price', 'number', { min: 0, step: '0.01' })}
-      <MatchDetailCurrencyField
-        value={value.currency}
-        onChange={(next) => change('currency', next)}
-        error={errors.currency}
-      />
       {field('paymentNote')}
-      {field('maximumRegistrations', 'number', { min: 1, step: 1 })}
       {field('cutoff', 'datetime-local')}
     </div>
   );

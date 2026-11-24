@@ -56,7 +56,7 @@ describe('League creation page', () => {
 
   it('matches the Pencil composition: header, name, dates card, minimum, create action, guidance', () => {
     renderPage();
-    expect(screen.getByRole('heading', { level: 1, name: 'Create a League' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'New league' })).toBeTruthy();
     expect(screen.getByText('Pádel & Amigos · one active League at a time')).toBeTruthy();
     const order = [
       name(),
@@ -64,9 +64,9 @@ describe('League creation page', () => {
       screen.getByLabelText(/Start date/),
       screen.getByLabelText(/End date/),
       screen.getByLabelText(/Minimum matches for final award/),
-      screen.getByRole('button', { name: 'Create League' }),
+      screen.getByRole('button', { name: 'Create league' }),
       screen.getByText(
-        'Fixed End Date must follow start date. Only one Active League per community.'
+        'Only ranked competitive matches between these dates count. One league at a time.'
       )
     ];
     order
@@ -91,7 +91,7 @@ describe('League creation page', () => {
     renderPage();
     await user.type(screen.getByLabelText(/End date/), '2030-09-15');
     expect(screen.getByText('Starts Jun 15, 2030 · Ends Sep 15, 2030')).toBeTruthy();
-    await user.click(screen.getByRole('radio', { name: /Open-ended · manual/ }));
+    await user.click(screen.getByRole('radio', { name: /Manual/ }));
     expect(screen.getByText('Starts Jun 15, 2030 · No end date')).toBeTruthy();
     expect(screen.queryByLabelText(/End date/)).toBeNull();
   });
@@ -102,7 +102,7 @@ describe('League creation page', () => {
     await user.type(name(), '  Autumn League ');
     await user.type(screen.getByLabelText(/Description/), 'Weekly ladder');
     await user.type(screen.getByLabelText(/End date/), '2030-09-15');
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
     await waitFor(() => expect(mocks.createLeague).toHaveBeenCalledTimes(1));
     expect(mocks.createLeague.mock.calls[0]![0].data).toEqual({
       request_id: expect.stringMatching(/^[0-9a-f-]{36}$/),
@@ -126,10 +126,10 @@ describe('League creation page', () => {
     const user = userEvent.setup();
     renderPage();
     await user.type(name(), 'Open ladder');
-    await user.click(screen.getByRole('radio', { name: /Open-ended · manual/ }));
+    await user.click(screen.getByRole('radio', { name: /Manual/ }));
     await user.clear(screen.getByLabelText(/Minimum matches for final award/));
     await user.type(screen.getByLabelText(/Minimum matches for final award/), '5');
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
     await waitFor(() => expect(mocks.createLeague).toHaveBeenCalled());
     expect(mocks.createLeague.mock.calls[0]![0].data).toMatchObject({
       end_mode: 'manual',
@@ -142,10 +142,10 @@ describe('League creation page', () => {
   it('rejects an empty submission, names each error and focuses the first invalid field', async () => {
     const user = userEvent.setup();
     renderPage();
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
     expect(mocks.createLeague).not.toHaveBeenCalled();
     expect(await screen.findByText('Enter a League name.')).toBeTruthy();
-    expect(screen.getByText('Fixed End Date requires an end date.')).toBeTruthy();
+    expect(screen.getByText('A fixed end date needs an end date.')).toBeTruthy();
     await waitFor(() => expect(document.activeElement).toBe(name()));
     expect(name().getAttribute('aria-invalid')).toBe('true');
     const describedBy = name().getAttribute('aria-describedby') ?? '';
@@ -161,8 +161,8 @@ describe('League creation page', () => {
     renderPage();
     await user.type(name(), 'Autumn League');
     await user.type(screen.getByLabelText(/End date/), '2030-06-01');
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
-    expect(await screen.findByText('End date must be later than start date.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
+    expect(await screen.findByText('End date must be after the start date.')).toBeTruthy();
     expect(mocks.createLeague).not.toHaveBeenCalled();
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/End date/)));
   });
@@ -175,7 +175,7 @@ describe('League creation page', () => {
     await user.clear(start);
     await user.type(start, '2030-06-01');
     await user.type(screen.getByLabelText(/End date/), '2030-09-01');
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
     expect(await screen.findByText('The start date cannot be in the past.')).toBeTruthy();
     expect(mocks.createLeague).not.toHaveBeenCalled();
   });
@@ -186,12 +186,12 @@ describe('League creation page', () => {
     await user.type(name(), 'Autumn League');
     await user.type(screen.getByLabelText(/End date/), '2030-09-15');
     mocks.createLeague.mockRejectedValueOnce(new Error('LEAGUE_END_NOT_AFTER_START'));
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
-    expect(await screen.findByText('End date must be later than start date.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
+    expect(await screen.findByText('End date must be after the start date.')).toBeTruthy();
     await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/End date/)));
 
     mocks.createLeague.mockRejectedValueOnce(new Error('LEAGUE_CREATION_DISABLED'));
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toBe('League creation is turned off for members. Ask an Admin.');
     expect(mocks.navigate).not.toHaveBeenCalled();
@@ -203,14 +203,14 @@ describe('League creation page', () => {
     await user.type(name(), 'Autumn League');
     await user.type(screen.getByLabelText(/End date/), '2030-09-15');
     mocks.createLeague.mockRejectedValue(new Error('LEAGUE_UNAVAILABLE'));
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
     await screen.findByRole('alert');
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
     await waitFor(() => expect(mocks.createLeague).toHaveBeenCalledTimes(2));
     const [first, second] = mocks.createLeague.mock.calls.map((call) => call[0].data.request_id);
     expect(second).toBe(first);
     await user.type(name(), ' 2');
-    await user.click(screen.getByRole('button', { name: 'Create League' }));
+    await user.click(screen.getByRole('button', { name: 'Create league' }));
     await waitFor(() => expect(mocks.createLeague).toHaveBeenCalledTimes(3));
     expect(mocks.createLeague.mock.calls[2]![0].data.request_id).not.toBe(first);
   });
@@ -226,18 +226,18 @@ describe('League creation page', () => {
       ])
     );
     const note = screen.getByRole('note');
-    expect(within(note).getByText('Summer Ladder · ACTIVE')).toBeTruthy();
+    expect(within(note).getByText('Another league is active')).toBeTruthy();
     expect(
       within(note).getByText(
-        'This community already has one Active League. A League starting now cannot activate while it remains Active.'
+        "This community already has one active league. A league starting now can't activate until Summer Ladder ends."
       )
     ).toBeTruthy();
-    expect(within(note).getByRole('link', { name: /Review Active League/ })).toBeTruthy();
+    expect(within(note).getByRole('link', { name: /Open Summer Ladder/ })).toBeTruthy();
   });
 
   it('replaces the form with guidance when members may not create Leagues', () => {
     renderPage(makeLeagueList([], { creation_enabled: false, can_create: false }));
-    expect(screen.queryByRole('button', { name: 'Create League' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Create league' })).toBeNull();
     expect(screen.getByRole('alert').textContent).toContain(
       'League creation is turned off for members'
     );
@@ -245,12 +245,12 @@ describe('League creation page', () => {
 
   it('renders the translated form in Portuguese and Spanish', () => {
     renderPage(makeLeagueList(), 'pt-BR');
-    expect(screen.getByRole('heading', { level: 1, name: 'Criar uma Liga' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Criar Liga' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Nova liga' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Criar liga' })).toBeTruthy();
     cleanup();
     renderPage(makeLeagueList(), 'es');
-    expect(screen.getByRole('heading', { level: 1, name: 'Crear una Liga' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Crear Liga' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1, name: 'Nueva liga' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Crear liga' })).toBeTruthy();
   });
 });
 

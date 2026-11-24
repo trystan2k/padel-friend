@@ -1,0 +1,33 @@
+{
+  "sourceDesign": "docs/design/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export(['Ex7RD','y4Zeg'], 'png', '<repo>/e2e/references/paf-202-community-overview', {scale:1})",
+  "width": 390,
+  "height": 844,
+  "statusBarHeight": 44,
+  "frames": {
+    "Ex7RD": {
+      "state": "Community overview",
+      "sha256": "514068ac6514e6ea6addc64c9bbb479a622544328547e2e69c831183afe71a89",
+      "snapshot": "e2e/community-overview.spec.ts-snapshots/overview-light.png",
+      "snapshotSha256": "1efc75b1596e0fad710b53182e15a363466b62770bb9656f6928b3e323f7a12e"
+    },
+    "y4Zeg": {
+      "state": "Community skill ranking",
+      "sha256": "c3dbf66e7ddab9892930c02b7b7dbd2120e8283001567fb154813d80bce30104",
+      "snapshot": "e2e/community-overview.spec.ts-snapshots/ranking-light.png",
+      "snapshotSha256": "a0d97715622d4e805ce877ea2853e8ada4ebb74625ad612b1fb7ac6da74f6e59"
+    }
+  },
+  "toleranceEvidence": {
+    "Ex7RD": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1",
+      "justification": "Use a browser baseline because attendees, member count and unavailable states deliberately differ from Pencil sample data. Header, navigation, summary and upcoming sections have independent order and touch-target probes. F40: the join-request count is read once, only for the selected community's admins (exact zero or N / N+ from one authorized page, linked to Requests); members and failed reads keep the unavailable line and trigger no read. Upcoming rows lead with a time column over a day column in the event time zone."
+    },
+    "y4Zeg": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1",
+      "justification": "Use a browser baseline because only the caller’s skill row is sourced. Authorization, section order, self/provisional state and the mutually exclusive skill/league rows are separately probed. The budget allows small font rasterization differences, not alternate layouts."
+    }
+  }
+}

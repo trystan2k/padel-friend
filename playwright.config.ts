@@ -23,7 +23,7 @@ export default defineConfig({
     baseURL: 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
     // Deterministic Chromium rasterization so macOS and Linux render the bundled
-    // webfonts (Inter/Manrope) identically: no hinting, integral glyph positions,
+    // webfonts (Figtree) identically: no hinting, integral glyph positions,
     // grayscale antialiasing, sRGB color and no Skia CPU-dispatch drift. Baselines
     // stay platform-portable instead of absorbing a per-OS font-rasterization delta
     // (PR #21: macOS-captured baseline measured 0.03 on ubuntu-latest against a 0.02
@@ -40,7 +40,11 @@ export default defineConfig({
       ]
     },
     deviceScaleFactor: 1,
-    colorScheme: 'light'
+    colorScheme: 'light',
+    // Native date/time controls (datetime-local) format by the browser locale, not the page lang:
+    // macOS rendered "01/11/2030, 22:00:00" and Linux "11/01/2030, 10:00:00 PM" on the same DOM.
+    // Pin the locale so both platforms (and CI) draw the same field text.
+    locale: 'en-US'
   },
   expect: {
     // Repo convergence budget (15s), matching the per-assertion fixes. Playwright's 5s default
@@ -69,7 +73,8 @@ export default defineConfig({
     // `pnpm test:e2e` frees port 4173 before Playwright starts.
     reuseExistingServer: false,
     timeout: 120000,
-    // Forward the process env so the Cloudflare preview exposes the binding to server code.
+    // Pin the build env. The preview Worker reads the generated dist/server/.dev.vars,
+    // provisioned by pnpm build locally and by CI for its shared build.
     env: e2eBuildEnv(testEnv)
   }
 });

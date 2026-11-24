@@ -8,6 +8,7 @@ import {
   openRecord,
   resultFixtures,
   review,
+  reviewAction,
   sql,
   type Actor
 } from './matches-results-fixtures';
@@ -121,9 +122,9 @@ async function reviewFromMatch(
   });
   await expect(card).toBeVisible();
   if (action === 'approve') {
-    await card.getByRole('button', { name: r.review.approve, exact: true }).click();
+    await reviewAction(card, r.review.approve).click();
   } else {
-    await card.getByRole('button', { name: r.review.reject, exact: true }).click();
+    await reviewAction(card, r.review.reject).click();
   }
   return { page, card };
 }
@@ -269,7 +270,7 @@ test('correction creates v2 without carrying v1 approvals and starts fresh deadl
     await correctionPage.locator(`#score-${index}-team_b`).fill(String(b));
     await correctionPage.locator(`#score-${index}-team_b`).blur();
   }
-  await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
+  await correctionPage.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
   await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
   await expect(correctionPage.locator('article[data-result-status="pending"]')).toBeVisible();
 
@@ -314,7 +315,7 @@ test('late review returns deadline conflict without review write and refreshes a
   const card = page.locator('article[data-result-status]').first();
   expect((await proposalFor(f, eventId)).status).toBe('pending');
   expect(reviewer.id).not.toBe(f.creator.id);
-  const approve = card.getByRole('button', { name: r.review.approve, exact: true });
+  const approve = reviewAction(card, r.review.approve);
   await expect(approve).toBeVisible();
   await f.expireProposal(proposal.proposal_id);
 
@@ -477,10 +478,8 @@ test('result alerts lead through review, correction, fresh deadline and schedule
   await expect(reviewerPage).toHaveURL(/result_version=1#result-group-1$/);
   await waitForHydratedPage(reviewerPage);
   const firstCard = reviewerPage.locator('article[data-result-status="pending"]');
-  await expect(
-    firstCard.getByRole('button', { name: pt.matches.results.review.approve })
-  ).toBeVisible();
-  await firstCard.getByRole('button', { name: pt.matches.results.review.approve }).click();
+  await expect(reviewAction(firstCard, pt.matches.results.review.approve)).toBeVisible();
+  await reviewAction(firstCard, pt.matches.results.review.approve).click();
   await expect(firstCard).toHaveAttribute('data-result-status', 'pending');
   await expect(firstCard).toContainText(
     fill(pt.matches.results.approvalProgress, { received: 1, required: 2 })
@@ -501,7 +500,7 @@ test('result alerts lead through review, correction, fresh deadline and schedule
   await expect(rejectionPage).toHaveURL(/result_version=1#result-group-1$/);
   await waitForHydratedPage(rejectionPage);
   const rejectionCard = rejectionPage.locator('article[data-result-status="pending"]');
-  await rejectionCard.getByRole('button', { name: r.review.reject, exact: true }).click();
+  await reviewAction(rejectionCard, r.review.reject).click();
   await rejectWithReason(rejectionPage);
   await expect(rejectionPage.locator('article[data-result-status="disputed"]')).toBeVisible();
   await rejectionPage.context().close();
@@ -539,7 +538,7 @@ test('result alerts lead through review, correction, fresh deadline and schedule
     await correctionPage.locator(`#score-${index}-team_b`).fill(String(teamB));
     await correctionPage.locator(`#score-${index}-team_b`).blur();
   }
-  await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
+  await correctionPage.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
   await correctionPage.getByRole('button', { name: r.correctSubmit, exact: true }).click();
   await expect(correctionPage.locator('article[data-result-status="pending"]')).toBeVisible();
   await correctionPage.context().close();

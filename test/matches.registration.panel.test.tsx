@@ -128,6 +128,19 @@ function mount(
   );
 }
 
+function mountPending(eventValue: MatchEventCard, invitationPending: boolean) {
+  return render(
+    <I18nextProvider i18n={createI18n('en')}>
+      <MatchRegistrationPanel
+        event={eventValue}
+        registration={none}
+        callerLevel={3.82}
+        invitationPending={invitationPending}
+      />
+    </I18nextProvider>
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.invalidate.mockResolvedValue(undefined);
@@ -334,6 +347,23 @@ describe('match registration panel', () => {
       screen.queryByRole('button', { name: en.matchRegistration.join.requestButton })
     ).toBeNull();
     expect(screen.queryByRole('button', { name: en.matchRegistration.join.button })).toBeNull();
+  });
+
+  it('steps Join and request aside while an invitation is pending so the sticky bar has one primary (Fyhbv)', () => {
+    const mountWith = (invitationPending: boolean, extra = {}) =>
+      mountPending(event({ caller_is_invited: true, ...extra }), invitationPending);
+    mountWith(false);
+    expect(screen.getByRole('button', { name: en.matchRegistration.join.button })).toBeTruthy();
+    cleanup();
+    mountWith(true);
+    expect(screen.queryByRole('button', { name: en.matchRegistration.join.button })).toBeNull();
+    expect(document.querySelector('[data-match-action-bar]')).toBeNull();
+    cleanup();
+    mountWith(true, { caller_eligibility: 'out_of_range', caller_requires_approval: true });
+    expect(
+      screen.queryByRole('button', { name: en.matchRegistration.join.requestButton })
+    ).toBeNull();
+    expect(document.querySelector('[data-match-action-bar]')).toBeNull();
   });
 
   it('renders the full capacity state as its own explicit blocked state', () => {
@@ -661,6 +691,8 @@ describe('match registration styles', () => {
     expect(styles).toContain('var(--space-');
     expect(styles).toContain('calc(var(--space-40) + var(--space-4))');
     expect(styles).not.toMatch(/#[0-9a-f]{3,8}|\b\d+px\b/i);
-    expect(styles).toContain('var(--border-width-lg) solid var(--color-green)');
+    expect(styles).toContain('var(--focus-width) solid var(--color-focus)');
+    expect(styles).not.toContain('text-transform');
+    expect(styles).not.toContain('textTransform');
   });
 });

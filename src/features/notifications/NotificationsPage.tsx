@@ -1,14 +1,18 @@
 import * as stylex from '@stylexjs/stylex';
-import { rootStyles } from '../../root.styles';
+import { Button } from '../../components/ui/Button';
+import { controlStyles } from '../../components/ui/control.styles';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from '@tanstack/react-router';
+import { TopBar, TopBarActionLink } from '../../components/ui/TopBar';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import type { NotificationCategory, NotificationPage } from './notification-model';
 import { groupNotifications } from './notification-model';
 import { NotificationResultOutcome } from './NotificationResultOutcome';
 import { notificationResultHref } from './notification-target';
-import { styles } from './notifications.styles';
+import { centerStyles as styles } from './notification-center.styles';
+import { notificationGlyph } from './notification-presentation';
+import { styles as legacyStyles } from './notifications.styles';
 import { useNotifications } from './use-notifications';
 
 const categories: NotificationCategory[] = ['all', 'matches', 'results', 'community', 'rankings'];
@@ -38,243 +42,277 @@ export function NotificationsPage({ initial }: { initial: NotificationPage }) {
   );
   const list = (rows: typeof feed.rows) => (
     <ul {...stylex.props(styles.list)}>
-      {rows.map((row) => (
-        <li key={row.id} {...stylex.props(styles.row, !row.read_at && styles.unread)}>
-          <h3 {...stylex.props(styles.cardTitle)}>
-            {t(`notifications.kinds.${row.kind}`, { defaultValue: t('notifications.generic') })}
-          </h3>
-          {row.matchContext ? (
-            <div {...stylex.props(styles.cardMeta)}>
-              <p>
-                {t('notifications.match.invitedBy', {
-                  name: row.matchContext.creator_display_name
-                })}
-              </p>
-              <p>
-                {t('notifications.match.venue')}: {row.matchContext.venue}
-              </p>
-              <p>
-                {t('notifications.match.startsAt')}:{' '}
-                {new Intl.DateTimeFormat(i18n.language, {
-                  dateStyle: 'medium',
-                  timeStyle: 'short',
-                  timeZone: row.matchContext.timezone
-                }).format(new Date(row.matchContext.scheduled_at))}
-              </p>
-              <p>
-                {t(
-                  row.matchContext.playing_count === 1
-                    ? 'notifications.match.playing_one'
-                    : 'notifications.match.playing_other',
-                  { count: row.matchContext.playing_count }
-                )}
-              </p>
-              <p>
-                {t(
-                  row.matchContext.reserve_count === 1
-                    ? 'notifications.match.reserve_one'
-                    : 'notifications.match.reserve_other',
-                  { count: row.matchContext.reserve_count }
-                )}
-              </p>
-              {row.matchContext.price_minor !== null && row.matchContext.currency ? (
-                <p>
-                  {t('notifications.match.pricePerPlayer')}:{' '}
-                  {new Intl.NumberFormat(i18n.language, {
-                    style: 'currency',
-                    currency: row.matchContext.currency
-                  }).format(row.matchContext.price_minor / 100)}
-                </p>
-              ) : null}
-            </div>
-          ) : row.resultContext ? (
-            <div {...stylex.props(styles.cardMeta)}>
-              {row.resultContext.entry_ready ? (
-                <p>{t('notifications.result.entryReady', { venue: row.resultContext.venue })}</p>
-              ) : (
-                <>
+      {rows.map((row) => {
+        const glyph = notificationGlyph(row.kind, row.category);
+        return (
+          <li key={row.id} {...stylex.props(styles.row)}>
+            <span
+              aria-hidden="true"
+              {...stylex.props(styles.glyph, glyph.tone !== 'neutral' && styles[glyph.tone])}
+            >
+              {glyph.symbol}
+            </span>
+            <div {...stylex.props(styles.body)}>
+              {!row.read_at && (
+                <span {...stylex.props(legacyStyles.visuallyHidden)}>
+                  {t('notifications.unreadRow')}
+                </span>
+              )}
+              <h3 {...stylex.props(styles.cardTitle)}>
+                {t(`notifications.kinds.${row.kind}`, { defaultValue: t('notifications.generic') })}
+              </h3>
+              {row.matchContext ? (
+                <div {...stylex.props(styles.meta)}>
                   <p>
-                    {t('notifications.result.group', { number: row.resultContext.group_number })}
-                    {row.resultContext.score ? ` · ${row.resultContext.score}` : ''}
-                  </p>
-                  <NotificationResultOutcome context={row.resultContext} />
-                  <p>
-                    {t('notifications.result.submittedBy', {
-                      name:
-                        row.resultContext.submitted_by_name ?? t('matches.results.unknownPlayer')
+                    {t('notifications.match.invitedBy', {
+                      name: row.matchContext.creator_display_name
                     })}
                   </p>
-                  {row.resultContext.review_deadline_at && (
+                  <p>
+                    {t('notifications.match.venue')}: {row.matchContext.venue}
+                  </p>
+                  <p>
+                    {t('notifications.match.startsAt')}:{' '}
+                    {new Intl.DateTimeFormat(i18n.language, {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                      timeZone: row.matchContext.timezone
+                    }).format(new Date(row.matchContext.scheduled_at))}
+                  </p>
+                  <p>
+                    {t(
+                      row.matchContext.playing_count === 1
+                        ? 'notifications.match.playing_one'
+                        : 'notifications.match.playing_other',
+                      { count: row.matchContext.playing_count }
+                    )}
+                  </p>
+                  <p>
+                    {t(
+                      row.matchContext.reserve_count === 1
+                        ? 'notifications.match.reserve_one'
+                        : 'notifications.match.reserve_other',
+                      { count: row.matchContext.reserve_count }
+                    )}
+                  </p>
+                  {row.matchContext.price_minor !== null && row.matchContext.currency ? (
                     <p>
-                      {t('notifications.result.deadline', {
-                        deadline: new Intl.DateTimeFormat(i18n.language, {
-                          dateStyle: 'medium',
-                          timeStyle: 'short',
-                          timeZone: row.resultContext.timezone
-                        }).format(new Date(row.resultContext.review_deadline_at))
-                      })}
+                      {t('notifications.match.pricePerPlayer')}:{' '}
+                      {new Intl.NumberFormat(i18n.language, {
+                        style: 'currency',
+                        currency: row.matchContext.currency
+                      }).format(row.matchContext.price_minor / 100)}
                     </p>
-                  )}
-                  {!row.resultContext.is_current && (
+                  ) : null}
+                </div>
+              ) : row.resultContext ? (
+                <div {...stylex.props(styles.meta)}>
+                  {row.resultContext.entry_ready ? (
                     <p>
-                      {t('notifications.result.historicalVersion', {
-                        version: row.resultContext.proposal_version
-                      })}
+                      {t('notifications.result.entryReady', { venue: row.resultContext.venue })}
                     </p>
+                  ) : (
+                    <>
+                      <p>
+                        {t('notifications.result.group', {
+                          number: row.resultContext.group_number
+                        })}
+                        {row.resultContext.score ? ` · ${row.resultContext.score}` : ''}
+                      </p>
+                      <NotificationResultOutcome context={row.resultContext} appearance="feed" />
+                      <p>
+                        {t('notifications.result.submittedBy', {
+                          name:
+                            row.resultContext.submitted_by_name ??
+                            t('matches.results.unknownPlayer')
+                        })}
+                      </p>
+                      {row.resultContext.review_deadline_at && (
+                        <p>
+                          {t('notifications.result.deadline', {
+                            deadline: new Intl.DateTimeFormat(i18n.language, {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                              timeZone: row.resultContext.timezone
+                            }).format(new Date(row.resultContext.review_deadline_at))
+                          })}
+                        </p>
+                      )}
+                      {!row.resultContext.is_current && (
+                        <p>
+                          {t('notifications.result.historicalVersion', {
+                            version: row.resultContext.proposal_version
+                          })}
+                        </p>
+                      )}
+                    </>
                   )}
-                </>
-              )}
-            </div>
-          ) : row.category === 'matches' ? (
-            <p>{t('notifications.match.unavailable')}</p>
-          ) : null}
-          <p
-            {...stylex.props(styles.cardMeta)}
-            aria-label={`${grouped.format(row.created_at)} ${t('notifications.dateUtc')}`}
-          >
-            {grouped.format(row.created_at)} {t('notifications.utc')}
-          </p>
-          <div {...stylex.props(styles.actions)}>
-            {row.resultContext ? (
-              <a
-                href={notificationResultHref(row.resultContext)}
-                onClick={() => {
-                  if (!row.read_at) void feed.markRead(row.id);
-                }}
-                {...stylex.props(styles.link)}
+                </div>
+              ) : row.category === 'matches' ? (
+                <p>{t('notifications.match.unavailable')}</p>
+              ) : null}
+              <p
+                {...stylex.props(styles.meta)}
+                aria-label={`${grouped.format(row.created_at)} ${t('notifications.dateUtc')}`}
               >
-                {t(
-                  row.resultContext.entry_ready
-                    ? 'notifications.result.openEvent'
-                    : row.resultContext.is_current
-                      ? 'notifications.result.openResult'
-                      : 'notifications.result.reviewCurrent'
+                {grouped.format(row.created_at)} {t('notifications.utc')}
+              </p>
+              <div {...stylex.props(styles.actions)}>
+                {row.resultContext ? (
+                  <a
+                    href={notificationResultHref(row.resultContext)}
+                    onClick={() => {
+                      if (!row.read_at) void feed.markRead(row.id);
+                    }}
+                    {...stylex.props(legacyStyles.link)}
+                  >
+                    {t(
+                      row.resultContext.entry_ready
+                        ? 'notifications.result.openEvent'
+                        : row.resultContext.is_current
+                          ? 'notifications.result.openResult'
+                          : 'notifications.result.reviewCurrent'
+                    )}
+                  </a>
+                ) : row.matchContext ? (
+                  <a
+                    href={`/matches/${encodeURIComponent(row.matchContext.match_event_id)}`}
+                    onClick={() => {
+                      if (!row.read_at) void feed.markRead(row.id);
+                    }}
+                    {...stylex.props(legacyStyles.link)}
+                  >
+                    {t('notifications.match.openEvent')}
+                  </a>
+                ) : (
+                  <Link
+                    to="/notifications/$notificationId"
+                    params={{ notificationId: row.id }}
+                    {...stylex.props(legacyStyles.link)}
+                  >
+                    {t('notifications.view')}
+                  </Link>
                 )}
-              </a>
-            ) : row.matchContext ? (
-              <a
-                href={`/matches/${encodeURIComponent(row.matchContext.match_event_id)}`}
-                onClick={() => {
-                  if (!row.read_at) void feed.markRead(row.id);
-                }}
-                {...stylex.props(styles.link)}
-              >
-                {t('notifications.match.openEvent')}
-              </a>
-            ) : (
-              <Link
-                to="/notifications/$notificationId"
-                params={{ notificationId: row.id }}
-                {...stylex.props(styles.link)}
-              >
-                {t('notifications.view')}
-              </Link>
-            )}
+                {!row.read_at && (
+                  <Button
+                    variant="secondary"
+                    size="large"
+                    disabled={!feed.online || feed.mutating}
+                    onClick={() => void feed.markRead(row.id)}
+                  >
+                    {t('notifications.markRead')}
+                  </Button>
+                )}
+              </div>
+            </div>
             {!row.read_at && (
-              <button
-                type="button"
-                disabled={!feed.online || feed.mutating}
-                onClick={() => void feed.markRead(row.id)}
-                {...stylex.props(styles.button)}
-              >
-                {t('notifications.markRead')}
-              </button>
+              <span aria-hidden="true" data-unread-indicator {...stylex.props(styles.dot)} />
             )}
-          </div>
-        </li>
-      ))}
+          </li>
+        );
+      })}
     </ul>
   );
 
   return (
-    <main {...stylex.props(styles.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(styles.page)}>
       <section {...stylex.props(styles.panel)}>
-        <header {...stylex.props(styles.pageHeader, rootStyles.pageHeader)}>
-          <div>
-            <h1 {...stylex.props(styles.pageTitle)}>{t('notifications.title')}</h1>
-            <p {...stylex.props(styles.subtitle)}>{t('notifications.subtitle')}</p>
-          </div>
-          <div {...stylex.props(styles.headerActions)}>
-            <button
-              type="button"
+        <TopBar
+          title={t('notifications.title')}
+          back={{ to: '/dashboard', label: t('notifications.backHome') }}
+          trailing={
+            <TopBarActionLink to="/notifications/preferences">
+              {t('notificationPreferences.preferencesLink')}
+            </TopBarActionLink>
+          }
+        />
+        <div {...stylex.props(styles.content)}>
+          <output
+            aria-live="polite"
+            aria-atomic="true"
+            {...stylex.props(legacyStyles.visuallyHidden)}
+          >
+            {countAnnouncement}
+          </output>
+          <nav aria-label={t('notifications.filters.label')} {...stylex.props(styles.filters)}>
+            {categories.map((key) => (
+              <button
+                key={key}
+                type="button"
+                aria-current={category === key ? 'page' : undefined}
+                onClick={() => setCategory(key)}
+                {...stylex.props(
+                  styles.filter,
+                  category === key && styles.selected,
+                  controlStyles.focusRing
+                )}
+              >
+                {category === key && <span aria-hidden="true">✓</span>}
+                {t(`notifications.filters.${key}`)}
+              </button>
+            ))}
+          </nav>
+          <div {...stylex.props(styles.summary)}>
+            {feed.unreadCount !== null && (
+              <StatusBadge appearance="summary">{unreadSummary}</StatusBadge>
+            )}
+            <Button
+              variant="secondary"
+              xstyle={styles.textButton}
               disabled={!feed.online || feed.mutating || !feed.unreadCount}
               onClick={() => void feed.markAll()}
-              {...stylex.props(styles.button)}
             >
               {t('notifications.markAllRead')}
-            </button>
-            <Link to="/notifications/preferences" {...stylex.props(styles.link)}>
-              {t('notificationPreferences.preferencesLink')}
-            </Link>
+            </Button>
           </div>
-        </header>
-        <output aria-live="polite" aria-atomic="true" {...stylex.props(styles.visuallyHidden)}>
-          {countAnnouncement}
-        </output>
-        <nav aria-label={t('notifications.filters.label')} {...stylex.props(styles.filters)}>
-          {categories.map((key) => (
-            <button
-              key={key}
-              type="button"
-              aria-current={category === key ? 'page' : undefined}
-              onClick={() => setCategory(key)}
-              {...stylex.props(styles.filterButton, category === key && styles.selectedFilter)}
-            >
-              {t(`notifications.filters.${key}`)}
-            </button>
-          ))}
-        </nav>
-        {!feed.online && <output>{t('notifications.offline')}</output>}
-        {feed.mutationError && <p role="alert">{t('notifications.mutationError')}</p>}
-        {feed.error && (
-          <p role="alert">
-            {t('notifications.stale')}{' '}
-            <button type="button" onClick={() => void feed.refresh()}>
+          {!feed.online && <output>{t('notifications.offline')}</output>}
+          {feed.mutationError && <p role="alert">{t('notifications.mutationError')}</p>}
+          {feed.error && (
+            <p role="alert">
+              {t('notifications.stale')}{' '}
+              <Button variant="secondary" size="large" onClick={() => void feed.refresh()}>
+                {t('notifications.retry')}
+              </Button>
+            </p>
+          )}
+          {feed.loading && !feed.rows.length && <p>{t('notifications.loading')}</p>}
+          {feed.error && !feed.rows.length ? (
+            <Button variant="secondary" size="large" onClick={() => void feed.refresh()}>
               {t('notifications.retry')}
-            </button>
-          </p>
-        )}
-        {feed.loading && !feed.rows.length && <p>{t('notifications.loading')}</p>}
-        {feed.error && !feed.rows.length ? (
-          <button type="button" onClick={() => void feed.refresh()}>
-            {t('notifications.retry')}
-          </button>
-        ) : feed.rows.length ? (
-          <>
-            {grouped.today.length > 0 && (
-              <>
-                <header {...stylex.props(styles.sectionHeader)}>
-                  <h2 {...stylex.props(styles.sectionTitle)}>{t('notifications.today')}</h2>
-                  <StatusBadge appearance="summary">{unreadSummary}</StatusBadge>
-                </header>
-                {list(grouped.today)}
-              </>
-            )}
-            {grouped.earlier.length > 0 && (
-              <>
-                <header {...stylex.props(styles.sectionHeader)}>
-                  <h2 {...stylex.props(styles.sectionTitle)}>{t('notifications.earlier')}</h2>
-                  {grouped.today.length === 0 && (
-                    <StatusBadge appearance="summary">{unreadSummary}</StatusBadge>
-                  )}
-                </header>
-                {list(grouped.earlier)}
-              </>
-            )}
-            {feed.cursor && (
-              <button
-                type="button"
-                disabled={!feed.online || feed.loading}
-                onClick={() => void feed.loadMore()}
-                {...stylex.props(styles.button)}
-              >
-                {t('notifications.loadMore')}
-              </button>
-            )}
-          </>
-        ) : (
-          !feed.loading && <p>{t(`notifications.empty.${category}`)}</p>
-        )}
+            </Button>
+          ) : feed.rows.length ? (
+            <>
+              {(['today', 'earlier'] as const).map((group) =>
+                grouped[group].length > 0 ? (
+                  <section
+                    key={group}
+                    aria-labelledby={`notifications-${group}`}
+                    {...stylex.props(styles.group)}
+                  >
+                    <h2 id={`notifications-${group}`} {...stylex.props(styles.groupTitle)}>
+                      {t(`notifications.${group}`)}
+                    </h2>
+                    {list(grouped[group])}
+                  </section>
+                ) : null
+              )}
+              {feed.cursor && (
+                <Button
+                  variant="secondary"
+                  size="large"
+                  disabled={!feed.online || feed.loading}
+                  onClick={() => void feed.loadMore()}
+                >
+                  {t('notifications.loadMore')}
+                </Button>
+              )}
+            </>
+          ) : (
+            !feed.loading && (
+              <p {...stylex.props(styles.meta)}>{t(`notifications.empty.${category}`)}</p>
+            )
+          )}
+        </div>
       </section>
     </main>
   );

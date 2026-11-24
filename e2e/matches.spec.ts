@@ -33,6 +33,7 @@ type Copy = {
     card: { photoAlt: string; pricePerPlayer: string; openMaps: string };
     detail: {
       title: string;
+      barTitle: string;
       visibility: { community_open: string; invite_only: string };
       creatorAccepted: string;
       invitationInfo: string;
@@ -41,11 +42,12 @@ type Copy = {
       viewCourtLocationFor: string;
     };
     teamMode: { PREDEFINED_TEAMS: string; POST_MATCH_TEAMS: string };
+    type: { friendly: string; competitive: string };
   };
   matchCreate: {
     title: string;
     next: string;
-    review: string;
+    readyTitle: string;
     publish: string;
     steps: { players: string; teams: string };
     fields: {
@@ -62,6 +64,10 @@ type Copy = {
       cutoff: string;
     };
     invitees: { search: string };
+    players: {
+      registration: string;
+      registrationOptions: { community_open: string; invite_only: string };
+    };
     photo: { remove: string };
     errors: {
       invalidInput: string;
@@ -335,14 +341,11 @@ async function publishMatchViaUi(
   const visibility = options.visibility ?? 'community_open';
   await page.getByLabel(en.matchCreate.fields.date).fill(options.date ?? ymd(3));
   await page.getByLabel(en.matchCreate.fields.startTime).fill(options.startTime ?? '19:30');
-  await page.getByLabel(en.matchCreate.fields.visibility).selectOption(visibility);
   await page.getByLabel(en.matchCreate.fields.venueName).fill(options.venue);
   await page
     .getByLabel(en.matchCreate.fields.mapsUrl)
     .fill(`https://www.google.com/maps/place/?q=place_id:${encodeURIComponent(options.venue)}`);
   if (options.price) await page.getByLabel(en.matchCreate.fields.price).fill(options.price);
-  if (options.maximum)
-    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill(options.maximum);
   await page
     .getByLabel(en.matchCreate.fields.photo)
     .setInputFiles({ name: 'venue.png', mimeType: 'image/png', buffer: matchPhoto() });
@@ -351,6 +354,11 @@ async function publishMatchViaUi(
   });
   await page.getByRole('button', { name: en.matchCreate.next }).click();
   await expect(page.getByText(en.matchCreate.steps.players, { exact: true })).toBeVisible();
+  await page
+    .getByRole('radio', { name: en.matchCreate.players.registrationOptions[visibility] })
+    .click();
+  if (options.maximum)
+    await page.getByLabel(en.matchCreate.fields.maximumRegistrations).fill(options.maximum);
   if (options.inviteeName) {
     await page.getByLabel(en.matchCreate.invitees.search).fill(options.inviteeName);
     await page.getByRole('button', { name: options.inviteeName }).click();
@@ -362,7 +370,7 @@ async function publishMatchViaUi(
     .getByRole('radio', { name: en.matches.teamMode[options.teamMode ?? 'POST_MATCH_TEAMS'] })
     .check();
   await page.getByRole('button', { name: en.matchCreate.next }).click();
-  await expect(page.getByRole('heading', { name: en.matchCreate.review })).toBeVisible();
+  await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
   await page.getByRole('button', { name: en.matchCreate.publish }).click();
   await expect(page).toHaveURL(/\/matches$/);
   await waitForHydratedPage(page);
@@ -486,15 +494,15 @@ test.describe.serial('public community_open lifecycle', () => {
     await creatorPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(creatorPage);
     await expect(
-      creatorPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      creatorPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      creatorPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      creatorPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     await expect(creatorPage.getByText(en.matches.detail.creatorAccepted)).toBeVisible();
-    await expect(creatorPage.getByText(`${en.matches.card.pricePerPlayer}: €12.00`)).toBeVisible();
+    await expect(creatorPage.getByText('€12.00', { exact: true })).toBeVisible();
     await expect(creatorPage.getByText('Timezone: UTC')).toBeVisible();
     const mapsLink = creatorPage.getByRole('link', {
       name: en.matches.detail.viewCourtLocationFor.replace('{{venue}}', venue)
@@ -521,12 +529,12 @@ test.describe.serial('public community_open lifecycle', () => {
     await cards.getByRole('link', { name: en.notifications.match.openEvent }).click();
     await expect(memberPage).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      memberPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      memberPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      memberPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      memberPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
 
     // The member discovers the event in Available.
@@ -549,12 +557,12 @@ test.describe.serial('public community_open lifecycle', () => {
     await card.click();
     await expect(guestPage).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await expect(
-      guestPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      guestPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      guestPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      guestPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     const photo = guestPage.getByRole('img', { name: en.matches.card.photoAlt });
     await expect(photo).toBeVisible();
@@ -595,12 +603,12 @@ test.describe.serial('public community_open lifecycle', () => {
     await excludedPage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(excludedPage);
     await expect(
-      excludedPage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      excludedPage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      excludedPage.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, {
-        exact: true
-      })
+      excludedPage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
 
     // KNOWN GAP (reported, not faked): the localized out-of-range approval note
@@ -721,22 +729,9 @@ test.describe.serial('public community_open lifecycle', () => {
     // The create wizard offers exactly the two scoped enums and no Ranked/League state.
     await openCreateWizard(creatorPage);
     await expect(creatorPage.getByText(/ranked|league/i)).toHaveCount(0);
-    const typeOptions = await creatorPage
-      .getByLabel(en.matchCreate.fields.type)
-      .evaluate((select) =>
-        select instanceof HTMLSelectElement
-          ? Array.from(select.options).map((option) => option.value)
-          : []
-      );
-    expect(typeOptions).toEqual(['competitive', 'friendly']);
-    const visibilityOptions = await creatorPage
-      .getByLabel(en.matchCreate.fields.visibility)
-      .evaluate((select) =>
-        select instanceof HTMLSelectElement
-          ? Array.from(select.options).map((option) => option.value)
-          : []
-      );
-    expect(visibilityOptions).toEqual(['community_open', 'invite_only']);
+    await expect(
+      creatorPage.getByRole('radiogroup', { name: en.matchCreate.fields.type }).getByRole('radio')
+    ).toHaveText([en.matches.type.friendly, en.matches.type.competitive]);
     await expect(
       creatorPage.getByRole('button', { name: /ranked|league|book|pay|purchase/i })
     ).toHaveCount(0);
@@ -744,6 +739,14 @@ test.describe.serial('public community_open lifecycle', () => {
     await expect(
       creatorPage.getByText(en.matchCreate.steps.players, { exact: true })
     ).toBeVisible();
+    await expect(
+      creatorPage
+        .getByRole('radiogroup', { name: en.matchCreate.players.registration })
+        .getByRole('radio')
+    ).toHaveText([
+      en.matchCreate.players.registrationOptions.community_open,
+      en.matchCreate.players.registrationOptions.invite_only
+    ]);
     await creatorPage.getByRole('button', { name: en.matchCreate.next }).click();
     await expect(creatorPage.getByText(en.matchCreate.steps.teams, { exact: true })).toBeVisible();
     await expect(creatorPage.getByRole('radio')).toHaveCount(2);
@@ -889,12 +892,12 @@ test('invite_only stays invisible until an explicit invitation and never auto-re
     await inviteePage.goto(`/matches/${eventId}`);
     await waitForHydratedPage(inviteePage);
     await expect(
-      inviteePage.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      inviteePage.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      inviteePage.getByText(`${venue} · ${en.matches.detail.visibility.invite_only}`, {
-        exact: true
-      })
+      inviteePage
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.invite_only, { exact: true })
     ).toBeVisible();
     await expect(inviteePage.getByText(en.matches.detail.invitationInfo)).toBeVisible();
 
@@ -917,7 +920,11 @@ test('invite_only stays invisible until an explicit invitation and never auto-re
     await expect(
       inviteePage.getByText(en.notifications.match.invitedBy.replace('{{name}}', host.displayName))
     ).toBeVisible();
-    await expect(inviteePage.getByText(`${en.notifications.match.venue}: ${venue}`)).toBeVisible();
+    // Detail rows render as a label/value pair (notification-detail frames), not "Venue: value".
+    await expect(
+      inviteePage.locator('main').getByText(en.notifications.match.venue, { exact: true })
+    ).toBeVisible();
+    await expect(inviteePage.locator('main').getByText(venue, { exact: true })).toBeVisible();
 
     const registrationsAfter = await host.client
       .from('match_event_registrations')
@@ -1005,7 +1012,7 @@ test('invalid input cannot publish through the UI or the publication RPC', async
       });
       for (let step = 0; step < 3; step += 1)
         await page.getByRole('button', { name: en.matchCreate.next }).click();
-      await expect(page.getByRole('heading', { name: en.matchCreate.review })).toBeVisible();
+      await expect(page.getByRole('heading', { name: en.matchCreate.readyTitle })).toBeVisible();
     };
     const publishExpectRejected = async (message: string) => {
       await page.getByRole('button', { name: en.matchCreate.publish }).click();
@@ -1151,10 +1158,12 @@ test('an elapsed Past event shows scheduled history without fabricated results',
     await expect(page).toHaveURL(new RegExp(`/matches/${eventId}$`));
     await waitForHydratedPage(page);
     await expect(
-      page.getByRole('heading', { level: 1, name: en.matches.detail.title, exact: true })
+      page.getByRole('heading', { level: 1, name: en.matches.detail.barTitle, exact: true })
     ).toBeVisible();
     await expect(
-      page.getByText(`${venue} · ${en.matches.detail.visibility.community_open}`, { exact: true })
+      page
+        .getByRole('region', { name: venue, exact: true })
+        .getByText(en.matches.detail.visibility.community_open, { exact: true })
     ).toBeVisible();
     // Scheduled history only: no result badge, no score-like pair, no confirmed/disputed prose.
     const mainText = await page.locator('main').innerText();

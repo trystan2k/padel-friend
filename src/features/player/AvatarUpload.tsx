@@ -1,11 +1,12 @@
 import * as stylex from '@stylexjs/stylex';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { uploadOwnerAvatar } from './avatar-upload';
 import { completeAvatarUpload } from './player.functions';
 import { playerInitials } from './player-initials';
+import { Button } from '../../components/ui/Button';
 import { validateAvatarFile } from './player.validators';
-import { ui } from './player-ui.styles';
+import { avatarRow as a, chips } from './profile-edit.styles';
 
 type Props = {
   name: string;
@@ -62,51 +63,62 @@ export function AvatarUpload({ name, avatarUrl, onUploaded }: Props) {
     }
   }
 
+  const uploadId = useId();
   return (
-    <div {...stylex.props(ui.stack)}>
+    <div {...stylex.props(a.row)}>
       {preview || avatarUrl ? (
         <img
           src={preview ?? avatarUrl ?? undefined}
           alt={t('profile.avatarAlt', { name })}
-          {...stylex.props(ui.avatar)}
+          {...stylex.props(a.avatar)}
         />
       ) : (
-        <span {...stylex.props(ui.avatar)}>
+        <span {...stylex.props(a.avatar)}>
           <span aria-hidden="true">{initials}</span>
-          <span {...stylex.props(ui.srOnly)}>{t('profile.avatarAlt', { name })}</span>
+          <span {...stylex.props(chips.srOnly)}>{t('profile.avatarAlt', { name })}</span>
         </span>
       )}
-      <label htmlFor="profile-avatar" {...stylex.props(ui.label)}>
-        {t('profile.avatar')}
-      </label>
-      <input
-        id="profile-avatar"
-        type="file"
-        accept="image/jpeg,image/png,image/webp"
-        disabled={uploading}
-        aria-describedby={error ? 'avatar-error' : 'avatar-help'}
-        onChange={(event) => chooseFile(event.target.files?.[0])}
-        {...stylex.props(ui.input)}
-      />
-      <p id="avatar-help" {...stylex.props(ui.muted)}>
-        {t('profile.avatarHelp')}
-      </p>
-      {file && (
-        <button
-          type="button"
-          onClick={() => void upload()}
-          disabled={uploading}
-          {...stylex.props(ui.button)}
-        >
-          {uploading ? t('profile.avatarUploading') : t('profile.avatarUploadAction')}
-        </button>
-      )}
-      {uploading && <output {...stylex.props(ui.muted)}>{t('profile.avatarUploading')}</output>}
-      {error && (
-        <p id="avatar-error" role="alert" {...stylex.props(ui.error)}>
-          {t(error)}
+      <div {...stylex.props(a.body)}>
+        <label htmlFor={uploadId} {...stylex.props(a.change)}>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            {...stylex.props(a.icon)}
+          >
+            <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+            <circle cx="12" cy="13" r="3" />
+          </svg>
+          {t('profile.changePhoto')}
+          <input
+            id={uploadId}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            disabled={uploading}
+            aria-describedby={error ? 'avatar-error' : 'avatar-help'}
+            onChange={(event) => chooseFile(event.target.files?.[0])}
+            {...stylex.props(a.file)}
+          />
+        </label>
+        <p id="avatar-help" {...stylex.props(a.help)}>
+          {t('profile.avatarHelp')}
         </p>
-      )}
+        {file && (
+          <Button variant="secondary" onClick={() => void upload()} disabled={uploading}>
+            {uploading ? t('profile.avatarUploading') : t('profile.avatarUploadAction')}
+          </Button>
+        )}
+        {uploading && <output {...stylex.props(a.help)}>{t('profile.avatarUploading')}</output>}
+        {error && (
+          <p id="avatar-error" role="alert" {...stylex.props(a.error)}>
+            {t(error)}
+          </p>
+        )}
+      </div>
     </div>
   );
 }

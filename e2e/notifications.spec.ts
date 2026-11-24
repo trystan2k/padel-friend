@@ -1,4 +1,3 @@
-// Baselines re-blessed 2026-10-23 after the user-directed global chrome redesign (circular locale/theme chips); thresholds unchanged. Second pass: Inter/600 typography, flat input/button borders, chip-safe headers.
 import { readFileSync } from 'node:fs';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { parseResultProposals } from '../src/features/matches/match-result-model';
@@ -11,6 +10,7 @@ import {
   type Response,
   type Route
 } from '@playwright/test';
+import { assertChipsStepAside, assertNoUaFieldsetBorders } from './route-chrome';
 import { testSupabaseConfig } from './test-supabase-config';
 import { trustedClient } from '../test/helpers/trusted-client';
 import { submitAndWaitForAuthDestination, waitForHydratedPage } from './auth-helpers';
@@ -35,7 +35,8 @@ type Copy = {
   auth: { loginEmailLabel: string; loginPasswordLabel: string; loginSubmit: string };
   notifications: {
     title: string;
-    subtitle: string;
+    backHome: string;
+    unreadRow: string;
     markAllRead: string;
     markRead: string;
     view: string;
@@ -90,6 +91,7 @@ type Copy = {
       rankings: string;
       leagues: string;
     };
+    categoryHelp: Record<string, string>;
     criticalTitle: string;
     alwaysOn: string;
     save: string;
@@ -565,6 +567,12 @@ test('invitation journey with Push permission denied: badge, center, detail, acc
     await waitForHydratedPage(recipientPage);
     await expect(recipientPage.getByRole('heading', { name: communityName })).toBeVisible();
     await expect(recipientPage.getByText(en.notifications.invitationContext)).toBeVisible();
+    const invitation = recipientPage.locator('[data-community-invitation="available"]');
+    await expect(invitation.locator('header')).toBeVisible();
+    const accept = invitation
+      .locator('footer')
+      .getByRole('button', { name: en.notifications.accept });
+    expect((await accept.boundingBox())?.height).toBeGreaterThanOrEqual(52);
 
     // Opening the detail marks it read server-side; acceptance joins the private community.
     await recipientPage.getByRole('button', { name: en.notifications.accept }).click();
@@ -575,6 +583,8 @@ test('invitation journey with Push permission denied: badge, center, detail, acc
       0
     );
     await expect(recipientPage.getByText(en.notifications.activeMembership)).toBeVisible();
+
+    await expect(recipientPage.locator('[data-community-invitation="active"]')).toBeVisible();
 
     // Full page reload: read state and target state persist from the database.
     await recipientPage.reload();
@@ -682,6 +692,7 @@ test('invitation revoked between detail load and accept degrades gracefully with
     await expect(page.getByRole('heading', { name: communityName })).toBeVisible();
     const accept = page.getByRole('button', { name: en.notifications.accept });
     await expect(accept).toBeVisible();
+    await assertChipsStepAside(page, 'notification detail invitation');
 
     // Admin revokes the invitation after the detail is loaded but before Accept is clicked.
     const revoked = await trustedClient()
@@ -705,6 +716,8 @@ test('invitation revoked between detail load and accept degrades gracefully with
     await expect(
       page.getByRole('heading', { name: en.notifications.targetUnavailable })
     ).toBeVisible();
+    await expect(page.locator('[data-community-invitation="unavailable"]')).toBeVisible();
+    await expect(page.getByText(communityName, { exact: true })).toHaveCount(0);
     await expect(page.getByRole('link', { name: en.notifications.back })).toBeVisible();
 
     const membership = await recipient.client
@@ -1084,91 +1097,42 @@ test('offline center disables mutations and recovers; preferences round-trip all
   }
 });
 
-// ---------------------------------------------------------------------------
-// Visual and structural probes.
-//
-// Screenshot budgets are documented, NON-ZERO cross-platform allowances: the
-// baselines are captured from this suite (volatile timestamp rows are masked),
-// so the same-platform residual measured on the verification re-run is 0
-// changed pixels; the budgets only absorb Chromium font-rasterization variance
-// across platforms, following the measured auth-visual precedent (text-heavy
-// screens showed Linux residuals up to ~1.44x the macOS ratio). Structural
-// facts are guarded by exact geometry/style probes, never by the budgets;
-// budgets must never be widened to mask a structural defect.
-//
-// Baselines were RECAPTURED for the corrected notification center (F4/F5 fix
-// iteration: styled header/filters/summary chip, grouped preferences). The
-// pre-recapture baselines (captured while the center still lacked its
-// selected-filter treatment and unread summary badge) were deleted; the new
-// set was written by the capture run and verified green by an immediate
-// second run.
-//
-// Budgets per screen (maxDiffPixelRatio): populated center mobile 4%, dark
-// populated center mobile 4%, empty center mobile 3%, preferences mobile 6%,
-// desktop 2%. Values unchanged from the reviewed delivery except the added
-// dark-theme screen, which reuses the text-heavy 4% populated precedent, and
-// the preferences mobile raise recorded below.
-//
-// Preferences mobile 3% -> 6% (CI run 38879335128, job "checks", PR #20, head
-// 47b07f7): the first Linux run measured 12187/329160 changed pixels (ratio
-// 0.0370, displayed rounded as 0.04 in the Playwright error) against the
-// macOS-captured baseline. The three CI attempts produced byte-identical
-// "actual" PNGs, so the residual is deterministic, and the diff is a
-// full-page pattern of thin 10-24px horizontal text-line bands spanning the
-// whole 390x844 viewport: the signature of macOS<->Linux Chromium font
-// rasterization, not a UI change (the artifact's "expected" PNG byte-matches
-// the committed baseline, and the commits after the baseline capture touch no
-// preferences UI or snapshot file). This budget is therefore a documented
-// rasterization residual, NOT a masked structural defect: every structural
-// fact on this screen is guarded by exact independent probes
-// (assertPreferencesStructure: approved DOM order, five grouped category
-// rows, token-driven borders/surfaces, applied typography; plus switch order,
-// checked states, panel/fieldset geometry and the ALWAYS ON affordance
-// absence) and none of those probes was weakened, removed or reordered. 0.06
-// = 1.62x the measured Linux ratio (~62% headroom); keeping 0.04 would leave
-// only 8%. The remaining notification budgets are NOT widened: they all
-// passed on Linux in that same run, but their exact same-run margins were not
-// measured, so a future run may confirm or tighten them.
-//
-// Recorded deviation for review notes: the approved Pencil frames include an
-// app-wide bottom navigation, which is pre-existing product infrastructure
-// intentionally NOT implemented in PAF-3 (plan: "no new global nav/bottom
-// navigation"). The notification screens therefore show no bottom navigation
-// and must not be rejected for that bounded gap.
-// ---------------------------------------------------------------------------
+// Clubhouse visual baselines: see references/paf-202-notifications/manifest.json.
+// Exact structural probes must pass independently of the unchanged pixel budgets.
 
 async function ready(page: Page): Promise<void> {
   await waitForHydratedPage(page);
   // Force-load the exact faces the frames use: a page that never renders a given face would
   // otherwise leave it unloaded and make the screenshot depend on navigation timing.
   await page.evaluate(async () => {
-    await Promise.all([
-      document.fonts.load('400 12px Inter'),
-      document.fonts.load('600 12px Inter'),
-      document.fonts.load('700 24px Manrope')
-    ]);
+    await Promise.all(
+      ['400', '500', '600', '700', '800'].map((weight) =>
+        document.fonts.load(`${weight} 16px Figtree`)
+      )
+    );
     await document.fonts.ready;
   });
   const fonts = await page.evaluate(() => ({
-    inter: document.fonts.check('400 12px Inter') && document.fonts.check('600 12px Inter'),
-    manrope: document.fonts.check('700 24px Manrope')
+    figtree: ['400', '600', '700', '800'].every((weight) =>
+      document.fonts.check(`${weight} 16px Figtree`)
+    )
   }));
-  expect(fonts, 'Inter and Manrope must be available before screenshot').toEqual({
-    inter: true,
-    manrope: true
-  });
+  expect(fonts, 'Figtree must be available before screenshot').toEqual({ figtree: true });
 }
 
 async function assertCenterStructure(page: Page, copy: Copy = en) {
   await expect(
     page.getByRole('heading', { level: 1, name: copy.notifications.title })
   ).toBeVisible();
-  await expect(page.getByText(copy.notifications.subtitle)).toBeVisible();
+  const back = page.getByRole('link', { name: copy.notifications.backHome });
+  await expect(back).toHaveAttribute('href', '/dashboard');
+  expect((await back.boundingBox())!.width).toBeGreaterThanOrEqual(44);
   const preferencesLink = page.getByRole('link', {
     name: copy.notificationPreferences.preferencesLink
   });
   await expect(preferencesLink).toBeVisible();
   await expect(preferencesLink).toHaveAttribute('href', '/notifications/preferences');
+  await preferencesLink.click({ trial: true });
 
   const nav = page.getByRole('navigation', { name: copy.notifications.filters.label });
   const expectedFilters = [
@@ -1178,7 +1142,11 @@ async function assertCenterStructure(page: Page, copy: Copy = en) {
     copy.notifications.filters.community,
     copy.notifications.filters.rankings
   ];
-  expect(await nav.getByRole('button').allInnerTexts()).toEqual(expectedFilters);
+  const buttons = nav.getByRole('button');
+  await expect(buttons).toHaveCount(expectedFilters.length);
+  for (const [index, name] of expectedFilters.entries()) {
+    await expect(buttons.nth(index)).toHaveAccessibleName(name);
+  }
   await expect(nav.getByRole('button', { name: copy.notifications.filters.all })).toHaveAttribute(
     'aria-current',
     'page'
@@ -1222,51 +1190,33 @@ async function expectTokenStyle(
 // center shipped unstyled headings (UA h1 32px serif) and unstyled card copy.
 async function assertAppliedCenterTypography(page: Page, copy: Copy = en) {
   const title = page.getByRole('heading', { level: 1, name: copy.notifications.title });
-  expect(await title.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Manrope/);
-  await expect(title).toHaveCSS('font-size', '24px');
-  const subtitle = page.getByText(copy.notifications.subtitle);
-  expect(await subtitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Inter/);
-  await expect(subtitle).toHaveCSS('font-size', '12px');
+  expect(await title.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Figtree/);
+  // Shared TopBar title (cAqsQ): 17/700 centred.
+  await expect(title).toHaveCSS('font-size', '17px');
+  await expect(title).toHaveCSS('text-align', 'center');
 }
 
 // Populated-center-only typography: the section heading and card copy.
 async function assertPopulatedTypography(page: Page, copy: Copy = en) {
   const sectionTitle = page.getByRole('heading', { level: 2, name: copy.notifications.today });
   expect(await sectionTitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(
-    /^Manrope/
+    /^Figtree/
   );
-  await expect(sectionTitle).toHaveCSS('font-size', '16px');
+  await expect(sectionTitle).toHaveCSS('font-size', '14px');
   const card = page.locator('main li').first();
   const cardTitle = card.getByRole('heading', { level: 3 });
-  expect(await cardTitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Inter/);
-  await expect(cardTitle).toHaveCSS('font-size', '14px');
-  await expect(card.locator('p[aria-label]')).toHaveCSS('font-size', '12px');
+  expect(await cardTitle.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Figtree/);
+  await expect(cardTitle).toHaveCSS('font-size', '16px');
+  await expect(card.locator('p[aria-label]')).toHaveCSS('font-size', '13px');
 }
 
-// F4 regression guard: the mark-all-read action belongs to the page HEADER (beside the title),
-// precedes the filter group in DOM order, and is a >=44px target.
+// cAqsQ: filters precede the unread summary and bulk action, then named groups.
 async function assertHeaderActionPlacement(page: Page, copy: Copy = en) {
   const button = page.getByRole('button', { name: copy.notifications.markAllRead });
   const nav = page.getByRole('navigation', { name: copy.notifications.filters.label });
-  const navElement = await nav.elementHandle();
-  const placement = await button.evaluate((node, navNode) => {
-    const header = node.closest('header');
-    return {
-      inHeader: header !== null && header.contains(node),
-      headerHasTitle: header !== null && header.querySelector('h1') !== null,
-      precedesFilters:
-        header !== null &&
-        navNode !== null &&
-        !!(header.compareDocumentPosition(navNode) & Node.DOCUMENT_POSITION_FOLLOWING)
-    };
-  }, navElement);
-  expect(placement).toEqual({
-    inHeader: true,
-    headerHasTitle: true,
-    precedesFilters: true
-  });
-  await expect(button).toHaveCSS('min-height', '44px');
-  expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  const navBox = (await nav.boundingBox())!;
+  expect((await button.boundingBox())!.y).toBeGreaterThanOrEqual(navBox.y + navBox.height);
+  expect((await button.boundingBox())!.height).toBeGreaterThanOrEqual(52);
 }
 
 // F4 regression guard: the active filter must carry a DISTINCT computed treatment from an
@@ -1277,9 +1227,15 @@ async function assertSelectedFilterTreatment(page: Page, copy: Copy = en) {
   const active = nav.getByRole('button', { name: copy.notifications.filters.all });
   const inactive = nav.getByRole('button', { name: copy.notifications.filters.matches });
   await expect(active).toHaveAttribute('aria-current', 'page');
-  await expectTokenStyle(active, 'background-color', '--color-surface', 'active filter surface');
-  await expectTokenStyle(active, 'color', '--color-text', 'active filter text');
-  await expect(inactive).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expectTokenStyle(active, 'background-color', '--color-text', 'active filter surface');
+  await expectTokenStyle(active, 'color', '--color-bg', 'active filter text');
+  await expectTokenStyle(
+    inactive,
+    'background-color',
+    '--color-surface',
+    'inactive filter surface'
+  );
+  await expect(active).toHaveCSS('border-radius', '36px');
   const weights = await Promise.all([
     active.evaluate((node) => getComputedStyle(node).fontWeight),
     inactive.evaluate((node) => getComputedStyle(node).fontWeight)
@@ -1294,11 +1250,10 @@ async function assertSummaryBadge(page: Page, unreadCount: number, copy: Copy) {
   await expect(badge).toHaveCount(1);
   await expect(badge).toHaveText(unreadTextFor(copy, unreadCount));
   await expectTokenStyle(badge, 'background-color', '--color-green-soft', 'summary badge chip');
-  await expectTokenStyle(badge, 'color', '--color-green', 'summary badge text');
-  const sectionHeader = page
-    .getByRole('heading', { level: 2, name: copy.notifications.today })
-    .locator('xpath=following-sibling::*[1]');
-  await expect(sectionHeader).toHaveText(unreadTextFor(copy, unreadCount));
+  await expectTokenStyle(badge, 'color', '--color-green-ink', 'summary badge text');
+  await expect(
+    badge.locator('..').getByRole('button', { name: copy.notifications.markAllRead })
+  ).toBeVisible();
 }
 
 // F4 regression guard: cards are list items WITHOUT browser bullets or the UA 40px
@@ -1310,7 +1265,10 @@ async function assertListSemantics(page: Page) {
   await expect(list).toHaveCSS('padding-left', '0px');
   await expect(list).toHaveCSS('margin-left', '0px');
   const card = list.locator('li').first();
-  await expect(card).toHaveCSS('padding-left', '4px');
+  await expect(card).toHaveCSS('padding-left', '14px');
+  await expect(list).toHaveCSS('border-radius', '18px');
+  await expectTokenStyle(list, 'background-color', '--color-surface', 'group surface');
+  await expectTokenStyle(list, 'border-color', '--color-hairline', 'group border');
 }
 
 function unreadTextFor(copy: Copy, count: number): string {
@@ -1340,7 +1298,8 @@ async function assertNoTextOverflow(page: Page) {
       const hasText = (node.textContent ?? '').trim().length > 0;
       if (!hasText) continue;
       const style = getComputedStyle(node);
-      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      if (style.display === 'none' || style.visibility === 'hidden' || style.clip !== 'auto')
+        continue;
       if (node.scrollWidth > node.clientWidth + 1)
         results.push(`${node.tagName.toLowerCase()}: "${(node.textContent ?? '').trim()}"`);
     }
@@ -1404,7 +1363,7 @@ async function assertPreferencesStructure(page: Page, copy: Copy) {
   expect(await rows.count()).toBe(5);
   const rowFacts = await rows.evaluateAll((elements) =>
     elements.map((element) => ({
-      text: (element.querySelector('span')?.textContent ?? '').trim(),
+      text: (element.querySelector('span > span')?.textContent ?? '').trim(),
       hasSwitch: element.querySelector('button, input') !== null
     }))
   );
@@ -1420,20 +1379,31 @@ async function assertPreferencesStructure(page: Page, copy: Copy) {
   // (Chrome default: 2px groove / outset) nor the removed border: 0.
   await expect(fieldset).toHaveCSS('border-top-style', 'solid');
   await expect(fieldset).toHaveCSS('border-top-width', '1px');
-  await expectTokenStyle(fieldset, 'border-color', '--color-line', 'push group border');
+  await expectTokenStyle(fieldset, 'border-color', '--color-hairline', 'push group border');
   await expectTokenStyle(fieldset, 'background-color', '--color-surface', 'push group surface');
-  await expect(fieldset).toHaveCSS('border-radius', '14px');
+  await expect(fieldset).toHaveCSS('border-radius', '18px');
+  await assertNoUaFieldsetBorders(page, 'notification preferences');
+  const device = page.getByRole('region', { name: copy.push.title });
+  expect((await device.boundingBox())!.y).toBeLessThan((await fieldset.boundingBox())!.y);
+  for (const key of ['community', 'matches', 'results', 'rankings', 'leagues'] as const) {
+    const control = fieldset.getByRole('switch', {
+      name: copy.notificationPreferences.categories[key]
+    });
+    await expect(control).toHaveAccessibleDescription(
+      copy.notificationPreferences.categoryHelp[key]!
+    );
+    await expect(control).toHaveCSS('height', '52px');
+  }
 
   // ALWAYS ON panel keeps the approved green-soft card with the green leading edge.
   await expectTokenStyle(critical, 'background-color', '--color-green-soft', 'always-on card');
   await expect(critical).toHaveCSS('border-inline-start-width', '2px');
   await expectTokenStyle(critical, 'border-inline-start-color', '--color-green', 'always-on edge');
 
-  // Applied preferences typography: compact 20px back link/title, 12px context/legend.
-  expect(await back.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Inter/);
-  await expect(back).toHaveCSS('font-size', '20px');
-  await expect(back).toHaveCSS('font-weight', '700');
-  await expect(title).toHaveCSS('font-size', '20px');
+  // Applied preferences typography: shared TopBar 17px title, 12px context/legend.
+  expect(await back.evaluate((node) => getComputedStyle(node).fontFamily)).toMatch(/^Figtree/);
+  expect((await back.boundingBox())!.width).toBeGreaterThanOrEqual(44);
+  await expect(title).toHaveCSS('font-size', '17px');
   await expect(context).toHaveCSS('font-size', '12px');
   const legend = fieldset.locator('legend');
   await expect(legend).toHaveCSS('font-size', '12px');
@@ -1514,17 +1484,15 @@ test.describe('notification visual probes', { tag: '@visual' }, () => {
     await mark.click();
     await expect(unreadChip(page, 1)).toBeVisible();
     await assertSummaryBadge(page, 1, en);
-    const readStyle = await cards.first().evaluate((item) => {
-      const style = getComputedStyle(item);
-      return { background: style.backgroundColor, border: style.borderLeftWidth };
-    });
-    const unreadStyle = await cards.nth(1).evaluate((item) => {
-      const style = getComputedStyle(item);
-      return { background: style.backgroundColor, border: style.borderLeftWidth };
-    });
-    // Unread cards carry the approved green-soft differentiation.
-    expect(unreadStyle).toEqual({ background: 'rgb(224, 243, 232)', border: '2px' });
-    expect(readStyle.background).not.toBe(unreadStyle.background);
+    await expect(cards.first().locator('[data-unread-indicator]')).toHaveCount(0);
+    const dot = cards.nth(1).locator('[data-unread-indicator]');
+    await expect(dot).toBeVisible();
+    await expectTokenStyle(dot, 'background-color', '--color-green', 'unread dot');
+    await expect(dot).toHaveAttribute('aria-hidden', 'true');
+    await expect(
+      cards.nth(1).getByText(en.notifications.unreadRow, { exact: true })
+    ).toBeAttached();
+    await expect(page.locator('main output[aria-live="polite"]')).toHaveText(unreadTextFor(en, 1));
     await expect(
       cards.first().getByRole('button', { name: en.notifications.markRead })
     ).toHaveCount(0);
@@ -1780,35 +1748,17 @@ test.describe('notification dark-theme probes', { tag: '@visual' }, () => {
       await assertListSemantics(page);
       await assertCardActions(page);
 
-      // Unread differentiation is token-driven: marking one card read must swap its
-      // background off the green-soft token while the unread card keeps it, with the
-      // green leading edge on the unread card only.
       const cards = page.locator('main li');
       await expect(cards).toHaveCount(2);
       await cards.first().getByRole('button', { name: en.notifications.markRead }).click();
       await expect(unreadChip(page, 1)).toBeVisible();
-      const unreadCard = cards.nth(1);
-      const { probeValue: greenSoftToken, elementValue: unreadBackground } =
-        await unreadCard.evaluate((item) => {
-          const probe = document.createElement('div');
-          probe.setAttribute('aria-hidden', 'true');
-          probe.style.position = 'absolute';
-          probe.style.visibility = 'hidden';
-          probe.style.setProperty('background-color', 'var(--color-green-soft)');
-          item.appendChild(probe);
-          const probeValue = getComputedStyle(probe).backgroundColor;
-          const own = getComputedStyle(item).backgroundColor;
-          probe.remove();
-          return { probeValue, elementValue: own };
-        });
-      expect(unreadBackground, 'unread card uses the green-soft token in dark theme').toBe(
-        greenSoftToken
+      await expect(cards.first().locator('[data-unread-indicator]')).toHaveCount(0);
+      await expectTokenStyle(
+        cards.nth(1).locator('[data-unread-indicator]'),
+        'background-color',
+        '--color-green',
+        'dark unread dot'
       );
-      const readBackground = await cards
-        .first()
-        .evaluate((item) => getComputedStyle(item).backgroundColor);
-      expect(readBackground).not.toBe(greenSoftToken);
-      await expect(unreadCard).toHaveCSS('border-inline-start-width', '2px');
 
       await ready(page);
       await expect(page).toHaveScreenshot('notifications-center-populated-dark.png', {
@@ -1829,10 +1779,11 @@ test.describe('notification translated-locale probes', () => {
     ['pt-BR', ptBr],
     ['es', es]
   ] as const) {
-    test(`${locale}: center and preferences keep structure and contain text at 390x844`, async ({
+    test(`${locale}: center and preferences keep structure and contain text at 320px`, async ({
       page
     }) => {
       test.setTimeout(180_000);
+      await page.setViewportSize({ width: 320, height: 844 });
       const [admin, viewer] = await Promise.all([
         createActor(`${locale} Admin`),
         createActor(`${locale} Viewer`)
@@ -1867,6 +1818,7 @@ test.describe('notification translated-locale probes', () => {
       await page.goto('/notifications/preferences');
       await waitForHydratedPage(page);
       await assertPreferencesStructure(page, copy);
+      await assertNoTextOverflow(page);
 
       // Narrow-width containment: no visible text may overflow its container.
       await page.goBack();

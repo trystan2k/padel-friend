@@ -57,18 +57,40 @@ type StatProps = {
   helpValues?: Record<string, string>;
   /** Highlight tile: the figure sits on its own surface with a larger value. */
   tile?: boolean | undefined;
+  /** Compact row: label left, value right, inside a row card. */
+  row?: boolean | undefined;
   children: React.ReactNode;
 };
 
-/** One labelled figure; the label is the term and the value block its description. */
-export function Stat({ id, label, helpValues, tile, children }: StatProps) {
+/**
+ * The definition of a metric. Tiles and rows are compact, so their definition is kept for assistive
+ * tech only; the full sections show it as visible secondary text.
+ */
+function MetricHelp({
+  id,
+  helpValues,
+  compact
+}: {
+  id: string;
+  helpValues?: Record<string, string> | undefined;
+  compact: boolean;
+}) {
   const { t } = useTranslation();
   return (
-    <div {...stylex.props(s.stat, tile && s.tile)}>
+    <span {...stylex.props(s.detail, compact && s.visuallyHidden)}>
+      {t(`statistics.metrics.${id}.help`, helpValues)}
+    </span>
+  );
+}
+
+/** One labelled figure; the label is the term and the value block its description. */
+export function Stat({ id, label, helpValues, tile, row, children }: StatProps) {
+  return (
+    <div {...stylex.props(s.stat, tile && s.tile, tile && s.tileStack, row && s.rowStat)}>
       <dt {...stylex.props(s.statLabel)}>{label}</dt>
-      <dd {...stylex.props(s.statValue)}>
+      <dd {...stylex.props(s.statValue, row && s.rowValue)}>
         {children}
-        <span {...stylex.props(s.detail)}>{t(`statistics.metrics.${id}.help`, helpValues)}</span>
+        <MetricHelp id={id} helpValues={helpValues} compact={Boolean(tile || row)} />
       </dd>
     </div>
   );
@@ -79,17 +101,19 @@ export function CountStat({
   label,
   value,
   helpValues,
-  tile
+  tile,
+  row
 }: {
   id: string;
   label: string;
   value: string | number;
   helpValues?: Record<string, string>;
   tile?: boolean | undefined;
+  row?: boolean | undefined;
 }) {
   const { count } = usePlayerFormat();
   return (
-    <Stat id={id} label={label} tile={tile} {...(helpValues ? { helpValues } : {})}>
+    <Stat id={id} label={label} tile={tile} row={row} {...(helpValues ? { helpValues } : {})}>
       <strong {...stylex.props(s.value, tile && s.tileValue)}>
         {typeof value === 'number' ? count(value) : value}
       </strong>
@@ -108,7 +132,8 @@ export function MetricStat<T = number>({
   format,
   unit,
   helpValues,
-  tile
+  tile,
+  row
 }: {
   id: string;
   label: string;
@@ -118,10 +143,11 @@ export function MetricStat<T = number>({
   unit?: 'matches' | 'sets' | 'games' | 'opportunities' | 'rated';
   helpValues?: Record<string, string>;
   tile?: boolean | undefined;
+  row?: boolean | undefined;
 }) {
   const { t } = useTranslation();
   const { count } = usePlayerFormat();
-  const extra = { id, label, tile, ...(helpValues ? { helpValues } : {}) };
+  const extra = { id, label, tile, row, ...(helpValues ? { helpValues } : {}) };
   if (metric.state !== 'ready') {
     return (
       <Stat {...extra}>

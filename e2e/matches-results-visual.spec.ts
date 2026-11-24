@@ -12,8 +12,8 @@ import {
   sqlWithFixtureTriggersDisabled,
   type Locale
 } from './matches-results-fixtures';
-import manifest from './references/paf-7/manifest.json' with { type: 'json' };
-import paf8Manifest from './references/paf-8/manifest.json' with { type: 'json' };
+import clubhouseManifest from './references/paf-202-result-recording/manifest.json' with { type: 'json' };
+import { assertResultScreenshot, type RecordingReference } from './result-recording-visual';
 
 let f: Awaited<ReturnType<typeof resultFixtures>>;
 test.beforeAll(async ({ browser }) => {
@@ -90,18 +90,15 @@ async function geometry(page: Page) {
   }
 }
 
-test('approved reference provenance remains immutable', async ({ browserName }, info) => {
+test('Clubhouse recording source provenance remains immutable', ({ browserName }) => {
   expect(browserName).toBe('chromium');
   const hash = (bytes: Buffer) => createHash('sha256').update(bytes).digest('hex');
-  expect(hash(readFileSync(manifest.sourceDesign.path))).toBe(manifest.sourceDesign.sha256);
-  for (const [name, reference] of Object.entries(manifest.approvedReferences)) {
-    const bytes = readFileSync(new URL(`./references/paf-7/${name}`, import.meta.url));
-    expect(hash(bytes)).toBe(reference.sha256);
-    await info.attach(name, { body: bytes, contentType: 'image/png' });
-  }
+  expect(hash(readFileSync(clubhouseManifest.sourceDesign.path))).toBe(
+    clubhouseManifest.sourceDesign.sha256
+  );
 });
 
-test('Pencil full-frame comparisons require matching composition and reviewed budgets', async ({
+test('Clubhouse result fragments retain approved structure and measured visual budgets', async ({
   browserName
 }, info) => {
   // Full-frame raster comparisons + fixture SQL run far past the default under AC1 saturation
@@ -124,204 +121,99 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
     );
     return id;
   }
-  async function compare(frame: keyof typeof manifest.visualBudgets.perScreen) {
+  async function compare(frame: RecordingReference | 'alZmm') {
     await page.setViewportSize({ width: 390, height: frame === 'alZmm' ? 1042 : 844 });
-    await page.getByRole('heading', { level: 1 }).click();
-    for (const image of await page.locator('main img').all()) {
-      await image.evaluate(async (node) => {
-        if (!(node instanceof HTMLImageElement)) throw new Error('Expected image');
-        await node.decode();
-      });
-    }
-    const cards = await page.locator('form > fieldset > section').evaluateAll((nodes) =>
-      nodes.map((node) => {
-        const { x, y, width, height } = node.getBoundingClientRect();
-        return [x + scrollX, y + scrollY, width, height];
-      })
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      window.scrollTo(0, 0);
+    });
+    const isLifecycle = frame === 'alZmm';
+    const main = page.locator(`main[data-result-route="${isLifecycle ? 'lifecycle' : 'record'}"]`);
+    await expect(main).toBeVisible();
+    await expect(page.getByRole('navigation', { name: copies.en.appShell.navigation })).toHaveCount(
+      0
     );
-    if (frame !== 'alZmm') {
-      const invalid = frame === 'wsXWA';
-      const score = frame === 'XySt5' || invalid;
-      const expected = [
-        [18, 109, 354, 202],
-        [18, 323, 354, invalid ? 246 : 207],
-        [18, invalid ? 581 : 542, 354, score ? 202 : 268]
-      ];
-      if (!invalid) expected.push([18, score ? 756 : 822, 354, frame === 'NZk5H' ? 160 : 145]);
-      expect.soft(cards, `${frame} exact card structure`).toEqual(expected);
-    } else {
-      const route = page.locator('main[data-result-route="lifecycle"]');
-      const proposal = route.locator('article[data-result-status="pending"]');
-      await expect(proposal).toBeVisible();
+    if (isLifecycle) {
+      const proposal = main.locator('article[data-result-status="pending"]');
       await expect(
         proposal.getByRole('heading', { name: r.proposalTitle, exact: true })
       ).toBeVisible();
       await expect(proposal.getByRole('region', { name: r.pending, exact: true })).toBeVisible();
       await expect(proposal.getByRole('region', { name: r.setScores, exact: true })).toBeVisible();
-      await expect(proposal.getByText(r.pendingDescription, { exact: true })).toBeVisible();
+      // sLXK7: the single-result actions live in the sticky bar, Approve above the secondary action.
+      const bar = main.locator('[data-match-action-bar]');
+      await expect(bar.getByRole('button')).toHaveText([r.review.approve, r.review.reject]);
+      await expect(proposal.getByRole('button', { name: r.review.approve })).toHaveCount(0);
+    } else {
+      await expect(page.locator('#locale')).toBeHidden();
+      const scoring = frame === 'XySt5' || frame === 'wsXWA';
       await expect(
-        proposal.getByText(fill(r.approvalProgress, { received: 0, required: 1 }), { exact: true })
+        main.getByRole('heading', {
+          name: scoring ? r.record.scoreTitle : r.record.reviewTitle,
+          exact: true
+        })
       ).toBeVisible();
-      await expect(
-        proposal.getByRole('button', { name: r.review.approve, exact: true })
-      ).toBeVisible();
-      await expect(
-        proposal.getByRole('button', { name: r.review.reject, exact: true })
-      ).toBeVisible();
-      await expect(
-        route.getByRole('region', { name: r.resolution.title, exact: true })
-      ).toHaveCount(0);
-      const rows = await proposal
-        .locator('section[aria-label="' + r.pending + '"] > div > div > div')
-        .count();
-      expect(rows).toBe(2);
-      const structure = await route
-        .locator(':scope > header, :scope > div, :scope > nav')
-        .evaluateAll((nodes) =>
-          nodes.map((node) => ({
-            tag: node.tagName,
-            childTags: [...node.children].map((child) => child.tagName)
-          }))
-        );
-      expect.soft(structure, 'alZmm lifecycle detail order').toEqual([
-        { tag: 'HEADER', childTags: ['A', 'H1', 'P'] },
-        { tag: 'DIV', childTags: ['SECTION', 'SECTION', 'DIV'] },
-        { tag: 'NAV', childTags: ['A', 'A', 'BUTTON', 'BUTTON', 'A'] }
-      ]);
-      await expect(route.locator(':scope > div > div#result-group-1 > article')).toHaveCount(1);
-      const proposalStructure = await proposal.evaluate((node) =>
-        [...node.children].map((child) => child.tagName)
+      const parts = main.locator('form > fieldset > [data-result-section]');
+      expect(
+        await parts.evaluateAll((nodes) =>
+          nodes.map((node) => node.getAttribute('data-result-section'))
+        )
+      ).toEqual(
+        scoring
+          ? frame === 'wsXWA'
+            ? ['sets', 'details']
+            : ['sets', 'details', 'outcome']
+          : ['score-summary', 'outcome', 'facts']
       );
-      expect
-        .soft(proposalStructure, 'alZmm pending facts precede progress and actions')
-        .toEqual(['SECTION', 'DIV']);
-      await expect(page.getByText('PADEL INDOOR MADRID', { exact: true })).toBeVisible();
-      await expect(page.getByText('Fri, 23 Oct · 18:30–20:00', { exact: true })).toBeVisible();
-      await expect(page.getByRole('link', { name: /Calle de Alcalá.*Open map/ })).toBeVisible();
+      await expect(main.locator('form ol > li')).toHaveCount(3);
+      const footer = main.locator('[data-result-section="actions"]');
+      await expect(footer).toHaveCSS('position', 'sticky');
+      const back = footer.getByRole('button', { name: r.back, exact: true });
+      await expect(back).toBeVisible();
+      expect((await back.boundingBox())?.width).toBe(112);
+      expect((await back.boundingBox())?.height).toBeGreaterThanOrEqual(52);
+      const action = footer.getByRole('button', {
+        name: scoring ? r.record.reviewAction : r.submit,
+        exact: true
+      });
+      if (frame === 'wsXWA') await expect(action).toBeDisabled();
+      else await expect(action).toBeEnabled();
+      expect((await action.boundingBox())?.height).toBeGreaterThanOrEqual(52);
+      if (scoring) {
+        const set = main.getByRole('group', {
+          name: fill(r.setNumber, { number: 1 }),
+          exact: true
+        });
+        await expect(set.getByRole('textbox')).toHaveCount(2);
+        for (const side of ['team_a', 'team_b'] as const) {
+          for (const copy of [r.decrease, r.increase]) {
+            const control = set.getByRole('button', {
+              name: fill(copy, { number: 1, team: r.teams[side] }),
+              exact: true
+            });
+            expect((await control.boundingBox())?.width).toBeGreaterThanOrEqual(52);
+          }
+        }
+      } else {
+        const effect =
+          frame === 'GPo9z'
+            ? r.record.ratingUnavailable
+            : frame === 'c0wbmu'
+              ? r.ratingEffectIncomplete
+              : r.ratingEffectNone;
+        await expect(main.locator('[data-result-section="outcome"]')).toContainText(effect);
+        await expect(main.locator('[data-result-section="facts"] dt')).toHaveCount(5);
+      }
     }
-    if (frame === 'alZmm') await page.setViewportSize({ width: 390, height: 1042 });
     const actual = await page.screenshot({
-      fullPage: frame !== 'alZmm',
       animations: 'disabled',
       caret: 'hide',
       path: info.outputPath(`${frame}-actual.png`)
     });
-    const referencePath =
-      frame === 'alZmm' ? './references/paf-8/alZmm.png' : `./references/paf-7/${frame}.png`;
-    const approved = readFileSync(new URL(referencePath, import.meta.url));
-    const measured = await page.evaluate(
-      async ({ actualUrl, approvedUrl }) => {
-        async function pixels(url: string, scale: number) {
-          const image = new Image();
-          image.src = url;
-          await image.decode();
-          const canvas = document.createElement('canvas');
-          canvas.width = image.width / scale;
-          canvas.height = image.height / scale;
-          const context = canvas.getContext('2d');
-          if (!context) throw new Error('No comparison canvas');
-          context.drawImage(image, 0, 0, canvas.width, canvas.height);
-          return {
-            width: canvas.width,
-            height: canvas.height,
-            rgba: context.getImageData(0, 0, canvas.width, canvas.height).data
-          };
-        }
-        // Only normalize the documented 2x Pencil export scale. Never stretch
-        // either image to conceal a layout or composition mismatch.
-        const [a, b] = await Promise.all([pixels(actualUrl, 1), pixels(approvedUrl, 2)]);
-        const dimensions = { actual: [a.width, a.height], reference: [b.width, b.height] };
-        if (a.width !== b.width || a.height !== b.height)
-          return { ...dimensions, dimensionMismatch: true, perceptualPixelDifference: null };
-        let changed = 0;
-        const pendingRegions = [
-          { name: 'header', start: 0, end: 72, changed: 0 },
-          { name: 'hero', start: 72, end: 216, changed: 0 },
-          { name: 'overview', start: 216, end: 326, changed: 0 },
-          { name: 'pending-and-provenance', start: 326, end: 544, changed: 0 },
-          { name: 'teams', start: 544, end: 758, changed: 0 },
-          { name: 'scores-and-action', start: 758, end: 972, changed: 0 },
-          { name: 'navigation', start: 972, end: a.height, changed: 0 }
-        ];
-        for (let i = 0; i < a.rgba.length; i += 4) {
-          const red = a.rgba[i]! - b.rgba[i]!;
-          const green = a.rgba[i + 1]! - b.rgba[i + 1]!;
-          const blue = a.rgba[i + 2]! - b.rgba[i + 2]!;
-          const y = red * 0.29889531 + green * 0.58662247 + blue * 0.11448223;
-          const chromaI = red * 0.59597799 - green * 0.2741761 - blue * 0.32180189;
-          const chromaQ = red * 0.21147017 - green * 0.52261711 + blue * 0.31114694;
-          if (
-            0.5053 * y * y + 0.299 * chromaI * chromaI + 0.1957 * chromaQ * chromaQ >
-            35215 * 0.1 ** 2
-          ) {
-            changed++;
-            const row = Math.floor(i / 4 / a.width);
-            const region = pendingRegions.find(({ start, end }) => row >= start && row < end);
-            if (region) region.changed++;
-          }
-        }
-        return {
-          ...dimensions,
-          dimensionMismatch: false,
-          perceptualPixelDifference: changed / (a.width * a.height),
-          pendingRegions: a.height === 1042 ? pendingRegions : undefined
-        };
-      },
-      {
-        actualUrl: `data:image/png;base64,${actual.toString('base64')}`,
-        approvedUrl: `data:image/png;base64,${approved.toString('base64')}`
-      }
-    );
-    console.info(`${frame} full-frame measurement: ${JSON.stringify(measured)}`);
-    const elements = await page.getByRole('main').evaluate((main) =>
-      [
-        ...main.querySelectorAll(
-          'h1, h2, h3, section[aria-live], section[aria-atomic] > p, fieldset, legend, ol, #set-error-1, button[aria-pressed], #score-0-team_a, #score-0-team_b'
-        )
-      ].map((node) => {
-        const rect = node.getBoundingClientRect();
-        const style = getComputedStyle(node);
-        return {
-          tag: node.tagName,
-          id: node.id,
-          text: node.matches('fieldset, section, ol') ? undefined : node.textContent?.trim(),
-          x: rect.x + scrollX,
-          y: rect.y + scrollY,
-          width: rect.width,
-          height: rect.height,
-          fontFamily: style.fontFamily,
-          fontSize: style.fontSize,
-          fontWeight: style.fontWeight,
-          color: style.color,
-          backgroundColor: style.backgroundColor,
-          padding: style.padding,
-          gap: style.gap,
-          borderRadius: style.borderRadius
-        };
-      })
-    );
-    console.info(`${frame} element geometry: ${JSON.stringify(elements)}`);
-    await info.attach(`${frame}-element-geometry`, {
-      body: JSON.stringify(elements, null, 2),
-      contentType: 'application/json'
-    });
-    await info.attach(`${frame}-measurement`, {
-      body: JSON.stringify(measured),
-      contentType: 'application/json'
-    });
     await info.attach(`${frame}-actual`, { body: actual, contentType: 'image/png' });
-    await info.attach(`${frame}-approved`, { body: approved, contentType: 'image/png' });
-    const budgets: Record<string, number | null> =
-      frame === 'alZmm' ? paf8Manifest.visualBudgets.perScreen : manifest.visualBudgets.perScreen;
-    const budget = budgets[frame];
-    expect.soft(measured.dimensionMismatch, `${frame} composition dimensions`).toBe(false);
-    expect
-      .soft(budget, `${frame} reviewed raster tolerance required; no self-baseline`)
-      .not.toBeNull();
-    if (budget !== null && budget !== undefined && measured.perceptualPixelDifference !== null) {
-      expect.soft(budget).toBeGreaterThan(0);
-      expect.soft(measured.perceptualPixelDifference).toBeLessThanOrEqual(budget);
-    }
+    // The lifecycle detail's raster baseline is pinned in matches-results-paf8-visual (alZmm).
+    if (frame === 'alZmm') return;
+    await assertResultScreenshot(page, actual, frame, 'recording');
   }
   const scoreId = await routeEvent();
   await openRecord(page, scoreId);
@@ -375,7 +267,9 @@ test('Pencil full-frame comparisons require matching composition and reviewed bu
   await page.locator('#score-0-team_b').blur();
   await expect(page.locator('#set-error-1')).toBeVisible();
   await expect(page.locator('#score-0-team_b')).toHaveAttribute('aria-invalid', 'true');
-  await expect(page.getByRole('button', { name: r.submit, exact: true })).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: r.record.reviewAction, exact: true })
+  ).toBeDisabled();
   await compare('wsXWA');
   const friendly = await routeEvent('friendly');
   await openRecord(page, friendly);
@@ -415,7 +309,7 @@ for (const width of [320, 390, 1280]) {
         await expect(page.locator('html')).toHaveAttribute('lang', locale);
         await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
         await expect(page.locator('form ol > li')).toHaveCount(3);
-        await expect(page.locator('[aria-current="step"]')).toHaveText(`${r.steps.players} 1`);
+        await expect(page.locator('[aria-current="step"]')).toHaveText(r.steps.players);
         for (const side of ['team_a', 'team_b'] as const) {
           const section = page
             .locator('form section')
@@ -427,8 +321,10 @@ for (const width of [320, 390, 1280]) {
         await capture('lKv9B-players-actual');
         await correctTeams(page, locale);
         await enterScore(page, [[6, 5, true]], locale);
-        await expect(page.locator('[aria-current="step"]')).toHaveText(`${r.steps.score} 2`);
-        await expect(page.getByRole('button', { name: r.submit, exact: true })).toBeDisabled();
+        await expect(page.locator('[aria-current="step"]')).toHaveText(r.steps.score);
+        await expect(
+          page.getByRole('button', { name: r.record.reviewAction, exact: true })
+        ).toBeDisabled();
         await expect(page.locator('#set-error-1')).toContainText(
           fill(r.invalidCompletedSet, { number: 1, team: r.teams.team_b, score: '6–5' })
         );
@@ -436,9 +332,9 @@ for (const width of [320, 390, 1280]) {
         await geometry(page);
         await capture('LD9Jv-inline-error-actual');
         // Correct in place: incomplete -> Draw -> WIN; each retains actual teams.
-        await page.locator('#score-0-team_b').fill('4');
+        await page.locator('#score-0-team_b').press('ArrowDown');
         await page.locator('#score-0-team_b').blur();
-        await expect(page.getByText(r.outcome.incomplete, { exact: true })).toBeVisible();
+        await expect(page.getByText(r.record.outcome.incomplete, { exact: true })).toBeVisible();
         await expect(page.getByText(r.ratingEffectIncomplete, { exact: true })).toBeVisible();
         await capture('BnwEB-incomplete-actual');
         await page.getByRole('button', { name: r.addSet }).click();
@@ -453,8 +349,8 @@ for (const width of [320, 390, 1280]) {
         await expect(
           page.getByRole('button', { name: fill(r.setStateLabel, { number: 3 }) })
         ).toHaveAttribute('aria-pressed', 'false');
-        await expect(page.getByText(r.outcome.draw, { exact: true })).toBeVisible();
-        await expect(page.getByText(r.ratingEffect, { exact: true })).toBeVisible();
+        await expect(page.getByText(r.record.outcome.draw, { exact: true })).toBeVisible();
+        await expect(page.getByText(r.record.ratingUnavailable, { exact: true })).toBeVisible();
         await capture('lKv9B-draw-actual');
         await geometry(page);
         await page.locator('#score-2-team_a').fill('7');
@@ -462,14 +358,18 @@ for (const width of [320, 390, 1280]) {
         await page.locator('#score-2-team_b').blur();
         await page.getByRole('button', { name: fill(r.setStateLabel, { number: 3 }) }).click();
         await expect(
-          page.getByText(fill(r.outcome.team_a, { winnerSets: 2, loserSets: 1 }), { exact: true })
+          page.getByText(fill(r.record.outcome.team_a, { winnerSets: 2, loserSets: 1 }), {
+            exact: true
+          })
         ).toBeVisible();
         await capture('Hzcid-win-actual');
         await page.locator('#score-2-team_a').fill('5');
         await page.locator('#score-2-team_b').fill('7');
         await page.locator('#score-2-team_b').blur();
         await expect(
-          page.getByText(fill(r.outcome.team_b, { winnerSets: 2, loserSets: 1 }), { exact: true })
+          page.getByText(fill(r.record.outcome.team_b, { winnerSets: 2, loserSets: 1 }), {
+            exact: true
+          })
         ).toBeVisible();
         await expect(page.locator('form fieldset > legend')).toHaveCount(3);
         for (const number of [1, 2, 3]) {
@@ -478,7 +378,7 @@ for (const width of [320, 390, 1280]) {
           ).toHaveAttribute('aria-pressed', 'true');
         }
         await review(page, locale);
-        await expect(page.locator('[aria-current="step"]')).toHaveText(`${r.steps.review} 3`);
+        await expect(page.locator('[aria-current="step"]')).toHaveText(r.steps.review);
         await geometry(page);
         await info.attach('review-structural-evidence', {
           body: await page.screenshot({ fullPage: true }),
@@ -515,7 +415,7 @@ for (const width of [320, 390, 1280]) {
         );
         await expect(page.getByText(r.ratingEffectNone, { exact: true })).toBeVisible();
         await capture('u78yF-friendly-actual');
-        await expect(page.getByText(r.ratingEffect, { exact: true })).toHaveCount(0);
+        await expect(page.getByText(r.record.ratingUnavailable, { exact: true })).toHaveCount(0);
         await geometry(page);
         await page.context().close();
         await stale.context().close();

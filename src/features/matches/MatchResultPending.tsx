@@ -75,25 +75,36 @@ export function MatchResultPending({
               <path d="M12 6v6h5" />
             </svg>
             <div {...stylex.props(s.statusCopy)}>
-              <h3 {...stylex.props(s.statusTitle)} tabIndex={-1} ref={receiptHeading}>
+              <h3
+                {...stylex.props(s.statusTitle, s.noticeTitle)}
+                tabIndex={-1}
+                ref={receiptHeading}
+              >
                 {t('matches.results.pending')}
               </h3>
               <p {...stylex.props(s.copy)}>{t('matches.results.pendingDescription')}</p>
               {approvalProgress && <p {...stylex.props(s.pendingProgress)}>{approvalProgress}</p>}
             </div>
           </div>
-          <div role="timer" aria-label={countdownLabel} {...stylex.props(s.pendingRow)}>
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-              {...stylex.props(s.statusIcon)}
-            >
-              <circle cx="12" cy="14" r="8" />
-              <path d="M9 2h6m-3 7v5l-3 3m9-13 2 2" />
-            </svg>
+          <div
+            role="timer"
+            aria-live="polite"
+            aria-atomic="true"
+            aria-label={countdownLabel}
+            {...stylex.props(s.pendingCard)}
+          >
+            <span aria-hidden="true" {...stylex.props(s.statusGlyph)}>
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                {...stylex.props(s.statusIcon)}
+              >
+                <circle cx="12" cy="14" r="8" />
+                <path d="M9 2h6m-3 7v5l-3 3m9-13 2 2" />
+              </svg>
+            </span>
             <div {...stylex.props(s.statusCopy)}>
               <h3 {...stylex.props(s.statusTitle)}>
                 {t('matches.results.autoConfirmIn', {

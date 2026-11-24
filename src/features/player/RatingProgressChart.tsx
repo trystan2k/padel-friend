@@ -3,33 +3,34 @@ import * as stylex from '@stylexjs/stylex';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
-import { MAX_LEVEL, MIN_LEVEL } from './rating-config';
+import { buildLevelChart, type LevelBar } from './rating-chart';
 import type { RatingProgress } from './rating-contracts';
-import { formatLevel, formatRatingDate } from './rating-format';
+import { formatAbsoluteDelta, formatLevel, formatRatingDate } from './rating-format';
+import { journey as j } from './rating-journey.styles';
 import { rating as s } from './rating.styles';
 
-// Plot geometry is in SVG user units; the SVG scales fluidly with its container.
-const WIDTH = 320;
-const HEIGHT = 120;
-const INSET = 8;
-const MARKER_RADIUS = 4;
-
-type PlotPoint = { key: string; level: number; kind: 'baseline' | 'match' | 'adjustment' };
-
-function plotX(index: number, count: number): number {
-  return count === 1 ? WIDTH / 2 : INSET + (index * (WIDTH - 2 * INSET)) / (count - 1);
-}
-
-function plotY(level: number): number {
-  const clamped = Math.min(MAX_LEVEL, Math.max(MIN_LEVEL, level));
-  return INSET + (1 - (clamped - MIN_LEVEL) / (MAX_LEVEL - MIN_LEVEL)) * (HEIGHT - 2 * INSET);
+/** Chart glyph of the empty state tile (lucide chart-column). */
+function ChartIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...stylex.props(j.tileIcon)}
+    >
+      <path d="M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3" />
+    </svg>
+  );
 }
 
 /**
- * Lifetime progression: starting level, then one marker per point in played order: confirmed
- * games (circles) and level-review correction checkpoints (diamonds).
- * Spacing follows point order (never time), so lines connect points without implying
- * interpolated levels. Every value is also available in the data table.
+ * Lifetime progression (frames lNj83 / PYxIz): the latest level and its all-time change, one bar
+ * per month plus the latest level, and the full data table behind a disclosure. The plot is
+ * decorative; the screen-reader summary and the table carry every value.
  */
 export function RatingProgressChart({ progress }: { progress: RatingProgress }) {
   const { t, i18n } = useTranslation();
@@ -38,31 +39,30 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
 
   if (progress.state === 'unavailable' || !progress.baseline)
     return (
-      <SurfaceCard xstyle={s.card}>
-        <h3 {...stylex.props(s.subheading)}>{t('rating.progress.title')}</h3>
-        <p {...stylex.props(s.copy)}>{t('rating.progress.unavailable')}</p>
+      <SurfaceCard xstyle={j.card}>
+        <h3 {...stylex.props(j.emptyTitle)}>{t('rating.progress.title')}</h3>
+        <p {...stylex.props(j.emptyBody)}>{t('rating.progress.unavailable')}</p>
       </SurfaceCard>
     );
 
   const baselineLevel = progress.baseline.display_level;
-  if (progress.state === 'empty' || progress.points.length === 0 || !progress.range)
+  const chart = buildLevelChart(progress);
+  if (!chart || !progress.range)
     return (
-      <SurfaceCard xstyle={s.card}>
-        <h3 {...stylex.props(s.subheading)}>{t('rating.progress.title')}</h3>
-        <p {...stylex.props(s.copy)}>
-          {t('rating.progress.empty', { level: formatLevel(baselineLevel, locale) })}
-        </p>
+      <SurfaceCard xstyle={j.card}>
+        <span aria-hidden="true" {...stylex.props(j.tile)}>
+          <ChartIcon />
+        </span>
+        <h3 {...stylex.props(j.emptyTitle)}>{t('rating.history.emptyTitle')}</h3>
+        <p {...stylex.props(j.emptyBody)}>{t('rating.progress.emptyBody')}</p>
+        <hr {...stylex.props(j.divider)} />
+        <div {...stylex.props(j.rowLine)}>
+          <span {...stylex.props(j.rowTitle)}>{t('rating.progress.startingLevel')}</span>
+          <strong {...stylex.props(j.rowValue)}>{formatLevel(baselineLevel, locale)}</strong>
+        </div>
       </SurfaceCard>
     );
 
-  const points: PlotPoint[] = [
-    { key: 'baseline', level: baselineLevel, kind: 'baseline' },
-    ...progress.points.map((point) => ({
-      key: point.event_id,
-      level: point.display_level,
-      kind: point.kind
-    }))
-  ];
   const last = progress.points[progress.points.length - 1];
   const from = formatRatingDate(progress.range.from, locale);
   const to = formatRatingDate(progress.range.to, locale);
@@ -73,103 +73,76 @@ export function RatingProgressChart({ progress }: { progress: RatingProgress }) 
     start: formatLevel(baselineLevel, locale),
     end: formatLevel(last?.display_level ?? baselineLevel, locale)
   });
-  const coordinates = points.map(
-    (point, index) => [plotX(index, points.length), plotY(point.level)] as const
-  );
-  const line = coordinates.map(([x, y]) => `${x},${y}`).join(' ');
-  const floor = plotY(MIN_LEVEL);
-  const area = `${plotX(0, points.length)},${floor} ${line} ${plotX(points.length - 1, points.length)},${floor}`;
+  const change = Math.round(chart.change * 100);
+  const barLabel = (bar: LevelBar) =>
+    bar.label.kind === 'latest'
+      ? t('rating.progress.latest')
+      : bar.label.kind === 'start'
+        ? t('rating.progress.start')
+        : new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' }).format(
+            new Date(bar.label.instant)
+          );
+  const span = chart.ceiling - chart.floor;
 
   return (
-    <SurfaceCard xstyle={s.card}>
-      <h3 {...stylex.props(s.subheading)}>{t('rating.progress.title')}</h3>
-      <div {...stylex.props(s.plot)}>
-        <div aria-hidden="true" {...stylex.props(s.axis)}>
-          <span>{formatLevel(MAX_LEVEL, locale)}</span>
-          <span>{formatLevel((MAX_LEVEL + MIN_LEVEL) / 2, locale)}</span>
-          <span>{formatLevel(MIN_LEVEL, locale)}</span>
-        </div>
-        <svg aria-hidden="true" viewBox={`0 0 ${WIDTH} ${HEIGHT}`} {...stylex.props(s.svg)}>
-          {[MAX_LEVEL, (MAX_LEVEL + MIN_LEVEL) / 2, MIN_LEVEL].map((level) => (
-            <line
-              key={level}
-              x1={0}
-              x2={WIDTH}
-              y1={plotY(level)}
-              y2={plotY(level)}
-              {...stylex.props(s.gridLine)}
-            />
+    <SurfaceCard xstyle={j.card}>
+      <h3 {...stylex.props(s.srOnly)}>{t('rating.progress.title')}</h3>
+      <div {...stylex.props(j.headline)}>
+        <p {...stylex.props(j.level)}>{formatLevel(chart.current, locale)}</p>
+        <p
+          {...stylex.props(
+            j.change,
+            change > 0 ? j.changeUp : change < 0 ? j.changeDown : j.changeFlat
+          )}
+        >
+          {change === 0
+            ? t('rating.progress.changeFlat')
+            : t(change > 0 ? 'rating.progress.changeUp' : 'rating.progress.changeDown', {
+                value: formatAbsoluteDelta(chart.change, locale)
+              })}
+        </p>
+      </div>
+      <p {...stylex.props(j.caption)}>{t('rating.progress.scopeCaption')}</p>
+      <div aria-hidden="true" {...stylex.props(j.chart)}>
+        <div {...stylex.props(j.axis)}>
+          {chart.ticks.map((tick) => (
+            <span key={tick}>{formatLevel(tick, locale)}</span>
           ))}
-          <polygon points={area} {...stylex.props(s.area)} />
-          <polyline points={line} {...stylex.props(s.trend)} />
-          {points.map((point, index) => {
-            const [cx = 0, cy = 0] = coordinates[index] ?? [];
-            return point.kind === 'adjustment' ? (
-              // A correction checkpoint: a diamond, never a game marker.
-              <rect
-                key={point.key}
-                x={cx - MARKER_RADIUS}
-                y={cy - MARKER_RADIUS}
-                width={MARKER_RADIUS * 2}
-                height={MARKER_RADIUS * 2}
-                transform={`rotate(45 ${cx} ${cy})`}
-                {...stylex.props(s.adjustmentMarker)}
+        </div>
+        <div {...stylex.props(j.plot)}>
+          <div {...stylex.props(j.bars)}>
+            {chart.bars.map((bar) => (
+              <div
+                key={bar.key}
+                {...stylex.props(j.bar, bar.latest && j.barLatest)}
+                style={{ height: `${((bar.level - chart.floor) / span) * 100}%` }}
               />
-            ) : (
-              <circle
-                key={point.key}
-                cx={cx}
-                cy={cy}
-                r={MARKER_RADIUS}
-                {...stylex.props(point.kind === 'baseline' ? s.baselineMarker : s.point)}
-              />
-            );
-          })}
-        </svg>
+            ))}
+          </div>
+          <div {...stylex.props(j.dates)}>
+            {chart.bars.map((bar) => (
+              <span key={bar.key} {...stylex.props(j.date)}>
+                {barLabel(bar)}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
-      <div {...stylex.props(s.rangeLabels)}>
-        <span>{t('rating.progress.rangeStart', { date: from })}</span>
-        <span>{t('rating.progress.rangeEnd', { date: to })}</span>
+      <div {...stylex.props(j.legend)}>
+        <span aria-hidden="true" {...stylex.props(j.swatch)} />
+        <span {...stylex.props(j.caption)}>
+          {t('rating.progress.legendLatest', { date: formatRatingDate(chart.latestAt, locale) })}
+        </span>
       </div>
-      <p {...stylex.props(s.copy)}>{summary}</p>
+      <p {...stylex.props(s.srOnly)}>{summary}</p>
       {progress.abbreviated && (
-        <p {...stylex.props(s.copy)}>
+        <p {...stylex.props(j.caption)}>
           {t('rating.progress.abbreviated', {
             shown: progress.points.filter((point) => point.kind === 'match').length,
             total: progress.total_events
           })}
         </p>
       )}
-      <ul {...stylex.props(s.legend)}>
-        <li {...stylex.props(s.legendItem)}>
-          <svg aria-hidden="true" viewBox="0 0 12 12" {...stylex.props(s.legendGlyph)}>
-            <circle cx="6" cy="6" r="4" {...stylex.props(s.baselineMarker)} />
-          </svg>
-          {t('rating.progress.legendBaseline')}
-        </li>
-        <li {...stylex.props(s.legendItem)}>
-          <svg aria-hidden="true" viewBox="0 0 12 12" {...stylex.props(s.legendGlyph)}>
-            <circle cx="6" cy="6" r="4" {...stylex.props(s.point)} />
-          </svg>
-          {t('rating.progress.legendPoint')}
-        </li>
-        {progress.points.some((point) => point.kind === 'adjustment') && (
-          <li {...stylex.props(s.legendItem)}>
-            <svg aria-hidden="true" viewBox="0 0 12 12" {...stylex.props(s.legendGlyph)}>
-              <rect
-                x="3"
-                y="3"
-                width="6"
-                height="6"
-                transform="rotate(45 6 6)"
-                {...stylex.props(s.adjustmentMarker)}
-              />
-            </svg>
-            {t('rating.progress.legendAdjustment')}
-          </li>
-        )}
-      </ul>
-      <p {...stylex.props(s.copy)}>{t('rating.progress.order')}</p>
       <Collapsible.Root open={tableOpen} onOpenChange={setTableOpen}>
         <Collapsible.Trigger {...stylex.props(s.disclosureTrigger)}>
           {t(tableOpen ? 'rating.progress.hideTable' : 'rating.progress.showTable')}

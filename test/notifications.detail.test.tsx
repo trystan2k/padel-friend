@@ -62,6 +62,7 @@ const invitationId = '22222222-2222-4222-8222-222222222222';
 const communityName = 'Padel Norte';
 
 const unavailable: NotificationTarget = {
+  kind: 'community_invitation',
   target_status: 'unavailable',
   community_id: null,
   community_name: null,
@@ -69,6 +70,7 @@ const unavailable: NotificationTarget = {
   membership_status: null
 };
 const invited: NotificationTarget = {
+  kind: 'community_invitation',
   target_status: 'invitation_available',
   community_id: communityId,
   community_name: communityName,
@@ -76,6 +78,7 @@ const invited: NotificationTarget = {
   membership_status: null
 };
 const membership = (status: string): NotificationTarget => ({
+  kind: 'community_invitation',
   target_status: 'membership_available',
   community_id: communityId,
   community_name: communityName,
@@ -338,6 +341,9 @@ describe('notification detail page', () => {
     mountPage(unavailable);
 
     expect(await screen.findByRole('heading', { name: copy.targetUnavailable })).toBeTruthy();
+    expect(screen.getByRole('main').dataset.communityInvitation).toBe('unavailable');
+    expect(screen.getByText(en.communityInvites.unavailableHelp)).toBeTruthy();
+    expect(screen.queryByText(communityName)).toBeNull();
     const back = screen.getByRole('link', { name: copy.back });
     expect(back.getAttribute('href')).toBe('/notifications');
     expect(screen.queryByRole('button')).toBeNull();
@@ -352,7 +358,9 @@ describe('notification detail page', () => {
     mountPage(invited);
 
     expect(await screen.findByRole('heading', { name: communityName })).toBeTruthy();
+    expect(screen.getByRole('main').dataset.communityInvitation).toBe('available');
     expect(screen.getByText(copy.invitationContext)).toBeTruthy();
+    expect(screen.getByText(en.communityInvites.memberCountUnavailable)).toBeTruthy();
     const acceptButton = screen.getByRole('button', { name: copy.accept });
     await user.click(acceptButton);
     expect(mocks.accept).toHaveBeenCalledWith({ data: { notificationId } });
@@ -374,6 +382,8 @@ describe('notification detail page', () => {
     cleanup();
 
     mountPage(membership('pending'));
+    expect(screen.getByRole('main').dataset.communityInvitation).toBe('pending');
+    expect(screen.getByRole('heading', { name: en.communityInvites.pendingTitle })).toBeTruthy();
     expect(await screen.findByText(copy.pendingMembership)).toBeTruthy();
     expect(screen.queryByRole('button', { name: copy.accept })).toBeNull();
   });

@@ -1,7 +1,9 @@
 import { useUpdateGuard } from '../pwa/update-guard';
+import { Button } from '../../components/ui/Button';
 import * as stylex from '@stylexjs/stylex';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { respondMatchEventInvitation } from './match-invitation.functions';
 import {
@@ -9,8 +11,8 @@ import {
   type InvitationResult,
   type MatchInvitation
 } from './match-invitation-model';
+import { matchDetailShellStyles as shell } from './match-detail-shell.styles';
 import { matchInvitationStyles as s } from './match-invitation.styles';
-import { matchRegistrationStyles as buttons } from './match-registration.styles';
 import { MatchManagementUnavailable } from './MatchManagementUnavailable';
 import { MatchStatusBanner } from './MatchStatusBanner';
 
@@ -18,12 +20,18 @@ export function MatchInvitationPanel({
   eventId,
   invitation,
   timezone,
-  pendingApproval = false
+  pendingApproval = false,
+  actionSlot
 }: {
   eventId: string;
   invitation: MatchInvitation;
   timezone: string;
   pendingApproval?: boolean;
+  /**
+   * Frame Fyhbv: the detail page's sticky action bar hosts Accept / Decline. An element renders the
+   * actions there through this same controller (null until the slot mounts); omitted, they stay in the card.
+   */
+  actionSlot?: HTMLElement | null;
 }) {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -82,6 +90,16 @@ export function MatchInvitationPanel({
   }
   if (current === 'accepted' || current === 'declined' || current === 'expired')
     return <MatchStatusBanner variant={current} pendingApproval={approval} />;
+  const actions = (
+    <>
+      <Button disabled={busy} onClick={() => void respond('accept')}>
+        {t('matches.invitations.accept')}
+      </Button>
+      <Button variant="secondary" disabled={busy} onClick={() => void respond('decline')}>
+        {t('matches.invitations.decline')}
+      </Button>
+    </>
+  );
   return (
     <section aria-labelledby="match-invitation-title" aria-busy={busy} {...stylex.props(s.panel)}>
       <h2 id="match-invitation-title" {...stylex.props(s.title)}>
@@ -96,7 +114,7 @@ export function MatchInvitationPanel({
       {offline && <p role="alert">{t('pwa.offline.unsent')}</p>}
       {current === 'pending' && (
         <>
-          <p {...stylex.props(s.copy)}>
+          <p {...stylex.props(s.hint)}>
             {t('matches.invitations.expiresAt', {
               deadline: new Intl.DateTimeFormat(i18n.language, {
                 dateStyle: 'medium',
@@ -105,24 +123,17 @@ export function MatchInvitationPanel({
               }).format(new Date(invitation.expires_at))
             })}
           </p>
-          <div {...stylex.props(s.actions)}>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void respond('accept')}
-              {...stylex.props(buttons.primaryButton, busy && buttons.disabledButton)}
-            >
-              {t('matches.invitations.accept')}
-            </button>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void respond('decline')}
-              {...stylex.props(buttons.secondaryButton, busy && buttons.disabledButton)}
-            >
-              {t('matches.invitations.decline')}
-            </button>
-          </div>
+          {actionSlot === undefined ? (
+            <div {...stylex.props(s.actions)}>{actions}</div>
+          ) : (
+            actionSlot &&
+            createPortal(
+              <div data-match-action-bar="" {...stylex.props(shell.actionBar)}>
+                <div {...stylex.props(shell.barAction)}>{actions}</div>
+              </div>,
+              actionSlot
+            )
+          )}
         </>
       )}
     </section>

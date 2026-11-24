@@ -1,0 +1,186 @@
+{
+  "sourceDesign": {
+    "path": "docs/design/padel-friend-clubhouse.pen",
+    "sourceSha256": "69638a9da9bc47ab40165a1455b5e70c06c0fb11faacc8f51c7015457464d8d7",
+    "exportCommand": "Pencil MCP Export([...page and annotation IDs], \"png\", \"<repo>/e2e/references/paf-202-public\", {scale:1})"
+  },
+  "annotations": {
+    "N6wce": {
+      "source": "N6wce.png",
+      "sha256": "292b8a68e7f4e569b07e249bd65d64f9fea04600d3dca0bb90ca69d2aa506d53",
+      "rule": "Signed-in CTA group swaps the two guest links for a single dashboard action. Header, features and legal/contact footer stay identical."
+    },
+    "ju6S4": {
+      "source": "ju6S4.png",
+      "sha256": "fe17f222da7e4fea76676b0e078dbd6d5edd8f84d9e3ceb7d4a0642aa3b316de",
+      "rule": "Reserve header right slot for two 44×44 controls; brand never overlaps and privacy link never collapses."
+    }
+  },
+  "logoMask": {
+    "maskColor": "#FF00FF",
+    "reason": "Only the Pencil checkerboard logo tile is masked under D8. Runtime checks its exact geometry and byte-compares the served asset to the approved PNG."
+  },
+  "frames": {
+    "public-homepage-mobile-light.png": {
+      "frameId": "xhsTX",
+      "width": 390,
+      "height": 1011,
+      "locale": "en",
+      "theme": "light",
+      "source": "xhsTX.png",
+      "sourceSha256": "2d99b97af8982c394e20bfbaa1fda1652cb488d5995318ddc46ff4b5e8803897",
+      "maskRectangles": [
+        {
+          "name": "D8 brand tile",
+          "x": 24,
+          "y": 18,
+          "width": 40,
+          "height": 40
+        }
+      ],
+      "maxDiffPixelRatio": 0.022,
+      "ctaTops": [269, 328]
+    },
+    "public-homepage-mobile-dark.png": {
+      "frameId": "K5DgRu",
+      "width": 390,
+      "height": 1011,
+      "locale": "en",
+      "theme": "dark",
+      "source": "K5DgRu.png",
+      "sourceSha256": "c26c4c7bf17ff83236c7bdf17437fcac9d372fcb333067bb9cb48a7be7447252",
+      "maskRectangles": [
+        {
+          "name": "D8 brand tile",
+          "x": 24,
+          "y": 18,
+          "width": 40,
+          "height": 40
+        }
+      ],
+      "maxDiffPixelRatio": 0.0215,
+      "ctaTops": [269, 328]
+    },
+    "public-homepage-mobile-signed-in.png": {
+      "frameId": "QtxDQ",
+      "width": 390,
+      "height": 981,
+      "locale": "en",
+      "theme": "light",
+      "source": "QtxDQ.png",
+      "sourceSha256": "4ddd630c4739bf7faf02f4827073b7301b42f68707a6c4065f812b8f6e3c8e72",
+      "maskRectangles": [
+        {
+          "name": "D8 brand tile",
+          "x": 24,
+          "y": 18,
+          "width": 40,
+          "height": 40
+        }
+      ],
+      "maxDiffPixelRatio": 0.021,
+      "ctaTops": [269]
+    },
+    "public-homepage-mobile-es.png": {
+      "frameId": "DHZoj",
+      "width": 390,
+      "height": 1011,
+      "locale": "es",
+      "theme": "light",
+      "source": "DHZoj.png",
+      "sourceSha256": "9828834d8e219387a67ebeb66b98d91e9c1edc544356a30b7bc5caaef2deef42",
+      "maskRectangles": [
+        {
+          "name": "D8 brand tile",
+          "x": 24,
+          "y": 18,
+          "width": 40,
+          "height": 40
+        }
+      ],
+      "maxDiffPixelRatio": 0.025,
+      "ctaTops": [269, 328]
+    },
+    "public-homepage-mobile-pt-br.png": {
+      "frameId": "HkMpo",
+      "width": 390,
+      "height": 1011,
+      "locale": "pt-BR",
+      "theme": "light",
+      "source": "HkMpo.png",
+      "sourceSha256": "ddd74d18e27759aecd5c54e896478deff35d03719459cddbfd92a4a54b71e462",
+      "maskRectangles": [
+        {
+          "name": "D8 brand tile",
+          "x": 24,
+          "y": 18,
+          "width": 40,
+          "height": 40
+        }
+      ],
+      "maxDiffPixelRatio": 0.0255,
+      "ctaTops": [269, 328]
+    },
+    "public-homepage-mobile-320-es.png": {
+      "frameId": "UuaXy",
+      "width": 320,
+      "height": 1147,
+      "locale": "es",
+      "theme": "light",
+      "source": "UuaXy.png",
+      "sourceSha256": "2e57fb4483929a5c7c942a9579e11054ff2d531096b782951cdb4e1be7edc48d",
+      "maskRectangles": [
+        {
+          "name": "D8 brand tile",
+          "x": 24,
+          "y": 18,
+          "width": 40,
+          "height": 40
+        }
+      ],
+      "maxDiffPixelRatio": 0.026,
+      "ctaTops": [325, 384]
+    }
+  },
+  "comparison": {
+    "method": "Pencil scale 1, Chromium scale 1, Playwright pixelmatch threshold 0.1.",
+    "heightAdaptation": "The 47px Pencil CTA becomes the shared 52px control. Duplicate two flat rows before and three after each label, then compare the entire adapted frame. Brand mask is the only region excluded; all typography, controls, cards and footer remain covered."
+  },
+  "calibration": {
+    "environment": "macOS Playwright Chromium, repository raster flags; zero-threshold calibration run. Figtree fonts loaded before every capture.",
+    "justification": "The old PAF-201 screenshots predate Figtree and the Clubhouse hierarchy. New baselines come only from the approved Pencil frames; no Chromium screenshots are used as expected images. Exact geometry catches moved sections and bad CTA/card/footer dimensions. Remaining 1.83–2.34% reflects cross-renderer glyph and icon raster differences, text wrapping, and fractional border strokes.",
+    "allowancePolicy": "Round measured ratio up by at most 0.05 percentage points, then add 0.25 percentage points for cross-platform font rasterization.",
+    "measured": {
+      "xhsTX": {
+        "differing": 7689,
+        "total": 398190,
+        "ratio": 0.01931
+      },
+      "K5DgRu": {
+        "differing": 7408,
+        "total": 398190,
+        "ratio": 0.018604
+      },
+      "QtxDQ": {
+        "differing": 7020,
+        "total": 384540,
+        "ratio": 0.018256
+      },
+      "DHZoj": {
+        "differing": 8839,
+        "total": 398190,
+        "ratio": 0.022198
+      },
+      "HkMpo": {
+        "differing": 9092,
+        "total": 398190,
+        "ratio": 0.022833
+      },
+      "UuaXy": {
+        "differing": 8642,
+        "total": 370240,
+        "ratio": 0.023342
+      }
+    }
+  }
+}

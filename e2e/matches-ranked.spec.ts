@@ -80,7 +80,7 @@ async function startWizard(page: Page, options: { name: string; date?: string; t
   await expect(page.getByRole('heading', { name: mc.title })).toBeVisible();
   await page.getByLabel(mc.fields.date).fill(options.date ?? day(3));
   await page.getByLabel(mc.fields.startTime).fill(options.time ?? '19:00');
-  await page.getByLabel(mc.fields.type).selectOption('competitive');
+  await page.getByRole('radio', { name: m.type.competitive, exact: true }).click();
   await page.getByLabel(mc.fields.venueName).fill(venue(options.name));
   await page
     .getByLabel(mc.fields.mapsUrl)
@@ -94,10 +94,8 @@ async function startWizard(page: Page, options: { name: string; date?: string; t
 }
 
 const competition = (page: Page) => page.getByRole('group', { name: comp.legend });
-const rankedRadio = (page: Page) =>
-  competition(page).getByRole('radio', { name: m.competition.ranked, exact: true });
-const unrankedRadio = (page: Page) =>
-  competition(page).getByRole('radio', { name: m.competition.unranked, exact: true });
+const rankedSwitch = (page: Page) =>
+  competition(page).getByRole('switch', { name: m.competition.ranked, exact: true });
 
 async function continueToReview(page: Page) {
   await page.getByRole('button', { name: mc.next }).click();
@@ -106,7 +104,7 @@ async function continueToReview(page: Page) {
   await expect(page.getByText(mc.steps.teams, { exact: true })).toBeVisible();
   await page.getByRole('radio', { name: m.teamMode.POST_MATCH_TEAMS }).check();
   await page.getByRole('button', { name: mc.next }).click();
-  await expect(page.getByRole('heading', { name: mc.review })).toBeVisible();
+  await expect(page.getByRole('heading', { name: mc.readyTitle })).toBeVisible();
 }
 
 async function continueToReviewAndPublish(page: Page) {
@@ -130,9 +128,10 @@ async function eventIdByVenue(name: string) {
 
 async function openEdit(page: Page) {
   await page.getByRole('button', { name: m.management.edit.title, exact: true }).click();
-  const dialog = page.getByRole('dialog');
-  await expect(dialog.getByRole('heading', { name: edit.title, exact: true })).toBeVisible();
-  return dialog;
+  // The edit flow is a page: its scope is the page main.
+  const editPage = page.locator('main');
+  await expect(editPage.getByRole('heading', { name: edit.title, exact: true })).toBeVisible();
+  return editPage;
 }
 
 const optionValue = (scope: ReturnType<Page['locator']>, text: string) =>
@@ -142,7 +141,7 @@ test('Competitive event defaults to Ranked in the one eligible Upcoming League (
   const page = await f.page(f.creator);
   await startWizard(page, { name: 'default' });
   await expect(competition(page)).toBeVisible();
-  await expect(rankedRadio(page)).toBeChecked();
+  await expect(rankedSwitch(page)).toBeChecked();
   const select = competition(page).getByRole('combobox', { name: comp.league, exact: true });
   await expect(select).toHaveValue(spring);
   await expect(competition(page)).toContainText(comp.guidance.defaultOne);
@@ -165,7 +164,7 @@ test('overlapping Upcoming Leagues need an explicit choice; explicit Unranked pe
   });
   const page = await f.page(f.creator);
   await startWizard(page, { name: 'choose' });
-  await expect(rankedRadio(page)).toBeChecked();
+  await expect(rankedSwitch(page)).toBeChecked();
   await expect(competition(page)).toContainText(comp.guidance.chooseOne);
   const select = competition(page).getByRole('combobox', { name: comp.league, exact: true });
   await expect(select).toHaveValue('');
@@ -185,10 +184,10 @@ test('overlapping Upcoming Leagues need an explicit choice; explicit Unranked pe
 
   // Explicit opt-out survives a schedule change and option reloads.
   await startWizard(page, { name: 'optout' });
-  await unrankedRadio(page).check();
+  await rankedSwitch(page).uncheck();
   await page.getByLabel(mc.fields.startTime).fill('20:30');
   await page.getByLabel(mc.fields.date).fill(day(4));
-  await expect(unrankedRadio(page)).toBeChecked();
+  await expect(rankedSwitch(page)).not.toBeChecked();
   await expect(
     competition(page).getByRole('combobox', { name: comp.league, exact: true })
   ).toHaveCount(0);
@@ -485,7 +484,10 @@ test('provisional player joins a Ranked event, is carried on League change and k
     await expect(player).toHaveURL(/\/onboarding\?next=/);
     await waitForHydratedPage(player);
     await player.getByLabel(en.onboarding.name).fill('Carla Reclamada');
-    await player.getByLabel(en.onboarding.sideLeftShort).first().check();
+    await player
+      .getByRole('group', { name: en.onboarding.side })
+      .getByRole('radio', { name: en.onboarding.sideLeftShort })
+      .check();
     await player.getByRole('button', { name: en.auth.claim.submit }).click();
     await expect(
       player.getByRole('heading', { level: 1, name: en.auth.claim.passwordTitle })

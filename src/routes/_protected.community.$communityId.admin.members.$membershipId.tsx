@@ -1,9 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import {
-  CommunityAdminDenied,
-  CommunityAdminLoading,
-  CommunityAdminScreen
-} from '../features/community/CommunityAdmin';
+import { CommunityAdminScreen } from '../features/community/CommunityAdmin';
+import { CommunityAdminMemberError } from '../features/community/CommunityAdminViews';
 import {
   getCommunityAdminContext,
   getCommunityMemberById
@@ -21,8 +18,9 @@ export const Route = createFileRoute(
     });
     return { community, member, membershipId: params.membershipId };
   },
-  pendingComponent: CommunityAdminLoading,
-  errorComponent: CommunityAdminDenied,
+  // The sheet opens over the live roster: no loading screen, errors render as a sheet.
+  pendingComponent: () => null,
+  errorComponent: CommunityAdminMemberError,
   component: () => {
     const data = Route.useLoaderData();
     return (

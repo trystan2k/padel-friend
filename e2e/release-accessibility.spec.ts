@@ -96,6 +96,7 @@ test.describe('authorized primary-flow accessibility', () => {
       const page = await f.page(f.creator, locale, 320, locale === 'es' ? 'dark' : 'light');
       for (const path of [
         '/dashboard',
+        '/me',
         '/onboarding/community',
         '/matches/create',
         `/matches/${upcoming}`,
@@ -114,7 +115,7 @@ test.describe('authorized primary-flow accessibility', () => {
           }
           if (path === '/dashboard') {
             const copy = copies[locale];
-            const date = page.locator('#home-top > div:first-child time');
+            const date = page.locator('#home-top > div:nth-child(2) time');
             await expect(date).toBeVisible();
             const asOf = await date.getAttribute('datetime');
             expect(asOf).not.toBeNull();
@@ -124,8 +125,9 @@ test.describe('authorized primary-flow accessibility', () => {
                 new Date(asOf!)
               )} · UTC`
             );
-            const hero = page.getByRole('region', { name: copy.home.levelTitle, exact: true });
-            await expect(hero.getByRole('heading', { level: 2 })).toHaveText(copy.home.levelTitle);
+            const hero = page.locator('#home-top > section').first();
+            await expect(page.locator('#home-greeting')).toBeVisible();
+            await expect(hero).toContainText(copy.home.levelTitle);
             await expect(hero.locator('strong')).toHaveText(/\d/);
             await expect(hero).toContainText(copy.profile.reliability);
             expect(await date.evaluate((element) => Boolean(element.closest('main')))).toBe(true);
@@ -133,7 +135,7 @@ test.describe('authorized primary-flow accessibility', () => {
               await hero.evaluate((element) =>
                 Boolean(
                   element.compareDocumentPosition(
-                    document.querySelector('#home-top > div:first-child time')!
+                    document.querySelector('#home-top > div:nth-child(2) time')!
                   ) & Node.DOCUMENT_POSITION_PRECEDING
                 )
               )
@@ -156,9 +158,11 @@ test.describe('authorized primary-flow accessibility', () => {
     await review(page);
     await auditControls(page);
     const copy = copies.en.matches.results;
-    await expect(page.getByRole('heading', { name: copy.preview, exact: true })).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: copy.record.reviewTitle, exact: true })
+    ).toBeVisible();
     // The fixture's third set is unfinished. Text remains available independent of colour.
-    await expect(page.getByText(copy.outcome.draw, { exact: true })).toBeVisible();
+    await expect(page.getByText(copy.record.outcome.draw, { exact: true })).toBeVisible();
     await page.context().close();
   });
 });
@@ -189,9 +193,11 @@ test('selected League close dialog traps focus, dismisses and returns focus', as
       .toBe(true);
     for (let index = 0; index < 8; index++) {
       await page.keyboard.press(index % 2 ? 'Shift+Tab' : 'Tab');
-      expect(await dialog.evaluate((element) => element.contains(document.activeElement))).toBe(
-        true
-      );
+      // Base UI's focus guard briefly holds focus when Tab leaves the last control; the trap wraps
+      // it back asynchronously, so poll for containment instead of sampling once.
+      await expect
+        .poll(() => dialog.evaluate((element) => element.contains(document.activeElement)))
+        .toBe(true);
     }
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();

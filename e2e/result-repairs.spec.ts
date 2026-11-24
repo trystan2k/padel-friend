@@ -441,11 +441,76 @@ for (const theme of ['light', 'dark'] as const) {
     const root = page.locator('[data-result-route=repair-diagnostics]');
     await expect(root).toBeVisible();
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+    await expect(root).toHaveAttribute('data-repair-scope', 'community');
+    await expect(root.locator('[data-repair-scheduler]')).toHaveCount(0);
+    const queue = root.locator('[data-repair-region=queue]');
+    const detail = root.locator('[data-repair-region=detail]');
+    const identifier = detail.locator('[data-repair-identifier]');
+    const selectedId = await root
+      .locator('[data-repair-detail]')
+      .getAttribute('data-repair-detail');
+    await expect(identifier).toHaveText(selectedId!);
+    await expect(identifier).toHaveCSS('overflow-wrap', 'anywhere');
+    await expect(identifier).toHaveCSS('user-select', 'text');
+    const narrow = await Promise.all([queue.boundingBox(), detail.boundingBox()]);
+    expect(narrow[0]!.x).toBe(narrow[1]!.x);
+    expect(narrow[1]!.y).toBeGreaterThan(narrow[0]!.y + narrow[0]!.height);
     await assertTargets(root, `diagnostics ${theme}`);
     await assertContrast(root, `diagnostics ${theme}`);
     await assertReducedMotion(page, root, `diagnostics ${theme}`);
     await assertNoOverflow(page, `diagnostics ${theme}`);
   });
+}
+
+// R3-01: the diagnostics header owns the top chrome (frames cuVwp/bomAY have no global chips), so
+// the language/theme chips must never paint over the title or the reload action.
+for (const scope of ['community', 'platform'] as const) {
+  for (const width of [320, 390, 1280]) {
+    test(`${scope} diagnostics header is not covered by the global chips at ${width}px`, async () => {
+      await f.grantAdmin();
+      if (scope === 'platform')
+        await sql(
+          `insert into public.platform_admins(user_id) values ('${f.creator.id}') on conflict do nothing`
+        );
+      const page = await f.page(f.creator, 'en', width, 'light', 844);
+      await page.goto(
+        scope === 'platform'
+          ? '/platform-admin/result-repairs'
+          : `/community/${f.community}/repairs`
+      );
+      await waitForHydratedPage(page);
+      const reload = page.getByRole('button', {
+        name: copies.en.matches.results.reload,
+        exact: true
+      });
+      const title = page.getByRole('heading', { level: 1, name: c.diagnostics.title, exact: true });
+      await expect(reload).toBeVisible();
+      const [reloadBox, titleBox] = await Promise.all([reload.boundingBox(), title.boundingBox()]);
+      expect(reloadBox).not.toBeNull();
+      expect(titleBox).not.toBeNull();
+      // Reload is the topmost element at its own hit point.
+      expect(
+        await reload.evaluate((element) => {
+          const rect = element.getBoundingClientRect();
+          const hit = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+          return hit !== null && element.contains(hit);
+        })
+      ).toBe(true);
+      for (const name of [copies.en.language, copies.en.theme]) {
+        const chip = page.getByRole('combobox', { name }).locator('..');
+        if (!(await chip.isVisible())) continue;
+        const chipBox = (await chip.boundingBox())!;
+        for (const target of [reloadBox!, titleBox!])
+          expect(
+            chipBox.x + chipBox.width <= target.x ||
+              target.x + target.width <= chipBox.x ||
+              chipBox.y + chipBox.height <= target.y ||
+              target.y + target.height <= chipBox.y,
+            `${name} chip must not intersect the header at ${width}px`
+          ).toBe(true);
+      }
+    });
+  }
 }
 
 for (const scope of ['community', 'platform'] as const) {

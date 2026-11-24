@@ -53,6 +53,17 @@ describe('Button', () => {
     expect(screen.getByRole('button', { name: 'Secondary' }).tagName).toBe('BUTTON');
   });
 
+  it('renders the destructive and large variants as enabled buttons', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn<() => void>();
+    render(createElement(Button, { variant: 'destructive', size: 'large', onClick }, 'Remove'));
+
+    const button = screen.getByRole('button', { name: 'Remove' });
+    expect(button.hasAttribute('disabled')).toBe(false);
+    await user.click(button);
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
   it('is keyboard focusable while enabled and fires the click handler', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn<() => void>();

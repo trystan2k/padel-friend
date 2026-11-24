@@ -1,10 +1,11 @@
 import { useUpdateGuard } from '../pwa/update-guard';
 import { AlertDialog } from '@base-ui/react/alert-dialog';
 import * as stylex from '@stylexjs/stylex';
-import { Link } from '@tanstack/react-router';
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../components/ui/Button';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import { TextField } from '../../components/ui/TextField';
 import { formatLevel } from '../player/rating-format';
 import {
@@ -23,7 +24,8 @@ import {
   previewLevelReviewApproval,
   resolveLevelReviewRequest
 } from './level-review.functions';
-import { levelReview as s } from './level-review.styles';
+import { levelReviewClubhouse as c } from './level-review-clubhouse.styles';
+import { LevelReviewAvatar, LevelReviewStatusChip } from './LevelReviewParts';
 
 type Decision = 'approve' | 'reject';
 type Field = 'target' | 'note' | 'reduction' | 'justification';
@@ -315,61 +317,77 @@ export function PlatformLevelReviewDetail({
   }
 
   return (
-    <main {...stylex.props(s.page)}>
-      <Link to="/platform-admin/level-reviews" {...stylex.props(s.actionLink)}>
-        {t('levelReview.admin.back')}
-      </Link>
-      <h1 ref={heading} tabIndex={-1} {...stylex.props(s.title)}>
-        {t('levelReview.admin.detail')}
-      </h1>
-      <section {...stylex.props(s.card)}>
-        <h2 {...stylex.props(s.cardTitle)}>{request.owner_display_name || request.owner_id}</h2>
-        {!closed && (
-          <p {...stylex.props(s.statusLabel)}>{t(`levelReview.status.${request.status}`)}</p>
-        )}
-        <p {...stylex.props(s.text)}>
-          {t('levelReview.admin.current', {
-            level: formatLevel(request.snapshot_display_level, i18n.language),
-            reliability: request.snapshot_reliability_percent
-          })}
+    <main data-route-chrome="navigation" {...stylex.props(c.page)}>
+      <TopBar
+        xstyle={c.barFrame}
+        headingRef={heading}
+        title={t('levelReview.admin.detail')}
+        back={{ to: '/platform-admin/level-reviews', label: t('levelReview.admin.back') }}
+      />
+      <SurfaceCard xstyle={c.card}>
+        <div {...stylex.props(c.cardHeader)}>
+          <LevelReviewAvatar
+            name={request.owner_display_name || request.owner_id}
+            locale={i18n.language}
+            large
+          />
+          <div {...stylex.props(c.player)}>
+            <h2 {...stylex.props(c.playerName, c.playerNameLarge)}>
+              {request.owner_display_name || request.owner_id}
+            </h2>
+          </div>
+          {!closed && <LevelReviewStatusChip status={request.status} />}
+        </div>
+        <hr {...stylex.props(c.divider)} />
+        <p {...stylex.props(c.levelRow)}>
+          <span {...stylex.props(c.meta)}>{t('levelReview.admin.submittedLevel')}</span>
+          <span {...stylex.props(c.rowValue)}>
+            {t('levelReview.admin.submittedLevelValue', {
+              level: formatLevel(request.snapshot_display_level, i18n.language),
+              reliability: request.snapshot_reliability_percent
+            })}
+          </span>
         </p>
-        <p {...stylex.props(s.text)}>
-          {t('levelReview.history.itemRequested', {
-            range: formatRequestedRange(request, i18n.language, t)
-          })}
+        <p {...stylex.props(c.levelRow)}>
+          <span {...stylex.props(c.meta)}>{t('levelReview.admin.requestedRange')}</span>
+          <span {...stylex.props(c.rowValue)}>
+            {formatRequestedRange(request, i18n.language, t)}
+          </span>
         </p>
-        <p {...stylex.props(s.muted)}>
-          {t('levelReview.history.itemSubmitted', {
-            date: formatReviewDate(request.created_at, i18n.language)
-          })}
+        <p {...stylex.props(c.levelRow)}>
+          <span {...stylex.props(c.meta)}>{t('levelReview.admin.submittedLabel')}</span>
+          <span {...stylex.props(c.rowValue)}>
+            {formatReviewDate(request.created_at, i18n.language)}
+          </span>
         </p>
         {request.under_review_at && (
-          <p {...stylex.props(s.muted)}>
+          <p {...stylex.props(c.meta)}>
             {t('levelReview.admin.reviewedAt', {
               date: formatReviewDate(request.under_review_at, i18n.language)
             })}
           </p>
         )}
         {request.canceled_at && (
-          <p {...stylex.props(s.muted)}>
+          <p {...stylex.props(c.meta)}>
             {t('levelReview.admin.canceledAt', {
               date: formatReviewDate(request.canceled_at, i18n.language)
             })}
           </p>
         )}
-        <h3 {...stylex.props(s.strong)}>{t('levelReview.admin.reason')}</h3>
-        <p {...stylex.props(s.userText)}>{request.reason}</p>
+        <hr {...stylex.props(c.divider)} />
+        <h3 {...stylex.props(c.label)}>{t('levelReview.admin.reason')}</h3>
+        <p {...stylex.props(c.userText)}>{request.reason}</p>
         {request.evidence && (
           <>
-            <h3 {...stylex.props(s.strong)}>{t('levelReview.admin.evidence')}</h3>
-            <p {...stylex.props(s.userText)}>{request.evidence}</p>
+            <h3 {...stylex.props(c.label)}>{t('levelReview.admin.evidence')}</h3>
+            <p {...stylex.props(c.userText)}>{request.evidence}</p>
           </>
         )}
-      </section>
+      </SurfaceCard>
       {current && (
-        <section {...stylex.props(s.card)}>
-          <h2 {...stylex.props(s.cardTitle)}>{t('levelReview.adminDecision.preview')}</h2>
-          <p {...stylex.props(s.text)}>
+        <SurfaceCard xstyle={c.card}>
+          <h2 {...stylex.props(c.cardHeading)}>{t('levelReview.adminDecision.preview')}</h2>
+          <p {...stylex.props(c.meta)}>
             {t('levelReview.adminDecision.before', {
               level: formatLevel(current.display_level, i18n.language),
               mu: current.mu,
@@ -378,18 +396,18 @@ export function PlatformLevelReviewDetail({
               groups: current.confirmed_competitive_game_groups
             })}
           </p>
-        </section>
+        </SurfaceCard>
       )}
-      <section aria-labelledby={id + '-recent'} {...stylex.props(s.card)}>
-        <h2 id={id + '-recent'} {...stylex.props(s.cardTitle)}>
+      <SurfaceCard xstyle={c.card}>
+        <h2 id={id + '-recent'} {...stylex.props(c.cardHeading)}>
           {t('levelReview.adminDecision.recentHistory')}
         </h2>
         {detail.recent_history.length === 0 ? (
-          <p {...stylex.props(s.muted)}>{t('levelReview.adminDecision.recentEmpty')}</p>
+          <p {...stylex.props(c.meta)}>{t('levelReview.adminDecision.recentEmpty')}</p>
         ) : (
-          <ul {...stylex.props(s.list)}>
+          <ul {...stylex.props(c.section)}>
             {detail.recent_history.map((entry, index) => (
-              <li key={entry.played_at + index} {...stylex.props(s.text)}>
+              <li key={entry.played_at + index} {...stylex.props(c.meta)}>
                 {t('levelReview.adminDecision.recentItem', {
                   date: formatReviewDate(entry.played_at, i18n.language),
                   before: formatLevel(entry.before_display_level, i18n.language),
@@ -400,22 +418,22 @@ export function PlatformLevelReviewDetail({
             ))}
           </ul>
         )}
-      </section>
+      </SurfaceCard>
       {(request.status === 'approved' || request.status === 'rejected') && (
-        <section {...stylex.props(s.card)}>
-          <h2 {...stylex.props(s.cardTitle)}>{t('levelReview.detail.decisionHeading')}</h2>
-          <p {...stylex.props(s.userText)}>{request.decision_note}</p>
+        <SurfaceCard xstyle={c.card}>
+          <h2 {...stylex.props(c.cardHeading)}>{t('levelReview.detail.decisionHeading')}</h2>
+          <p {...stylex.props(c.userText)}>{request.decision_note}</p>
           {request.decided_at && (
-            <p {...stylex.props(s.text)}>
+            <p {...stylex.props(c.meta)}>
               {t('levelReview.admin.decidedAt', {
                 date: formatReviewDate(request.decided_at, i18n.language)
               })}
             </p>
           )}
           {request.adjustment_id && (
-            <p {...stylex.props(s.text)}>
+            <p {...stylex.props(c.meta)}>
               {auditId ? (
-                <a href={'#' + auditId} onClick={openAudit} {...stylex.props(s.actionLink)}>
+                <a href={'#' + auditId} onClick={openAudit} {...stylex.props(c.actionLink)}>
                   {t('levelReview.adminDecision.event', { id: request.adjustment_id })}
                 </a>
               ) : (
@@ -423,76 +441,23 @@ export function PlatformLevelReviewDetail({
               )}
             </p>
           )}
-        </section>
-      )}
-      {detail.adjustment && auditId && (
-        <section
-          id={auditId}
-          tabIndex={-1}
-          aria-labelledby={auditId + '-title'}
-          {...stylex.props(s.card)}
-        >
-          <h2 id={auditId + '-title'} {...stylex.props(s.cardTitle)}>
-            {t('levelReview.adminDecision.auditHeading')}
-          </h2>
-          <p {...stylex.props(s.muted)}>{t('levelReview.adminDecision.auditNote')}</p>
-          <p {...stylex.props(s.text)}>
-            {t('levelReview.adminDecision.auditLevel', {
-              before: formatLevel(detail.adjustment.before_display_level, i18n.language),
-              beforeMu: formatInternal(detail.adjustment.before_mu, i18n.language),
-              after: formatLevel(detail.adjustment.after_display_level, i18n.language),
-              afterMu: formatInternal(detail.adjustment.after_mu, i18n.language)
-            })}
-          </p>
-          <p {...stylex.props(s.text)}>
-            {t('levelReview.adminDecision.auditReliability', {
-              before: detail.adjustment.before_reliability_percent,
-              after: detail.adjustment.after_reliability_percent,
-              mode: t(`levelReview.adminDecision.${detail.adjustment.reliability_mode}`)
-            })}
-          </p>
-          {detail.adjustment.exception_justification && (
-            <p {...stylex.props(s.userText)}>
-              {t('levelReview.adminDecision.auditJustification', {
-                text: detail.adjustment.exception_justification
-              })}
-            </p>
-          )}
-          <p {...stylex.props(s.text)}>
-            {t('levelReview.adminDecision.auditDecided', {
-              date: formatReviewDate(detail.adjustment.decided_at, i18n.language),
-              actor: detail.adjustment.actor_id
-            })}
-          </p>
-          <p {...stylex.props(s.text)}>
-            {t('levelReview.adminDecision.auditRevision', {
-              revision: detail.adjustment.projection_revision,
-              before: detail.adjustment.before_engine_version,
-              after: detail.adjustment.after_engine_version
-            })}
-          </p>
-          <p {...stylex.props(s.text)}>
-            {t('levelReview.adminDecision.auditBoundary', {
-              date: formatReviewDate(detail.adjustment.boundary_played_at, i18n.language),
-              basis: t(`levelReview.adminDecision.basis.${detail.adjustment.boundary_basis}`)
-            })}
-          </p>
-        </section>
+        </SurfaceCard>
       )}
       {active && (
-        <section {...stylex.props(s.card)}>
-          <h2 {...stylex.props(s.cardTitle)}>{t('levelReview.adminDecision.forwardHeading')}</h2>
-          <p {...stylex.props(s.text)}>{t('levelReview.adminDecision.forward')}</p>
-          <p {...stylex.props(s.text)}>{t('levelReview.adminDecision.forwardAudit')}</p>
-        </section>
+        <SurfaceCard xstyle={c.card}>
+          <h2 {...stylex.props(c.cardHeading)}>{t('levelReview.adminDecision.forwardHeading')}</h2>
+          <p {...stylex.props(c.meta)}>{t('levelReview.adminDecision.forward')}</p>
+          <p {...stylex.props(c.meta)}>{t('levelReview.adminDecision.forwardAudit')}</p>
+        </SurfaceCard>
       )}
-      <output aria-live="polite" {...stylex.props(notice ? s.notice : s.srOnly)}>
+      <output aria-live="polite" {...stylex.props(notice ? c.notice : c.srOnly)}>
         {notice}
       </output>
       {active && (
-        <section {...stylex.props(s.card)}>
+        <section {...stylex.props(c.section)}>
+          <h2 {...stylex.props(c.sectionTitle)}>{t('levelReview.detail.decisionHeading')}</h2>
           {request.status === 'pending' && (
-            <Button disabled={pending} onClick={() => void mark()}>
+            <Button disabled={pending} variant="secondary" onClick={() => void mark()}>
               {t('levelReview.adminDecision.mark')}
             </Button>
           )}
@@ -510,15 +475,15 @@ export function PlatformLevelReviewDetail({
                   setTarget(event.target.value);
                 }}
               />
-              <fieldset {...stylex.props(s.fieldset)}>
-                <legend {...stylex.props(s.legend)}>
+              <fieldset {...stylex.props(c.fieldset)}>
+                <legend {...stylex.props(c.legend)}>
                   {t('levelReview.adminDecision.reliability')}
                 </legend>
-                <div {...stylex.props(s.modes)}>
+                <div {...stylex.props(c.modes)}>
                   {(['preserve', 'reset', 'reduce'] as const).map((choice) => (
                     <label
                       key={choice}
-                      {...stylex.props(s.mode, mode === choice && s.modeSelected)}
+                      {...stylex.props(c.mode, mode === choice && c.modeSelected)}
                     >
                       <input
                         type="radio"
@@ -529,7 +494,7 @@ export function PlatformLevelReviewDetail({
                           discardPreview();
                           setMode(choice);
                         }}
-                        {...stylex.props(s.radio)}
+                        {...stylex.props(c.radio)}
                       />
                       {t(`levelReview.adminDecision.${choice}`)}
                     </label>
@@ -562,7 +527,7 @@ export function PlatformLevelReviewDetail({
                     setJustification(event.target.value);
                   }}
                   render={<textarea rows={3} />}
-                  xstyle={s.textarea}
+                  xstyle={c.textarea}
                 />
               )}
             </>
@@ -578,26 +543,102 @@ export function PlatformLevelReviewDetail({
               setNote(event.target.value);
             }}
             render={<textarea rows={4} />}
-            xstyle={s.textarea}
+            xstyle={c.textarea}
           />
-          <div {...stylex.props(s.actions)}>
-            {current && (
-              <Button
-                disabled={pending}
-                onClick={(event) => prepare('approve', event.currentTarget)}
-              >
-                {t('levelReview.adminDecision.approve')}
-              </Button>
-            )}
+        </section>
+      )}
+      <section aria-labelledby={id + '-trail'} {...stylex.props(c.section)}>
+        <h2 id={id + '-trail'} {...stylex.props(c.sectionTitle)}>
+          {t('levelReview.adminDecision.trailHeading')}
+        </h2>
+        <SurfaceCard xstyle={c.card}>
+          <div {...stylex.props(c.auditItem)}>
+            <span aria-hidden="true" {...stylex.props(c.auditTile)}>
+              ◷
+            </span>
+            <div {...stylex.props(c.stack)}>
+              <p {...stylex.props(c.eventTitle)}>{t('levelReview.adminDecision.trailSubmitted')}</p>
+              <p {...stylex.props(c.meta)}>{formatReviewDate(request.created_at, i18n.language)}</p>
+            </div>
+          </div>
+        </SurfaceCard>
+        {detail.adjustment && auditId && (
+          <SurfaceCard xstyle={c.card}>
+            <section
+              id={auditId}
+              tabIndex={-1}
+              aria-labelledby={auditId + '-title'}
+              {...stylex.props(c.section)}
+            >
+              <h3 id={auditId + '-title'} {...stylex.props(c.label)}>
+                {t('levelReview.adminDecision.auditHeading')}
+              </h3>
+              <p {...stylex.props(c.meta)}>{t('levelReview.adminDecision.auditNote')}</p>
+              <p {...stylex.props(c.meta)}>
+                {t('levelReview.adminDecision.auditLevel', {
+                  before: formatLevel(detail.adjustment.before_display_level, i18n.language),
+                  beforeMu: formatInternal(detail.adjustment.before_mu, i18n.language),
+                  after: formatLevel(detail.adjustment.after_display_level, i18n.language),
+                  afterMu: formatInternal(detail.adjustment.after_mu, i18n.language)
+                })}
+              </p>
+              <p {...stylex.props(c.meta)}>
+                {t('levelReview.adminDecision.auditReliability', {
+                  before: detail.adjustment.before_reliability_percent,
+                  after: detail.adjustment.after_reliability_percent,
+                  mode: t(`levelReview.adminDecision.${detail.adjustment.reliability_mode}`)
+                })}
+              </p>
+              {detail.adjustment.exception_justification && (
+                <p {...stylex.props(c.userText)}>
+                  {t('levelReview.adminDecision.auditJustification', {
+                    text: detail.adjustment.exception_justification
+                  })}
+                </p>
+              )}
+              <p {...stylex.props(c.meta)}>
+                {t('levelReview.adminDecision.auditDecided', {
+                  date: formatReviewDate(detail.adjustment.decided_at, i18n.language),
+                  actor: detail.adjustment.actor_id
+                })}
+              </p>
+              <p {...stylex.props(c.meta)}>
+                {t('levelReview.adminDecision.auditRevision', {
+                  revision: detail.adjustment.projection_revision,
+                  before: detail.adjustment.before_engine_version,
+                  after: detail.adjustment.after_engine_version
+                })}
+              </p>
+              <p {...stylex.props(c.meta)}>
+                {t('levelReview.adminDecision.auditBoundary', {
+                  date: formatReviewDate(detail.adjustment.boundary_played_at, i18n.language),
+                  basis: t(`levelReview.adminDecision.basis.${detail.adjustment.boundary_basis}`)
+                })}
+              </p>
+            </section>
+          </SurfaceCard>
+        )}
+      </section>
+      {active && (
+        <div {...stylex.props(c.actionBar)}>
+          <Button
+            variant="destructive"
+            disabled={pending}
+            xstyle={current ? c.barSecondary : c.barPrimary}
+            onClick={(event) => prepare('reject', event.currentTarget)}
+          >
+            {t('levelReview.adminDecision.reject')}
+          </Button>
+          {current && (
             <Button
               disabled={pending}
-              variant="secondary"
-              onClick={(event) => prepare('reject', event.currentTarget)}
+              xstyle={c.barPrimary}
+              onClick={(event) => prepare('approve', event.currentTarget)}
             >
-              {t('levelReview.adminDecision.reject')}
+              {t('levelReview.adminDecision.approve')}
             </Button>
-          </div>
-        </section>
+          )}
+        </div>
       )}
       <AlertDialog.Root
         open={decision === 'reject' || (decision === 'approve' && livePreview !== null)}
@@ -606,17 +647,38 @@ export function PlatformLevelReviewDetail({
         }}
       >
         <AlertDialog.Portal>
-          <AlertDialog.Backdrop {...stylex.props(s.backdrop)} />
+          <AlertDialog.Backdrop {...stylex.props(c.backdrop)} />
           <AlertDialog.Popup
             finalFocus={() => (trigger.current?.isConnected ? trigger.current : heading.current)}
-            {...stylex.props(s.popup)}
+            {...stylex.props(c.sheet)}
           >
-            <AlertDialog.Title {...stylex.props(s.popupTitle)}>
+            <AlertDialog.Title {...stylex.props(c.sectionTitle)}>
               {decision === 'approve'
                 ? t('levelReview.adminDecision.confirmApprove')
                 : t('levelReview.adminDecision.confirmReject')}
             </AlertDialog.Title>
-            <AlertDialog.Description {...stylex.props(s.text)}>
+            {decision === 'approve' && livePreview && (
+              <>
+                <p {...stylex.props(c.levelRow)}>
+                  <span {...stylex.props(c.meta)}>{t('levelReview.adminDecision.levelAfter')}</span>
+                  <span {...stylex.props(c.rowValue)}>
+                    {formatLevel(livePreview.after.display_level, i18n.language)}
+                  </span>
+                </p>
+                <p {...stylex.props(c.levelRow)}>
+                  <span {...stylex.props(c.meta)}>
+                    {t('levelReview.adminDecision.reliability')}
+                  </span>
+                  <span {...stylex.props(c.rowValue)}>
+                    {livePreview.after.reliability_percent}%
+                    {livePreview.after.reliability_percent ===
+                      livePreview.before.reliability_percent &&
+                      ` · ${t('levelReview.adminDecision.reliabilityUnchanged')}`}
+                  </span>
+                </p>
+              </>
+            )}
+            <AlertDialog.Description {...stylex.props(c.meta)}>
               {decision === 'approve' && livePreview
                 ? t('levelReview.adminDecision.after', {
                     beforeLevel: formatLevel(livePreview.before.display_level, i18n.language),
@@ -629,22 +691,37 @@ export function PlatformLevelReviewDetail({
                 : t('levelReview.adminDecision.rejectDescription')}
             </AlertDialog.Description>
             {decision === 'approve' && (
-              <p {...stylex.props(s.guidance)}>{t('levelReview.adminDecision.forward')}</p>
+              <p {...stylex.props(c.body)}>{t('levelReview.adminDecision.forward')}</p>
             )}
+            <div {...stylex.props(c.section)}>
+              <p {...stylex.props(c.label)}>{t('levelReview.adminDecision.note')}</p>
+              <p {...stylex.props(c.sheetNote)}>{note.trim()}</p>
+            </div>
             {message && (
-              <p role="alert" {...stylex.props(s.alertText)}>
+              <p role="alert" {...stylex.props(c.alertText)}>
                 {message}
               </p>
             )}
-            <div {...stylex.props(s.actions)}>
+            <div {...stylex.props(c.sheetActions)}>
               <AlertDialog.Close
                 disabled={pending}
                 render={
-                  <Button variant="secondary">{t('levelReview.adminDecision.cancel')}</Button>
+                  <Button variant="secondary" xstyle={c.barSecondary}>
+                    {t('levelReview.adminDecision.cancel')}
+                  </Button>
                 }
               />
-              <Button busy={pending} onClick={() => void confirm()}>
-                {t('levelReview.adminDecision.confirm')}
+              <Button
+                busy={pending}
+                variant={decision === 'reject' ? 'destructive' : 'primary'}
+                xstyle={c.barPrimary}
+                onClick={() => void confirm()}
+              >
+                {t(
+                  decision === 'reject'
+                    ? 'levelReview.adminDecision.confirmDenial'
+                    : 'levelReview.adminDecision.confirmApproval'
+                )}
               </Button>
             </div>
           </AlertDialog.Popup>

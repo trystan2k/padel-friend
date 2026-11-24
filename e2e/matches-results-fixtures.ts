@@ -1,4 +1,4 @@
-import { expect, type Browser, type Page } from '@playwright/test';
+import { expect, type Browser, type Locator, type Page } from '@playwright/test';
 import {
   fixtures,
   copies,
@@ -53,6 +53,17 @@ export async function resultFixtures(browser: Browser, options?: Parameters<type
       await f.cleanup();
     }
   };
+}
+
+/**
+ * A result-review action (Approve / Reject). The single-result detail hosts them in its sticky action
+ * bar (sLXK7); multi-group cards keep them inline (GMcbD). Exactly one of the two exists per page.
+ */
+export function reviewAction(card: Locator, name: string) {
+  const option = { name, exact: true } as const;
+  return card
+    .getByRole('button', option)
+    .or(card.page().locator('[data-match-action-bar]').getByRole('button', option));
 }
 
 export async function openRecord(page: Page, id: string) {
@@ -117,8 +128,10 @@ export async function enterScore(
 
 export async function review(page: Page, locale: Locale = 'en') {
   const r = copies[locale].matches.results;
-  await page.getByRole('button', { name: r.submit, exact: true }).click();
-  await expect(page.getByRole('heading', { name: r.preview, exact: true })).toBeVisible();
+  await page.getByRole('button', { name: r.record.reviewAction, exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: r.record.reviewTitle, exact: true })
+  ).toBeVisible();
 }
 
 export async function officialSnapshot(community: string) {

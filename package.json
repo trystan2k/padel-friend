@@ -7,7 +7,7 @@
     "predev": "pnpm tokens:build",
     "dev": "vite dev",
     "prebuild": "pnpm tokens:build",
-    "build": "vite build && node scripts/generate-sw.mjs && node scripts/check-client-secrets.mjs",
+    "build": "vite build && node scripts/e2e-build-env.mjs && node scripts/generate-sw.mjs && node scripts/check-client-secrets.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "deploy": "pnpm build && wrangler deploy",
     "cf:typegen": "wrangler types",
@@ -44,8 +44,7 @@
   },
   "dependencies": {
     "@base-ui/react": "~1.9.0",
-    "@fontsource/inter": "~5.3.0",
-    "@fontsource/manrope": "~5.3.0",
+    "@fontsource/figtree": "~5.3.0",
     "@stylexjs/stylex": "~0.19.1",
     "@supabase/ssr": "~0.12.7",
     "@supabase/supabase-js": "~2.117.3",

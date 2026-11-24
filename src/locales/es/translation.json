@@ -3,6 +3,44 @@
     "skipToContent": "Saltar al contenido principal",
     "stale": "Las actualizaciones están demoradas. La información mostrada puede estar desactualizada. Las actualizaciones se reanudarán automáticamente."
   },
+  "communitySurface": {
+    "navigation": "Secciones de la comunidad",
+    "overview": "Vista general",
+    "leagues": "Ligas",
+    "skill": "Nivel",
+    "league": "Liga",
+    "rankingKind": "Tipo de clasificación",
+    "settings": "Ajustes de la comunidad",
+    "public": "Pública",
+    "private": "Privada",
+    "visibilityUnavailable": "Visibilidad no disponible",
+    "members": "Miembros",
+    "activeWeek": "Activos esta semana",
+    "unavailable": "No disponible",
+    "invite": "Invitar jugadores",
+    "joinCountUnavailable": "Número de solicitudes de ingreso no disponible.",
+    "joinRequests_one": "{{count}} persona quiere unirse",
+    "joinRequests_other": "{{count}} personas quieren unirse",
+    "joinRequestsAtLeast_other": "{{count}}+ personas quieren unirse",
+    "joinRequestsNone": "Nadie espera para unirse",
+    "upcoming": "Próximos partidos",
+    "noUpcoming": "No hay próximos partidos para mostrar.",
+    "skillDescription": "Tu nivel en la app y tu posición en esta comunidad. Una fiabilidad inferior al 50 % indica un nivel provisional.",
+    "skillListUnavailable": "La clasificación completa por nivel de la comunidad no está disponible.",
+    "provisional": "Nivel provisional",
+    "noStandings": "Aún no hay posiciones en la clasificación.",
+    "selfName": "{{name}} (tú)"
+  },
+  "appShell": {
+    "navigation": "Navegación principal",
+    "nav": {
+      "home": "Inicio",
+      "matches": "Partidos",
+      "create": "Crear un partido",
+      "community": "Comunidad",
+      "me": "Yo"
+    }
+  },
   "languageNames": {
     "en": "English",
     "pt-BR": "Português (Brasil)",
@@ -22,22 +60,20 @@
   "light": "Claro",
   "dark": "Oscuro",
   "checkEmail": "Revisa tu correo para confirmar la cuenta.",
-  "signInWithGoogle": "CONTINUAR CON GOOGLE",
+  "signInWithGoogle": "Continuar con Google",
   "googleSignInError": "No se completó el acceso con Google. Inténtalo de nuevo.",
   "communityOnboarding": {
-    "step": "PASO 3 DE 3 · COMUNIDAD",
-    "createStep": "PASO 3 DE 3 · CREAR COMUNIDAD",
+    "step": "Paso 3 de 3 · Comunidad",
     "title": "Encuentra tu comunidad",
-    "subtitle": "Únete a un grupo o crea el tuyo.",
-    "lead": "Juega con gente cercana",
-    "help": "Las comunidades públicas son visibles para todos. Puedes unirte a otras más adelante.",
+    "lead": "Únete a una comunidad",
+    "help": "Los partidos y las clasificaciones se organizan en comunidades. Puedes unirte a más después.",
     "searchLabel": "Buscar comunidad",
     "searchLoading": "Buscando comunidades…",
     "searchPlaceholder": "Busca por nombre o ciudad",
-    "join": "UNIRME A LA COMUNIDAD",
-    "requestToJoin": "SOLICITAR ACCESO",
-    "createEntry": "+  CREAR UNA COMUNIDAD",
-    "skip": "LO HARÉ MÁS TARDE",
+    "join": "Unirme",
+    "requestToJoin": "Solicitar",
+    "createEntry": "+ Crear una comunidad",
+    "skip": "Lo haré más tarde",
     "cityPolicy": "{{city}} · {{policy}}",
     "memberCount_one": "{{formattedCount}} miembro",
     "memberCount_other": "{{formattedCount}} miembros",
@@ -52,32 +88,31 @@
     "emptySearch": "No hay comunidades que coincidan con tu búsqueda.",
     "noCommunities": "Aún no hay comunidades públicas.",
     "loadFailed": "No se pudieron cargar las comunidades.",
-    "retry": "REINTENTAR",
-    "loadMore": "CARGAR MÁS",
-    "joining": "UNIÉNDOTE…",
-    "requesting": "ENVIANDO…",
-    "createTitle": "Crear una comunidad",
-    "createSubtitle": "Reúne a tus jugadores.",
-    "createLead": "Tu grupo, tus reglas.",
-    "createHelp": "Elige quién puede encontrar tu comunidad y unirse.",
-    "nameLabel": "NOMBRE DE LA COMUNIDAD",
+    "retry": "Reintentar",
+    "loadMore": "Cargar más",
+    "joining": "Uniéndote…",
+    "requesting": "Enviando…",
+    "createTitle": "Nueva comunidad",
+    "createLead": "Crea una comunidad",
+    "nameLabel": "Nombre",
     "nameExample": "Club de Pádel del Norte",
-    "visibilityLegend": "VISIBILIDAD",
+    "visibilityLegend": "¿Quién puede unirse?",
     "public": "Pública",
     "publicHelp": "Visible para jugadores autenticados. El acceso puede ser libre o requerir aprobación.",
     "private": "Privada",
     "privateHelp": "Solo con invitación. Solo pueden acceder miembros e invitados.",
-    "optionalDetails": "DETALLES OPCIONALES",
-    "descriptionLabel": "Descripción",
-    "descriptionExample": "Descripción · p. ej., pádel después del trabajo",
+    "descriptionLabel": "Descripción (opcional)",
+    "cityExample": "Madrid, Chamberí",
+    "descriptionExample": "Pádel después del trabajo y partidos de fin de semana",
     "cityLabel": "Ciudad o zona",
-    "cityExample": "Ciudad o zona · Madrid, Chamberí",
-    "adminNote": "Serás la primera persona administradora. Añade miembros y crea partidos cuando quieras.",
-    "createSubmit": "CREAR COMUNIDAD",
-    "back": "VOLVER A COMUNIDADES",
-    "creating": "CREANDO…",
+    "adminNote": "Serás la primera persona en administrar la comunidad.",
+    "createSubmit": "Crear comunidad",
+    "back": "Volver a comunidades",
+    "creating": "Creando…",
     "created": "Tu comunidad está lista.",
-    "finish": "IR AL PANEL",
+    "finish": "Ir al panel",
+    "done": "Finalizar",
+    "discoveryBack": "Atrás",
     "createFailed": "No se pudo crear la comunidad. Inténtalo de nuevo.",
     "createRateLimited": "Has creado demasiadas comunidades recientemente. Inténtalo de nuevo más tarde.",
     "createOwnedLimit": "Has alcanzado el máximo de comunidades que puedes tener como propietario.",
@@ -89,11 +124,27 @@
     "inviteConfirmDescription": "Continúa solo si esperabas esta invitación. Al confirmar, iniciarás sesión en la cuenta vinculada a la invitación.",
     "inviteAccountWarning": "Has iniciado sesión como {{email}}. Si continúas, esta sesión se sustituirá por la cuenta invitada. Cancela para mantener tu cuenta actual.",
     "inviteAccountWarningUnknown": "Has iniciado sesión. Si continúas, tu sesión actual se sustituirá por la cuenta invitada. Cancela para mantener tu cuenta actual.",
-    "inviteSwitchConfirm": "CAMBIAR DE CUENTA Y ACEPTAR INVITACIÓN",
-    "inviteConfirm": "ACEPTAR INVITACIÓN",
-    "inviteCancel": "CANCELAR Y MANTENER CUENTA ACTUAL",
+    "inviteSwitchConfirm": "Cambiar de cuenta y aceptar invitación",
+    "inviteConfirm": "Aceptar invitación",
+    "inviteCancel": "Cancelar y mantener cuenta actual",
     "inviteConfirmExpired": "Esta confirmación ha caducado o no está disponible. Abre de nuevo tu invitación original para continuar.",
     "inviteConfirmVerificationFailed": "No pudimos verificar tu cuenta actual. Intenta abrir tu invitación de nuevo.",
+    "inviteBarTitle": "Invitación",
+    "inviteAccepting": "Aceptando invitación…",
+    "inviteBusyTitle": "Aceptando tu invitación",
+    "inviteBusyDescription": "Estamos comprobando tu invitación. Puede tardar un momento.",
+    "inviteFailedTitle": "No pudimos verificar la invitación",
+    "inviteExpiredTitle": "Invitación caducada",
+    "inviteHelpTitle": "¿Necesitas ayuda?",
+    "inviteHelpHint": "Contacta con soporte si abrir de nuevo tu invitación sigue sin funcionar.",
+    "inviteHelpLink": "Contactar con soporte",
+    "inviteBackToSignIn": "Volver a iniciar sesión",
+    "passwordStrengthLabel": "Seguridad de la contraseña",
+    "passwordStrengthEmpty": "Escribe una contraseña",
+    "passwordStrengthWeak": "Débil",
+    "passwordStrengthFair": "Aceptable",
+    "passwordStrengthGood": "Buena",
+    "passwordStrengthStrong": "Fuerte",
     "invitationEmail": {
       "subject": "Te han añadido a un partido de pádel",
       "heading": "Estás en el partido",
@@ -104,57 +155,67 @@
       "privacyCta": "Política de privacidad"
     },
     "claim": {
-      "step": "TERMINA TU REGISTRO",
+      "step": "Termina tu registro",
       "title": "Termina de configurar tu cuenta",
       "subtitle": "Tu correo está confirmado. Revisa tus datos para reclamar tu perfil de jugador.",
       "levelNote": "El organizador estimó este nivel inicial. Ajústalo si no te parece correcto.",
+      "lockedLevelTitle": "Tu nivel inicial",
+      "locked": "Bloqueado",
+      "estimatedLevel": "Nivel estimado",
       "levelLocked": "Tu nivel inicial está bloqueado porque ya tienes partidos puntuados.",
-      "submit": "RECLAMAR MI PERFIL",
+      "submit": "Continuar",
       "failed": "No se pudo reclamar tu perfil. Inténtalo de nuevo.",
       "verifyTitle": "Confirma primero tu correo",
       "verifySubtitle": "Te añadieron a un partido. Confirma esta dirección de correo para reclamar tu perfil.",
       "verifyOptionsTitle": "Abre el correo de invitación",
       "verifyOptions": "Usa el enlace del correo de invitación, inicia sesión con Google con la misma dirección o recibe un nuevo enlace por correo.",
-      "verifyAction": "ENVIARME UN ENLACE",
+      "verifyAction": "Enviarme un enlace",
+      "verifyBarTitle": "Verificar correo",
       "verifyFailed": "No se pudo iniciar la verificación. Inténtalo de nuevo.",
       "invitedNotice_one": "Te invitaron a {{count}} partido.",
       "invitedNotice_other": "Te invitaron a {{count}} partidos.",
       "passwordTitle": "Elige una contraseña",
       "passwordSubtitle": "Tu perfil está reclamado. Define una contraseña para entrar con tu correo la próxima vez.",
       "passwordSkipHelp": "Ya puedes entrar con tu cuenta vinculada. La contraseña es opcional.",
-      "passwordSkip": "OMITIR POR AHORA"
+      "passwordSkip": "Omitir por ahora",
+      "passwordBarTitle": "Definir contraseña"
     },
     "welcomeBrand": "PADEL FRIENDS",
-    "welcomeTitle": "Bienvenido/a",
-    "welcomeSubtitle": "Inicia sesión para encontrar tu próximo partido.",
-    "forgotLink": "¿Olvidaste tu contraseña?",
+    "loginBrand": "Padel Friends",
+    "welcomeTitle": "Encuentra tu próximo partido",
+    "welcomeSubtitle": "Inicia sesión para jugar con tu comunidad.",
+    "forgotLink": "¿Olvidaste la contraseña?",
     "forgotTitle": "¿Olvidaste tu contraseña?",
-    "forgotDescription": "Introduce el correo asociado a tu cuenta. Te enviaremos un enlace seguro para restablecer tu contraseña.",
-    "forgotEmailNote": "Si existe una cuenta con este correo, recibirás un enlace para restablecer la contraseña.",
-    "forgotSubmit": "ENVIAR ENLACE DE RESTABLECIMIENTO",
+    "forgotDescription": "Introduce el correo asociado a tu cuenta y te enviaremos un enlace seguro para restablecer la contraseña.",
+    "forgotEmailNote": "Si existe una cuenta, recibirás un enlace para restablecer la contraseña.",
+    "forgotSubmit": "Enviar enlace",
     "forgotInvalidEmail": "Introduce un correo electrónico válido.",
     "forgotFailed": "No se pudo enviar el enlace. Inténtalo de nuevo más tarde.",
-    "backToSignIn": "VOLVER AL INICIO DE SESIÓN",
-    "inboxNoticeTitle": "Revisa tu correo",
-    "inboxNoticeCopy": "Si existe una cuenta con ese correo, el enlace para restablecer la contraseña está en camino. Ábrelo para crear una nueva contraseña.",
+    "backToSignIn": "Volver al inicio de sesión",
+    "back": "Atrás",
+    "accountBarTitle": "Crear cuenta",
+    "forgotBarTitle": "Restablecer contraseña",
+    "resetBarTitle": "Nueva contraseña",
+    "resetRuleMatch": "Ambas entradas coinciden",
+    "ruleMet": "Cumplida",
+    "ruleUnmet": "No cumplida",
+    "inboxNoticeCopy": "Si existe una cuenta con ese correo, un enlace de restablecimiento está en camino. Ábrelo para crear una nueva contraseña.",
     "resetTitle": "Crear una nueva contraseña",
-    "resetDescription": "Elige una nueva contraseña para tu cuenta.",
     "resetNewPasswordLabel": "Nueva contraseña",
     "resetNewPasswordPlaceholder": "Introduce la nueva contraseña",
-    "resetConfirmPasswordLabel": "Confirma la nueva contraseña",
+    "resetConfirmPasswordLabel": "Repite la contraseña",
     "resetConfirmPlaceholder": "Vuelve a introducir la nueva contraseña",
-    "resetRequirements": "Usa al menos {{min}} caracteres con mayúsculas y minúsculas, un número y un símbolo. Ambas entradas deben coincidir.",
-    "resetSubmit": "ACTUALIZAR CONTRASEÑA",
+    "resetSubmit": "Guardar contraseña",
     "resetMismatch": "Las contraseñas no coinciden.",
     "passwordInvalid": "La contraseña debe tener al menos {{min}} caracteres, con mayúsculas y minúsculas, un número y un símbolo.",
     "resetFailed": "No se pudo actualizar la contraseña. Inténtalo de nuevo.",
-    "loginEmailLabel": "Correo electrónico",
+    "loginEmailLabel": "Correo",
     "loginEmailPlaceholder": "nombre@ejemplo.com",
     "loginPasswordLabel": "Contraseña",
-    "loginPasswordPlaceholder": "••••••••••••",
-    "loginSubmit": "INICIAR SESIÓN",
-    "signupSubmit": "CREAR CUENTA",
-    "signupLink": "Crear cuenta",
+    "loginPasswordPlaceholder": "Introduce la contraseña",
+    "loginSubmit": "Iniciar sesión",
+    "signupSubmit": "Crear cuenta",
+    "signupLink": "Crear una cuenta",
     "signupPasswordLabel": "Contraseña",
     "signupPasswordPlaceholder": "Ingresa tu contraseña",
     "passwordRequirements": "Usa al menos {{min}} caracteres con mayúsculas y minúsculas, un número y un símbolo.",
@@ -165,29 +226,30 @@
     "captchaRetry": "No se aceptó la verificación de seguridad. Complétala de nuevo y vuelve a enviar.",
     "captchaLoading": "Cargando la verificación de seguridad…",
     "captchaExpired": "La verificación de seguridad caducó. Complétala de nuevo.",
-    "signupSignIn": "INICIAR SESIÓN",
+    "signupSignIn": "Iniciar sesión",
     "unauthorized": "No se pudo iniciar sesión. Comprueba tus datos e inténtalo de nuevo.",
     "sessionExpired": "Tu sesión ha caducado. Inicia sesión de nuevo.",
     "retry": "Reintentar",
-    "accountIntro": "Tu juego, todo en un mismo lugar.",
-    "emailAddress": "Dirección de correo",
+    "emailAddress": "Correo",
     "emailPlaceholder": "tu@ejemplo.com",
-    "accountPrompt": "¿Nuevo en Padel Friends?",
+    "accountPrompt": "¿Nuevo por aquí?",
     "returnPrompt": "¿Ya tienes una cuenta?",
-    "accountStep": "PASO 1 DE 3 · CUENTA",
-    "accountTitle": "Crea tu cuenta",
-    "accountSubtitle": "Inicia sesión para sincronizar tus partidos y tu nivel.",
-    "accountDescription": "Crea una cuenta segura para guardar tu perfil de jugador, historial de partidos y clasificaciones de la comunidad.",
-    "or": "O",
-    "profileFollows": "Tus datos de acceso son privados. Después, define tu nombre, lado de pista y nivel inicial.",
+    "accountStep": "Paso 1 de 3 · Cuenta",
+    "accountTitle": "Vamos a ponerte en pista",
+    "accountSubtitle": "Guarda tu nivel, partidos y clasificaciones en un solo lugar.",
+    "or": "o",
+    "profileFollows": "Después, defines tu nombre visible y tu nivel.",
     "privacyLink": "Política de privacidad"
   },
   "onboarding": {
-    "step": "PASO 2 DE 3 · PERFIL DEL JUGADOR",
-    "title": "Vamos a establecer tu nivel",
-    "subtitle": "Un buen punto de partida hace que cada partido sea justo.",
-    "name": "NOMBRE VISIBLE",
-    "side": "LADO PREFERIDO DE LA PISTA",
+    "barTitle": "Perfil del jugador",
+    "step": "Paso 2 de 3 · Perfil del jugador",
+    "title": "Define tu nivel inicial",
+    "subtitle": "Un comienzo justo mejora cada partido. Tu nivel se ajusta a medida que juegas.",
+    "name": "Nombre visible",
+    "hand": "Mano dominante",
+    "bio": "Biografía",
+    "side": "Lado preferido de la pista",
     "sideLeft": "Lado izquierdo",
     "sideRight": "Lado derecho",
     "sideEither": "Cualquier lado",
@@ -197,25 +259,26 @@
     "handLeft": "Izquierda",
     "handRight": "Derecha",
     "handPreferNot": "Prefiero no decirlo",
-    "level": "TU NIVEL INICIAL",
-    "preciseLevel": "NIVEL INICIAL EXACTO (PASOS DE 0,1)",
+    "level": "Nivel inicial",
+    "preciseLevel": "Nivel inicial exacto (pasos de 0,1)",
     "levelScale": "Escala del nivel inicial",
     "levelChoice": "Seleccionar nivel {{level}}",
     "levelDecrease": "Disminuir nivel en 0,1",
     "levelIncrease": "Aumentar nivel en 0,1",
-    "beginner": "PRINCIPIANTE",
-    "advanced": "AVANZADO",
+    "beginner": "Principiante",
+    "advanced": "Experto",
     "levelHelp": "Elige el nivel que mejor te represente.",
     "scaleDescription": "De 0,0 principiante a 7,0 avanzado. Tu nivel se ajusta a medida que juegas.",
     "reliabilityHelp": "No necesitas experiencia. Tu nivel ya es válido y gana fiabilidad con cada juego competitivo confirmado.",
     "reliabilityLabel": "{{value}}% de fiabilidad",
-    "save": "GUARDAR PERFIL DEL JUGADOR",
+    "save": "Continuar",
     "validationName": "Introduce un nombre de hasta 80 caracteres.",
     "validationSide": "Selecciona tu lado preferido de la pista.",
     "validationLevel": "Elige un nivel de 0,0 a 7,0 en pasos de 0,1.",
     "saving": "Guardando…",
     "failed": "No se pudo guardar tu perfil. Inténtalo de nuevo.",
-    "avatarLabel": "FOTO DE PERFIL (OPCIONAL)",
+    "avatarLabel": "Foto de perfil (opcional)",
+    "avatarChoose": "Elegir una foto",
     "avatarHelp": "JPEG, PNG o WebP · hasta 2 MB. También puedes añadir una más tarde desde tu perfil.",
     "avatarInvalid": "Elige una imagen JPEG, PNG o WebP de hasta 2 MB.",
     "avatarAlt": "Foto de perfil de {{name}}",
@@ -234,20 +297,49 @@
     }
   },
   "profile": {
+    "stats": {
+      "label": "Estadísticas de partidos",
+      "matches": "partidos",
+      "record": "G–P–E",
+      "winRate": "% de victorias",
+      "notAvailable": "No disponible",
+      "unavailable": "Las estadísticas de partidos no están disponibles ahora."
+    },
     "title": "Perfil del jugador",
-    "subtitle": "Tu identidad de pádel en toda la aplicación",
+    "links": {
+      "label": "Accesos del perfil",
+      "statistics": "Estadísticas",
+      "matchHistory": "Historial de partidos",
+      "notifications": "Notificaciones"
+    },
     "edit": "Editar perfil",
     "save": "Guardar cambios",
-    "dominantHand": "MANO DOMINANTE",
+    "dominantHand": "Mano dominante",
     "handLeft": "Mano izquierda",
     "handRight": "Mano derecha",
     "handNone": "No especificada",
-    "bio": "BIOGRAFÍA",
+    "bio": "Biografía",
     "availability": "Disponibilidad",
     "availabilityHelp": "Opcional. Indica los días y los momentos del día en que sueles querer jugar. Son dos preferencias independientes, no citas fijas.",
     "availabilityDaysLegend": "Días en que sueles jugar",
     "availabilityTimesLegend": "Momentos del día en que sueles jugar",
     "availabilityNotProvided": "No indicada",
+    "navTitle": "Perfil",
+    "cancel": "Cancelar",
+    "backToProfile": "Volver al perfil",
+    "changePhoto": "Cambiar foto",
+    "preferredDays": "Días preferidos",
+    "preferredTimes": "Horarios preferidos",
+    "preferences": "Preferencias",
+    "availabilityDaysShort": {
+      "MON": "Lun",
+      "TUE": "Mar",
+      "WED": "Mié",
+      "THU": "Jue",
+      "FRI": "Vie",
+      "SAT": "Sáb",
+      "SUN": "Dom"
+    },
     "availabilityDays": {
       "MON": "Lunes",
       "TUE": "Martes",
@@ -276,8 +368,8 @@
     "confirmedGroups": "Grupos competitivos confirmados",
     "joined": "Miembro desde",
     "joinedOn": "Miembro desde {{date}}",
-    "globalLevel": "NIVEL GLOBAL",
-    "levelScale": "ESCALA DE NIVEL",
+    "globalLevel": "Nivel global",
+    "levelScale": "Escala de nivel",
     "percent": "{{value}}%",
     "loadingTitle": "Cargando perfil",
     "errorTitle": "No se pudo cargar esta pantalla",
@@ -297,7 +389,12 @@
     "loading": "Cargando la administración de la comunidad…",
     "errorTitle": "No se pudo cargar la administración de la comunidad",
     "backToDashboard": "Volver al panel",
-    "requestBanner": "ACCIONES DE ADMINISTRACIÓN DE LA COMUNIDAD",
+    "requestBanner": "Acciones de administración de la comunidad",
+    "filterCount": "{{label}} · {{total}}",
+    "filterCountAtLeast": "{{label}} · {{total}}+",
+    "requestsWaiting_one": "{{community}} · {{count}} en espera",
+    "requestsWaiting_other": "{{community}} · {{count}} en espera",
+    "requestsWaitingAtLeast_other": "{{community}} · {{count}}+ en espera",
     "requestPrivacy": "Solo admins revisan la solicitud",
     "requestHistoryUnavailable": "El historial de solicitudes resueltas y entrega de invitaciones no está disponible.",
     "cityUnavailable": "Ciudad no indicada",
@@ -307,9 +404,9 @@
       "requests": "Solicitudes de acceso",
       "members": "Miembros",
       "member": "Controles del miembro",
-      "settings": "Ajustes de la comunidad",
+      "settings": "Ajustes",
       "venues": "Pistas guardadas",
-      "audit": "Auditoría de la comunidad"
+      "audit": "Registro de auditoría"
     },
     "nav": {
       "requests": "Solicitudes",
@@ -322,8 +419,7 @@
     "searchPlaceholder": "Buscar miembros",
     "memberFilters": "Filtrar miembros de la comunidad",
     "memberJoined": "Miembro desde {{date}}",
-    "search": "BUSCAR",
-    "inviteUnavailable": "INVITAR MIEMBRO · NO DISPONIBLE",
+    "search": "Buscar",
     "requestMeta": "Solicitada el {{date}} · {{privacy}}",
     "memberMeta": "{{status}} · {{role}} · desde {{date}}",
     "memberAdminProfile": "{{name}} · nivel {{level}} · {{reliability}}% de fiabilidad",
@@ -331,10 +427,17 @@
     "levelLabel": "Nivel global {{level}} · fiabilidad {{reliability}}%",
     "ratingsUnavailable": "Valoraciones no disponibles",
     "levelReadOnly": "Las personas administradoras pueden ver el nivel y la fiabilidad globales, pero no editar el nivel del jugador.",
-    "memberActiveBanner": "MIEMBRO ACTIVO",
-    "rolePanelTitle": "Rol en la comunidad",
-    "rolePanelActive": "{{role}} · promover o cambiar de rol",
-    "rolePanelInactive": "Miembro inactivo · reactivar",
+    "viewProfile": "Ver perfil",
+    "sheetClose": "Cerrar acciones del miembro",
+    "sheetAudited": "Los cambios de rol y las bajas quedan registrados.",
+    "actionHint": {
+      "approve": "Les permite unirse a partidos de esta comunidad",
+      "deny": "Rechaza esta solicitud de acceso",
+      "reactivate": "Les permite volver a unirse a partidos",
+      "promote": "Puede gestionar solicitudes, miembros, sedes y ajustes",
+      "demote": "Vuelve a ser miembro normal",
+      "remove": "Se puede reactivar más adelante"
+    },
     "status": {
       "active": "Activo",
       "pending": "Pendiente",
@@ -353,8 +456,8 @@
       "remove": "Quitar de la comunidad"
     },
     "confirm": "¿Confirmas {{action}} para {{name}}?",
-    "confirmAction": "CONFIRMAR CAMBIO",
-    "cancel": "CANCELAR",
+    "confirmAction": "Confirmar cambio",
+    "cancel": "Cancelar",
     "result": {
       "approve": "Solicitud aprobada.",
       "deny": "Solicitud rechazada.",
@@ -395,10 +498,10 @@
     },
     "settingsUnavailable": "La zona horaria, la moneda y los valores de liga no están disponibles hasta que los admitan los ajustes de la comunidad.",
     "settingsAdminNote": "Los admins controlan el acceso. El nivel del jugador es de solo lectura.",
-    "save": "GUARDAR CAMBIOS",
+    "save": "Guardar cambios",
     "refresh": "Actualizar datos",
-    "loadMore": "CARGAR MÁS CAMBIOS",
-    "retry": "REINTENTAR",
+    "loadMore": "Cargar más",
+    "retry": "Reintentar",
     "empty": {
       "requests": "No hay solicitudes pendientes.",
       "members": "Ningún miembro coincide con la búsqueda.",
@@ -439,7 +542,7 @@
       "settingsUpdated": "Ajustes de la comunidad actualizados",
       "invitationAdded": "Invitación emitida",
       "invitationUpdated": "Invitación actualizada",
-      "recentChanges": "CAMBIOS RECIENTES",
+      "recentChanges": "Cambios recientes",
       "unknownActor": "Identidad del autor no disponible",
       "openMember": "Ver miembro",
       "leagueCorrectionsUnavailable": "Los eventos de auditoría de correcciones de liga no están disponibles hasta que existan resultados y un flujo autorizado de corrección."
@@ -453,7 +556,6 @@
       "unconfirmed": "No se pudo confirmar este cambio. Tus campos se conservan. Actualiza antes de volver a intentarlo."
     },
     "matchCountUnavailable": "Recuento de partidos no disponible — el historial de partidos aún no está disponible",
-    "inviteeSearchPrivateOnly": "La búsqueda de invitados solo está disponible en comunidades privadas.",
     "requestMessage": {
       "action": "Enviar actualización",
       "title": "Mensaje para solicitante pendiente",
@@ -484,6 +586,12 @@
     "oneWayNotice": "Los mensajes son unidireccionales. No se admiten respuestas, correo ni entrega en vivo."
   },
   "communityInvites": {
+    "detailLabel": "Invitación",
+    "pendingTitle": "Solicitud enviada",
+    "pendingHelp": "La administración debe aprobar tu solicitud antes de que puedas participar como miembro.",
+    "memberCountUnavailable": "Número de miembros no disponible",
+    "unavailableHelp": "Esta invitación ya no se puede usar.",
+    "approvalNotice": "El acceso depende de las reglas de aprobación de la comunidad.",
     "title": "Invitar personas",
     "searchLabel": "Buscar nombres visibles con consentimiento",
     "searchHelp": "Cualquier administrador de una comunidad privada podrá encontrar tu nombre visible. No se exponen correos.",
@@ -492,7 +600,7 @@
     "select": "Seleccionar",
     "invite": "Emitir invitación",
     "issued": "Token de invitación de un solo uso emitido",
-    "copyLink": "Copiar enlace",
+    "copyLink": "Copiar token",
     "copied": "Copiado",
     "shareHelp": "El envío por enlace no está disponible. Comparte este token de un solo uso de forma segura.",
     "error": "No se pudo completar la invitación.",
@@ -508,7 +616,11 @@
   "home": {
     "title": "Inicio",
     "greeting": "Hola, {{name}}",
-    "levelTitle": "TU NIVEL",
+    "levelTitle": "Tu nivel",
+    "levelSummary": {
+      "rankUnavailable": "Tu posición no está disponible en este momento.",
+      "rankOf": "de {{total}}"
+    },
     "switcherLabel": "Cambiar de comunidad",
     "selectionUnavailable": "Esa comunidad no está disponible para ti. Mostrando tu comunidad predeterminada.",
     "switching": "Cargando comunidad…",
@@ -528,7 +640,8 @@
       "playing_one": "{{count}} jugador confirmado",
       "playing_other": "{{count}} jugadores confirmados",
       "moreNeeded_one": "falta {{count}}",
-      "moreNeeded_other": "faltan {{count}}"
+      "moreNeeded_other": "faltan {{count}}",
+      "open": "Abrir partido"
     },
     "available": {
       "title": "Partidos abiertos",
@@ -538,8 +651,6 @@
       "title": "Necesita tu atención",
       "empty": "Nada necesita tu atención.",
       "partial": "Algunos elementos no se pudieron comprobar, así que esta lista puede estar incompleta.",
-      "open": "Abrir",
-      "openVenue": "Abrir {{venue}}",
       "resultReview_one": "{{count}} resultado pendiente de revisión en {{venue}}",
       "resultReview_other": "{{count}} resultados pendientes de revisión en {{venue}}",
       "reconfirmation": "Reconfirma tu plaza en {{venue}}",
@@ -641,7 +752,7 @@
     "disableDevice": "Desactivar en este dispositivo",
     "disabling": "Desactivando…",
     "enabled": "Web Push está activo en este dispositivo.",
-    "intentOff": "Este dispositivo está listo, pero Web Push está desactivado arriba. Actívalo y guarda para recibir notificaciones.",
+    "intentOff": "El push está desactivado en tus preferencias guardadas. Actívalo y guarda para recibir notificaciones.",
     "permissionDefault": "El navegador solo pide permiso después de que toques Activar.",
     "grantedNotSubscribed": "Las notificaciones están permitidas, pero este dispositivo aún no está registrado para Web Push.",
     "denied": "Las notificaciones están bloqueadas para Padel Friend. Permítelas en los ajustes del navegador o del dispositivo y vuelve aquí.",
@@ -663,11 +774,12 @@
   "notifications": {
     "title": "Notificaciones",
     "subtitle": "Novedades sobre tu comunidad de pádel.",
-    "markAllRead": "MARCAR TODAS COMO LEÍDAS",
+    "backHome": "Volver al inicio",
+    "markAllRead": "Marcar todas como leídas",
     "markRead": "Marcar como leída",
     "view": "Ver notificación",
-    "today": "Notificaciones de hoy",
-    "earlier": "Notificaciones anteriores",
+    "today": "Hoy",
+    "earlier": "Anteriores",
     "loading": "Cargando notificaciones…",
     "error": "No se pudieron cargar las notificaciones.",
     "retry": "Reintentar",
@@ -680,6 +792,8 @@
     "utc": "UTC",
     "unread_one": "{{count}} notificación sin leer",
     "unread_other": "{{count}} notificaciones sin leer",
+    "unreadRow": "Sin leer",
+    "readRow": "Leída",
     "badgeUnknown": "Notificaciones",
     "badge_one": "Notificaciones · {{count}} notificación sin leer",
     "badge_other": "Notificaciones · {{count}} notificaciones sin leer",
@@ -764,11 +878,14 @@
       "open": "Ver solicitud",
       "approvedBody": "Tu nivel ahora es {{level}}. El cambio se aplica solo a partidos futuros; los resultados pasados y las clasificaciones de ligas no cambian.",
       "rejectedBody": "Tu nivel se mantiene igual. No se hizo ningún cambio de rating.",
-      "requested": "Solicitado: {{range}}",
-      "note": "Nota de la revisión: {{note}}",
-      "decided": "Decidido el {{date}}"
+      "cardTitle": "Resultado de la revisión de nivel",
+      "requestedLabel": "Rango solicitado",
+      "updatedLabel": "Nivel actualizado",
+      "decidedLabel": "Decisión el",
+      "note": "Nota de la revisión: {{note}}"
     },
     "result": {
+      "cardTitle": "Resultado del partido",
       "group": "Grupo {{number}}",
       "score": "Marcador: {{score}}",
       "submittedBy": "Enviado por {{name}}",
@@ -829,8 +946,8 @@
     "openTarget": "Abrir detalles actuales"
   },
   "notificationPreferences": {
-    "preferencesLink": "Preferencias de notificaciones",
-    "title": "Preferencias de notificaciones",
+    "preferencesLink": "Ajustes",
+    "title": "Ajustes de notificaciones",
     "back": "Volver a notificaciones",
     "context": "Las notificaciones en la aplicación siguen disponibles aunque Push esté desactivado.",
     "pushTitle": "Notificaciones Push",
@@ -842,9 +959,16 @@
       "rankings": "Nivel y fiabilidad",
       "leagues": "Ligas y clasificaciones"
     },
+    "categoryHelp": {
+      "community": "Aprobaciones e invitaciones",
+      "matches": "Plazas, cambios y cancelaciones",
+      "results": "Resultados por revisar y disputas",
+      "rankings": "Cambios de nivel y posición",
+      "leagues": "Novedades y clasificación de las ligas"
+    },
     "criticalTitle": "Notificaciones críticas en la aplicación",
     "criticalHelper": "Las invitaciones, aprobaciones, denegaciones y expulsiones de la comunidad siempre permanecen en tus notificaciones.",
-    "alwaysOn": "SIEMPRE ACTIVAS",
+    "alwaysOn": "Siempre activas",
     "save": "Guardar preferencias",
     "saving": "Guardando preferencias…",
     "saved": "Preferencias guardadas.",
@@ -853,6 +977,13 @@
     "offline": "No tienes conexión. Vuelve a conectarte para guardar tus preferencias."
   },
   "matches": {
+    "new": "Nuevo",
+    "emptyHint": {
+      "available": "Crea el partido que quieras o vuelve pronto.",
+      "my": "Los partidos en los que te apuntes u organices aparecen aquí.",
+      "past": "Los partidos que has jugado aparecen aquí."
+    },
+    "group": { "count_one": "{{count}} partido", "count_other": "{{count}} partidos" },
     "competition": {
       "ranked": "Clasificatoria",
       "unranked": "Sin clasificación"
@@ -874,7 +1005,7 @@
       "submit": "Añadir jugador",
       "submitting": "Añadiendo…",
       "success": "{{name}} se añadió y recibió una invitación.",
-      "offline": "Estás sin conexión. Vuelve a conectarte para añadir un jugador.",
+      "offline": "No tienes conexión. No se envió nada. Vuelve a conectarte e inténtalo de nuevo.",
       "validation": {
         "name": "Introduce un nombre de hasta 80 caracteres.",
         "email": "Introduce un correo electrónico válido",
@@ -1078,17 +1209,20 @@
         }
       },
       "diagnostics": {
-        "title": "Reparaciones de resultado",
+        "title": "Diagnóstico de reparaciones",
         "back": "Volver",
         "entryLink": "Abrir reparaciones de resultado",
-        "platformSubtitle": "Cola de la plataforma · progreso e intentos sin datos sensibles",
-        "communitySubtitle": "Tu comunidad · actualizaciones tras correcciones de resultado",
+        "platformContext": "Administración de la plataforma · Operaciones",
+        "communityContext": "Administración de la comunidad · Operaciones",
+        "platformSubtitle": "Reparaciones por correcciones de resultados en todas las comunidades.",
+        "communitySubtitle": "Reparaciones por correcciones de resultados en tu comunidad.",
         "summary": "Resumen de la cola",
         "summaryCaption": "Reparaciones por estado",
-        "jobs": "Reparaciones",
-        "empty": "Aún no hay reparaciones.",
+        "jobs": "Cola de reparaciones",
+        "empty": "No hay reparaciones en cola",
         "never": "nunca",
         "scheduler": "Estado del programador",
+        "schedulerHealthy": "Programador operativo",
         "schedulerMissing": "El programador de reparaciones no está aprovisionado. Las correcciones aprobadas siguen en cola hasta que se ejecute.",
         "schedulerUnavailable": "La extensión del programador no está instalada. Las correcciones aprobadas siguen en cola hasta que un operador las ejecute.",
         "overdue_one": "{{count}} reparación atrasada",
@@ -1124,19 +1258,26 @@
       }
     },
     "results": {
-      "navigation": "Navegación principal",
+      "record": {
+        "scoreTitle": "Introduce el marcador",
+        "reviewTitle": "Revisa y envía",
+        "reviewAction": "Revisar",
+        "matchup": "{{first}} contra {{second}}",
+        "setSummary": "{{set}}: {{first}} a {{second}} · {{status}}",
+        "ratingUnavailable": "Estimación del cambio de clasificación no disponible antes de la confirmación.",
+        "competitiveUnranked": "Competitivo · No clasificatorio",
+        "competitive": "Competitivo",
+        "confirmationNote": "Los jugadores elegibles tienen 48 horas para aprobar o informar de un problema. Si nadie rechaza el resultado, se confirma automáticamente.",
+        "outcome": {
+          "team_a": "Gana el equipo A · {{winnerSets}}–{{loserSets}}",
+          "team_b": "Gana el equipo B · {{winnerSets}}–{{loserSets}}",
+          "draw": "Empate · tercer set sin terminar",
+          "incomplete": "Incompleto"
+        }
+      },
       "globalRating": "Solo nivel global",
-      "venueHeadline": "Juega bajo las luces.",
       "overviewDate": "{{weekday}}, {{date}}",
       "openMap": "Abrir mapa ↗",
-      "navigationUnavailable": "Esta sección aún no está disponible.",
-      "nav": {
-        "home": "Inicio",
-        "matches": "Partidos",
-        "community": "Comunidad",
-        "ranking": "Clasificación",
-        "profile": "Perfil"
-      },
       "matchDetails": "Detalles del partido",
       "playedAtLabel": "Jugado el",
       "choosePlayedAt": "Elige la fecha y hora del partido",
@@ -1156,16 +1297,15 @@
       "autoConfirmDeadline": "Plazo de confirmación automática: {{deadline}}.",
       "proposedWin": "Marcador propuesto · {{winnerSets}}–{{loserSets}} sets para {{team}}",
       "proposedOther": "Marcador propuesto · {{outcome}}",
-      "reviewProposal": "REVISAR PROPUESTA",
       "reviewUnavailable": "La revisión de propuestas aún no está disponible.",
       "matrixTeams": "Equipos",
       "court": "Pista",
       "matrixSet": "S{{number}}",
       "title": "Registrar resultado",
       "steps": {
-        "players": "JUGADORES",
-        "score": "MARCADOR",
-        "review": "REVISIÓN"
+        "players": "Jugadores",
+        "score": "Marcador",
+        "review": "Revisión"
       },
       "teams": {
         "team_a": "Equipo A",
@@ -1180,12 +1320,12 @@
       "groupLabel": "Grupo de juego",
       "group": "Grupo {{number}}",
       "sets": "Introduce cada set",
-      "setNumber": "SET {{number}}",
+      "setNumber": "Set {{number}}",
       "setState": {
-        "complete": "COMPLETO",
-        "inProgress": "EN CURSO",
-        "notPlayed": "NO JUGADO",
-        "invalid": "INVÁLIDO"
+        "complete": "Completo",
+        "inProgress": "En curso",
+        "notPlayed": "No jugado",
+        "invalid": "Inválido"
       },
       "setStateLabel": "Finalización del set {{number}}",
       "addSet": "Añadir set",
@@ -1216,7 +1356,6 @@
       "chooseOffset": "Elegir desplazamiento",
       "courtLabel": "Identificación de pista (opcional)",
       "notProvided": "No indicado",
-      "preview": "Revisar resultado",
       "review": {
         "approve": "Aprobar",
         "approving": "Registrando aprobación…",
@@ -1238,9 +1377,9 @@
       },
       "back": "Volver",
       "reload": "Recargar resultado y jugadores",
-      "submit": "Enviar a revisión",
+      "submit": "Enviar resultado",
       "submitting": "Enviando resultado…",
-      "pending": "PENDIENTE · SIN CONFIRMAR",
+      "pending": "Pendiente · sin confirmar",
       "pendingDescription": "Aún no afecta al nivel ni a las estadísticas de la Liga. Los jugadores elegibles pueden aprobar o rechazar.",
       "lifecycleStatus": {
         "pending": "Pendiente de revisión",
@@ -1256,7 +1395,7 @@
         "title": "Resolución de resultados",
         "progress": "{{confirmed}} de {{expected}} grupos confirmados"
       },
-      "autoConfirmIn": "CONFIRMACIÓN AUTOMÁTICA EN {{hours}}H",
+      "autoConfirmIn": "Confirmación automática en {{hours}}h",
       "autoConfirmCountdown": "Se confirma automáticamente en {{time}}",
       "deadlineReached": "Plazo vencido · comprobando el resultado actual",
       "awaitingResult": "Esperando resultado",
@@ -1269,8 +1408,8 @@
       "confirmedAt": "Confirmado {{confirmedAt}}.",
       "timelineTitle": "Historial de la propuesta",
       "confirmation": {
-        "manual": "Confirmado · Manual",
-        "auto": "Confirmado · Automático 48H"
+        "manual": "Confirmado · manual",
+        "auto": "Confirmado · automático 48h"
       },
       "reject": {
         "title": "Disputar resultado",
@@ -1387,6 +1526,7 @@
         "cutoff": "La inscripción ha cerrado. La participación y los detalles del partido ya no pueden cambiar.",
         "resultProtected": "Los resultados existentes protegen este partido contra cambios de gestión.",
         "correctionExplanation": "Los cambios que afectan a resultados existentes requieren el proceso de corrección o disputa.",
+        "title": "Cambios del partido bloqueados",
         "correctionUnavailable": "La corrección y las disputas de resultados aún no están disponibles.",
         "backToMatch": "Volver al partido"
       },
@@ -1394,6 +1534,8 @@
         "title": "Editar detalles del partido",
         "save": "Guardar cambios",
         "minorNotice": "Actualiza lugar, precio, notas, capacidad o plazo de inscripción. Estos cambios no requieren reconfirmación.",
+        "reviewMajor": "Revisar cambio importante",
+        "changeSummary": "Antes: {{before}}. Ahora: {{after}}.",
         "conflictTitle": "Partido modificado en otro lugar",
         "conflictDescription": "Tu borrador sigue aquí. Revísalo o recarga el partido para descartarlo y volver a editar con los detalles actuales.",
         "reload": "Recargar detalles",
@@ -1446,6 +1588,7 @@
       "cancelTitle": "¿Cancelar este partido?",
       "cancelDescription": "La cancelación es permanente. Se notificará a todas las personas involucradas.",
       "cancelReason": "Motivo de cancelación",
+      "keepMatch": "Mantener partido",
       "cancelled": "Cancelado",
       "ownershipTransferred": "Organización transferida.",
       "participants": "Gestionar participantes",
@@ -1584,12 +1727,14 @@
       "notes": "Incluye notas",
       "pricePerPlayer": "Precio por jugador",
       "openMaps": "Abrir mapa de {{venue}}",
+      "map": "Mapa",
       "photoAlt": "Lugar del partido",
       "unlimited": "Sin límite"
     },
     "detail": {
       "rankedMembersOnly": "Este partido es Clasificatorio y solo está abierto a miembros activos de la comunidad.",
       "title": "Detalles del partido",
+      "barTitle": "Partido",
       "viewCourtLocation": "Ver ubicación de la cancha",
       "viewCourtLocationFor": "Ver ubicación de la cancha para {{venue}}",
       "unlimitedRegistrations": "Inscripciones sin límite",
@@ -1627,12 +1772,40 @@
       "shareUrl": "Enlace del partido",
       "courtNotes": "Notas de la cancha",
       "paymentNote": "Nota de pago",
-      "duration": "Duración prevista"
+      "duration": "Duración prevista",
+      "hero": {
+        "anyLevel": "Cualquiera",
+        "level": "nivel",
+        "perPlayer": "por jugador",
+        "reserveQueue": "Cola de reserva",
+        "reserveQueueNote": "Por orden de llegada",
+        "shareHeader": "Compartir"
+      }
     }
   },
   "matchCreate": {
+    "players": {
+      "format": "Formato",
+      "formatGroups_one": "{{count}} grupo · {{places}}",
+      "formatGroups_other": "{{count}} grupos · {{places}}",
+      "formatHelp": "Define el máximo de inscripciones. Cada grupo juega con cuatro jugadores. Deja el máximo vacío para no tener límite.",
+      "registration": "Inscripción",
+      "registrationOptions": {
+        "community_open": "Abierta",
+        "invite_only": "Solo por invitación"
+      },
+      "registrationHelp": {
+        "community_open": "Cualquier persona de la comunidad puede unirse directamente hasta que el partido se llene.",
+        "invite_only": "Solo pueden unirse los jugadores que invites."
+      },
+      "levelRange": "Rango de nivel",
+      "anyLevel": "Cualquier nivel",
+      "customRange": "Rango personalizado"
+    },
     "competition": {
       "legend": "Competición",
+      "switchMeta": "Cuenta para los niveles y para la Liga elegida",
+      "switchMetaLeague": "Cuenta para los niveles y para {{league}}",
       "league": "Liga",
       "choose": "Elige una Liga",
       "members": "Los partidos clasificatorios son solo para miembros activos de la comunidad.",
@@ -1646,10 +1819,20 @@
       }
     },
     "title": "Crear partido",
-    "subtitle": "Publica un partido de pádel e invita jugadores.",
+    "cancel": "Cancelar",
+    "previousStep": "Paso anterior",
+    "stepOf": "Paso {{current}} de {{total}}",
+    "readyTitle": "¿Listo para publicar?",
+    "reviewRows": {
+      "when": "Cuándo",
+      "where": "Dónde",
+      "level": "Nivel",
+      "teams": "Equipos",
+      "yes": "Sí"
+    },
     "noCommunities": "Únete a una comunidad para crear un partido.",
     "discoverCommunities": "Descubrir comunidades",
-    "next": "Siguiente",
+    "next": "Continuar",
     "previous": "Atrás",
     "review": "Revisión",
     "publish": "Publicar y enviar invitaciones",
@@ -1659,7 +1842,7 @@
     "steps": {
       "details": "Detalles",
       "players": "Jugadores",
-      "teams": "Modo de equipos",
+      "teams": "Equipos",
       "review": "Revisión"
     },
     "fields": {
@@ -1677,7 +1860,6 @@
       "courtNotes": "Notas de la pista",
       "duration": "Duración prevista",
       "notes": "Notas",
-      "levelRestriction": "Restricción de nivel",
       "minLevel": "Nivel mínimo",
       "maxLevel": "Nivel máximo",
       "invitePlayers": "Invitar jugadores",
@@ -1698,7 +1880,8 @@
       "noBooking": "No se realizará ninguna reserva.",
       "noPayment": "No se cobrará ningún pago.",
       "teamMode": "Elige el modo de equipos.",
-      "invitesOnPublish": "Las invitaciones se enviarán al publicar."
+      "invitesOnPublish": "Las invitaciones se enviarán al publicar.",
+      "suggestedDays": "Días sugeridos"
     },
     "invitees": {
       "search": "Buscar jugadores",
@@ -1770,29 +1953,29 @@
     "join": {
       "sectionTitle": "Tu lugar en este partido",
       "openCopy": "Estás dentro del rango y esta comunidad está abierta — únete ahora y tu lugar se confirma al instante.",
-      "button": "UNIRME AL PARTIDO",
+      "button": "Unirme al partido",
       "capacity_one": "1 de {{maximum}} plaza libre",
       "capacity_other": "{{remaining}} de {{maximum}} plazas libres",
       "levelRange": "Rango de nivel {{min}}–{{max}} · Tú: {{level}}",
       "levelRangeNoLevel": "Rango de nivel {{min}}–{{max}}",
       "note": "Las uniones directas se confirman al instante y aparecen en tus inscripciones.",
-      "requestButton": "SOLICITAR ENTRADA",
+      "requestButton": "Solicitar entrada",
       "requestNote": "El organizador decide las solicitudes. Tu posición en la cola solo empieza si la aprueba."
     },
     "full": {
-      "badge": "PARTIDO COMPLETO",
+      "badge": "Partido completo",
       "detail": "{{accepted}} de {{maximum}} plazas ocupadas.",
       "copy": "Este partido alcanzó su máximo de {{maximum}} inscripciones. Pregunta al organizador si se libera una plaza.",
-      "button": "PARTIDO COMPLETO",
+      "button": "Partido completo",
       "note": "El aforo completo bloquea nuevas uniones y nuevas aprobaciones hasta que se libere una plaza."
     },
     "closed": {
-      "badge": "INSCRIPCIÓN CERRADA",
+      "badge": "Inscripción cerrada",
       "detail": "Plazo superado · cuartetos definidos.",
       "rosterCount": "{{playing}} jugando · {{reserveNotPlaying}} reserva sin jugar",
-      "sectionTitle": "RESERVA SIN JUGAR",
+      "sectionTitle": "Reserva · sin jugar",
       "copy": "Inscripción cerrada el {{cutoff}}. Ya no se aceptan nuevas uniones ni solicitudes.",
-      "button": "INSCRIPCIÓN CERRADA",
+      "button": "Inscripción cerrada",
       "note": "El plazo es exacto y lo define el servidor. Los cuartetos permanecen finales."
     },
     "request": {
@@ -1802,12 +1985,12 @@
       "pendingCopy": "Enviada al organizador. Tu posición en la cola solo empieza si la aprueba.",
       "pendingMeta": "Solicitada {{when}} · sin plaza reservada todavía",
       "viewMatch": "Ver partido",
-      "approvedPlayingBadge": "APROBADO · JUGANDO · Grupo {{group}}",
+      "approvedPlayingBadge": "Aprobado · Jugando · Grupo {{group}}",
       "approvedPlayingCopy": "Aprobado a las {{when}} · tu posición en la cola empezó entonces.",
       "viewGroup": "Ver grupo",
-      "approvedReserveBadge": "APROBADO · RESERVA · #{{position}}",
+      "approvedReserveBadge": "Aprobado · Reserva n.º {{position}}",
       "approvedReserveCopy": "Aprobado a las {{when}} · plaza FIFO, primer reserva si se libera un hueco.",
-      "joinedPlayingBadge": "SE UNIÓ · JUGANDO · Grupo {{group}}",
+      "joinedPlayingBadge": "Se unió · Jugando · Grupo {{group}}",
       "joinedPlayingCopy": "Se unió a las {{when}} · tu plaza se confirmó al instante.",
       "joinedReserveBadge": "Inscrito · Reserva n.º {{position}}",
       "joinedReserveCopy": "Se unió a las {{when}} · plaza FIFO, primer reserva si se libera un hueco.",
@@ -1815,10 +1998,10 @@
       "createdPlayingCopy": "Creaste este partido · tu plaza está confirmada.",
       "createdReserveBadge": "Creador · Reserva n.º {{position}}",
       "createdReserveCopy": "Creaste este partido · plaza FIFO, primer reserva si se libera un hueco.",
-      "declinedBadge": "RECHAZADA",
+      "declinedBadge": "Rechazada",
       "declinedCopy": "El organizador rechazó esta solicitud. Puedes solicitarla de nuevo hasta que cierre la inscripción.",
       "requestAgain": "Solicitar de nuevo",
-      "expiredBadge": "EXPIRADA EN EL PLAZO",
+      "expiredBadge": "Expirada en el plazo",
       "expiredCopy": "La inscripción cerró antes de una decisión. No se reservó ninguna plaza.",
       "viewMatchHistory": "Ver historial del partido",
       "note": "La hora de aprobación define la posición en la cola. Las solicitudes pendientes y expiradas nunca reservan plaza."
@@ -1832,10 +2015,10 @@
       "playerDetail": "Nivel {{level}} · {{placement}}",
       "playerDetailUnrated": "Sin nivel · {{placement}}",
       "playingLabel": "Jugando",
-      "groupTitle": "GRUPO {{group}}",
-      "reserveTitle": "COLA DE RESERVA",
+      "groupTitle": "Grupo {{group}}",
+      "reserveTitle": "Cola de reserva",
       "fifo": "FIFO · primero en entrar",
-      "notPlayingTitle": "SIN JUGAR",
+      "notPlayingTitle": "Sin jugar",
       "you": "Tú",
       "orderNote": "El servidor determina el orden de inscripción. Las reservas conservan su posición FIFO.",
       "authoritativeNote": "El orden aceptado lo define el servidor. Los invitados nunca se convierten en miembros.",
@@ -1846,12 +2029,12 @@
       "count_other": "{{count}} jugadores"
     },
     "badges": {
-      "playing": "JUGANDO",
-      "reserve": "RESERVA",
-      "reserveNotPlaying": "RESERVA SIN JUGAR",
-      "guest": "INVITADO PÚBLICO",
-      "creator": "CREADOR",
-      "member": "MIEMBRO"
+      "playing": "Jugando",
+      "reserve": "Reserva",
+      "reserveNotPlaying": "Reserva · sin jugar",
+      "guest": "Invitado público",
+      "creator": "Creador",
+      "member": "Miembro"
     },
     "queue": {
       "joinTitle": "Solicitudes de participación",
@@ -1861,21 +2044,21 @@
       "title": "Solicitudes de entrada",
       "subtitle_one": "{{event}} · {{count}} por revisar",
       "subtitle_other": "{{event}} · {{count}} por revisar",
-      "sort": "ORDENAR · MÁS RECIENTES",
-      "count_one": "{{count}} SOLICITUD",
-      "count_other": "{{count}} SOLICITUDES",
+      "sort": "Ordenar · más recientes",
+      "count_one": "{{count}} solicitud",
+      "count_other": "{{count}} solicitudes",
       "fifoTitle": "La aprobación define la posición en la cola",
       "fifoCopy": "Cuando apruebas a un invitado, entra en la cola de Jugando / Reserva en ese momento.",
-      "typeGuest": "INVITADO PÚBLICO",
-      "typeOutOfRange": "FUERA DE RANGO",
-      "typeUnrated": "SIN NIVEL",
+      "typeGuest": "Invitado público",
+      "typeOutOfRange": "Fuera de rango",
+      "typeUnrated": "Sin nivel",
       "contextGuest": "No es miembro de la comunidad · Solicitada {{when}}",
       "contextAboveRange": "Por encima de tu rango {{min}}–{{max}} · Solicitada {{when}}",
       "contextBelowRange": "Por debajo de tu rango {{min}}–{{max}} · Solicitada {{when}}",
       "contextUnrated": "Sin nivel definido · rango {{min}}–{{max}} · Solicitada {{when}}",
       "contextMember": "Miembro de la comunidad · Solicitada {{when}}",
-      "approve": "APROBAR",
-      "decline": "RECHAZAR",
+      "approve": "Aprobar",
+      "decline": "Rechazar",
       "empty": "No hay solicitudes pendientes.",
       "error": "No se pudieron cargar las solicitudes.",
       "loading": "Cargando solicitudes…",
@@ -1917,7 +2100,6 @@
   "rating": {
     "journey": {
       "title": "Evolución del rating",
-      "scope": "TODO EL TIEMPO",
       "refreshed": "Evolución del rating actualizada.",
       "refreshFailed": "No se pudo actualizar la evolución del rating. Usa la opción de reintento de abajo."
     },
@@ -1926,13 +2108,16 @@
       "summary_one": "{{count}} partido confirmado entre {{from}} y {{to}}. El nivel pasó de {{start}} a {{end}}.",
       "summary_other": "{{count}} partidos confirmados entre {{from}} y {{to}}. El nivel pasó de {{start}} a {{end}}.",
       "abbreviated": "Mostrando {{shown}} de {{total}} partidos confirmados. El primero y el más reciente siempre se incluyen.",
-      "empty": "Nivel inicial {{level}}. Tus partidos competitivos confirmados aparecerán aquí.",
       "unavailable": "La progresión del rating aparece cuando tu nivel de jugador esté configurado.",
-      "rangeStart": "Desde {{date}}",
-      "rangeEnd": "Hasta {{date}}",
-      "order": "Los partidos se espacian por orden de juego, no por tiempo. Las líneas solo unen partidos; no estiman niveles intermedios.",
-      "legendBaseline": "Nivel inicial (marcador hueco)",
-      "legendPoint": "Nivel tras un partido confirmado (marcador relleno)",
+      "scopeCaption": "Todo el periodo · Nivel tras partidos clasificatorios",
+      "changeUp": "↑ {{value}} en total",
+      "changeDown": "↓ {{value}} en total",
+      "changeFlat": "Sin cambios en total",
+      "legendLatest": "Nivel más reciente · {{date}}",
+      "latest": "Actual",
+      "start": "Inicio",
+      "emptyBody": "Tu gráfico aparecerá tras tu primer partido clasificatorio confirmado.",
+      "startingLevel": "Nivel inicial",
       "showTable": "Mostrar tabla de datos",
       "hideTable": "Ocultar tabla de datos",
       "tableCaption": "Nivel tras cada partido confirmado",
@@ -1940,11 +2125,11 @@
       "columnDate": "Fecha",
       "columnLevel": "Nivel",
       "baselineRow": "Nivel inicial",
-      "legendAdjustment": "Corrección por revisión de nivel (marcador de rombo)",
       "adjustmentRow": "Revisión de nivel"
     },
     "history": {
       "title": "Partidos recientes",
+      "emptyTitle": "Tu historial de nivel empieza aquí",
       "groupTitle": "Grupo {{number}}",
       "levelChange": "Nivel {{before}} a {{after}}",
       "reliabilityChange": "Fiabilidad {{before}} a {{after}}",
@@ -2016,8 +2201,8 @@
     "title": "Ligas",
     "back": "Volver a Ligas",
     "former": {
-      "title": "Jugaste en esta Liga",
-      "body": "Esta Liga es de solo lectura para ti. Ves su clasificación y resultados porque jugaste en ella, pero ya no eres miembro de esta comunidad.",
+      "title": "Liga de solo lectura",
+      "body": "Jugaste aquí. La clasificación sigue visible; las acciones de la comunidad están ocultas.",
       "back": "Volver al historial de partidos"
     },
     "backToDashboard": "Volver al panel",
@@ -2044,7 +2229,9 @@
       "manual": "Desde {{start}} · sin fecha de fin"
     },
     "list": {
-      "create": "Crear Liga",
+      "navTitle": "Comunidad",
+      "backToCommunity": "Volver a la comunidad",
+      "create": "Crear liga",
       "creationDisabled": "La creación de Ligas está desactivada para los miembros de esta comunidad. Pide a un Admin que cree una.",
       "empty": "Aún no hay Ligas.",
       "emptyHint": "Crea una Liga para agrupar un periodo de partidos clasificatorios.",
@@ -2054,21 +2241,21 @@
       "complete": "Se muestran las {{total}} Ligas. Recarga para ver las más recientes.",
       "moreError": "No se pudieron cargar más Ligas. Inténtalo de nuevo.",
       "sections": {
-        "active": "Activa",
-        "upcoming": "Próximas",
-        "closed": "Cerradas"
+        "active": "Ligas activas",
+        "upcoming": "Próximas ligas",
+        "closed": "Ligas cerradas"
       }
     },
     "form": {
-      "title": "Crear una Liga",
+      "title": "Nueva liga",
       "nameLabel": "Nombre de la Liga",
       "namePlaceholder": "Liga de Otoño",
       "descriptionLabel": "Descripción (opcional)",
-      "endModeLegend": "¿Cómo termina la Liga?",
+      "endModeLegend": "Cómo termina",
       "mode": {
         "fixed_date": "Fecha de fin fija",
         "fixed_dateHelp": "Termina automáticamente después del último día.",
-        "manual": "Sin fecha de fin · manual",
+        "manual": "Manual",
         "manualHelp": "Sigue activa hasta que el responsable o un Admin la cierre."
       },
       "startDateLabel": "Fecha de inicio",
@@ -2079,13 +2266,13 @@
       "periodLocked": "Las fechas ya no pueden cambiar porque esta Liga está cerrada o ya la usan partidos.",
       "minimumLabel": "Mínimo de partidos para el premio final",
       "minimumHelp": "Los jugadores necesitan al menos esta cantidad de partidos para optar al premio final.",
-      "submit": "Crear Liga",
+      "submit": "Crear liga",
       "submitting": "Creando…",
-      "guidance": "La fecha de fin fija debe ser posterior a la de inicio. Solo una Liga activa por comunidad.",
+      "guidance": "Solo cuentan los partidos competitivos clasificatorios entre estas fechas. Una liga a la vez.",
       "conflict": {
-        "title": "{{name}} · ACTIVA",
-        "body": "Esta comunidad ya tiene una Liga activa. Una Liga que empieza ahora no puede activarse mientras siga activa.",
-        "review": "Ver Liga activa"
+        "title": "Hay otra liga activa",
+        "body": "Esta comunidad ya tiene una liga activa. Una liga que empieza ahora no puede activarse hasta que {{name}} termine.",
+        "review": "Abrir {{name}}"
       },
       "errors": {
         "nameRequired": "Introduce un nombre para la Liga.",
@@ -2093,7 +2280,7 @@
         "descriptionTooLong": "La descripción debe tener 500 caracteres o menos.",
         "startRequired": "Elige una fecha de inicio.",
         "startInPast": "La fecha de inicio no puede estar en el pasado.",
-        "endRequired": "La fecha de fin fija requiere una fecha de fin.",
+        "endRequired": "Una fecha de fin fija necesita una fecha de fin.",
         "endInPast": "La fecha de fin no puede estar en el pasado.",
         "endNotAfterStart": "La fecha de fin debe ser posterior a la de inicio.",
         "minimumInvalid": "Introduce un número entero del 1 al 100."
@@ -2180,7 +2367,7 @@
         "result_amendment": "Resultado corregido aplicado tras una modificación auditada",
         "result_void": "Resultado anulado tras una decisión auditada"
       },
-      "correctionBanner": "Resultado histórico actualizado",
+      "correctionBanner": "Clasificación final actualizada tras un resultado corregido.",
       "supersedes": "Sustituye a la versión {{version}}. Las versiones anteriores siguen disponibles.",
       "viewPrior": "Ver versión {{version}}",
       "backfilled": "Reconstruida después a partir de los registros guardados, no publicada en su momento.",
@@ -2220,7 +2407,7 @@
       },
       "activate": "Activar Liga",
       "activateHint": "Hay otra Liga activa. Ciérrala o espera a que termine y luego activa esta.",
-      "close": "Cerrar Liga",
+      "close": "Terminar liga",
       "edit": "Editar Liga",
       "save": "Guardar cambios",
       "saving": "Guardando…",
@@ -2229,10 +2416,10 @@
       "activated": "Liga activada.",
       "closedDone": "Liga cerrada.",
       "closeConfirm": {
-        "title": "¿Cerrar {{name}}?",
+        "title": "¿Terminar {{name}} ahora?",
         "body": "La Liga termina ahora y no se puede reabrir. Los partidos jugados después de este momento nunca cuentan. Un partido jugado antes y confirmado por primera vez más tarde sigue contando y crea una nueva versión final; las finales anteriores siguen disponibles. Queda registrado en su historial.",
-        "cancel": "Mantener abierta",
-        "confirm": "Cerrar Liga"
+        "cancel": "Mantener",
+        "confirm": "Terminar liga"
       }
     },
     "errors": {
@@ -2247,7 +2434,7 @@
       "LEAGUE_END_MODE_INVALID": "Elige cómo termina la Liga.",
       "LEAGUE_START_DATE_INVALID": "Elige una fecha de inicio válida.",
       "LEAGUE_START_IN_PAST": "La fecha de inicio no puede estar en el pasado.",
-      "LEAGUE_END_DATE_REQUIRED": "La fecha de fin fija requiere una fecha de fin.",
+      "LEAGUE_END_DATE_REQUIRED": "Una fecha de fin fija necesita una fecha de fin.",
       "LEAGUE_END_DATE_NOT_ALLOWED": "Una Liga sin fecha de fin no tiene fecha de fin.",
       "LEAGUE_END_NOT_AFTER_START": "La fecha de fin debe ser posterior a la de inicio.",
       "LEAGUE_END_IN_PAST": "La fecha de fin no puede estar en el pasado.",
@@ -2286,7 +2473,7 @@
       "community": "Comunidad",
       "allCommunities": "Todas las comunidades",
       "league": "Liga",
-      "noLeague": "Sin Liga",
+      "noLeague": "Sin liga",
       "activeLeague": "Liga activa: {{name}}",
       "historicalLeague": "Liga pasada: {{name}}",
       "type": "Tipo de partido",
@@ -2305,6 +2492,7 @@
     "community": {
       "title": "Estadísticas de la comunidad",
       "titleCommunity": "Estadísticas de {{name}}",
+      "back": "Volver a la comunidad",
       "subtitle": "Cada cifra cuenta cada partido una sola vez, sin importar quién lo jugó.",
       "open": "Estadísticas de la comunidad",
       "empty": "Todavía no hay partidos confirmados en esta selección.",
@@ -2315,12 +2503,12 @@
       "rivalryPair": "{{first}} y {{second}}: {{wins}}-{{losses}}-{{draws}}",
       "rivalryDetail": "Diferencia de {{gap}} en {{matches}} enfrentamientos decididos",
       "leagueScope": {
-        "upcoming": "Mostrando la Liga {{name}}: solo partidos elegibles para el ranking.",
-        "active": "Mostrando la Liga activa {{name}}: solo partidos elegibles para el ranking.",
-        "closed": "Mostrando la Liga pasada {{name}}: solo partidos elegibles de su periodo."
+        "upcoming": "Mostrando la liga {{name}}: solo partidos elegibles para el ranking.",
+        "active": "Mostrando la liga activa {{name}}: solo partidos elegibles para el ranking.",
+        "closed": "Mostrando la liga pasada {{name}}: solo partidos elegibles de su periodo."
       },
       "notice": {
-        "friendly_league": "Los partidos amistosos nunca cuentan para una Liga, así que esta selección está vacía. Elige Todos o Competitivo, o quita la Liga."
+        "friendly_league": "Los partidos amistosos nunca cuentan para una liga, así que esta selección está vacía. Elige todos o competitivo, o quita la liga."
       },
       "matches": {
         "title": "Partidos",
@@ -2328,6 +2516,7 @@
         "played": "Partidos jugados",
         "competitive": "Competitivos",
         "friendly": "Amistosos",
+        "competitiveShare": "Proporción competitiva",
         "decided": "Con ganador",
         "draws": "Empates",
         "incomplete": "Incompletos"
@@ -2382,20 +2571,21 @@
       "backToPlayer": "Volver a las estadísticas del jugador",
       "pair": {
         "title": "Pareja",
-        "heading": "{{first}} y {{second}}",
         "subtitle": "Resultados cuando estos dos jugadores estaban en el mismo equipo.",
-        "played": "Partidos juntos",
-        "headline": "{{played}} juntos · G {{wins}} · P {{losses}} · E {{draws}}",
-        "lastMeeting": "Último partido juntos el {{date}}",
-        "streak": "Racha actual: {{length}} · {{kind}}",
-        "noStreak": "Racha actual: ninguna",
-        "noMeeting": "Aún sin partidos juntos"
+        "played": "Partidos juntos"
       },
       "opponent": {
         "title": "Cara a cara",
-        "heading": "{{first}} contra {{second}}",
         "subtitle": "Resultados cuando estos dos jugadores estaban en equipos contrarios, desde el punto de vista del primer jugador.",
-        "played": "Enfrentamientos"
+        "played": "Enfrentamientos",
+        "versus": "vs"
+      },
+      "tiles": {
+        "matches": "Partidos",
+        "meetings": "Enfrentamientos",
+        "record": "V–D–E",
+        "winRate": "% de victorias",
+        "setDiff": "Dif. de sets"
       },
       "sections": {
         "record": "Balance",
@@ -2424,12 +2614,9 @@
       "showMore": "Mostrar más",
       "noRating": "Sin nivel",
       "columns": {
-        "date": "Fecha",
-        "result": "Resultado",
         "sets": "Sets",
         "games": "Juegos",
         "rating": "Cambio de nivel",
-        "match": "Partido",
         "player": "Jugador",
         "played": "Partidos",
         "record": "Balance",
@@ -2503,7 +2690,7 @@
       "ratingChange": "Nivel {{delta}}",
       "noRating": "Sin cambio de nivel",
       "league": "Liga: {{name}}",
-      "leagueLink": "Abrir la Liga {{name}}",
+      "leagueLink": "Abrir la liga {{name}}",
       "viewDetails": "Detalles del resultado",
       "viewMatch": "Abrir partido",
       "detailsLabel": "Detalles del resultado, partido {{type}} el {{date}}",
@@ -2515,8 +2702,8 @@
       "summary": {
         "played": "Jugado el {{date}} a las {{time}}",
         "court": "Pista {{label}}",
-        "leagueCounts": "Cuenta para la clasificación de la Liga",
-        "leagueNotCounted": "No cuenta para la clasificación de la Liga",
+        "leagueCounts": "Cuenta para la clasificación de la liga",
+        "leagueNotCounted": "No cuenta para la clasificación de la liga",
         "community": "Comunidad",
         "venue": "Lugar",
         "type": "Tipo de partido",
@@ -2592,6 +2779,8 @@
     },
     "player": {
       "title": "Estadísticas del jugador",
+      "backToProfile": "Volver al perfil",
+      "backToCommunity": "Volver a la comunidad",
       "subtitle": "Resultados deportivos de partidos confirmados. Las cifras que aún no se pueden calcular explican el motivo en lugar de mostrar cero.",
       "myStatistics": "Mis estadísticas",
       "hero": {
@@ -2698,6 +2887,12 @@
       },
       "form": {
         "outcomes": "Resultados, del más antiguo al más reciente",
+        "legend": "Del más antiguo al más reciente · G victoria, P derrota, E empate. Los partidos incompletos no tienen resultado y no se muestran.",
+        "short": {
+          "W": "G",
+          "L": "P",
+          "D": "E"
+        },
         "outcome": {
           "W": "Victoria",
           "L": "Derrota",
@@ -2777,7 +2972,7 @@
           "help": "Jugadores distintos que jugaron un partido confirmado en esta selección; no es el número de miembros."
         },
         "ranking": {
-          "help": "Partidos elegibles de la Liga activa."
+          "help": "Partidos elegibles de la liga activa."
         },
         "frequency": {
           "average": {
@@ -2818,6 +3013,9 @@
         "matches": {
           "played": {
             "help": "Cuenta cada partido confirmado una sola vez. Los partidos incompletos cuentan como jugados, pero no tienen ganador."
+          },
+          "competitiveShare": {
+            "help": "Partidos competitivos como proporción de todos los partidos jugados en esta selección. No disponible si no se jugó ningún partido."
           },
           "competitive": {
             "help": "Partidos confirmados de tipo competitivo."
@@ -2920,13 +3118,13 @@
             "help": "Posición entre los jugadores de la comunidad por nivel."
           },
           "leaguePosition": {
-            "help": "Posición en la clasificación de la Liga activa."
+            "help": "Posición en la clasificación de la liga activa."
           },
           "bestCommunityRank": {
             "help": "Mejor posición en la comunidad; la nota indica cuándo empieza el historial guardado."
           },
           "bestLeaguePosition": {
-            "help": "Mejor posición en la Liga; la nota indica cuándo empieza el historial guardado."
+            "help": "Mejor posición en la liga; la nota indica cuándo empieza el historial guardado."
           }
         },
         "form": {
@@ -3114,16 +3312,21 @@
       "mark": "Marcar en revisión",
       "marked": "Solicitud marcada en revisión.",
       "approve": "Aprobar",
-      "reject": "Rechazar",
-      "confirmApprove": "¿Confirmar aprobación?",
-      "confirmReject": "¿Confirmar rechazo?",
+      "reject": "Denegar",
+      "confirmApprove": "Revisar aprobación",
+      "confirmReject": "Revisar denegación",
+      "confirmApproval": "Confirmar aprobación",
+      "confirmDenial": "Confirmar denegación",
+      "levelAfter": "Nivel tras la aprobación",
+      "reliabilityUnchanged": "sin cambios",
+      "trailHeading": "Registro de auditoría",
+      "trailSubmitted": "Solicitud de revisión enviada",
       "after": "Nivel {{beforeLevel}} (μ interno {{beforeMu}}) → {{afterLevel}} (μ interno {{afterMu}}); fiabilidad {{reliabilityBefore}}% → {{reliabilityAfter}}%.",
-      "rejectDescription": "Rechazar esta solicitud sin cambiar la clasificación.",
+      "rejectDescription": "Denegar esta solicitud sin cambiar la clasificación.",
       "forward": "Los cambios solo se aplican en adelante. Los partidos históricos y las posiciones de Liga no cambian.",
       "forwardHeading": "Corrección solo hacia adelante",
       "forwardAudit": "La aprobación crea un evento de ajuste auditado.",
-      "cancel": "Volver",
-      "confirm": "Confirmar decisión",
+      "cancel": "Cancelar",
       "resolved": "Decisión guardada.",
       "event": "Evento de ajuste registrado: {{id}}",
       "stale": "La clasificación cambió. Revisa la vista actualizada y confirma de nuevo.",
@@ -3150,7 +3353,6 @@
     },
     "admin": {
       "title": "Cola de revisión de nivel",
-      "subtitle": "Revisa las solicitudes de nivel de los jugadores.",
       "pendingCount_one": "{{count}} solicitud pendiente",
       "pendingCount_other": "{{count}} solicitudes pendientes",
       "filter": "Filtrar por estado",
@@ -3158,9 +3360,14 @@
       "loading": "Cargando solicitudes…",
       "empty": "Ninguna solicitud coincide con este filtro.",
       "current": "Nivel enviado: {{level}} · Fiabilidad: {{reliability}}%",
+      "requestedRange": "Rango solicitado",
+      "submittedLabel": "Enviada",
+      "review": "Revisar solicitud",
+      "submittedLevel": "Nivel al enviar",
+      "submittedLevelValue": "{{level}} · {{reliability}}% de fiabilidad",
       "detail": "Solicitud de revisión de nivel",
       "back": "Volver a la cola",
-      "reason": "Motivo",
+      "reason": "Contexto de la solicitud",
       "evidence": "Pruebas",
       "reviewedAt": "En revisión: {{date}}",
       "decidedAt": "Decidido: {{date}}",
@@ -3177,7 +3384,7 @@
     },
     "request": {
       "title": "Solicitar revisión de nivel",
-      "context": "Tu nivel actual es {{level}}",
+      "intro": "Solo un administrador de la plataforma revisa las solicitudes.",
       "backLabel": "Volver al perfil",
       "currentLabel": "Nivel actual",
       "currentValue": "{{level}} · {{reliability}} de fiabilidad",
@@ -3197,7 +3404,7 @@
       "evidenceHide": "Ocultar evidencia opcional",
       "evidenceLabel": "Evidencia",
       "evidenceHelper": "Texto sin formato opcional. Los enlaces se quedan como texto y nunca se abren automáticamente. {{count}} de {{max}} caracteres.",
-      "forwardOnly": "Solo un administrador de la plataforma revisa las solicitudes. La aprobación cambia tu nivel actual únicamente a partir de ahora; los partidos pasados no se recalculan.",
+      "forwardOnly": "La aprobación cambia tu nivel actual únicamente a partir de ahora. Los partidos pasados no se recalculan.",
       "submit": "Enviar solicitud",
       "submitting": "Enviando…",
       "submitted": "Solicitud recibida. Abriendo su estado…",
@@ -3234,7 +3441,7 @@
       "pending": "Pendiente",
       "under_review": "En revisión",
       "approved": "Aprobada",
-      "rejected": "Rechazada",
+      "rejected": "Denegada",
       "canceled": "Cancelada",
       "detail": {
         "pending": "A la espera de la revisión de un administrador de la plataforma.",
@@ -3254,6 +3461,7 @@
       "subtitle": "Tus solicitudes y lo que pasó con ellas.",
       "newRequest": "Solicitar revisión de nivel",
       "viewActive": "Ver solicitud activa",
+      "viewRequest": "Ver solicitud",
       "emptyTitle": "Aún no hay solicitudes",
       "emptyDescription": "¿Crees que tu nivel está muy desajustado? Envía una solicitud y un administrador de la plataforma la revisará.",
       "loadingTitle": "Cargando solicitudes",
@@ -3267,7 +3475,7 @@
     },
     "detail": {
       "title": "Estado de la revisión de nivel",
-      "context": "Solicitud #{{id}} · Enviada el {{date}}",
+      "summary": "{{from}} → {{to}} · Solicitud #{{id}}",
       "back": "Volver a las solicitudes",
       "requestHeading": "Tu solicitud",
       "snapshotLevel": "Nivel al enviar",
@@ -3282,6 +3490,13 @@
       "timelineReview": "En revisión desde el {{date}}",
       "timelineCanceled": "Cancelada el {{date}}",
       "timelineDecided": "Decidida el {{date}}",
+      "timelineWaiting": "A la espera de revisión",
+      "timelineDecision": "Decisión",
+      "timelineNotify": "Recibirás una notificación cuando se decida.",
+      "ifApprovedTitle": "Si se aprueba",
+      "ifApprovedBody": "Tu nivel cambia a partir de ahora. Los partidos pasados se quedan como están.",
+      "ifRejectedTitle": "Si se rechaza",
+      "ifRejectedBody": "Verás el motivo y podrás volver a pedirlo más adelante.",
       "decisionHeading": "Decisión",
       "decisionNote": "Nota de la revisión",
       "approvedLevel": "Nivel aprobado",
@@ -3304,6 +3519,7 @@
   },
   "privacy": {
     "title": "Política de privacidad",
+    "backHome": "Volver al inicio",
     "updated": "Última actualización: {{date}}",
     "reviewNotice": "Borrador: esta política está pendiente de confirmación final por el titular del servicio y de revisión legal, y puede cambiar antes de ser definitiva.",
     "who": {
@@ -3422,34 +3638,37 @@
     }
   },
   "publicHomepage": {
+    "brand": "Padel Friends",
     "hero": {
       "title": "Encuentra tu próximo partido de pádel.",
-      "description": "Padel Friends te ayuda a organizar partidos, invitar a tus amigos y llevar el control de resultados y valoraciones."
+      "description": "Padel Friends te ayuda a organizar partidos, invitar a tus amigos y llevar el registro de resultados y valoraciones."
     },
     "actions": {
       "signIn": "Iniciar sesión",
       "createAccount": "Crear cuenta",
-      "dashboard": "Ir al panel"
+      "dashboard": "Ir al panel",
+      "signedInNote": "Has iniciado sesión."
     },
     "features": {
+      "heading": "Qué puedes hacer",
       "findMatches": {
-        "title": "Encuentra partidos",
-        "description": "Explora partidos abiertos o crea el tuyo."
+        "title": "Encuentra y crea partidos",
+        "description": "Descubre partidos abiertos en tu comunidad o crea el tuyo."
       },
       "inviteFriends": {
-        "title": "Invita a tus amigos",
-        "description": "Comparte un enlace y completa la pista."
+        "title": "Invita a jugadores",
+        "description": "Envía invitaciones y completa las cuatro plazas con amigos."
       },
       "trackResults": {
-        "title": "Sigue tus resultados",
-        "description": "Registra marcadores, valoraciones e historial, y ligas."
+        "title": "Resultados y valoración",
+        "description": "Registra marcadores, sigue tu valoración e historial, y juega en ligas."
       }
     },
     "footer": {
       "contact": "Contacto",
       "contactEmail": "{{email}}",
-      "operator": "Gestionada por Thiago Mendonça, operador individual, España.",
-      "audience": "Para jugadores de 16 años o más."
+      "operator": "Padel Friends lo gestiona Thiago Mendonça, operador individual con sede en España.",
+      "audience": "Para jugadores a partir de 16 años."
     }
   }
 }

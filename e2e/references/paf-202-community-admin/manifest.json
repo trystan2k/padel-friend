@@ -1,0 +1,85 @@
+{
+  "sourceDesign": "docs/design/padel-friend-clubhouse.pen",
+  "exportCommand": "Pencil MCP Export(['wFqGR','jQDkx','RgqPq','N18Mu4','A5Vio','E5CS5K'], 'png', '<repo>/e2e/references/paf-202-community-admin', {scale:1})",
+  "width": 390,
+  "height": 844,
+  "statusBarHeight": 44,
+  "barTreatment": "Frames draw a 56px back/title bar and no app bottom navigation or admin section tabs. Admin routes keep the app shell suppressed (app-shell.ts) and render the admin section navigation as the single bar; the probe asserts exactly one navigation bar. The title bar is the shared centered TopBar (F38; back to the dashboard, focusable heading) with the community/Admin-only line (or the real waiting count on Requests) under it; the floating locale/theme chips step aside on these routes.",
+  "f34Presentation": "wFqGR: filter chips show a count only from an unfiltered result set already read (exact when the list is complete, 'N+' while a next page exists; a filter never opened has none); no page-size-as-total, no extra reads; the frame's Admins chip has no list source and is not drawn. The disabled 'Invite member · unavailable' button is removed (the private invite search stays). RgqPq: 'N waiting' subtitle from the loaded pending pages (exact when the list is complete, 'N+' otherwise, '0' exact). A5Vio: venues are hairline rows in one surface with Open map, Edit and Archive per row and an always-visible inline add/edit form (photo upload on edit; confirmation unchanged). N18Mu4: the existing community-name field moved out of Details to the top of Settings (same state and save payload).",
+  "frames": {
+    "RgqPq": {
+      "state": "Community admin — Access requests",
+      "route": "requests",
+      "sha256": "4c176932b525a659559c326bd997079df416b115fe41bc2bdf001cf8af733051",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/RgqPq-light.png",
+      "snapshotSha256": "49fefec1b0d3cdf713d94c01e1ac9ab9c477caa02295fb6c22ca8b34dbb4bfa7"
+    },
+    "wFqGR": {
+      "state": "Community admin — Members",
+      "route": "members",
+      "sha256": "56dd69f5103303f01345062f9b6dfa9c5122c33a656a8f3eb946ecacfe8fcda6",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/wFqGR-light.png",
+      "snapshotSha256": "6b313c7702178af001c11b2d6b1dc6697f506a25114ea70b6bb4a7d48531a7f0"
+    },
+    "jQDkx": {
+      "state": "Community admin — Member actions",
+      "route": "member sheet (route-derived bottom sheet over the members roster)",
+      "sha256": "f5a49a63bfeb7b3afdad48117627645a8ea87eaaaef1b1a62abaec9baaae1c84",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/jQDkx-light.png",
+      "snapshotSha256": "8cb97365aec07f1bfd2cbd08f3b1984377a9aaaac433e5584366d54be10c328c"
+    },
+    "N18Mu4": {
+      "state": "Community admin — Settings",
+      "route": "settings",
+      "sha256": "a18f8f6383d2c6bc29a0670073772250d151935d748c3637bcbc55d75466c0b2",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/N18Mu4-light.png",
+      "snapshotSha256": "fc4ba1c5b54b73ca9b293ba653797b8ca4299fc56e5b924b3ba6d8cfc4fb1789"
+    },
+    "A5Vio": {
+      "state": "Community admin — Saved venues",
+      "route": "venues",
+      "sha256": "6025c007cd6e97071fbcbb2bc6ca777397959bd2640b584d76107d0ce00d2e1e",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/A5Vio-light.png",
+      "snapshotSha256": "99ced4c3e14b1d7ac99af35988ab938e60ef4a1f170381806ad98107389cead8"
+    },
+    "E5CS5K": {
+      "state": "Community admin — Audit log",
+      "route": "audit",
+      "sha256": "62459bcb662e4820d08cdbc104f40ccd741567ce6723630dfa16ffedb559c767",
+      "snapshot": "e2e/community-admin.spec.ts-snapshots/E5CS5K-light.png",
+      "snapshotSha256": "b3adfefdf0b091a8fff3ad2c2ad7666da44702a935d02b72624962d1fcf0ead4"
+    }
+  },
+  "toleranceEvidence": {
+    "RgqPq": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "Request cards carry fixture applicant, request date and a random community name; the date and community name are masked. Card identity row, Deny|Approve equal-width row, avatar size and ≥52px controls are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "wFqGR": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "Roster rows differ from the sample (fixture names, join dates, role badges, private/public invite control). Join-date lines and community name are masked; list surface, 68px+ rows, 36px avatar, search and filter targets are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "jQDkx": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "The route renders the frame's bottom sheet: a Base UI modal dialog over the live roster (admin/members layout route; sheet = child route /members/$membershipId, SSR route-derived). The snapshot is the sheet element only, with member identity masked. Probed exactly: full-width bottom-anchored popup, 28px top radius, 16px inset, 20/800 name, 36px glyph tiles, 56/60px rows, roster inert behind. Recorded residuals vs the frame: (1) rows are only the permitted operations per status/role (pending: approve/deny; inactive: reactivate; active member: promote/remove; active admin: demote/remove; View profile for active members) — the frame's separate 'Make inactive' row has no distinct operation (remove already deactivates) and is not built; (2) row titles keep the existing localized action labels (Promote to admin, Remove from community…) instead of the frame's 'Make admin' copy and the descriptions are truthful rewordings (no 'Past results are kept' claim — unverified); (3) a visually hidden, focus-revealed Close button and Escape/backdrop provide the dismiss path the frame's grabber implies; (4) no 'level' in the meta line beyond the existing ratings text. Destructive/demote actions keep their AlertDialog confirmations. History-originated open closes by popping its roster entry (roster search/filter/scroll preserved, focus returns to the row); deep link/reload closes to Members with heading focus. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "N18Mu4": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "Visibility and join policy stay native selects (two options each, existing behavior) instead of the frame switches; the frame sticky Save is inline because the admin section bar owns the bottom edge. Rows and controls are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "A5Vio": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "The frame has no photo-upload state; upload lives in the edit form (validation/retry unchanged). Venue cards (64×52 photo slot, 12px gap, 52px actions) are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    },
+    "E5CS5K": {
+      "maxDiffPixelRatio": 0.01,
+      "reference": "Playwright Chromium, en/light, viewport 390×844, scale 1, main element, masks as listed",
+      "justification": "Events are real audit rows with a generic actor fallback and fixture timestamps (masked). The frame category filter chips are not built (no filter behavior exists). Log surface, dot and divided rows are probed exactly. The budget absorbs font rasterization only; it is not widened to hide layout differences."
+    }
+  }
+}

@@ -1,7 +1,6 @@
 import * as stylex from '@stylexjs/stylex';
 import { useId } from 'react';
 import { useTranslation } from 'react-i18next';
-import { createMatchStyles as create } from './create-match.styles';
 import { matchEditStyles as edit } from './match-edit.styles';
 import { formatMatchLeaguePeriod, type MatchCompetitionState } from './match-league-selection';
 import type { MatchEditDraft } from './match-management-edit';
@@ -38,11 +37,13 @@ export function MatchEditCompetitionField({
           : 'members';
   return (
     <fieldset
-      {...stylex.props(edit.field)}
+      {...stylex.props(edit.field, edit.competitionGroup)}
       aria-describedby={`${id}-guidance${error ? ` ${id}-error` : ''}`}
     >
-      <legend>{t('matchCreate.competition.legend')}</legend>
-      <label {...stylex.props(create.touchLabel)}>
+      <legend {...stylex.props(edit.competitionLegend)}>
+        {t('matchCreate.competition.legend')}
+      </legend>
+      <label {...stylex.props(edit.competitionLabel)}>
         <input
           type="radio"
           name={`${id}-competition`}
@@ -52,7 +53,7 @@ export function MatchEditCompetitionField({
         />
         {t('matches.competition.ranked')}
       </label>
-      <label {...stylex.props(create.touchLabel)}>
+      <label {...stylex.props(edit.competitionLabel)}>
         <input
           type="radio"
           name={`${id}-competition`}

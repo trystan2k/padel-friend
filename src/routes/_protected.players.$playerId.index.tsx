@@ -1,5 +1,6 @@
 import { createFileRoute, notFound, useNavigate, useRouter } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
+import { TopBar } from '../components/ui/TopBar';
 import { OpponentRecords } from '../features/statistics/OpponentRecords';
 import { PartnerRecords } from '../features/statistics/PartnerRecords';
 import { PlayerStatistics } from '../features/statistics/PlayerStatistics';
@@ -121,8 +122,11 @@ function PlayerStatisticsPage() {
     );
   }
   return (
-    <main>
-      <h1>{t('statistics.navigation.player')}</h1>
+    <main data-route-chrome="navigation">
+      <TopBar
+        title={t('statistics.navigation.player')}
+        back={{ to: '/me', label: t('statistics.player.backToProfile') }}
+      />
       <StatisticsError code={result.code} onRetry={() => void router.invalidate()} />
     </main>
   );

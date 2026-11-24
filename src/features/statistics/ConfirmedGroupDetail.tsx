@@ -1,10 +1,9 @@
 import * as stylex from '@stylexjs/stylex';
-import { Link } from '@tanstack/react-router';
 import { useTranslation } from 'react-i18next';
-import { HeroCard } from '../../components/ui/HeroCard';
 import { ProvisionalBadge } from '../../components/ui/ProvisionalBadge';
 import { StatusBadge } from '../../components/ui/StatusBadge';
 import { SurfaceCard } from '../../components/ui/SurfaceCard';
+import { TopBar } from '../../components/ui/TopBar';
 import {
   formatFraction,
   formatLevel,
@@ -45,28 +44,20 @@ export function ConfirmedGroupDetail({ detail }: { detail: GroupDetail }) {
   const incomplete = result.classification === 'incomplete';
   const name = (player: { display_name: string | null }) =>
     player.display_name ?? t('matches.results.unknownPlayer');
-  const heroTeam = (side: 'team_a' | 'team_b') => (
-    <div {...stylex.props(s.heroTeam)}>
-      <span {...stylex.props(s.heroLabel)}>{t(`matches.results.teams.${side}`)}</span>
-      <span {...stylex.props(s.heroNames)}>
-        {new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(
-          detail.teams[side].map((player) => name(player))
-        )}
-      </span>
-    </div>
-  );
+  const teamNames = new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' });
 
   return (
-    <main {...stylex.props(s.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(s.page)}>
+      <TopBar
+        xstyle={s.barFrame}
+        title={t('statistics.detail.title')}
+        back={{
+          to: '/matches/$eventId',
+          params: { eventId: detail.event_id },
+          label: t('statistics.detail.back')
+        }}
+      />
       <header {...stylex.props(s.pageHeader)}>
-        <Link
-          to="/matches/$eventId"
-          params={{ eventId: detail.event_id }}
-          {...stylex.props(s.link)}
-        >
-          {t('statistics.detail.back')}
-        </Link>
-        <h1 {...stylex.props(s.title)}>{t('statistics.detail.title')}</h1>
         <div {...stylex.props(s.badges)}>
           <StatusBadge tone={incomplete ? 'neutral' : 'positive'}>
             {t(`statistics.history.status.${incomplete ? 'incomplete' : 'played'}`)}
@@ -86,30 +77,49 @@ export function ConfirmedGroupDetail({ detail }: { detail: GroupDetail }) {
         )}
       </header>
 
-      <section aria-labelledby="statistics-detail-result">
-        <HeroCard xstyle={s.hero}>
+      <section aria-labelledby="statistics-detail-result" {...stylex.props(s.section)}>
+        <SurfaceCard xstyle={s.hero}>
           <h2 id="statistics-detail-result" {...stylex.props(s.heroLabel)}>
             {t('statistics.detail.sections.result')}
           </h2>
-          <div {...stylex.props(s.heroGrid)}>
-            {heroTeam('team_a')}
-            <p {...stylex.props(s.heroScores)}>
-              {result.sets.map((set) => (
-                <span key={set.position} {...stylex.props(s.heroScore)}>
-                  {set.team_a_games}–{set.team_b_games}
-                </span>
+          <table aria-labelledby="statistics-detail-result" {...stylex.props(s.scoreTable)}>
+            <thead>
+              <tr>
+                <th scope="col">
+                  <span {...stylex.props(s.hidden)}>{t('statistics.detail.sections.teams')}</span>
+                </th>
+                {result.sets.map(({ position }) => (
+                  <th key={position} scope="col">
+                    <span {...stylex.props(s.hidden)}>
+                      {t('matches.results.setNumber', { number: position })}
+                    </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {(['team_a', 'team_b'] as const).map((side) => (
+                <tr key={side}>
+                  <th scope="row" {...stylex.props(s.heroNames)}>
+                    {teamNames.format(detail.teams[side].map((player) => name(player)))}
+                  </th>
+                  {result.sets.map((set) => (
+                    <td key={set.position} {...stylex.props(s.heroScore)}>
+                      {side === 'team_a' ? set.team_a_games : set.team_b_games}
+                    </td>
+                  ))}
+                </tr>
               ))}
-            </p>
-            {heroTeam('team_b')}
-          </div>
-          <div {...stylex.props(s.heroLine)}>
-            <span>{t(`statistics.detail.winner.${result.winner ?? 'incomplete'}`)}</span>
-            <span>
-              {t('statistics.detail.setsTotal', { a: result.sets_a, b: result.sets_b })} ·{' '}
-              {t('statistics.detail.gamesTotal', { a: result.games_a, b: result.games_b })}
-            </span>
-          </div>
-        </HeroCard>
+            </tbody>
+          </table>
+        </SurfaceCard>
+        <div {...stylex.props(s.heroLine)}>
+          <span>{t(`statistics.detail.winner.${result.winner ?? 'incomplete'}`)}</span>
+          <span>
+            {t('statistics.detail.setsTotal', { a: result.sets_a, b: result.sets_b })} ·{' '}
+            {t('statistics.detail.gamesTotal', { a: result.games_a, b: result.games_b })}
+          </span>
+        </div>
       </section>
 
       <section aria-labelledby="statistics-detail-players">

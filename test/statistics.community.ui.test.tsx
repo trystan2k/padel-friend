@@ -111,6 +111,63 @@ describe('CommunityStatistics', () => {
     expect(screen.getByRole('table', { name: /Matches per month/ })).toBeTruthy();
   });
 
+  it('leads with the top bar, scope chips, overview tiles, month chart and row card (o9iaC1)', () => {
+    render(
+      wrap(
+        <CommunityStatistics
+          stats={makeCommunityStatistics()}
+          onApply={vi.fn<
+            (
+              filters: import('../src/features/statistics/statistics-contracts').StatisticsFilters
+            ) => void
+          >()}
+        />
+      )
+    );
+    const main = screen.getByRole('main');
+    expect(main.getAttribute('data-route-chrome')).toBe('navigation');
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    const back = main.querySelector('header a');
+    expect(back?.getAttribute('href')).toBe('/community/' + COMMUNITY);
+    const order = [
+      main.querySelector('header'),
+      screen.getByRole('list', { name: 'Active filters' }),
+      figure('Matches played'),
+      screen.getByRole('heading', { level: 2, name: 'Matches per month (UTC)' }),
+      figure('Competitive share')
+    ];
+    order.reduce((previous, node) => {
+      expect(
+        previous!.compareDocumentPosition(node!) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      return node;
+    });
+    // 7 of 10 matches are competitive; the tile and row definitions stay readable by assistive tech.
+    expect(figure('Competitive share').textContent).toContain('70%');
+    expect(figure('Competitive share').textContent).toContain('share of all matches played');
+    expect(figure('Matches played').textContent).toContain('Counts every confirmed match once');
+    const jump = screen.getByRole('link', { name: 'Statistics filters' });
+    expect(jump.getAttribute('href')).toBe('#community-filters');
+  });
+
+  it('marks the competitive share unavailable when no match was played', () => {
+    render(
+      wrap(
+        <CommunityStatistics
+          stats={emptyCommunityStatistics()}
+          onApply={vi.fn<
+            (
+              filters: import('../src/features/statistics/statistics-contracts').StatisticsFilters
+            ) => void
+          >()}
+        />
+      )
+    );
+    expect(figure('Competitive share').textContent).toContain('Not available');
+    expect(figure('Competitive share').textContent).not.toContain('NaN');
+    expect(screen.queryByRole('heading', { level: 2, name: 'Matches per month (UTC)' })).toBeNull();
+  });
+
   it('links leaders to the same scope only when one community is selected', () => {
     const { rerender } = render(
       wrap(
@@ -189,10 +246,10 @@ describe('CommunityStatistics', () => {
       )
     );
     expect(screen.getByRole('status').textContent).toContain(
-      'Friendly matches never count towards a League'
+      'Friendly matches never count towards a league'
     );
     expect(screen.queryByText('No confirmed matches in this selection yet.')).toBeNull();
-    expect(screen.getByText(/Showing the active League Spring League/)).toBeTruthy();
+    expect(screen.getByText(/Showing the active league Spring League/)).toBeTruthy();
   });
 
   it('lists a tie partially when more players are tied than shown', () => {

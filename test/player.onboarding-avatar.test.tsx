@@ -229,7 +229,7 @@ async function fillAndPick(options: { claim?: boolean; photo?: File | null } = {
   if (photo) await uploader().upload(picker(), photo);
 }
 
-const submitName = (claim: boolean) => new RegExp(claim ? en.auth.claim.submit : copy.save);
+const submitName = (claim: boolean) => new RegExp(`^${claim ? en.auth.claim.submit : copy.save}$`);
 
 function mountFlow(claim: boolean, next?: string) {
   return renderIn('en', <PlayerOnboarding next={next} claim={claim ? { ...READY } : undefined} />);

@@ -125,8 +125,12 @@ describe('management notification SQL / renderer parity', () => {
             })
           )
         );
-        expect(html, `${locale} ${kind} body`).toContain(
-          renderToStaticMarkup(createElement('p', null, i18n.t(`notifications.match.${body}`)))
+        // Content parity only: the body paragraph carries StyleX classes, so match any attributes.
+        const bodyText = renderToStaticMarkup(
+          createElement('p', null, i18n.t(`notifications.match.${body}`))
+        ).slice('<p>'.length, -'</p>'.length);
+        expect(html, `${locale} ${kind} body`).toMatch(
+          new RegExp(`<p\\b[^>]*>${bodyText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</p>`)
         );
         expect(/<h1\b[^>]*>(.*?)<\/h1>/.exec(html)?.[1], `${locale} ${kind} heading`).toBe(
           renderToStaticMarkup(createElement('h1', null, i18n.t(`notifications.kinds.${kind}`)))

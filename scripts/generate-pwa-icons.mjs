@@ -1,96 +1,54 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import { parseTokens, resolveTokens } from './pwa-build.mjs';
 
-// Brand mark: a plus glyph on the brand green. Geometry is shared by every variant; colors come from the
-// approved design tokens. Maskable icons are full-bleed and keep the glyph (including its round caps)
-// inside the 80% safe-zone circle so OS masks never crop it.
-const VIEWBOX = 512;
-export const GLYPH = { start: 130, end: 382, stroke: 48 };
-export const MASKABLE_SAFE_RADIUS = (VIEWBOX * 0.8) / 2;
-export const glyphReach = () => (GLYPH.end - GLYPH.start) / 2 + GLYPH.stroke / 2;
-
-export function iconColors(css) {
-  const palette = resolveTokens(parseTokens(css), 'light');
-  return { background: palette['palette-green-deep'], glyph: palette['palette-lime'] };
-}
-
-export function iconSvg({ background, glyph }, { rounded }) {
-  const middle = VIEWBOX / 2;
-  return (
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' +
-    VIEWBOX +
-    ' ' +
-    VIEWBOX +
-    '">' +
-    '<rect width="' +
-    VIEWBOX +
-    '" height="' +
-    VIEWBOX +
-    '"' +
-    (rounded ? ' rx="96"' : '') +
-    ' fill="' +
-    background +
-    '"/>' +
-    '<path d="M' +
-    GLYPH.start +
-    ' ' +
-    middle +
-    'h' +
-    (GLYPH.end - GLYPH.start) +
-    'M' +
-    middle +
-    ' ' +
-    GLYPH.start +
-    'v' +
-    (GLYPH.end - GLYPH.start) +
-    '" stroke="' +
-    glyph +
-    '" stroke-width="' +
-    GLYPH.stroke +
-    '" stroke-linecap="round"/></svg>\n'
-  );
-}
-
-export function iconFiles(colors) {
-  const any = iconSvg(colors, { rounded: true });
-  const maskable = iconSvg(colors, { rounded: false });
-  return [
-    { file: 'public/icon.svg', svg: any },
-    { file: 'public/icons/icon-192.png', svg: any, size: 192 },
-    { file: 'public/icons/icon-512.png', svg: any, size: 512 },
-    { file: 'public/icons/maskable-192.png', svg: maskable, size: 192 },
-    { file: 'public/icons/maskable-512.png', svg: maskable, size: 512 },
-    { file: 'public/icons/apple-touch-icon.png', svg: maskable, size: 180 }
-  ];
-}
+const root = new URL('../', import.meta.url);
+// An inscribed square at 56% of the icon width fits completely inside the maskable
+// 80%-diameter safe circle, including the original's own transparent margins.
+export const iconSlots = [
+  { file: 'public/icons/icon-192.png', size: 192 },
+  { file: 'public/icons/icon-512.png', size: 512, exportFile: 'pwa-icon-512.png' },
+  { file: 'public/icons/maskable-192.png', size: 192, artworkWidth: '56%' },
+  { file: 'public/icons/maskable-512.png', size: 512, artworkWidth: '56%' },
+  { file: 'public/icons/apple-touch-icon.png', size: 180, artworkWidth: '100%' },
+  { file: 'public/icons/favicon.png', size: 64, exportFile: 'favicon.png' }
+];
 
 async function generate() {
-  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-  const colors = iconColors(
-    await readFile(path.join(root, 'design-tokens/dist/tokens.css'), 'utf8')
-  );
-  await mkdir(path.join(root, 'public/icons'), { recursive: true });
+  const source = await readFile(new URL('docs/design/padel-friends-app-icon.png', root));
+  const sourceUrl = 'data:image/png;base64,' + source.toString('base64');
+  const css = await readFile(new URL('design-tokens/dist/tokens.css', root), 'utf8');
+  const background = resolveTokens(parseTokens(css), 'light')['palette-green-deep'];
+
   const browser = await chromium.launch();
   try {
-    for (const { file, svg, size } of iconFiles(colors)) {
-      if (!size) {
-        await writeFile(path.join(root, file), svg);
-        continue;
-      }
-      const page = await browser.newPage({ viewport: { width: size, height: size } });
+    const page = await browser.newPage();
+    const svgOnly = process.argv.includes('--svg');
+    const files = {};
+    for (const { file, size, artworkWidth, exportFile } of svgOnly ? [{ size: 24 }] : iconSlots) {
+      await page.setViewportSize({ width: size, height: size });
+      const imageCss = artworkWidth ?? '100%';
       await page.setContent(
-        '<style>html,body{margin:0;background:transparent}svg{display:block;width:100vw;height:100vh}</style>' +
-          svg
+        `<style>html,body{margin:0;width:100%;height:100%}body{display:grid;place-items:center;background:${artworkWidth ? background : 'transparent'}}img{display:block;width:${imageCss};height:auto}</style><img alt="" src="${sourceUrl}">`
       );
-      await writeFile(
-        path.join(root, file),
-        await page.screenshot({ type: 'png', omitBackground: true })
-      );
-      await page.close();
+      await page.locator('img').evaluate((image) => image.decode());
+      const bytes = await page.screenshot({ type: 'png', omitBackground: !artworkWidth });
+      if (svgOnly) {
+        console.log(
+          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><image width="24" height="24" href="data:image/png;base64,${bytes.toString('base64')}"/></svg>`
+        );
+      } else {
+        await writeFile(new URL(file, root), bytes);
+        files[file] = createHash('sha256').update(bytes).digest('hex');
+        if (exportFile) {
+          await writeFile(new URL('docs/design/icon-exports/' + exportFile, root), bytes);
+        }
+      }
     }
+    if (!svgOnly) console.log(JSON.stringify(files, null, 2));
   } finally {
     await browser.close();
   }

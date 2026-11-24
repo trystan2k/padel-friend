@@ -1,6 +1,7 @@
 import * as stylex from '@stylexjs/stylex';
 import { Switch } from '@base-ui/react/switch';
-import { Link } from '@tanstack/react-router';
+import { Button } from '../../components/ui/Button';
+import { TopBar } from '../../components/ui/TopBar';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Database } from '../../lib/supabase/database.types';
@@ -10,6 +11,7 @@ import {
 } from './notifications.functions';
 import { PwaInstallPanel } from '../pwa/PwaInstallPanel';
 import { PushDevicePanel } from './PushDevicePanel';
+import { preferenceBarStyles as barStyles } from './notification-preferences-bar.styles';
 import { preferenceStyles as styles } from './notification-preferences.styles';
 
 type Preferences = Pick<
@@ -87,12 +89,14 @@ export function NotificationPreferencesPage({
     }
   }
   return (
-    <main {...stylex.props(styles.page)}>
+    <main data-route-chrome="navigation" {...stylex.props(styles.page)}>
       <section {...stylex.props(styles.panel)}>
-        <Link to="/notifications" {...stylex.props(styles.back)}>
-          {t('notificationPreferences.back')}
-        </Link>
-        <h1 {...stylex.props(styles.title)}>{t('notificationPreferences.title')}</h1>
+        <TopBar
+          title={t('notificationPreferences.title')}
+          back={{ to: '/notifications', label: t('notificationPreferences.back') }}
+          xstyle={barStyles.bleed}
+        />
+        <PushDevicePanel savedIntent={savedEnabled} />
         <p {...stylex.props(styles.context)}>{t('notificationPreferences.context')}</p>
         <fieldset {...stylex.props(styles.group)}>
           <legend {...stylex.props(styles.legend)}>{t('notificationPreferences.pushTitle')}</legend>
@@ -108,15 +112,20 @@ export function NotificationPreferencesPage({
           </Switch.Root>
           <p {...stylex.props(styles.helper)}>{t('notificationPreferences.pushHelper')}</p>
           {categoryKeys.map((key) => (
-            <label key={key} {...stylex.props(styles.row)}>
+            <label key={key} htmlFor={key} {...stylex.props(styles.row)}>
               <span {...stylex.props(styles.copy)}>
-                {t(`notificationPreferences.categories.${key.slice(5)}`)}
+                <span>{t(`notificationPreferences.categories.${key.slice(5)}`)}</span>
+                <span id={`${key}-help`} {...stylex.props(styles.helper)}>
+                  {t(`notificationPreferences.categoryHelp.${key.slice(5)}`)}
+                </span>
               </span>
               <Switch.Root
+                id={key}
                 checked={values[key]}
                 disabled={!values.push_enabled}
                 onCheckedChange={(checked) => set(key, checked)}
                 aria-label={t(`notificationPreferences.categories.${key.slice(5)}`)}
+                aria-describedby={`${key}-help`}
                 {...stylex.props(styles.switch, values[key] && styles.checked)}
               >
                 <Switch.Thumb {...stylex.props(styles.thumb, values[key] && styles.thumbChecked)} />
@@ -124,7 +133,6 @@ export function NotificationPreferencesPage({
             </label>
           ))}
         </fieldset>
-        <PushDevicePanel savedIntent={savedEnabled} />
         <section aria-labelledby="critical-title" {...stylex.props(styles.always)}>
           <h2 id="critical-title" {...stylex.props(styles.alwaysTitle)}>
             {t('notificationPreferences.criticalTitle')}
@@ -136,14 +144,9 @@ export function NotificationPreferencesPage({
         </section>
         <PwaInstallPanel />
         {!online && <p>{t('notificationPreferences.offline')}</p>}
-        <button
-          type="button"
-          disabled={!online || saving}
-          onClick={() => void save()}
-          {...stylex.props(styles.save)}
-        >
+        <Button disabled={!online || saving} onClick={() => void save()}>
           {saving ? t('notificationPreferences.saving') : t('notificationPreferences.save')}
-        </button>
+        </Button>
         <p
           role={status === 'error' ? 'alert' : undefined}
           aria-live={status === 'error' ? 'assertive' : 'polite'}

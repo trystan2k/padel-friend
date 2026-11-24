@@ -49,7 +49,11 @@ const wrap = (node: ReactNode, locale: 'en' | 'pt-BR' | 'es' = 'en') => (
   <I18nextProvider i18n={createI18n(locale)}>{node}</I18nextProvider>
 );
 function figure(label: string): HTMLElement {
-  const term = screen.getByText(label, { selector: 'dt' });
+  // The headline tiles repeat some labels; detailed sections are the aria-labelledby ones.
+  const [term] = screen
+    .getAllByText(label, { selector: 'dt' })
+    .filter((candidate) => !candidate.closest('section[aria-label]'));
+  if (!term) throw new Error('missing term ' + label);
   const value = term.nextElementSibling;
   if (!(value instanceof HTMLElement)) throw new Error('missing description for ' + label);
   return value;
@@ -58,7 +62,9 @@ function figure(label: string): HTMLElement {
 describe('PairStatistics', () => {
   it('shows the record, scores, streaks, opponent level sample and Leagues', () => {
     render(wrap(<PairStatistics pair={makePair()} />));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Ana & Bea');
+    // GrkSH: the bar title is "Partnership"; the partner's name leads the identity block below it.
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Partnership');
+    expect(screen.getByText('Bea')).toBeTruthy();
     expect(figure('Matches together').textContent).toContain('7');
     expect(figure('Win rate').textContent).toContain('50%');
     expect(figure('Win rate').textContent).toContain('3 of 6 matches');
@@ -99,11 +105,7 @@ describe('PairStatistics', () => {
     expect(back.getAttribute('href')).toBe(
       '/players/' + FOCAL + '?communityId=' + OTHER + '&type=competitive'
     );
-    const crumbs = within(screen.getByRole('navigation', { name: 'Statistics navigation' }));
-    expect(crumbs.getByRole('link', { name: 'Player statistics' }).getAttribute('href')).toBe(
-      back.getAttribute('href')
-    );
-    expect(crumbs.getByText('Partnership').getAttribute('aria-current')).toBe('page');
+    expect(screen.getAllByRole('link', { name: 'Back to player statistics' })).toEqual([back]);
   });
 
   it('explains a one-match pair as visible but not yet eligible for a best claim', () => {
@@ -146,31 +148,57 @@ describe('PairStatistics', () => {
 
   it('lists recent matches with result text, scores and a labelled link', () => {
     render(wrap(<PairStatistics pair={makePair()} />));
-    const table = screen.getByRole('table', { name: 'Most recent matches, newest first' });
-    const rows = within(table).getAllByRole('row').slice(1);
+    const list = screen.getByRole('list', { name: 'Most recent matches, newest first' });
+    expect(screen.queryByRole('table')).toBeNull();
+    const rows = within(list).getAllByRole('listitem');
     expect(rows).toHaveLength(2);
     expect(within(rows[0]!).getByText('Win')).toBeTruthy();
     expect(within(rows[1]!).getByText('Incomplete')).toBeTruthy();
-    expect(within(rows[0]!).getByText('2–1')).toBeTruthy();
-    expect(within(rows[0]!).getByText('14–11')).toBeTruthy();
-    expect(within(table).queryByRole('columnheader', { name: 'Rating change' })).toBeNull();
+    expect(rows[0]!.textContent).toContain('Sets 2–1');
+    expect(rows[0]!.textContent).toContain('Games 14–11');
+    expect(within(rows[0]!).getByRole('link', { name: /View match played on/ })).toBeTruthy();
+    expect(rows[0]!.textContent).not.toContain('Rating change');
   });
 });
 
 describe('OpponentStatistics', () => {
   it('shows the head-to-head from the focal point of view with rating effects', () => {
     render(wrap(<OpponentStatistics opponent={makeOpponent()} />));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Ana vs Cleo');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Head-to-head');
+    expect(screen.getByText('Cleo')).toBeTruthy();
     expect(figure('Meetings').textContent).toContain('7');
     expect(figure('Toughest loss').textContent).toContain('80% expected');
     expect(figure('Biggest rating gain').textContent).toContain('+0.4');
     expect(figure('Biggest rating loss').textContent).toContain('-0.3');
-    const table = screen.getByRole('table');
-    const cells = within(table).getAllByRole('row').slice(1);
-    expect(within(cells[0]!).getByText('-0.2')).toBeTruthy();
-    expect(within(cells[1]!).getByText('+0.3')).toBeTruthy();
-    expect(within(cells[2]!).getByText('No rating')).toBeTruthy();
+    const cells = within(screen.getByRole('list', { name: /Most recent matches/ })).getAllByRole(
+      'listitem'
+    );
+    expect(cells[0]!.textContent).toContain('Rating change -0.2');
+    expect(cells[1]!.textContent).toContain('Rating change +0.3');
+    expect(cells[2]!.textContent).toContain('Rating change No rating');
     expect(screen.queryByText('Average opponent level')).toBeNull();
+  });
+
+  it('leads with both players and the meetings, W–L–D and set difference tiles', () => {
+    render(wrap(<OpponentStatistics opponent={makeOpponent()} />));
+    const main = screen.getByRole('main');
+    const identity = main.querySelector<HTMLElement>('header + div')!;
+    expect(within(identity).getByText('Cleo')).toBeTruthy();
+    expect(within(identity).getByText('vs')).toBeTruthy();
+    const record = within(screen.getAllByRole('region', { name: 'Record' })[0]!);
+    const tiles = Object.fromEntries(
+      record
+        .getAllByRole('term')
+        .map((term) => [term.textContent, term.nextElementSibling?.textContent])
+    );
+    expect(tiles).toEqual({ Meetings: '7', 'W–L–D': '3–2–1', 'Set diff': '+3' });
+    const regions = [
+      screen.getAllByRole('region', { name: 'Record' })[0]!,
+      screen.getByRole('region', { name: 'Recent matches' })
+    ];
+    expect(
+      regions[0]!.compareDocumentPosition(regions[1]!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it('explains an opponent record that is not yet eligible for a leader claim', () => {
@@ -296,44 +324,47 @@ describe('PairStatistics composition (Pencil GrkSH)', () => {
     onApply
   });
 
-  it('leads with the compact headline record, streak and last meeting', () => {
-    render(wrap(<PairStatistics pair={makePair()} />));
-    const summary = screen.getAllByRole('region', { name: 'Record' })[0]!;
-    expect(summary.textContent).toContain('7 together · W 3 · L 2 · D 1');
-    expect(summary.textContent).toContain('Current streak: 2 · Wins in a row');
-    expect(summary.textContent).toContain('Last played together 10 Feb 2030');
-  });
-
-  it('states a pair without meetings or streak instead of an empty headline', () => {
-    render(
-      wrap(
-        <PairStatistics
-          pair={makePair({
-            recent: [],
-            record: makeRelationshipRecord({
-              streaks: { current: { kind: null, length: 0 }, longestWins: 0, longestLosses: 0 }
-            })
-          })}
-        />
-      )
+  const tiles = () =>
+    Object.fromEntries(
+      within(screen.getByRole('main').querySelector<HTMLElement>('section[aria-label]')!)
+        .getAllByRole('term')
+        .map((term) => [term.textContent, term.nextElementSibling?.textContent])
     );
-    const summary = screen.getAllByRole('region', { name: 'Record' })[0]!;
-    expect(summary.textContent).toContain('Current streak: none');
-    expect(summary.textContent).toContain('No matches together yet');
+
+  it('leads with both players, then the three headline tiles from the real record', () => {
+    render(wrap(<PairStatistics pair={makePair()} />));
+    const main = screen.getByRole('main');
+    const identity = main.querySelector<HTMLElement>('header + div')!;
+    expect(identity.textContent).toMatch(/^A\+B/);
+    expect(within(identity).getByText('Bea')).toBeTruthy();
+    expect(within(identity).getByText('+')).toBeTruthy();
+    expect(tiles()).toEqual({ Matches: '7', 'W–L–D': '3–2–1', 'Win rate': '50%' });
   });
 
-  it('orders summary, record, scores, streaks, rating, Leagues, then recent meetings', () => {
+  it('keeps the truthful unavailable state when the pair has no win rate yet', () => {
+    const record = makeRelationshipRecord({
+      matches: {
+        ...makeRelationshipRecord().matches,
+        winRate: insufficient('minimum_matches', 1, 5)
+      }
+    });
+    render(wrap(<PairStatistics pair={makePair({ recent: [], record })} />));
+    expect(tiles()['Win rate']).toContain('Not available');
+    expect(tiles()['Win rate']).not.toContain('%');
+  });
+
+  it('shows the summary, then meetings, before filters and detailed pair evidence', () => {
     render(
       wrap(<PairStatistics pair={makePair()} filterControls={controls(vi.fn<() => void>())} />)
     );
     const names = [
-      'Statistics filters',
       'Record',
+      'Recent matches',
+      'Statistics filters',
       'Sets and games',
       'Streaks',
       'Rating evidence',
-      'Leagues played together',
-      'Recent matches'
+      'Leagues played together'
     ];
     const regions = names.map((name) => screen.getAllByRole('region', { name })[0]!);
     for (let index = 1; index < regions.length; index += 1)
@@ -363,12 +394,12 @@ describe('PairStatistics composition (Pencil GrkSH)', () => {
     }
   );
 
-  it('renders the headline in Portuguese and Spanish', () => {
+  it('renders the tiles in Portuguese and Spanish', () => {
     const { unmount } = render(wrap(<PairStatistics pair={makePair()} />, 'pt-BR'));
-    expect(screen.getByText('7 juntos · V 3 · D 2 · E 1')).toBeTruthy();
+    expect(tiles()).toEqual({ Partidas: '7', 'V–D–E': '3–2–1', '% de vitórias': '50%' });
     unmount();
     render(wrap(<PairStatistics pair={makePair()} />, 'es'));
-    expect(screen.getByText('7 juntos · G 3 · P 2 · E 1')).toBeTruthy();
+    expect(tiles()).toEqual({ Partidos: '7', 'V–D–E': '3–2–1', '% de victorias': '50\u00a0%' });
   });
 });
 
@@ -394,11 +425,11 @@ describe('relationship copy', () => {
   });
   it('renders the pair in Portuguese and Spanish', () => {
     const { unmount } = render(wrap(<PairStatistics pair={makePair()} />, 'pt-BR'));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Ana e Bea');
-    expect(screen.getByText('Partidas juntos', { selector: 'dt' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Dupla');
+    expect(figure('Partidas juntos')).toBeTruthy();
     unmount();
     render(wrap(<OpponentStatistics opponent={makeOpponent()} />, 'es'));
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Ana contra Cleo');
-    expect(screen.getByText('Enfrentamientos', { selector: 'dt' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Cara a cara');
+    expect(figure('Enfrentamientos')).toBeTruthy();
   });
 });

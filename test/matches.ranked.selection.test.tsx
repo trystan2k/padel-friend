@@ -72,7 +72,10 @@ function control<T extends HTMLElement>(element: HTMLElement, type: new () => T)
   if (!(element instanceof type)) throw new TypeError('Unexpected control type');
   return element;
 }
-const radio = (name: string) => control(screen.getByRole('radio', { name }), HTMLInputElement);
+const rankedSwitch = () => screen.getByRole('switch', { name: en.matches.competition.ranked });
+const isOn = (element: HTMLElement) => element.getAttribute('aria-checked') === 'true';
+const chooseType = (user: ReturnType<typeof userEvent.setup>, type: 'friendly' | 'competitive') =>
+  user.click(screen.getByRole('radio', { name: en.matches.type[type] }));
 const leagueSelect = () =>
   control(screen.getByLabelText(en.matchCreate.competition.league), HTMLSelectElement);
 
@@ -85,7 +88,7 @@ async function mount() {
   await screen.findByRole('combobox', { name: /community/i });
 }
 async function makeCompetitive(user: ReturnType<typeof userEvent.setup>) {
-  await user.selectOptions(screen.getByLabelText(en.matchCreate.fields.type), 'competitive');
+  await chooseType(user, 'competitive');
   await user.type(screen.getByLabelText(en.matchCreate.fields.date), '2030-05-20');
   await user.type(screen.getByLabelText(en.matchCreate.fields.startTime), '18:30');
 }
@@ -151,8 +154,8 @@ describe('Ranked League selection in the create-match wizard', () => {
     await mount();
     await makeCompetitive(user);
     await screen.findByText(new RegExp(en.matchCreate.competition.guidance.noEligible));
-    expect(radio(en.matches.competition.unranked).checked).toBe(true);
-    expect(radio(en.matches.competition.ranked).disabled).toBe(true);
+    expect(isOn(rankedSwitch())).toBe(false);
+    expect(rankedSwitch().hasAttribute('data-disabled')).toBe(true);
     expect(mocks.leagues).toHaveBeenLastCalledWith({
       data: { community_id: idA, date: '2030-05-20', start_time: '18:30' }
     });
@@ -168,7 +171,7 @@ describe('Ranked League selection in the create-match wizard', () => {
     mocks.leagues.mockResolvedValue(leagueResult([spring]));
     await mount();
     await makeCompetitive(user);
-    await waitFor(() => expect(radio(en.matches.competition.ranked).checked).toBe(true));
+    await waitFor(() => expect(isOn(rankedSwitch())).toBe(true));
     expect(leagueSelect().value).toBe(springId);
     await readyToPublish(user);
     await toReview(user);
@@ -183,7 +186,7 @@ describe('Ranked League selection in the create-match wizard', () => {
     mocks.leagues.mockResolvedValue(leagueResult([spring, summer]));
     await mount();
     await makeCompetitive(user);
-    await waitFor(() => expect(radio(en.matches.competition.ranked).checked).toBe(true));
+    await waitFor(() => expect(isOn(rankedSwitch())).toBe(true));
     expect(leagueSelect().value).toBe('');
     await readyToPublish(user);
     await toReview(user);
@@ -202,6 +205,22 @@ describe('Ranked League selection in the create-match wizard', () => {
     expect(publishInput()).toMatchObject({ competition: 'ranked', league_id: summerId });
   });
 
+  it('toggles Ranked with the keyboard and exposes the League picker only while Ranked', async () => {
+    const user = userEvent.setup();
+    mocks.leagues.mockResolvedValue(leagueResult([spring, summer]));
+    await mount();
+    await makeCompetitive(user);
+    await waitFor(() => expect(isOn(rankedSwitch())).toBe(true));
+    expect(leagueSelect()).toBeTruthy();
+    rankedSwitch().focus();
+    await user.keyboard(' ');
+    expect(isOn(rankedSwitch())).toBe(false);
+    expect(screen.queryByLabelText(en.matchCreate.competition.league)).toBeNull();
+    await user.keyboard(' ');
+    expect(isOn(rankedSwitch())).toBe(true);
+    expect(leagueSelect()).toBeTruthy();
+  });
+
   it('keeps an explicit League pick from being replaced when only another League stays eligible', async () => {
     const user = userEvent.setup();
     mocks.leagues.mockResolvedValue(leagueResult([spring, summer]));
@@ -216,7 +235,7 @@ describe('Ranked League selection in the create-match wizard', () => {
     await user.clear(screen.getByLabelText(en.matchCreate.fields.startTime));
     await user.type(screen.getByLabelText(en.matchCreate.fields.startTime), '19:00');
     await waitFor(() => expect(leagueSelect().value).toBe(''));
-    expect(radio(en.matches.competition.ranked).checked).toBe(true);
+    expect(isOn(rankedSwitch())).toBe(true);
     await readyToPublish(user);
     await toReview(user);
     await user.click(screen.getByRole('button', { name: en.matchCreate.publish }));
@@ -229,20 +248,20 @@ describe('Ranked League selection in the create-match wizard', () => {
     mocks.leagues.mockResolvedValue(leagueResult([spring]));
     await mount();
     await makeCompetitive(user);
-    await waitFor(() => expect(radio(en.matches.competition.ranked).checked).toBe(true));
-    await user.click(radio(en.matches.competition.unranked));
-    expect(radio(en.matches.competition.unranked).checked).toBe(true);
+    await waitFor(() => expect(isOn(rankedSwitch())).toBe(true));
+    await user.click(rankedSwitch());
+    expect(isOn(rankedSwitch())).toBe(false);
 
     // Schedule change reloads the candidates; the opt-out stays.
     await user.clear(screen.getByLabelText(en.matchCreate.fields.startTime));
     await user.type(screen.getByLabelText(en.matchCreate.fields.startTime), '19:00');
     await waitFor(() => expect(mocks.leagues).toHaveBeenCalledTimes(3));
-    await waitFor(() => expect(radio(en.matches.competition.unranked).checked).toBe(true));
+    await waitFor(() => expect(isOn(rankedSwitch())).toBe(false));
 
     // Friendly and back to Competitive keeps it as well.
-    await user.selectOptions(screen.getByLabelText(en.matchCreate.fields.type), 'friendly');
-    await user.selectOptions(screen.getByLabelText(en.matchCreate.fields.type), 'competitive');
-    await waitFor(() => expect(radio(en.matches.competition.unranked).checked).toBe(true));
+    await chooseType(user, 'friendly');
+    await chooseType(user, 'competitive');
+    await waitFor(() => expect(isOn(rankedSwitch())).toBe(false));
 
     await readyToPublish(user);
     await toReview(user);
@@ -256,7 +275,7 @@ describe('Ranked League selection in the create-match wizard', () => {
     const slow = deferred<ReturnType<typeof leagueResult>>();
     mocks.leagues.mockReturnValueOnce(slow.promise).mockResolvedValue(leagueResult([summer]));
     await mount();
-    await user.selectOptions(screen.getByLabelText(en.matchCreate.fields.type), 'competitive');
+    await chooseType(user, 'competitive');
     await user.type(screen.getByLabelText(en.matchCreate.fields.date), '2030-05-20');
     await user.type(screen.getByLabelText(en.matchCreate.fields.startTime), '18:30');
     // The first (slow) request is for 18:3; a later keystroke superseded it.
@@ -302,7 +321,7 @@ describe('Ranked League selection in the create-match wizard', () => {
     await mount();
     await makeCompetitive(user);
     await screen.findByText(en.matchCreate.errors.leagueOptionsUnavailable);
-    await user.click(radio(en.matches.competition.unranked));
+    await user.click(rankedSwitch());
     await readyToPublish(user);
     await toReview(user);
     await user.click(screen.getByRole('button', { name: en.matchCreate.publish }));
@@ -336,7 +355,7 @@ describe('Ranked League selection in the create-match wizard', () => {
     mocks.publish.mockRejectedValueOnce(new Error('MATCH_LEAGUE_CLOSED'));
     await mount();
     await makeCompetitive(user);
-    await waitFor(() => expect(radio(en.matches.competition.ranked).checked).toBe(true));
+    await waitFor(() => expect(isOn(rankedSwitch())).toBe(true));
     await readyToPublish(user);
     await toReview(user);
     await user.click(screen.getByRole('button', { name: en.matchCreate.publish }));
@@ -358,7 +377,7 @@ describe('Ranked League selection in the create-match wizard', () => {
     mocks.publish.mockRejectedValueOnce(new Error('MATCH_PUBLISH_FAILED'));
     await mount();
     await makeCompetitive(user);
-    await waitFor(() => expect(radio(en.matches.competition.ranked).checked).toBe(true));
+    await waitFor(() => expect(isOn(rankedSwitch())).toBe(true));
     await readyToPublish(user);
     await toReview(user);
     await user.click(screen.getByRole('button', { name: en.matchCreate.publish }));

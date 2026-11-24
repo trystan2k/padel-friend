@@ -18,7 +18,7 @@ vi.mock('../src/features/matches/matches.functions', () => ({
   getMatchLeagueOptions: mocks.leagues
 }));
 vi.mock('@tanstack/react-router', () => ({ useRouter: () => ({ invalidate: mocks.invalidate }) }));
-import { MatchEditDialog } from '../src/features/matches/MatchEditDialog';
+import { MatchEditPage } from '../src/features/matches/MatchEditPage';
 const event = makeMatchDetail({
   event_id: '11111111-1111-4111-8111-111111111111',
   venue_name: 'Original court',
@@ -33,12 +33,7 @@ const event = makeMatchDetail({
 function element(locale: Locale = 'en', version = 1) {
   return (
     <I18nextProvider i18n={createI18n(locale)}>
-      <MatchEditDialog
-        event={event}
-        version={version}
-        onClose={mocks.close}
-        returnFocus={{ current: null }}
-      />
+      <MatchEditPage event={event} version={version} onClose={mocks.close} />
     </I18nextProvider>
   );
 }
@@ -48,10 +43,10 @@ beforeEach(() => {
   mocks.leagues.mockResolvedValue({ starts_at: event.starts_at, leagues: [] });
 });
 afterEach(cleanup);
-describe('minor edit dialog', () => {
+describe('minor edit page', () => {
   it('conflict retains draft and reload is explicit', async () => {
     const view = render(element());
-    await screen.findByRole('dialog');
+    await screen.findByRole('heading', { name: 'Edit match details' });
     expect(
       screen.queryByText(createI18n('en').t('matches.management.edit.conflictHelper'))
     ).toBeNull();
@@ -92,7 +87,7 @@ describe('minor edit dialog', () => {
     async (locale) => {
       const i18n = createI18n(locale);
       render(element(locale));
-      await screen.findByRole('dialog');
+      await screen.findByRole('heading', { name: i18n.t('matches.management.edit.title') });
       expect(screen.getByRole('button', { name: i18n.t('matches.management.close') })).toBeTruthy();
       expect(
         screen.getByLabelText(i18n.t('matchCreate.fields.notes')).getAttribute('placeholder')
@@ -109,7 +104,14 @@ describe('minor edit dialog', () => {
         'cutoff'
       ])
         expect(screen.getByLabelText(i18n.t(`matchCreate.fields.${field}`))).toBeTruthy();
+      expect(screen.getByText(i18n.t('matches.management.edit.minorNotice'))).toBeTruthy();
+      const type = screen.getByLabelText(i18n.t('matchCreate.fields.type'));
+      await userEvent.selectOptions(type, 'competitive');
       expect(screen.getByText(i18n.t('matches.reconfirmation.description'))).toBeTruthy();
+      expect(
+        screen.getByRole('region', { name: i18n.t('matches.management.edit.reviewMajor') })
+      ).toBeTruthy();
+      await userEvent.selectOptions(type, 'friendly');
       expect(screen.getByLabelText(i18n.t('matchCreate.fields.type'))).toBeTruthy();
       const capacity = screen.getByLabelText(i18n.t('matchCreate.fields.maximumRegistrations'));
       await userEvent.clear(capacity);
@@ -140,10 +142,10 @@ describe('minor edit dialog', () => {
       expect(mocks.invalidate).toHaveBeenCalledOnce();
     }
   );
-  it('close icon dismisses without saving and preserves semantic field order', async () => {
+  it('back arrow dismisses without saving and preserves semantic field order', async () => {
     render(element());
-    const dialog = await screen.findByRole('dialog');
-    const labels = [...dialog.querySelectorAll('fieldset label')].map(
+    await screen.findByRole('heading', { name: 'Edit match details' });
+    const labels = [...document.querySelectorAll('fieldset label')].map(
       (label) => label.firstChild?.textContent
     );
     const i18n = createI18n('en');
@@ -168,9 +170,19 @@ describe('minor edit dialog', () => {
     expect(mocks.close).toHaveBeenCalledOnce();
     expect(mocks.edit).not.toHaveBeenCalled();
   });
+  it('lands on the page heading and keeps Save and Cancel pinned in the actions bar', async () => {
+    render(element());
+    const heading = await screen.findByRole('heading', { name: 'Edit match details' });
+    expect(document.activeElement).toBe(heading);
+    const save = screen.getByRole('button', { name: 'Save changes' });
+    const bar = save.parentElement!;
+    expect(bar.contains(screen.getByRole('button', { name: 'Cancel' }))).toBe(true);
+    expect(save.closest('form')).toBe(heading.closest('main')!.querySelector('form'));
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
   it('network retry preserves request id while a fresh draft gets a new intent', async () => {
     render(element());
-    await screen.findByRole('dialog');
+    await screen.findByRole('heading', { name: 'Edit match details' });
     mocks.edit
       .mockRejectedValueOnce(new Error('network'))
       .mockResolvedValue({ status: 'error', code: 'unavailable' });
@@ -188,7 +200,7 @@ describe('minor edit dialog', () => {
 describe('competition facts in the edit patch', () => {
   it('always carries an explicit league_id (null = Unranked) and offers no League for Friendly', async () => {
     render(element());
-    await screen.findByRole('dialog');
+    await screen.findByRole('heading', { name: 'Edit match details' });
     // Friendly: no competition control, no League impact, no options request.
     expect(screen.queryByRole('radio', { name: 'Ranked' })).toBeNull();
     expect(mocks.leagues).not.toHaveBeenCalled();

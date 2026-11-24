@@ -1,10 +1,15 @@
 /** @vitest-environment jsdom */
 import { cleanup, render, screen } from '@testing-library/react';
 import { I18nextProvider } from 'react-i18next';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { ReactNode } from 'react';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { createI18n } from '../src/i18n/config';
 import { PlayerStatistics } from '../src/features/statistics/PlayerStatistics';
 import { makePlayerStatistics } from './helpers/player-statistics-fixtures';
+
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>
+}));
 
 // Coverage guard for PRD §§33–34: each listed metric is a field of the response contract and a
 // visible label of the player surface, so none can be dropped silently.

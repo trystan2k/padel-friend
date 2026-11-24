@@ -28,17 +28,43 @@ export const styles = stylex.create({
   },
   button: { minHeight: 'calc(var(--space-40) + var(--space-4))', paddingInline: 'var(--space-4)' },
   badgeLink: {
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    minWidth: 'calc(var(--space-40) + var(--space-4))',
+    position: 'relative',
+    boxSizing: 'border-box',
+    width: 'calc(var(--space-40) + var(--space-8))',
+    height: 'calc(var(--space-40) + var(--space-8))',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 'var(--space-2)',
-    paddingInline: 'var(--space-3)',
-    borderRadius: 'var(--radius-12)',
-    backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    textDecoration: 'none'
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    textDecoration: 'none',
+    ':focus-visible': {
+      outline: 'var(--border-width-lg) solid var(--color-green)',
+      outlineOffset: 'var(--space-1)'
+    }
+  },
+  bellIcon: {
+    display: 'block',
+    width: 'calc(var(--space-20) + var(--space-2))',
+    height: 'calc(var(--space-20) + var(--space-2))'
+  },
+  bellCount: {
+    position: 'absolute',
+    insetBlockStart: 'calc(-1 * var(--space-4))',
+    insetInlineEnd: 'calc(-1 * var(--space-4))',
+    boxSizing: 'border-box',
+    display: 'grid',
+    placeItems: 'center',
+    minWidth: 'var(--space-20)',
+    height: 'var(--space-20)',
+    paddingInline: 'var(--space-4)',
+    borderRadius: 'var(--radius-10)',
+    backgroundColor: 'var(--color-red)',
+    color: 'var(--color-on-hero)',
+    fontSize: 'var(--font-size-12)',
+    fontWeight: 'var(--font-weight-bold)',
+    lineHeight: 1
   },
   unread: {
     borderInlineStartWidth: 'var(--border-width-lg)',

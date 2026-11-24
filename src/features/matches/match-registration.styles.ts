@@ -1,14 +1,19 @@
 import * as stylex from '@stylexjs/stylex';
 
-// PAF-5.5 registration surface. Every value comes from a generated design token
-// (semantic first, then primitive palette/space/typography); no literal colour,
-// spacing, radius or type size is hardcoded here.
+const target = 'calc(var(--space-40) + var(--space-4))';
+const control = 'calc(var(--space-40) + var(--space-12))';
+
+// Clubhouse registration, roster and request surfaces (frames fo8Zn, SYMLa, tYXlh, xC04T, CLn9x,
+// Za6r4, Cpd7L, t1ywa): radius-18 cards, 52-high controls, radius-14 rows, sentence-case chips.
+// Every value comes from a generated design token (semantic first, then primitive palette/space/
+// typography); no literal colour, spacing, radius or type size is hardcoded here.
 export const matchRegistrationStyles = stylex.create({
   panel: {
+    boxSizing: 'border-box',
     display: 'grid',
-    gap: 'var(--space-8)',
-    padding: 'var(--space-14)',
-    borderRadius: 'var(--radius-16)',
+    gap: 'var(--space-10)',
+    padding: 'var(--space-16)',
+    borderRadius: 'var(--radius-18)',
     backgroundColor: 'var(--color-surface)',
     overflowWrap: 'anywhere'
   },
@@ -16,71 +21,76 @@ export const matchRegistrationStyles = stylex.create({
   title: {
     margin: 0,
     fontFamily: 'var(--font-family-body)',
-    fontWeight: 'var(--font-weight-semibold)',
-    fontSize: 'var(--font-size-14)',
-    lineHeight: 'calc(var(--font-size-14) + var(--space-6))'
+    fontWeight: 'var(--font-weight-bold)',
+    fontSize: 'var(--font-size-16)',
+    lineHeight: 'var(--font-line-height-snug)'
   },
   body: { display: 'grid', gap: 'var(--space-8)' },
   positive: { backgroundColor: 'var(--color-green-soft)' },
-  fullWidth: { width: '100%' },
   placeBadge: {
     display: 'inline-flex',
     justifySelf: 'start',
-    padding: 'var(--space-4) var(--space-8)',
+    padding: 'var(--space-4) var(--space-10)',
     borderRadius: 'var(--radius-12)',
     backgroundColor: 'var(--color-green-soft)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-10)',
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-13)',
     fontWeight: 'var(--font-weight-semibold)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)',
-    textTransform: 'uppercase'
+    lineHeight: 'var(--font-line-height-snug)'
   },
   positiveBadge: { backgroundColor: 'var(--color-surface)' },
-  organizerBadge: {
-    lineHeight: 'var(--font-size-12)',
-    letterSpacing: 'calc(var(--font-size-10) * 0.08)'
-  },
+  organizerBadge: { backgroundColor: 'var(--color-surface-2)', color: 'var(--color-muted)' },
   leaveButton: {
+    boxSizing: 'border-box',
     width: '100%',
-    textTransform: 'uppercase',
-    borderWidth: 0,
+    minHeight: control,
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-red)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
+    color: 'var(--color-red)',
+    fontSize: 'var(--font-size-16)',
     fontWeight: 'var(--font-weight-bold)'
   },
   overflowButton: {
-    width: 'calc(var(--space-40) + var(--space-4))',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    width: target,
+    minHeight: target,
     padding: 0,
     borderWidth: 0,
-    backgroundColor: 'transparent'
+    backgroundColor: 'transparent',
+    color: 'var(--color-text)'
   },
   playerRow: {
+    boxSizing: 'border-box',
     display: 'flex',
     alignItems: 'center',
-    gap: 'var(--space-8)',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
+    gap: 'var(--space-10)',
+    minHeight: control,
     paddingBlock: 0,
-    paddingInline: 'var(--space-6)',
-    borderRadius: 'var(--radius-8)',
+    paddingInline: 'var(--space-12)',
+    borderRadius: 'var(--radius-14)',
     backgroundColor: 'var(--color-surface-2)'
   },
-  passivePlayerRow: { minHeight: 'calc(var(--space-20) + var(--space-12))' },
+  passivePlayerRow: { minHeight: 'calc(var(--space-40) + var(--space-8))' },
   playerHighlight: { backgroundColor: 'var(--color-green-soft)' },
   playerIdentity: { display: 'grid', gap: 'var(--space-2)', flexGrow: 1, minWidth: 0 },
-  playerName: { fontWeight: 'var(--font-weight-semibold)' },
+  playerName: { fontSize: 'var(--font-size-15)', fontWeight: 'var(--font-weight-bold)' },
   provisionalSlot: { justifySelf: 'start' },
   initials: {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    width: 'calc(var(--space-20) + var(--space-4))',
-    height: 'calc(var(--space-20) + var(--space-4))',
-    borderRadius: 'var(--radius-12)',
+    width: 'calc(var(--space-20) + var(--space-16))',
+    height: 'calc(var(--space-20) + var(--space-16))',
+    borderRadius: 'var(--radius-18)',
     backgroundColor: 'var(--color-surface)',
-    color: 'var(--color-green)',
-    fontSize: 'var(--font-size-10)'
+    color: 'var(--color-green-ink)',
+    fontSize: 'var(--font-size-13)',
+    fontWeight: 'var(--font-weight-bold)'
   },
-  ownInitials: { backgroundColor: 'var(--color-green)', color: 'var(--color-surface)' },
+  ownInitials: { backgroundColor: 'var(--color-green)', color: 'var(--color-on-green)' },
   reconfirmTitle: {
     display: 'flex',
     alignItems: 'center',
@@ -91,91 +101,84 @@ export const matchRegistrationStyles = stylex.create({
   reconfirmPlayer: {
     display: 'grid',
     gap: 'var(--space-4)',
-    padding: 'var(--space-10)',
-    borderRadius: 'var(--radius-10)',
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-14)',
     backgroundColor: 'var(--color-surface)'
   },
   badgeRow: {
     margin: 0,
     display: 'flex',
     flexWrap: 'wrap',
-    gap: 'var(--space-2)',
+    gap: 'var(--space-6)',
     alignItems: 'center'
   },
   reconfirmSummary: { margin: 0, fontWeight: 'var(--font-weight-semibold)' },
-  copy: { margin: 0, color: 'var(--color-muted)' },
+  copy: { margin: 0, color: 'var(--color-muted)', fontSize: 'var(--font-size-14)' },
   meta: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
     color: 'var(--color-muted)'
   },
   note: {
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
     lineHeight: {
       default: 'inherit',
       [stylex.when.ancestor('[data-result-entry="available"]')]: 'var(--space-15)'
     },
     color: 'var(--color-muted)'
   },
-  actions: { display: 'flex', flexWrap: 'wrap', gap: 'var(--space-3)', alignItems: 'center' },
-  primaryButton: {
-    borderWidth: 0,
-    display: 'inline-flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    paddingInline: 'var(--space-5)',
-    borderRadius: 'var(--radius-8)',
-    backgroundColor: 'var(--color-green)',
-    color: 'var(--color-bg)',
-    fontFamily: 'var(--font-family-body)',
-    fontWeight: 'var(--font-weight-semibold)',
-    cursor: 'pointer',
-    textTransform: 'uppercase',
-    ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-text)',
-      outlineOffset: 'var(--space-1)'
-    }
+  actions: { display: 'grid', gap: 'var(--space-8)', justifyItems: 'stretch' },
+  actionsPair: {
+    display: 'grid',
+    gridAutoFlow: 'column',
+    gridAutoColumns: 'minmax(0, 1fr)',
+    gap: 'var(--space-8)'
   },
   secondaryButton: {
-    borderWidth: 0,
+    boxSizing: 'border-box',
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    paddingInline: 'var(--space-4)',
-    borderRadius: 'var(--radius-8)',
-    backgroundColor: 'var(--color-surface-2)',
+    minHeight: control,
+    paddingInline: 'var(--space-12)',
+    borderRadius: 'var(--radius-14)',
+    backgroundColor: 'var(--color-surface)',
     color: 'var(--color-text)',
     fontFamily: 'var(--font-family-body)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-bold)',
     cursor: 'pointer',
     ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-1)'
+      outline: 'var(--focus-width) solid var(--color-focus)',
+      outlineOffset: 'var(--focus-offset)'
     }
-  },
-  disabledButton: {
-    backgroundColor: 'var(--color-surface-2)',
-    color: 'var(--color-muted)',
-    cursor: 'not-allowed'
   },
   link: {
     display: 'inline-flex',
     alignItems: 'center',
-    minHeight: 'calc(var(--space-40) + var(--space-4))',
-    paddingInline: 'var(--space-2)',
-    color: 'var(--color-green)',
-    textDecoration: 'underline',
-    textUnderlineOffset: 'var(--space-1)',
+    justifyContent: 'center',
+    minHeight: control,
+    paddingInline: 'var(--space-12)',
+    borderRadius: 'var(--radius-14)',
+    borderWidth: 'var(--border-width-md)',
+    borderStyle: 'solid',
+    borderColor: 'var(--color-line)',
+    color: 'var(--color-text)',
+    fontSize: 'var(--font-size-16)',
+    fontWeight: 'var(--font-weight-bold)',
+    textDecoration: 'none',
     ':focus-visible': {
-      outline: 'var(--border-width-lg) solid var(--color-green)',
-      outlineOffset: 'var(--space-1)'
+      outline: 'var(--focus-width) solid var(--color-focus)',
+      outlineOffset: 'var(--focus-offset)'
     }
   },
   status: {
     display: 'block',
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
     color: 'var(--color-muted)',
     ':empty': { display: 'none' }
   },
@@ -184,25 +187,23 @@ export const matchRegistrationStyles = stylex.create({
     flexWrap: 'wrap',
     gap: 'var(--space-2)',
     margin: 0,
-    fontSize: 'var(--font-size-12)',
+    fontSize: 'var(--font-size-13)',
     color: 'var(--color-muted)'
   },
   roster: { display: 'grid', gap: 'var(--space-4)' },
   rosterSection: {
     display: 'grid',
-    gap: 'var(--space-4)'
+    gap: 'var(--space-8)'
   },
   rosterTitle: {
     margin: 0,
     fontFamily: 'var(--font-family-body)',
-    fontWeight: 'var(--font-weight-semibold)',
-    fontSize: 'var(--font-size-10)',
+    fontWeight: 'var(--font-weight-bold)',
+    fontSize: 'var(--font-size-14)',
     lineHeight: {
       default: 'inherit',
       [stylex.when.ancestor('[data-result-entry="available"]')]: 'var(--space-14)'
-    },
-    letterSpacing: 'var(--font-letter-spacing-1-5)',
-    textTransform: 'uppercase'
+    }
   },
   queue: { display: 'grid', gap: 'var(--space-8)' },
   queueHeader: {
@@ -210,20 +211,19 @@ export const matchRegistrationStyles = stylex.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 'var(--space-3)'
+    gap: 'var(--space-8)'
   },
   queueSort: {
     fontFamily: 'var(--font-family-body)',
-    fontSize: 'var(--font-size-11)',
-    letterSpacing: 'var(--font-letter-spacing-1-5)',
+    fontSize: 'var(--font-size-13)',
     color: 'var(--color-muted)'
   },
-  requestList: { display: 'grid', gap: 'var(--space-3)', margin: 0, padding: 0, listStyle: 'none' },
+  requestList: { display: 'grid', gap: 'var(--space-8)', margin: 0, padding: 0, listStyle: 'none' },
   requestCard: {
     display: 'grid',
-    gap: 'var(--space-2)',
-    padding: 'var(--space-4)',
-    borderRadius: 'var(--radius-10)',
+    gap: 'var(--space-8)',
+    padding: 'var(--space-12)',
+    borderRadius: 'var(--radius-14)',
     backgroundColor: 'var(--color-surface-2)'
   },
   visuallyHidden: {

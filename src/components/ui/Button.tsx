@@ -3,9 +3,10 @@ import * as stylex from '@stylexjs/stylex';
 import type { StyleXStyles } from '@stylexjs/stylex';
 import type { ComponentProps } from 'react';
 import { styles } from './button.styles';
+import { controlStyles } from './control.styles';
 
 type ButtonProps = ComponentProps<typeof BaseButton> & {
-  variant?: 'primary' | 'secondary';
+  variant?: 'primary' | 'secondary' | 'destructive';
   size?: 'standard' | 'large';
   busy?: boolean;
   xstyle?: StyleXStyles;
@@ -26,7 +27,14 @@ export function Button({
     className: stylexClassName,
     style: stylexStyle,
     ...stylexProps
-  } = stylex.props(styles.base, styles[variant], styles[size], xstyle);
+  } = stylex.props(
+    styles.base,
+    controlStyles.size,
+    controlStyles.focusRing,
+    styles[variant],
+    size === 'large' && styles.large,
+    xstyle
+  );
   const mergedClassName =
     typeof className === 'function'
       ? (state: Parameters<typeof className>[0]) =>

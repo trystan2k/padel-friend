@@ -2,12 +2,14 @@ import * as stylex from '@stylexjs/stylex';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
-import { levelReview as lr } from '../level-reviews/level-review.styles';
-import { resultCorrectionStyles as c } from '../matches/result-correction.styles';
+import { Button } from '../../components/ui/Button';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { SurfaceCard } from '../../components/ui/SurfaceCard';
 import {
   RESULT_REPAIR_FAILURE_CODES,
   RESULT_REPAIR_STATUSES
 } from '../matches/result-dispute-model';
+import { RepairIcon } from './RepairIcon';
 import { ResultRepairStatus } from './ResultRepairStatus';
 import { repairDiagnostics as rd } from './repair-diagnostics.styles';
 import type {
@@ -75,39 +77,59 @@ export function ResultRepairDiagnostics({
     ]?.focus();
   };
   return (
-    <main data-result-route="repair-diagnostics" {...stylex.props(rd.page)}>
-      <header {...stylex.props(lr.header)}>
-        <div {...stylex.props(lr.headingRow)}>
-          <Link
-            to={scope.kind === 'platform' ? '/dashboard' : '/community/$communityId/admin'}
-            params={scope.kind === 'platform' ? undefined : { communityId: scope.communityId }}
-            aria-label={t('matches.corrections.diagnostics.back')}
-            {...stylex.props(lr.backLink)}
-          >
-            ‹
-          </Link>
+    <main
+      data-result-route="repair-diagnostics"
+      data-route-chrome="navigation"
+      data-repair-scope={scope.kind}
+      {...stylex.props(rd.page)}
+    >
+      <header {...stylex.props(rd.header)}>
+        <Link
+          to={scope.kind === 'platform' ? '/dashboard' : '/community/$communityId/admin'}
+          params={scope.kind === 'platform' ? undefined : { communityId: scope.communityId }}
+          aria-label={t('matches.corrections.diagnostics.back')}
+          {...stylex.props(rd.back)}
+        >
+          <RepairIcon name="back" size={20} />
+        </Link>
+        <div {...stylex.props(rd.headerCopy)}>
+          <p {...stylex.props(rd.eyebrow)}>
+            {t(
+              scope.kind === 'platform'
+                ? 'matches.corrections.diagnostics.platformContext'
+                : 'matches.corrections.diagnostics.communityContext'
+            )}
+          </p>
           <h1 {...stylex.props(rd.title)}>{t('matches.corrections.diagnostics.title')}</h1>
         </div>
-        <p {...stylex.props(lr.context)}>
-          {t(
-            scope.kind === 'platform'
-              ? 'matches.corrections.diagnostics.platformSubtitle'
-              : 'matches.corrections.diagnostics.communitySubtitle'
-          )}
-        </p>
+        <Button variant="secondary" xstyle={rd.controlCompact} onClick={() => void onRefresh()}>
+          <RepairIcon name="refresh" size={16} />
+          {t('matches.results.reload')}
+        </Button>
       </header>
-      <button type="button" onClick={() => void onRefresh()} {...stylex.props(c.action)}>
-        {t('matches.results.reload')}
-      </button>
-      {diagnostics.scheduler && <SchedulerHealth scheduler={diagnostics.scheduler} when={when} />}
+      {scope.kind === 'platform' && diagnostics.scheduler && (
+        <SchedulerHealth scheduler={diagnostics.scheduler} when={when} />
+      )}
       <div {...stylex.props(rd.regions)}>
         <div data-repair-region="queue" {...stylex.props(rd.region)}>
-          <section aria-labelledby="repair-jobs-heading" {...stylex.props(c.section)}>
+          <section aria-labelledby="repair-jobs-heading" {...stylex.props(rd.region)}>
             <h2 id="repair-jobs-heading" {...stylex.props(rd.sectionHeading)}>
               {t('matches.corrections.diagnostics.jobs')}
             </h2>
+            <p {...stylex.props(rd.muted)}>
+              {t(
+                scope.kind === 'platform'
+                  ? 'matches.corrections.diagnostics.platformSubtitle'
+                  : 'matches.corrections.diagnostics.communitySubtitle'
+              )}
+            </p>
             {diagnostics.jobs.length === 0 && (
-              <p {...stylex.props(c.muted)}>{t('matches.corrections.diagnostics.empty')}</p>
+              <SurfaceCard data-repair-empty>
+                <p {...stylex.props(rd.attemptTitle)}>
+                  <RepairIcon name="check" size={20} />
+                  {t('matches.corrections.diagnostics.empty')}
+                </p>
+              </SurfaceCard>
             )}
             {diagnostics.jobs.map((job) => (
               <DiagnosticJob
@@ -130,42 +152,40 @@ export function ResultRepairDiagnostics({
               when={when}
             />
           ) : (
-            <section aria-labelledby="repair-detail-heading" {...stylex.props(c.card)}>
+            <section aria-labelledby="repair-detail-heading" {...stylex.props(rd.card)}>
               <h2 id="repair-detail-heading" {...stylex.props(rd.sectionHeading)}>
                 {t('matches.corrections.diagnostics.detail')}
               </h2>
-              <p {...stylex.props(c.muted)}>{t('matches.corrections.diagnostics.detailEmpty')}</p>
+              <p {...stylex.props(rd.muted)}>{t('matches.corrections.diagnostics.detailEmpty')}</p>
             </section>
           )}
-          <section aria-labelledby="repair-summary-heading" {...stylex.props(c.section)}>
+          <section aria-labelledby="repair-summary-heading" {...stylex.props(rd.card)}>
             <h2 id="repair-summary-heading" {...stylex.props(rd.sectionHeading)}>
               {t('matches.corrections.diagnostics.summary')}
             </h2>
-            <div {...stylex.props(c.tableScroll)}>
-              <table {...stylex.props(c.table)}>
-                <caption {...stylex.props(c.muted)}>
-                  {t('matches.corrections.diagnostics.summaryCaption')}
-                </caption>
-                <thead>
-                  <tr>
-                    {counts.map(({ status }) => (
-                      <th key={status} scope="col" {...stylex.props(c.cell)}>
-                        {t(`matches.corrections.repair.status.${status}`)}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    {counts.map(({ status, count }) => (
-                      <td key={status} data-repair-count={status} {...stylex.props(c.cell)}>
-                        {count}
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+            <table {...stylex.props(rd.table)}>
+              <caption {...stylex.props(rd.caption)}>
+                {t('matches.corrections.diagnostics.summaryCaption')}
+              </caption>
+              <thead>
+                <tr>
+                  {counts.map(({ status }) => (
+                    <th key={status} scope="col" {...stylex.props(rd.cell)}>
+                      {t(`matches.corrections.repair.status.${status}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  {counts.map(({ status, count }) => (
+                    <td key={status} data-repair-count={status} {...stylex.props(rd.cell)}>
+                      {count}
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
           </section>
         </div>
       </div>
@@ -189,17 +209,29 @@ function SchedulerHealth({
     connecting: 'matches.corrections.repair.status.running',
     sending: 'matches.corrections.repair.status.running'
   };
+  const healthy =
+    scheduler.provisioned &&
+    scheduler.overdue_jobs === 0 &&
+    scheduler.jobs.length > 0 &&
+    scheduler.jobs.every((job) => job.active && job.last_status === 'succeeded');
   return (
     <section
       aria-labelledby="repair-scheduler-heading"
       data-repair-scheduler={scheduler.provisioned ? 'provisioned' : 'missing'}
-      {...stylex.props(c.card)}
+      {...stylex.props(rd.region)}
     >
-      <h2 id="repair-scheduler-heading" {...stylex.props(rd.sectionHeading)}>
-        {t('matches.corrections.diagnostics.scheduler')}
+      <h2 id="repair-scheduler-heading" {...stylex.props(rd.eyebrow)}>
+        <StatusBadge tone={healthy ? 'positive' : 'neutral'} xstyle={rd.badge}>
+          {t(
+            healthy
+              ? 'matches.corrections.diagnostics.schedulerHealthy'
+              : 'matches.corrections.diagnostics.scheduler'
+          )}
+        </StatusBadge>
       </h2>
       {!scheduler.provisioned && (
-        <p role="alert" {...stylex.props(c.error)}>
+        <p role="alert" {...stylex.props(rd.error, rd.notice)}>
+          <RepairIcon name="warning" size={16} />{' '}
           {t(
             scheduler.pg_cron_installed
               ? 'matches.corrections.diagnostics.schedulerMissing'
@@ -207,24 +239,24 @@ function SchedulerHealth({
           )}
         </p>
       )}
-      <p {...stylex.props(c.muted)}>
+      <p {...stylex.props(rd.muted)}>
         {t('matches.corrections.diagnostics.overdue', { count: scheduler.overdue_jobs })}
       </p>
       {scheduler.jobs.length > 0 && (
-        <div {...stylex.props(c.tableScroll)}>
-          <table {...stylex.props(c.table)}>
-            <caption {...stylex.props(c.muted)}>
+        <SurfaceCard>
+          <table {...stylex.props(rd.table)}>
+            <caption {...stylex.props(rd.caption)}>
               {t('matches.corrections.diagnostics.schedulerCaption')}
             </caption>
             <thead>
               <tr>
-                <th scope="col" {...stylex.props(c.cell)}>
+                <th scope="col" {...stylex.props(rd.cell)}>
                   {t('matches.corrections.diagnostics.schedulerJob')}
                 </th>
-                <th scope="col" {...stylex.props(c.cell)}>
+                <th scope="col" {...stylex.props(rd.cell)}>
                   {t('matches.corrections.diagnostics.schedulerActive')}
                 </th>
-                <th scope="col" {...stylex.props(c.cell)}>
+                <th scope="col" {...stylex.props(rd.cell)}>
                   {t('matches.corrections.diagnostics.schedulerLastRun')}
                 </th>
               </tr>
@@ -232,17 +264,17 @@ function SchedulerHealth({
             <tbody>
               {scheduler.jobs.map((job) => (
                 <tr key={job.name}>
-                  <th scope="row" {...stylex.props(c.cell)}>
+                  <th scope="row" {...stylex.props(rd.cell)}>
                     {job.name}
                   </th>
-                  <td {...stylex.props(c.cell)}>
+                  <td {...stylex.props(rd.cell)}>
                     {t(
                       job.active
                         ? 'matches.corrections.diagnostics.yes'
                         : 'matches.corrections.diagnostics.no'
                     )}
                   </td>
-                  <td {...stylex.props(c.cell)}>
+                  <td {...stylex.props(rd.cell)}>
                     {when(job.last_run_at)}
                     {job.last_status
                       ? ` · ${t(statuses[job.last_status] ?? 'matches.corrections.diagnostics.schedulerStatusUnknown')}`
@@ -252,7 +284,7 @@ function SchedulerHealth({
               ))}
             </tbody>
           </table>
-        </div>
+        </SurfaceCard>
       )}
     </section>
   );
@@ -274,28 +306,35 @@ function DiagnosticJob({
   const { t } = useTranslation();
   return (
     <article
-      aria-label={t('matches.corrections.diagnostics.jobLabel', { id: job.job_id.slice(0, 8) })}
+      aria-label={t('matches.corrections.diagnostics.jobLabel', { id: job.job_id })}
       data-repair-job={job.job_id}
       data-selected={selected}
-      {...stylex.props(c.card, rd.job, selected && rd.jobSelected)}
+      {...stylex.props(rd.card, rd.jobCard, selected && rd.jobSelected)}
     >
-      <h3 {...stylex.props(c.sectionTitle)}>
-        <button
-          type="button"
-          data-repair-select
-          aria-current={selected ? 'true' : undefined}
-          onClick={onSelect}
-          onKeyDown={onKeyDown}
-          {...stylex.props(rd.jobSelect)}
-        >
-          {t('matches.corrections.diagnostics.jobHeading', {
-            id: job.job_id.slice(0, 8),
-            kind: t(`matches.corrections.decisions.${job.kind}`),
-            group: job.group_number
-          })}
-        </button>
-      </h3>
-      <ResultRepairStatus job={job} canRetry embedded onChanged={onRefresh} />
+      <ResultRepairStatus
+        job={job}
+        canRetry
+        embedded
+        onChanged={onRefresh}
+        heading={
+          <h3 {...stylex.props(rd.jobHeading)}>
+            <button
+              type="button"
+              data-repair-select
+              aria-current={selected ? 'true' : undefined}
+              onClick={onSelect}
+              onKeyDown={onKeyDown}
+              {...stylex.props(rd.jobSelect)}
+            >
+              {t('matches.corrections.diagnostics.jobHeading', {
+                id: job.job_id,
+                kind: t(`matches.corrections.decisions.${job.kind}`),
+                group: job.group_number
+              })}
+            </button>
+          </h3>
+        }
+      />
     </article>
   );
 }
@@ -340,29 +379,22 @@ function JobDetail({
     <section
       aria-labelledby="repair-detail-heading"
       data-repair-detail={job.job_id}
-      {...stylex.props(c.card)}
+      {...stylex.props(rd.card)}
     >
       <h2 id="repair-detail-heading" {...stylex.props(rd.sectionHeading)}>
         {t('matches.corrections.diagnostics.detail')}
       </h2>
-      <p {...stylex.props(c.muted)}>
-        {t('matches.corrections.diagnostics.jobHeading', {
-          id: job.job_id.slice(0, 8),
-          kind: t(`matches.corrections.decisions.${job.kind}`),
-          group: job.group_number
-        })}
-      </p>
       {platform && (
         <div {...stylex.props(rd.job)}>
           <h3 {...stylex.props(rd.subHeading)}>{t('matches.corrections.diagnostics.timeline')}</h3>
           {attempts === 'error' && (
-            <p role="alert" {...stylex.props(c.error)}>
+            <p role="alert" {...stylex.props(rd.error)}>
               {t('matches.corrections.diagnostics.attemptsUnavailable')}
             </p>
           )}
           {Array.isArray(attempts) &&
             (attempts.length === 0 ? (
-              <p {...stylex.props(c.muted)}>{t('matches.corrections.diagnostics.noAttempts')}</p>
+              <p {...stylex.props(rd.muted)}>{t('matches.corrections.diagnostics.noAttempts')}</p>
             ) : (
               <ol
                 aria-label={t('matches.corrections.diagnostics.attemptsCaption')}
@@ -370,15 +402,18 @@ function JobDetail({
               >
                 {attempts.map((attempt) => (
                   <li key={attempt.attempt_id} {...stylex.props(rd.attempt)}>
-                    <p
-                      {...stylex.props(
-                        c.chip,
-                        attempt.status === 'failed' && c.bannerDisputed,
-                        attempt.status !== 'succeeded' &&
-                          attempt.status !== 'failed' &&
-                          c.bannerPending
-                      )}
-                    >
+                    <p {...stylex.props(rd.attemptTitle)}>
+                      <span
+                        aria-hidden="true"
+                        {...stylex.props(
+                          rd.attemptDot,
+                          attempt.status === 'failed' && rd.attemptFailed,
+                          attempt.status === 'succeeded' && rd.attemptSucceeded
+                        )}
+                      />
+                      {t('matches.corrections.diagnostics.columns.attempt')}{' '}
+                      {attempt.attempt_number}
+                      {' · '}
                       {t(
                         attempt.status === 'expired'
                           ? 'matches.corrections.repair.staleLease'
@@ -387,13 +422,8 @@ function JobDetail({
                             : 'matches.corrections.diagnostics.schedulerStatusUnknown'
                       )}
                     </p>
-                    <p {...stylex.props(c.muted)}>
-                      {t('matches.corrections.diagnostics.columns.attempt')}{' '}
-                      {attempt.attempt_number}
-                      {' · '}
-                      {when(attempt.started_at)}
-                    </p>
-                    <p {...stylex.props(c.muted)}>
+                    <p {...stylex.props(rd.muted)}>{when(attempt.started_at)}</p>
+                    <p {...stylex.props(rd.muted)}>
                       {t('matches.corrections.diagnostics.columns.base')}:{' '}
                       {attempt.base_revision ?? '—'}
                       {' · '}
@@ -401,7 +431,7 @@ function JobDetail({
                       {attempt.result_revision ?? '—'}
                     </p>
                     {attempt.failure_code && (
-                      <p {...stylex.props(c.error)}>
+                      <p {...stylex.props(rd.error)}>
                         {t('matches.corrections.diagnostics.columns.failure')}:{' '}
                         {t(
                           `matches.corrections.repair.failureCodes.${RESULT_REPAIR_FAILURE_CODES.some((code) => code === attempt.failure_code) ? attempt.failure_code : 'INTERNAL'}`
@@ -415,16 +445,24 @@ function JobDetail({
         </div>
       )}
       <dl {...stylex.props(rd.detailMeta)}>
-        <dt {...stylex.props(rd.detailLabel)}>
-          {t('matches.corrections.diagnostics.officialRevision')}
-        </dt>
-        <dd {...stylex.props(rd.detailValue)}>
-          {committed === null ? '—' : `${before ?? '—'} → ${committed}`}
-        </dd>
-        <dt {...stylex.props(rd.detailLabel)}>
-          {t('matches.corrections.diagnostics.correlation')}
-        </dt>
-        <dd {...stylex.props(rd.detailValue)}>{job.job_id}</dd>
+        <div {...stylex.props(rd.detailRow)}>
+          <dt {...stylex.props(rd.detailLabel)}>
+            {t('matches.corrections.diagnostics.officialRevision')}
+          </dt>
+          <dd {...stylex.props(rd.detailValue)}>
+            {committed === null ? '—' : `${before ?? '—'} → ${committed}`}
+          </dd>
+        </div>
+        <div {...stylex.props(rd.detailRow, rd.rowDivider)}>
+          <dt {...stylex.props(rd.detailLabel)}>
+            {t('matches.corrections.diagnostics.correlation')}
+          </dt>
+          <dd {...stylex.props(rd.detailValue)}>
+            <code data-repair-identifier {...stylex.props(rd.identifier)}>
+              {job.job_id}
+            </code>
+          </dd>
+        </div>
       </dl>
     </section>
   );

@@ -1,4 +1,4 @@
-import { Button } from '@base-ui/react/button';
+import { Button } from '../../components/ui/Button';
 import * as stylex from '@stylexjs/stylex';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,14 +23,19 @@ export function PwaInstallPanel() {
         : 'pwa.install.browserInstructions';
   return (
     <section aria-labelledby="pwa-install-title" {...stylex.props(styles.install)}>
-      <h2
-        id="pwa-install-title"
-        ref={titleRef}
-        tabIndex={-1}
-        {...stylex.props(styles.installTitle, state.installed && styles.installedTitle)}
-      >
-        {t('pwa.install.title')}
-      </h2>
+      <div {...stylex.props(styles.installHeader)}>
+        <span aria-hidden="true" {...stylex.props(styles.installGlyph)}>
+          {state.installed ? '✓' : '↓'}
+        </span>
+        <h2
+          id="pwa-install-title"
+          ref={titleRef}
+          tabIndex={-1}
+          {...stylex.props(styles.installTitle, state.installed && styles.installedTitle)}
+        >
+          {t('pwa.install.title')}
+        </h2>
+      </div>
       {!state.canPrompt && <p {...stylex.props(styles.copy)}>{t(message)}</p>}
       {failed && (
         <p role="alert" {...stylex.props(styles.copy, styles.alert)}>
@@ -40,7 +45,8 @@ export function PwaInstallPanel() {
       {state.canPrompt && (
         <Button
           type="button"
-          {...stylex.props(styles.action, prompting && styles.disabledLook)}
+          size="large"
+          xstyle={styles.action}
           disabled={prompting}
           focusableWhenDisabled
           onClick={(event) => {

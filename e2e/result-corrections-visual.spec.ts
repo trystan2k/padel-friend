@@ -1,4 +1,5 @@
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 import { waitForHydratedPage } from './auth-helpers';
 import { assertDesignSystemStyles, type StyleCheck } from './league-standings-visual';
 import { sql } from './matches-management-fixtures';
@@ -10,11 +11,10 @@ import {
   repairNow
 } from './result-amendments-fixtures';
 import manifest from './references/paf-14/manifest.json' with { type: 'json' };
+import repairManifest from './references/paf-202-repair-diagnostics/manifest.json' with { type: 'json' };
 import {
-  type ContractEntry,
   assertColumnStructure,
   assertContained,
-  assertFrameContract,
   assertInventory,
   childSummary,
   runCompositionProbes,
@@ -95,38 +95,6 @@ async function prepare(
   return { page, root };
 }
 
-/** Design-token expressions that production uses where it differs from the frame (declared adaptations). */
-const tk = {
-  size12: 'var(--font-size-12)',
-  size13: 'var(--font-size-13)',
-  size16: 'var(--font-size-16)',
-  size20: 'var(--font-size-20)',
-  regular: 'var(--font-weight-regular)',
-  semibold: 'var(--font-weight-semibold)',
-  bold: 'var(--font-weight-bold)',
-  heading: 'var(--font-family-heading)',
-  tracking: 'var(--font-letter-spacing-1-5)',
-  radius12: 'var(--radius-12)',
-  radius14: 'var(--radius-14)',
-  space8: 'var(--space-8)',
-  space9: 'var(--space-9)',
-  space11: 'var(--space-11)',
-  space4: 'var(--space-4)',
-  space18: 'var(--space-18)',
-  radius16: 'var(--radius-16)',
-  space6: 'var(--space-6)',
-  transparent: 'transparent',
-  space14: 'var(--space-14)',
-  zero: '0px',
-  muted: 'var(--color-muted)',
-  text: 'var(--color-text)',
-  red: 'var(--color-red)',
-  amber: 'var(--color-amber)',
-  bg: 'var(--color-bg)',
-  surface: 'var(--color-surface)',
-  surface2: 'var(--color-surface-2)'
-};
-
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const startsWith = (value: string) => new RegExp(`^${escapeRegExp(value)}`);
 const group1 = fill(copies.en.matches.results.group, { number: 1 });
@@ -176,13 +144,9 @@ function requestProbes(page: Page, root: Locator) {
     'A6.banner': async () => {
       const [banner] = await childSummary(root);
       expect(banner?.tag).toBe('P');
-      expect(banner?.text).toBe(c.officialLabel.toUpperCase());
+      expect(banner?.text).toBe(c.officialLabel);
       const sampled = await captureGeometry({ banner: root.locator('p').first(), card: root });
-      assertNear(
-        sampled.banner.box.width,
-        sampled.card.inner.width,
-        'banner spans the card content width'
-      );
+      expect(sampled.banner.box.width).toBeLessThan(sampled.card.inner.width);
     },
     'A7.cardChrome': async () => {
       const chrome = await root.evaluate((element) => {
@@ -194,7 +158,7 @@ function requestProbes(page: Page, root: Locator) {
         };
       });
       expect(chrome.border).toBe('1px');
-      expect(chrome.padding).toBe('18px');
+      expect(chrome.padding).toBe('16px');
       expect(chrome.childBorders.every((width) => width === '0px')).toBe(true);
     },
     'A8.noShellNav': async () => {
@@ -225,7 +189,7 @@ function reviewProbes(page: Page, root: Locator) {
     'B1.banner': async () => {
       const [banner] = await childSummary(root);
       expect(banner?.tag).toBe('P');
-      expect(banner?.text).toBe(c.lifecycle.proposal_pending.toUpperCase());
+      expect(banner?.text).toBe(c.lifecycle.proposal_pending);
     },
     'B2.childOrder': async () => {
       const children = await childSummary(root);
@@ -243,7 +207,7 @@ function reviewProbes(page: Page, root: Locator) {
       ]);
       const sampled = await captureGeometry({ approve, reject, card: root });
       const inner = sampled.card.inner;
-      assertNear(sampled.approve.box.y, sampled.reject.box.y, 'approve and reject share a row');
+      assertStacked({ approve: sampled.approve.box, reject: sampled.reject.box });
       assertNear(sampled.approve.box.x, inner.x, 'approve at the content edge');
       assertNear(sampled.reject.box.right, inner.right, 'reject at the opposite content edge');
     },
@@ -264,7 +228,7 @@ function reviewProbes(page: Page, root: Locator) {
         lines.map((line) => line.tag),
         'proposed card line order'
       ).toEqual(['H4', 'P', 'P', 'P', 'P', 'P', 'P', 'P']);
-      expect(lines[0]?.text).toBe(fill(c.proposedVersion, { version: 2 }).toUpperCase());
+      expect(lines[0]?.text).toBe(fill(c.proposedVersion, { version: 2 }));
       expect(lines[1]?.text).toMatch(/^\d+–\d+/);
       expect(lines[4]?.text).toMatch(startsWith(c.proposedBy.split('{{')[0]!));
       expect(lines[5]?.text).toMatch(startsWith(c.autoConfirm.split('{{')[0]!));
@@ -313,7 +277,7 @@ function resolveProbes(page: Page) {
     },
     'C3.disputeSummary': async () => {
       const children = await childSummary(disputed);
-      expect(children[0]?.text).toBe(c.lifecycle.disputed.toUpperCase());
+      expect(children[0]?.text).toBe(c.lifecycle.disputed);
       expect(children[1]).toEqual({ tag: 'H3', text: fill(c.cardTitle, { number: 1 }) });
       expect(children.map((child) => child.tag)).toContain('DL');
       await expect(disputed.locator('dd').first()).toHaveText('Score recorded backwards');
@@ -353,591 +317,21 @@ function resolveProbes(page: Page) {
       expect(form[2]?.text).toBe(c.dialog.hint);
       expect(form[3]?.text).toBe(c.dialog.text.required);
       expect(form[4]?.text).toBe(c.resolve.notice);
-      expect(form[5]?.text).toBe(`${c.dialog.cancel} ${c.resolve.submit}`);
+      expect(form[5]?.text).toBe(`${c.resolve.submit} ${c.dialog.cancel}`);
     },
     'C6.dialogEdges': async () => {
       const edges = await box(dialog);
-      assertNear(edges.x, frameViewport.width - edges.right, 'dialog is centered', 1);
-      expect.soft(edges.x, 'dialog keeps a margin of at least 12px').toBeGreaterThanOrEqual(12);
-      expect
-        .soft(edges.x, 'dialog margin stays within the frame gutter')
-        .toBeLessThanOrEqual(manifest.geometryReference.gutter);
+      assertNear(edges.x, 0, 'sheet starts at the viewport edge');
+      assertNear(edges.right, frameViewport.width, 'sheet ends at the viewport edge');
+      const bottom = await dialog.evaluate((element) => element.getBoundingClientRect().bottom);
+      assertNear(bottom, frameViewport.height, 'sheet is bottom anchored');
     }
   };
   return { dialog: dialogProbes };
 }
 
-/** Composition probes of the diagnostics frames' adapted elements (order, adjacency, identity). */
-function diagnosticsProbes(page: Page, root: Locator, theme: 'light' | 'dark') {
-  const queue = root.locator('[data-repair-region=queue]');
-  const detail = root.locator('[data-repair-region=detail]');
-  const publication = {
-    failed: 'failed',
-    succeeded: 'published',
-    running: 'pending',
-    queued: 'pending'
-  } as const;
-  const factLabels = {
-    failed: [d.repair.attempts, d.repair.requestedAt, d.repair.failure, d.repair.nextAttempt],
-    succeeded: [d.repair.attempts, d.repair.requestedAt, d.repair.revision],
-    running: [d.repair.attempts, d.repair.requestedAt],
-    queued: [d.repair.attempts, d.repair.requestedAt]
-  } as const;
-  const pageProbes: Record<string, () => Promise<void>> = {
-    'E1.pageOrder': async () => {
-      const children = await childSummary(root);
-      expect(
-        children.map((child) => child.tag),
-        'diagnostics page child order'
-      ).toEqual(['HEADER', 'BUTTON', 'SECTION', 'DIV']);
-      expect(children[1]?.text).toBe(copies.en.matches.results.reload);
-      await expect(page.getByRole('heading', { level: 1 })).toHaveText(d.diagnostics.title);
-      const regions = await childSummary(
-        root.locator('[data-repair-region]').first().locator('xpath=..')
-      );
-      expect(regions.length, 'queue and detail regions').toBe(2);
-      expect(
-        (await childSummary(detail)).map((child) => child.tag),
-        'detail precedes the counts'
-      ).toEqual(['SECTION', 'SECTION']);
-      await expect(queue.locator('[data-repair-job]')).not.toHaveCount(0);
-    },
-    'E2.header': async () => {
-      const header = root.locator('header').first();
-      const children = await childSummary(header);
-      expect(children.map((child) => child.tag)).toEqual(['DIV', 'P']);
-      expect(children[1]?.text).toBe(d.diagnostics.platformSubtitle);
-      const row = await childSummary(header.locator('div').first());
-      expect(row.map((child) => child.tag)).toEqual(['A', 'H1']);
-      const back = header.getByRole('link', { name: d.diagnostics.back, exact: true });
-      await expect(back).toHaveAttribute('href', '/dashboard');
-    },
-    'E3.scheduler': async () => {
-      const scheduler = root.locator('[data-repair-scheduler]');
-      const children = await childSummary(scheduler);
-      expect(children[0]).toEqual({ tag: 'H2', text: d.diagnostics.scheduler });
-      const tags = children.map((child) => child.tag);
-      expect(tags.indexOf('P'), 'overdue line precedes the job table').toBeLessThan(
-        tags.indexOf('DIV')
-      );
-      expect(
-        children.find((child) => child.tag === 'P' && /overdue/i.test(child.text))
-      ).toBeTruthy();
-      await expect(scheduler.locator('caption')).toHaveText(d.diagnostics.schedulerCaption);
-    },
-    'E4.cardOrder': async () => {
-      for (const key of jobKeys) {
-        const article = jobArticle(page, key);
-        expect(
-          (await childSummary(article)).map((child) => child.tag),
-          `${key} card order`
-        ).toEqual(['H3', 'SECTION']);
-        expect(await article.locator('h3 button[data-repair-select]').count()).toBe(1);
-        const status = await childSummary(jobStatus(page, key));
-        expect(
-          status.map((child) => child.tag),
-          `${key} status order`
-        ).toEqual(
-          key === 'failed'
-            ? ['OUTPUT', 'P', 'DL', 'OUTPUT', 'DIV']
-            : ['OUTPUT', 'P', 'DL', 'OUTPUT']
-        );
-        expect(status[0]?.text).toBe(d.repair.status[key]);
-        expect(status[1]?.text).toBe(d.repair.publication[publication[key]]);
-        expect(await jobStatus(page, key).locator('dt').allInnerTexts()).toEqual(
-          [...factLabels[key]].map((label) => label.toUpperCase())
-        );
-      }
-    },
-    'E5.retryPlacement': async () => {
-      const status = jobStatus(page, 'failed');
-      const actions = await childSummary(status);
-      expect(actions.at(-1)).toEqual({ tag: 'DIV', text: d.repair.retry });
-      await expect(status.getByRole('button')).toHaveCount(1);
-      await expect(
-        status.getByRole('button', { name: d.repair.retry, exact: true })
-      ).toHaveAttribute('data-emphasis', 'primary');
-    },
-    'E6.pendingChips': async () => {
-      for (const key of ['queued', 'running'] as const) {
-        const chip = jobStatus(page, key).locator('output').first();
-        expect((await childSummary(jobStatus(page, key)))[0]?.text).toBe(d.repair.status[key]);
-        await assertDesignSystemStyles(
-          page,
-          theme,
-          [
-            {
-              name: `${key} chip`,
-              locator: chip,
-              palette: { 'background-color': 'surface-2', color: 'amber' }
-            }
-          ],
-          'pending chip'
-        );
-      }
-    },
-    'E7.detailComposition': async () => {
-      const selected = root.locator('[data-repair-detail]');
-      const sections = await childSummary(selected);
-      expect(
-        sections.map((child) => child.tag),
-        'job detail order'
-      ).toEqual(['H2', 'P', 'DIV', 'DL']);
-      expect(sections[0]?.text).toBe(d.diagnostics.detail);
-      const timeline = await childSummary(selected.locator(':scope > div'));
-      expect(timeline.map((child) => child.tag)).toEqual(['H3', 'OL']);
-      expect(timeline[0]?.text).toBe(d.diagnostics.timeline);
-      const items = await childSummary(selected.locator('ol li').first());
-      expect(items.map((item) => item.tag)).toEqual(['P', 'P', 'P', 'P']);
-      expect(items[0]?.text).toBe(d.repair.status.failed);
-      expect(items[1]?.text).toMatch(startsWith(d.diagnostics.columns.attempt));
-      expect(items[2]?.text).toMatch(startsWith(d.diagnostics.columns.base));
-      expect(items[3]?.text).toMatch(startsWith(d.diagnostics.columns.failure));
-      expect(await selected.locator('dt').allInnerTexts()).toEqual([
-        d.diagnostics.officialRevision,
-        d.diagnostics.correlation
-      ]);
-      await expect(selected.locator('dd').nth(1)).toHaveText(repairJobs.failed);
-    }
-  };
-  return { page: pageProbes };
-}
-
-/** Production element for each Pencil element of the request frame (typography, color, geometry). */
-function requestContract(root: Locator): ContractEntry[] {
-  const c = copies.en.matches.corrections;
-  const banner = root.locator('p').first();
-  const action = root.getByRole('button', { name: c.request.open, exact: true });
-  return [
-    {
-      ref: 'CONFIRMED',
-      locator: banner,
-      widthInset: 38,
-      heightRange: [29, 33],
-      allow: { padding: tk.space9, radius: tk.radius12 },
-      adaptation: 'A6'
-    },
-    {
-      ref: 'CONFIRMED label',
-      locator: banner,
-      allow: { letterSpacing: tk.tracking },
-      adaptation: 'A6'
-    },
-    { ref: 'Score', locator: root.locator('p').nth(1) },
-    {
-      ref: 'Navigation / transition',
-      locator: root.getByText(c.requestNote, { exact: true }),
-      allow: { color: tk.muted, weight: tk.regular },
-      adaptation: 'A4'
-    },
-    {
-      ref: 'Submit amendment',
-      locator: action,
-      widthInset: 38,
-      heightRange: [44, 44.5],
-      allow: { padding: tk.space9, gap: tk.zero },
-      adaptation: 'A5'
-    },
-    { ref: 'Button label', locator: action, allow: { caps: 'sentence' }, adaptation: 'A5' }
-  ];
-}
-
-function reviewContract(root: Locator): ContractEntry[] {
-  const c = copies.en.matches.corrections;
-  const review = copies.en.matches.results.review;
-  const proposed = root.getByRole('region', { name: c.proposed });
-  const approve = root.getByRole('button', { name: review.approve, exact: true });
-  const reject = root.getByRole('button', { name: review.reject, exact: true });
-  const banner = root.locator('p').first();
-  const actionBlock = { allow: { padding: tk.space9, gap: tk.zero }, adaptation: 'B3' };
-  return [
-    {
-      ref: 'PROPOSAL PENDING',
-      locator: banner,
-      widthInset: 38,
-      heightRange: [29, 33],
-      allow: { fill: tk.surface2, padding: tk.space9, radius: tk.radius12 },
-      adaptation: 'B1'
-    },
-    {
-      ref: 'PROPOSAL PENDING label',
-      locator: banner,
-      allow: { color: tk.amber, letterSpacing: tk.tracking },
-      adaptation: 'B1'
-    },
-    { ref: 'Corrected proposal', locator: proposed, widthInset: 38 },
-    { ref: 'New score', locator: proposed.locator('p').first() },
-    { ref: 'Submitter', locator: proposed.locator('p').nth(3) },
-    {
-      ref: 'Deadline',
-      locator: proposed.locator('p').nth(4),
-      allow: { color: tk.muted },
-      adaptation: 'B5'
-    },
-    {
-      ref: 'Approve corrected result',
-      locator: approve,
-      widthInset: 38,
-      columns: 2,
-      heightRange: [44, 44.5],
-      ...actionBlock
-    },
-    { ref: 'Button label', locator: approve, allow: { caps: 'sentence' }, adaptation: 'B3' },
-    {
-      ref: 'Reject corrected result',
-      locator: reject,
-      widthInset: 38,
-      columns: 2,
-      heightRange: [44, 44.5],
-      ...actionBlock
-    },
-    {
-      ref: 'Button label#2',
-      locator: reject,
-      allow: { caps: 'sentence', color: tk.red },
-      adaptation: 'B4'
-    }
-  ];
-}
-
-function resolveContract(page: Page): ContractEntry[] {
-  const c = copies.en.matches.corrections;
-  const dialog = page.getByRole('dialog', { name: c.resolve.title, exact: true });
-  const disputed = page.locator('[data-amendment-lifecycle=disputed]');
-  const radios = dialog.getByRole('radio');
-  const option = (index: number) => radios.nth(index).locator('xpath=ancestor::label');
-  const rowWidth = { widthTolerance: 40 };
-  return [
-    {
-      ref: 'Screen title',
-      locator: dialog.getByRole('heading', { name: c.resolve.title, exact: true }),
-      allow: { family: tk.heading },
-      adaptation: 'C2'
-    },
-    {
-      ref: 'Screen subtitle',
-      locator: dialog.locator('header p').first(),
-      allow: { size: tk.size13 },
-      adaptation: 'C2'
-    },
-    {
-      ref: 'Dispute status',
-      locator: disputed.locator('p').first(),
-      skipWidth: true,
-      heightRange: [25, 40],
-      allow: { fill: tk.surface2, gap: tk.zero, radius: tk.radius12 },
-      adaptation: 'C3'
-    },
-    {
-      ref: 'Dispute status text',
-      locator: disputed.locator('p').first(),
-      allow: { color: tk.red, letterSpacing: tk.tracking, weight: tk.bold },
-      adaptation: 'C3'
-    },
-    {
-      ref: 'Dispute title',
-      locator: disputed.locator('h3'),
-      allow: { family: tk.heading },
-      adaptation: 'C3'
-    },
-    {
-      ref: 'Dispute reason',
-      locator: disputed.locator('dd').first(),
-      allow: { color: tk.text, weight: tk.semibold },
-      adaptation: 'C3'
-    },
-    {
-      ref: 'Decision title',
-      locator: dialog.locator('legend'),
-      allow: { size: tk.size13 },
-      adaptation: 'C4'
-    },
-    { ref: 'Request corrected score option', locator: option(0), ...rowWidth },
-    {
-      ref: 'Button label',
-      locator: option(0).locator('span').first(),
-      allow: { color: tk.text },
-      adaptation: 'C4'
-    },
-    { ref: 'Approve submitted proposal option', locator: option(1), ...rowWidth },
-    { ref: 'Button label#2', locator: option(1).locator('span').first() },
-    { ref: 'Void result option', locator: option(2), ...rowWidth },
-    { ref: 'Button label#3', locator: option(2).locator('span').first() }
-  ];
-}
-
-function diagnosticsContract(page: Page, desktop: boolean, light: boolean): ContractEntry[] {
-  const article = jobArticle(page, 'failed');
-  const status = jobStatus(page, 'failed');
-  const retry = status.getByRole('button', { name: d.repair.retry, exact: true });
-  const chip = status.locator('output').first();
-  const width = desktop ? { widthTolerance: 14 } : {};
-  return [
-    {
-      ref: 'Title',
-      locator: page.getByRole('heading', { level: 1 }),
-      allow: { family: tk.heading },
-      adaptation: 'E2'
-    },
-    {
-      ref: 'Queue heading',
-      locator: page.getByRole('heading', { name: d.diagnostics.jobs, exact: true }),
-      allow: { family: tk.heading },
-      adaptation: 'E1'
-    },
-    {
-      ref: 'Scheduler warning example',
-      locator: page.locator('[data-repair-scheduler]'),
-      allow: { fill: tk.surface, gap: tk.space14, padding: tk.space18, radius: tk.radius16 },
-      adaptation: 'E3'
-    },
-    { ref: 'Failed repair', locator: article, ...width },
-    {
-      ref: 'Match context',
-      locator: article.locator('h3'),
-      allow: { family: tk.heading },
-      adaptation: 'E4'
-    },
-    {
-      ref: 'Failed chip',
-      locator: chip,
-      widthTolerance: 6,
-      heightRange: [27, 30],
-      allow: { gap: tk.zero },
-      adaptation: 'E4'
-    },
-    { ref: 'Failed', locator: chip },
-    {
-      ref: 'Attempt count',
-      locator: status.locator('dd').first(),
-      allow: { color: tk.text },
-      adaptation: 'E4'
-    },
-    {
-      ref: 'Failure code',
-      locator: status.locator('dd').nth(2),
-      allow: { weight: tk.semibold, caps: 'sentence' },
-      adaptation: 'E4'
-    },
-    {
-      ref: 'Retry button',
-      locator: retry,
-      skipWidth: true,
-      heightRange: [44, 44.5],
-      allow: { padding: tk.space9, radius: tk.radius12 },
-      adaptation: 'E5'
-    },
-    {
-      ref: 'Retry label',
-      locator: retry,
-      allow: { size: tk.size13, ...(light ? { color: tk.bg } : {}) },
-      adaptation: 'E5'
-    },
-    {
-      ref: 'Timestamps',
-      locator: status.locator('dd').nth(1),
-      allow: { size: tk.size13, color: tk.text, weight: tk.semibold },
-      adaptation: 'E4'
-    },
-    ...otherJobs(page, desktop)
-  ];
-}
-
-/** Selected-job detail: heading, summary line, attempt timeline, official revision, correlation id. */
-function detailContract(page: Page, desktop: boolean): ContractEntry[] {
-  const detail = page.locator('[data-repair-detail]');
-  const attempt = detail.locator('ol li').first();
-  const nested = { widthTolerance: desktop ? 14 : 2.5 };
-  return [
-    {
-      ref: 'Job detail',
-      locator: detail,
-      ...(desktop ? { widthTolerance: 14 } : {})
-    },
-    {
-      ref: 'Detail heading',
-      locator: detail.locator('h2'),
-      allow: { family: tk.heading },
-      adaptation: 'E7'
-    },
-    {
-      ref: 'Selected job',
-      locator: detail.locator(':scope > p').first(),
-      allow: { size: tk.size16 },
-      adaptation: 'E7'
-    },
-    {
-      ref: 'Timeline heading',
-      locator: detail.locator('h3'),
-      allow: { family: tk.heading },
-      adaptation: 'E7'
-    },
-    { ref: 'Attempt 2 · Failed', locator: attempt, ...nested },
-    {
-      ref: 'Attempt 2 · Failed chip',
-      locator: attempt.locator('p').first(),
-      skipWidth: true,
-      allow: { fill: tk.surface2, gap: tk.zero },
-      adaptation: 'E7'
-    },
-    { ref: 'Attempt 2 · Failed#2', locator: attempt.locator('p').first() },
-    {
-      ref: 'Attempt code and time',
-      locator: attempt.locator('p').nth(1),
-      allow: { color: tk.muted },
-      adaptation: 'E7'
-    },
-    { ref: 'Official revision label', locator: detail.locator('dt').first() },
-    { ref: 'Official revision value', locator: detail.locator('dd').first() },
-    { ref: 'Correlation ID label', locator: detail.locator('dt').nth(1) },
-    { ref: 'Correlation ID value', locator: detail.locator('dd').nth(1) }
-  ];
-}
-
-/** Running, queued and succeeded cards of the frame: surface, chip, context line and facts. */
-function otherJobs(page: Page, desktop: boolean): ContractEntry[] {
-  const frames = {
-    running: [
-      'Running repair',
-      'Running chip',
-      'Running',
-      'Match context#2',
-      'Attempt count#2',
-      'Timestamps#2'
-    ],
-    queued: [
-      'Queued repair',
-      'Queued chip',
-      'Queued',
-      'Match context#3',
-      'Attempt count#3',
-      'Timestamps#3'
-    ],
-    succeeded: [
-      'Succeeded repair',
-      'Succeeded chip',
-      'Succeeded',
-      'Match context#4',
-      'Attempt count#4',
-      'Timestamps#4'
-    ]
-  } as const;
-  const entries: ContractEntry[] = [];
-  for (const key of ['running', 'queued', 'succeeded'] as const) {
-    const [cardRef, chipRef, labelRef, contextRef, attemptsRef, stampsRef] = frames[key];
-    const article = jobArticle(page, key);
-    const status = jobStatus(page, key);
-    const chip = status.locator('output').first();
-    const pending = key !== 'succeeded';
-    const fact = { allow: { weight: tk.semibold, color: tk.text }, adaptation: 'E4' };
-    entries.push(
-      { ref: cardRef, locator: article, ...(desktop ? { widthTolerance: 14 } : {}) },
-      {
-        ref: chipRef,
-        locator: chip,
-        ...(key === 'succeeded' ? { skipWidth: true } : { widthTolerance: 6 }),
-        heightRange: [27, 30],
-        allow: { gap: tk.zero },
-        adaptation: 'E4'
-      },
-      {
-        ref: labelRef,
-        locator: chip,
-        ...(pending ? { allow: { color: tk.amber }, adaptation: 'E6' } : {})
-      },
-      {
-        ref: contextRef,
-        locator: article.locator('h3'),
-        allow: { family: tk.heading, size: tk.size16 },
-        adaptation: 'E4'
-      },
-      { ref: attemptsRef, locator: status.locator('dd').first(), ...fact },
-      {
-        ref: stampsRef,
-        locator: status.locator('dd').nth(1),
-        allow: { size: tk.size13, weight: tk.semibold, color: tk.text },
-        adaptation: 'E4'
-      }
-    );
-  }
-  entries.push({
-    ref: 'Result reference',
-    locator: jobStatus(page, 'succeeded').locator('dd').last(),
-    allow: { color: tk.text },
-    adaptation: 'E4'
-  });
-  return entries;
-}
-
-function confirmContract(page: Page, light: boolean): ContractEntry[] {
-  const dialog = page.getByRole('dialog', { name: d.repair.confirmTitle, exact: true });
-  const cancel = dialog.getByRole('button', { name: d.dialog.cancel, exact: true });
-  const confirm = dialog.getByRole('button', { name: d.repair.confirmAction, exact: true });
-  const action = {
-    allow: { padding: tk.space9, radius: tk.radius12, gap: tk.space4 },
-    adaptation: 'E8'
-  };
-  return [
-    {
-      ref: 'Retry confirmation',
-      locator: dialog,
-      skipWidth: true,
-      allow: { gap: tk.space11, padding: tk.space14 },
-      adaptation: 'E8'
-    },
-    {
-      ref: 'Dialog title',
-      locator: dialog.getByRole('heading', { name: d.repair.confirmTitle, exact: true }),
-      allow: { family: tk.heading },
-      adaptation: 'E8'
-    },
-    { ref: 'Dialog description', locator: dialog.locator('header p').first() },
-    { ref: 'Cancel button', locator: cancel, skipWidth: true, heightRange: [44, 44.5], ...action },
-    { ref: 'Cancel', locator: cancel },
-    {
-      ref: 'Confirm button',
-      locator: confirm,
-      skipWidth: true,
-      heightRange: [44, 44.5],
-      ...action
-    },
-    {
-      ref: 'Confirm',
-      locator: confirm,
-      ...(light ? { allow: { color: tk.bg }, adaptation: 'E8' } : {})
-    }
-  ];
-}
-
-/** Status chip and action styles shared by the correction card and the repair diagnostics cards. */
-const bannerStyle = (locator: Locator, name: string, background: string, color: string) => ({
-  name,
-  locator,
-  tokens: {
-    'border-top-left-radius': 'var(--radius-12)',
-    'padding-top': 'var(--space-8)',
-    'padding-left': 'var(--space-9)',
-    'font-size': 'var(--font-size-12)',
-    'font-weight': 'var(--font-weight-bold)'
-  },
-  palette: { 'background-color': background, color },
-  literals: { 'text-transform': 'uppercase' }
-});
-const actionStyle = (locator: Locator, name: string, background: string, color: string) => ({
-  name,
-  locator,
-  tokens: {
-    'border-top-left-radius': 'var(--radius-12)',
-    'min-height': 'calc(var(--space-40) + var(--space-4))',
-    'font-size': 'var(--font-size-13)',
-    'font-weight': 'var(--font-weight-bold)'
-  },
-  palette: { 'background-color': background, color }
-});
-
 async function structure(kind: Kind, page: Page, root: Locator) {
   const c = copies.en.matches.corrections;
-  const g = manifest.geometryReference;
   const main = page.locator('main');
   const theme = kind === 'resolve' ? 'dark' : 'light';
   // Heading semantics: the section heading precedes the card heading in document order.
@@ -976,19 +370,19 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     locator: root,
     tokens: {
       'background-color': 'var(--color-surface)',
-      'border-top-left-radius': 'var(--radius-16)',
-      'padding-top': 'var(--space-18)',
-      'row-gap': 'var(--space-14)'
+      'border-top-left-radius': 'var(--radius-18)',
+      'padding-top': 'var(--space-16)',
+      'row-gap': 'var(--space-10)'
     },
     palette: surface
   };
   if (kind !== 'resolve') {
     // Page-level geometry shared with the frames: 18px gutters and the 10px block rhythm.
     const card = at('root').box;
-    assertNear(card.x, g.gutter, `${kind} card left gutter equals the frame gutter`);
-    assertNear(frameViewport.width - card.right, g.gutter, `${kind} card right gutter`);
+    assertNear(card.x, 18, `${kind} card left gutter equals the frame gutter`);
+    assertNear(frameViewport.width - card.right, 18, `${kind} card right gutter`);
     const heading = at('heading').box;
-    assertNear(card.y - heading.bottom, g.blockGap, `${kind} section title to card gap`);
+    assertNear(card.y - heading.bottom, 10, `${kind} section title to card gap`);
   }
   if (kind === 'request') {
     const inner = at('root').inner;
@@ -999,30 +393,34 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     assertStacked({ banner: bannerBox, note: noteBox, action: actionBox });
     // Frame order is banner, result, authority note, action (note below the action in the frame).
     assertStacked({ banner: bannerBox, result: resultBox, note: noteBox, action: actionBox });
-    for (const [name, item] of Object.entries({ banner: bannerBox, action: actionBox })) {
-      assertNear(item.x, inner.x, `request ${name} aligned to card content edge`);
-      assertNear(item.width, inner.width, `request ${name} spans the card content width`);
-    }
-    assertNear(actionBox.height, g.actionHeight, 'request action height equals the frame action');
-    expect
-      .soft(bannerBox.height, 'request chip is not shorter than the frame chip')
-      .toBeGreaterThanOrEqual(g.chipHeight);
-    expect
-      .soft(
-        bannerBox.height,
-        'request chip height delta stays within the declared type-token delta'
-      )
-      .toBeLessThanOrEqual(g.chipHeight + g.chipHeightMaxDelta);
-    assertNear(resultBox.y - bannerBox.bottom, 14, 'request banner to result gap = card gap token');
-    assertNear(noteBox.y - resultBox.bottom, 14, 'request result to note gap = card gap token');
-    assertNear(actionBox.y - noteBox.bottom, 14, 'request note to action gap = card gap token');
+    assertNear(bannerBox.x, inner.x, 'request pill aligned to the content edge');
+    expect.soft(bannerBox.width).toBeLessThan(inner.width);
+    assertNear(actionBox.x, inner.x, 'request action aligned to the content edge');
+    assertNear(actionBox.width, inner.width, 'request action spans the content width');
+    assertNear(actionBox.height, 52, 'adujr request action height');
+    assertNear(resultBox.y - bannerBox.bottom, 10, 'request pill to result gap');
+    assertNear(noteBox.y - resultBox.bottom, 10, 'request result to note gap');
+    assertNear(actionBox.y - noteBox.bottom, 10, 'request note to action gap');
     await assertDesignSystemStyles(
       page,
       theme,
       [
         cardStyle,
-        bannerStyle(banner, 'official-result chip', 'green-soft', 'green'),
-        actionStyle(action, 'request action', 'green', 'bg')
+        {
+          name: 'adujr confirmed pill',
+          locator: banner,
+          tokens: {
+            'border-top-left-radius': 'var(--radius-20)',
+            'font-size': 'var(--font-size-13)'
+          },
+          palette: { 'background-color': 'green-soft', color: 'green-ink' },
+          literals: { 'text-transform': 'none' }
+        },
+        {
+          name: 'adujr request action',
+          locator: action,
+          palette: { 'background-color': 'green', color: 'on-green' }
+        }
       ],
       kind
     );
@@ -1033,25 +431,32 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     const approveBox = at('approve').box;
     const rejectBox = at('reject').box;
     assertStacked({ banner: bannerBox, proposed: proposedBox, approve: approveBox });
-    for (const [name, item] of Object.entries({ banner: bannerBox, proposed: proposedBox })) {
-      assertNear(item.x, inner.x, `review ${name} aligned to card content edge`);
-      assertNear(item.width, inner.width, `review ${name} spans the card content width`);
+    assertNear(bannerBox.x, inner.x, 'review pill aligned to the content edge');
+    expect.soft(bannerBox.width).toBeLessThan(inner.width);
+    assertNear(proposedBox.x, inner.x, 'proposed result starts at the content edge');
+    assertNear(proposedBox.width, inner.width, 'proposed result spans the content width');
+    assertStacked({ approve: approveBox, reject: rejectBox });
+    assertNear(approveBox.height, 52, 's5TRC approve action height');
+    assertNear(rejectBox.height, 48, 's5TRC reject action height');
+    for (const [name, buttonBox] of Object.entries({ approve: approveBox, reject: rejectBox })) {
+      assertNear(buttonBox.x, inner.x, `${name} starts at the content edge`);
+      assertNear(buttonBox.width, inner.width, `${name} spans the content width`);
     }
-    // Approve and reject are two equal 44px actions in one row separated by the action gap token.
-    assertNear(approveBox.height, g.actionHeight, 'approve height equals the frame action');
-    assertNear(rejectBox.height, g.actionHeight, 'reject height equals the frame action');
-    assertNear(approveBox.y, rejectBox.y, 'approve and reject share a row');
-    assertNear(approveBox.width, rejectBox.width, 'approve and reject have equal width', 1);
-    assertNear(rejectBox.x - approveBox.right, 8, 'approve to reject gap = action gap token');
-    assertNear(approveBox.x, inner.x, 'approve starts at the card content edge');
-    assertNear(rejectBox.right, inner.right, 'reject ends at the card content edge');
-    assertNear(approveBox.y - proposedBox.bottom, 14, 'proposed to actions gap = card gap token');
     await assertDesignSystemStyles(
       page,
       theme,
       [
         cardStyle,
-        bannerStyle(banner, 'pending-review chip', 'surface-2', 'amber'),
+        {
+          name: 's5TRC pending pill',
+          locator: banner,
+          tokens: {
+            'border-top-left-radius': 'var(--radius-20)',
+            'font-size': 'var(--font-size-13)'
+          },
+          palette: { 'background-color': 'amber-soft', color: 'amber' },
+          literals: { 'text-transform': 'none' }
+        },
         {
           name: 'proposed result surface',
           locator: proposed,
@@ -1062,8 +467,11 @@ async function structure(kind: Kind, page: Page, root: Locator) {
           },
           palette: { 'background-color': 'green-soft' }
         },
-        actionStyle(approve, 'approve action', 'green', 'bg'),
-        actionStyle(reject, 'reject action', 'surface-2', 'red')
+        {
+          name: 's5TRC approve action',
+          locator: approve,
+          palette: { 'background-color': 'green', color: 'on-green' }
+        }
       ],
       kind
     );
@@ -1084,15 +492,13 @@ async function structure(kind: Kind, page: Page, root: Locator) {
       'dialog is horizontally centered',
       1
     );
-    expect
-      .soft(Math.abs(dialogBox.x - g.gutter), 'dialog edge distance to the frame gutter')
-      .toBeLessThanOrEqual(g.dialogGutterMaxDelta);
+    assertNear(dialogBox.x, 0, 'sheet spans the mobile viewport');
     const rows = [0, 1, 2].map((index) => dialogSample[`row${index}`]!.box);
     for (const [index, row] of rows.entries()) {
       assertContained(dialogBox, row, `resolution option ${index + 1}`);
       expect
         .soft(row.height, `option ${index + 1} meets the frame option height`)
-        .toBeGreaterThanOrEqual(g.optionHeight);
+        .toBeGreaterThanOrEqual(52);
       assertNear(row.x, rows[0]!.x, `option ${index + 1} aligned with option 1`);
       assertNear(row.width, rows[0]!.width, `option ${index + 1} width equals option 1`);
       if (index) {
@@ -1128,20 +534,21 @@ async function structure(kind: Kind, page: Page, root: Locator) {
     assertStacked({ field: resolveSamples.field.box, submit: resolveSamples.submit.box });
     const cancelBox = resolveSamples.cancel.box;
     const submitBox = resolveSamples.submit.box;
-    assertNear(cancelBox.y, submitBox.y, 'dialog actions share a row');
-    assertNear(cancelBox.height, g.actionHeight, 'cancel action height equals the frame action');
-    assertNear(submitBox.height, g.actionHeight, 'record action height equals the frame action');
-    assertNear(cancelBox.width, submitBox.width, 'dialog actions have equal width', 1);
-    assertNear(
-      cancelBox.x,
-      resolveSamples.dialog.inner.x,
-      'cancel starts at the dialog content edge'
-    );
-    assertNear(
-      submitBox.right,
-      resolveSamples.dialog.inner.right,
-      'record ends at the dialog content edge'
-    );
+    assertStacked({ submit: submitBox, cancel: cancelBox });
+    assertNear(cancelBox.height, 52, 'sheet cancel action height');
+    assertNear(submitBox.height, 52, 'sheet submit action height');
+    for (const [name, buttonBox] of Object.entries({ submit: submitBox, cancel: cancelBox })) {
+      assertNear(
+        buttonBox.x,
+        resolveSamples.dialog.inner.x,
+        `${name} starts at the sheet content edge`
+      );
+      assertNear(
+        buttonBox.width,
+        resolveSamples.dialog.inner.width,
+        `${name} spans the sheet content`
+      );
+    }
     await assertDesignSystemStyles(
       page,
       theme,
@@ -1197,25 +604,17 @@ for (const kind of ['request', 'review', 'resolve'] as const) {
     const theme = kind === 'resolve' ? 'dark' : 'light';
     const { page, root } = await prepare(kind, 'en', 390, theme);
     await structure(kind, page, root);
-    await assertFrameContract(
-      frames[kind],
-      kind === 'resolve' ? 'dialog' : 'page',
-      kind === 'request'
-        ? requestContract(root)
-        : kind === 'review'
-          ? reviewContract(root)
-          : resolveContract(page)
-    );
     const scope = kind === 'resolve' ? page.getByRole('dialog') : root;
     await assertTargets(scope, kind);
     await assertContrast(scope, kind);
     await assertReducedMotion(page, scope, kind);
     await assertNoOverflow(page, kind);
-    if (kind === 'request')
-      await runCompositionProbes('adujr', 'page', requestProbes(page, root).page);
-    else if (kind === 'review')
-      await runCompositionProbes('s5TRC', 'page', reviewProbes(page, root).page);
-    else await runCompositionProbes('CWJkF', 'dialog', resolveProbes(page).dialog);
+    const probes =
+      kind === 'request'
+        ? requestProbes(page, root).page
+        : kind === 'review'
+          ? reviewProbes(page, root).page
+          : resolveProbes(page).dialog;
     await measureFrame(
       frames[kind],
       page,
@@ -1223,6 +622,7 @@ for (const kind of ['request', 'review', 'resolve'] as const) {
       kind === 'resolve' ? 'dialog' : 'page',
       regionsFor(kind, page, root)
     );
+    await runCompositionProbes(frames[kind], kind === 'resolve' ? 'dialog' : 'page', probes);
     // The request reason dialog opens last: it leaves the page state.
     if (kind === 'request')
       await runCompositionProbes('adujr', 'dialog', requestProbes(page, root).dialog);
@@ -1255,10 +655,10 @@ const failureFunction = 'public.fixture_result_repair_visual_failure';
 const diagnosticsPath = '/platform-admin/result-repairs';
 const d = copies.en.matches.corrections;
 const jobTone: Record<JobKey, [string, string]> = {
-  failed: ['surface-2', 'red'],
-  succeeded: ['green-soft', 'green'],
-  running: ['surface-2', 'amber'],
-  queued: ['surface-2', 'amber']
+  failed: ['red-soft', 'red'],
+  succeeded: ['green-soft', 'green-ink'],
+  running: ['surface-2', 'text'],
+  queued: ['amber-soft', 'amber']
 };
 
 /** Diagnostics page with every seeded job card rendered; `beforeGoto` installs routes before the first request. */
@@ -1339,7 +739,7 @@ async function diagnosticsStructure(
     await expect(retry, `${key} retry entry`).toHaveCount(key === 'failed' ? 1 : 0);
     jobLocators[`${key}:article`] = article;
     jobLocators[`${key}:status`] = status;
-    jobLocators[`${key}:chip`] = status.locator('output').first();
+    jobLocators[`${key}:chip`] = status.locator('output > span').first();
     jobLocators[`${key}:facts`] = status.locator('dl');
     if (key === 'failed') jobLocators[`${key}:retry`] = retry;
   }
@@ -1368,8 +768,8 @@ async function diagnosticsStructure(
       .soft(rootBox.width, 'desktop column keeps the 1280px max width')
       .toBeLessThanOrEqual(1280.5);
   } else {
-    assertNear(inner.x, g.gutter, 'mobile content left gutter equals the frame gutter');
-    assertNear(viewportWidth - inner.right, g.gutter, 'mobile content right gutter');
+    assertNear(inner.x, 20, 'mobile content left gutter equals the frame gutter');
+    assertNear(viewportWidth - inner.right, 20, 'mobile content right gutter');
     expect
       .soft(rootBox.width, 'mobile column keeps the 480px max width')
       .toBeLessThanOrEqual(480.5);
@@ -1387,7 +787,7 @@ async function diagnosticsStructure(
   assertStacked({ title: at('title').box, scheduler: schedulerBox, regions: queueBox });
   assertNear(
     queueBox.y - schedulerBox.bottom,
-    10,
+    desktop ? 16 : 14,
     'regions follow the scheduler by the page gap token'
   );
   expect(
@@ -1405,8 +805,8 @@ async function diagnosticsStructure(
     expect(columns, 'two grid columns at 960px and above').toBe(2);
     assertNear(queueBox.x, inner.x, 'queue region starts at the content edge');
     assertNear(detailBox.right, inner.right, 'detail region ends at the content edge');
-    assertNear(detailBox.x - queueBox.right, g.desktopRegionGap, 'regions are one frame gap apart');
-    assertNear(queueBox.width / detailBox.width, 1.5, 'regions share the width 3fr/2fr', 0.02);
+    assertNear(detailBox.x - queueBox.right, 24, 'regions are one frame gap apart');
+    assertNear(queueBox.width / detailBox.width, 716 / 460, 'frame column ratio', 0.01);
     assertNear(queueBox.y, detailBox.y, 'regions start on the same row', 1);
     assertNear(
       queueBox.width,
@@ -1429,7 +829,7 @@ async function diagnosticsStructure(
     expect
       .soft(detailBox.y, 'detail stacks below the queue')
       .toBeGreaterThanOrEqual(queueBox.bottom + 9);
-    assertNear(detailBox.y - queueBox.bottom, 10, 'stacked regions are one page gap apart');
+    assertNear(detailBox.y - queueBox.bottom, 14, 'stacked regions are one page gap apart');
   }
   // Queue region: heading and jobs. Detail region: selected-job detail above the status counts.
   const jobsHeading = at('jobsHeading').box;
@@ -1457,24 +857,18 @@ async function diagnosticsStructure(
     if (index)
       assertNear(
         item.y - articles[index - 1]!.bottom,
-        10,
+        12,
         `job ${index + 1} follows job ${index} by the section gap token`
       );
   await expect(root.locator('[data-repair-job]')).toHaveCount(articles.length);
   const checks: StyleCheck[] = [
     {
-      name: 'scheduler card',
-      locator: scheduler,
-      tokens: { 'border-top-left-radius': 'var(--radius-16)', 'padding-top': 'var(--space-18)' },
-      palette: { 'background-color': 'surface' }
-    },
-    {
       name: 'job detail card',
       locator: detailSection,
       tokens: {
-        'border-top-left-radius': 'var(--radius-16)',
-        'padding-top': 'var(--space-18)',
-        'row-gap': 'var(--space-14)'
+        'border-top-left-radius': 'var(--radius-20)',
+        'padding-top': 'var(--space-16)',
+        'row-gap': 'var(--space-12)'
       },
       palette: { 'background-color': 'surface' }
     }
@@ -1495,9 +889,12 @@ async function diagnosticsStructure(
       articleInner.width,
       `${key} status section spans the card content width`
     );
-    const chip = status.locator('output').first();
+    const chip = status.locator('output > span').first();
     const chipBox = at(`${key}:chip`).box;
-    assertNear(chipBox.x, articleInner.x, `${key} status chip at the card content edge`);
+    assertContained(articleInner, chipBox, `${key} status chip within the card`);
+    await expect(status.locator('[data-repair-select]')).toHaveAccessibleName(
+      new RegExp(repairJobs[key])
+    );
     expect
       .soft(chipBox.width, `${key} status chip hugs its label`)
       .toBeLessThan(articleInner.width);
@@ -1505,27 +902,27 @@ async function diagnosticsStructure(
     const retry = status.getByRole('button', { name: d.repair.retry, exact: true });
     if (key === 'failed') {
       const retryBox = at(`${key}:retry`).box;
-      assertNear(retryBox.height, g.actionHeight, 'retry action height equals the frame action');
+      assertNear(retryBox.height, 52, 'retry action meets the Clubhouse control target');
       assertNear(retryBox.x, articleInner.x, 'retry action at the card content edge');
       assertNear(
         retryBox.right,
         articleInner.right,
         'retry action reaches the opposite content edge'
       );
-      await expect(retry, 'retry is the primary emphasis action').toHaveAttribute(
-        'data-emphasis',
-        'primary'
-      );
-      checks.push(actionStyle(retry, 'retry action', 'green', 'bg'));
+      checks.push({
+        name: 'retry entry action',
+        locator: retry,
+        palette: { 'background-color': 'surface', color: 'text' }
+      });
     }
     checks.push(
       {
         name: `${key} job card`,
         locator: article,
         tokens: {
-          'border-top-left-radius': 'var(--radius-16)',
-          'padding-top': 'var(--space-18)',
-          'row-gap': 'var(--space-14)'
+          'border-top-left-radius': 'var(--radius-18)',
+          'padding-top': 'var(--space-16)',
+          'row-gap': 'var(--space-8)'
         },
         palette: { 'background-color': 'surface' }
       },
@@ -1534,9 +931,9 @@ async function diagnosticsStructure(
         locator: chip,
         tokens: {
           'border-top-left-radius': 'var(--radius-12)',
-          'padding-top': 'var(--space-6)',
+          'padding-top': 'var(--space-4)',
           'padding-left': 'var(--space-10)',
-          'font-size': 'var(--font-size-12)',
+          'font-size': 'var(--font-size-13)',
           'font-weight': 'var(--font-weight-semibold)'
         },
         palette: { 'background-color': jobTone[key][0], color: jobTone[key][1] },
@@ -1547,9 +944,8 @@ async function diagnosticsStructure(
   await assertDesignSystemStyles(page, theme, checks, 'diagnostics');
 }
 
-/** Retry confirmation: equal 44px actions in one row at the dialog content edges, like the frame card. */
+/** Retry confirmation: equal 52px actions in one row at reference viewports. */
 async function confirmationStructure(page: Page, theme: 'light' | 'dark', viewportWidth: number) {
-  const g = manifest.geometryReference;
   const dialog = page.getByRole('dialog', { name: d.repair.confirmTitle, exact: true });
   await expect(dialog).toBeVisible();
   await waitForRenderSettled(page);
@@ -1573,8 +969,8 @@ async function confirmationStructure(page: Page, theme: 'light' | 'dark', viewpo
     1
   );
   assertNear(cancelBox.y, confirmBox.y, 'retry dialog actions share a row');
-  assertNear(cancelBox.height, g.actionHeight, 'cancel action height equals the frame action');
-  assertNear(confirmBox.height, g.actionHeight, 'confirm action height equals the frame action');
+  assertNear(cancelBox.height, 52, 'cancel action meets the Clubhouse control target');
+  assertNear(confirmBox.height, 52, 'confirm action meets the Clubhouse control target');
   assertNear(cancelBox.width, confirmBox.width, 'retry dialog actions have equal width', 1);
   assertNear(cancelBox.x, dialogInner.x, 'cancel starts at the dialog content edge');
   assertNear(confirmBox.right, dialogInner.right, 'confirm ends at the dialog content edge');
@@ -1582,7 +978,13 @@ async function confirmationStructure(page: Page, theme: 'light' | 'dark', viewpo
   await assertDesignSystemStyles(
     page,
     theme,
-    [{ name: 'retry dialog surface', locator: dialog, palette: { 'background-color': 'surface' } }],
+    [
+      {
+        name: 'retry dialog surface',
+        locator: dialog,
+        palette: { 'background-color': 'surface-2' }
+      }
+    ],
     'diagnostics dialog'
   );
   return { dialog, cancel };
@@ -1599,6 +1001,10 @@ async function selectionProbes(page: Page, desktop: boolean) {
   );
   await select('succeeded').click();
   await expect(detail).toHaveAttribute('data-repair-detail', repairJobs.succeeded);
+  const identifier = detail.locator('[data-repair-identifier]');
+  await expect(identifier).toHaveText(repairJobs.succeeded);
+  await expect(identifier).toHaveCSS('overflow-wrap', 'anywhere');
+  await expect(identifier).toHaveCSS('user-select', 'text');
   await expect(page.locator('[data-repair-select][aria-current=true]')).toHaveCount(1);
   await expect(select('succeeded')).toHaveAttribute('aria-current', 'true');
   await expect(select('failed')).not.toHaveAttribute('aria-current', 'true');
@@ -1616,7 +1022,7 @@ async function selectionProbes(page: Page, desktop: boolean) {
       {
         name: 'unselected job card border',
         locator: jobArticle(page, 'failed'),
-        palette: { 'border-top-color': 'line' }
+        palette: { 'border-top-color': 'hairline' }
       }
     ],
     desktop ? 'selection desktop' : 'selection mobile'
@@ -1646,7 +1052,74 @@ async function selectionProbes(page: Page, desktop: boolean) {
   await expect(detail.locator('ol')).toHaveAttribute('aria-label', d.diagnostics.attemptsCaption);
 }
 
+async function compareRepairSurfaces(
+  page: Page,
+  info: TestInfo,
+  frame: keyof typeof repairManifest.approvedReferences,
+  cards: Record<'queueCard' | 'detailCard', Locator>
+) {
+  const approved = repairManifest.approvedReferences[frame];
+  const reference = readFileSync(
+    new URL(`./references/paf-202-repair-diagnostics/${approved.file}`, import.meta.url)
+  );
+  const full = await page.screenshot({ fullPage: true, animations: 'disabled', caret: 'hide' });
+  await info.attach(`${frame}-actual`, { body: full, contentType: 'image/png' });
+  const measurements: Record<string, number> = {};
+  for (const name of ['queueCard', 'detailCard'] as const) {
+    const actual = await cards[name].screenshot({ animations: 'disabled', scale: 'css' });
+    const difference = await page.evaluate(
+      async ({ approvedImage, actualImage, crop }) => {
+        const [x, y, referenceWidth] = crop;
+        const width = 96;
+        const height = 8;
+        const top = 6;
+        async function sample(source: string, left: number, offset: number, cropWidth?: number) {
+          const image = new Image();
+          image.src = `data:image/png;base64,${source}`;
+          await image.decode();
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext('2d');
+          if (!context) throw new Error('Canvas context unavailable');
+          const start = left + Math.floor(((cropWidth ?? image.width) - width) / 2);
+          context.drawImage(image, start, offset, width, height, 0, 0, width, height);
+          return context.getImageData(0, 0, width, height).data;
+        }
+        const [expected, produced] = await Promise.all([
+          sample(approvedImage, x!, y! + top, referenceWidth),
+          sample(actualImage, 0, top)
+        ]);
+        let changed = 0;
+        for (let i = 0; i < produced.length; i += 4) {
+          if (
+            [0, 1, 2].some(
+              (channel) => Math.abs(expected[i + channel]! - produced[i + channel]!) > 8
+            )
+          ) {
+            changed++;
+          }
+        }
+        return changed / (width * height);
+      },
+      {
+        crop: approved.crops[name],
+        approvedImage: reference.toString('base64'),
+        actualImage: actual.toString('base64')
+      }
+    );
+    measurements[name] = difference;
+    expect.soft(difference, `${frame} ${name} raster budget`).toBeLessThanOrEqual(approved.budget);
+  }
+  await info.attach(`${frame}-measurements`, {
+    body: JSON.stringify(measurements),
+    contentType: 'application/json'
+  });
+  console.info(`U22 ${frame}: ${JSON.stringify(measurements)}`);
+}
+
 const diagnosticsFrames = [
+  { frame: 'bomAY', theme: 'light', width: 1280, height: 900 },
   { frame: 'cuVwp', theme: 'light', width: 390, height: 844 },
   { frame: 'Jjrtb', theme: 'dark', width: 390, height: 844 },
   { frame: 'SluH3', theme: 'dark', width: 1280, height: 900 }
@@ -1770,39 +1243,14 @@ test.describe('repair diagnostics', () => {
         );
         expect.soft(summary.x, 'status counts sit beside the queue').toBeGreaterThan(jobs.right);
       } else {
-        assertNear(inner.x, manifest.geometryReference.gutter, 'empty queue content gutter');
+        assertNear(inner.x, 20, 'empty queue content gutter');
         assertStacked({ title: sampled.title.box, jobs, empty: sampled.empty.box, summary });
       }
-      await assertFrameContract(frame, 'empty', [
-        {
-          ref: 'Empty state',
-          locator: empty,
-          allow: { size: tk.size16, color: tk.muted },
-          adaptation: 'E9'
-        }
-      ]);
-      await runCompositionProbes(frame, 'empty', {
-        'E9.emptyPrompt': async () => {
-          const queue = await childSummary(root.locator('[data-repair-region=queue] section'));
-          expect(queue.map((child) => child.text)).toEqual([
-            d.diagnostics.jobs,
-            d.diagnostics.empty
-          ]);
-          const region = await childSummary(root.locator('[data-repair-region=detail]'));
-          expect(
-            region.map((child) => child.tag),
-            'empty detail region order'
-          ).toEqual(['SECTION', 'SECTION']);
-          const prompt = await childSummary(
-            root.locator('[data-repair-region=detail] section').first()
-          );
-          expect(prompt.map((child) => child.text)).toEqual([
-            d.diagnostics.detail,
-            d.diagnostics.detailEmpty
-          ]);
-          await expect(root.locator('[data-repair-detail]')).toHaveCount(0);
-        }
-      });
+      const queue = root.locator('[data-repair-region=queue]');
+      await expect(queue.locator('[data-repair-empty]')).toHaveText(d.diagnostics.empty);
+      await expect(queue).toContainText(d.diagnostics.communitySubtitle);
+      await expect(root).toContainText(d.diagnostics.detailEmpty);
+      await expect(root.locator('[data-repair-detail], [data-repair-scheduler]')).toHaveCount(0);
       await assertNoOverflow(page, 'empty diagnostics');
       await assertTargets(root, 'empty diagnostics');
     });
@@ -1921,97 +1369,29 @@ test.describe('repair diagnostics', () => {
       const { page, root } = await openDiagnostics('en', width, theme, height);
       const desktop = width >= 960;
       await diagnosticsStructure(page, root, theme, width);
-      await assertFrameContract(
-        frame,
-        'page',
-        diagnosticsContract(page, width >= 960, theme === 'light')
-      );
+      await expect(root).toHaveAttribute('data-repair-scope', 'platform');
       await assertTargets(root, `diagnostics ${frame}`);
       await assertContrast(root, `diagnostics ${frame}`);
       await assertReducedMotion(page, root, `diagnostics ${frame}`);
       await assertNoOverflow(page, `diagnostics ${frame}`);
-      const capture = { viewport: { width, height }, fullPage: true };
-      await measureFrame(
-        frame,
-        page,
-        testInfo,
-        'page',
-        {
-          failedCard: jobArticle(page, 'failed'),
-          runningCard: jobArticle(page, 'running'),
-          queuedCard: jobArticle(page, 'queued'),
-          succeededCard: jobArticle(page, 'succeeded')
-        },
-        capture
-      );
-      // Selection, then the selected job's detail (always-visible attempt timeline).
+      await compareRepairSurfaces(page, testInfo, frame, {
+        queueCard: jobArticle(page, 'failed'),
+        detailCard: root.locator('[data-repair-detail]')
+      });
       await selectionProbes(page, desktop);
-      await assertFrameContract(frame, 'detail', detailContract(page, desktop));
-      await runCompositionProbes(frame, 'page', diagnosticsProbes(page, root, theme).page);
       await jobStatus(page, 'failed')
         .getByRole('button', { name: d.repair.retry, exact: true })
         .click();
       const { dialog, cancel } = await confirmationStructure(page, theme, width);
-      await assertFrameContract(frame, 'dialog', confirmContract(page, theme === 'light'));
-      await runCompositionProbes(frame, 'dialog', {
-        'E8.retryDialog': async () => {
-          const header = await childSummary(dialog.locator('header'));
-          expect(header.map((child) => child.text)).toEqual([
-            d.repair.confirmTitle,
-            d.repair.confirmBody
-          ]);
-          const parts = await childSummary(dialog);
-          expect(
-            parts.map((part) => part.tag),
-            'retry dialog order'
-          ).toEqual(['HEADER', 'DIV']);
-          expect(parts[1]?.text).toBe(`${d.dialog.cancel} ${d.repair.confirmAction}`);
-          assertStacked(
-            await captureBoxes({
-              header: dialog.locator('header'),
-              actions: dialog.locator('header + div')
-            })
-          );
-        }
-      });
-      await measureFrame(
-        frame,
-        page,
-        testInfo,
-        'dialog',
-        { confirmDialog: dialog },
-        {
-          viewport: { width, height },
-          fullPage: false
-        }
-      );
+      await assertTargets(dialog, 'repair confirmation');
+      await expect(dialog).toHaveAccessibleDescription(d.repair.confirmBody);
       await cancel.click();
+      await expect(
+        jobStatus(page, 'failed').getByRole('button', { name: d.repair.retry, exact: true })
+      ).toBeFocused();
       await expect(dialog).toBeHidden();
     });
   }
-
-  test('diagnostics desktop light has no design frame and keeps the structural gates', async () => {
-    const { page, root } = await openDiagnostics('en', 1280, 'light', 900);
-    await diagnosticsStructure(page, root, 'light', 1280);
-    await runCompositionProbes('SluH3', 'desktop-light', {
-      'E11.desktopLight': async () => {
-        await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-        const { queue, detail } = await captureBoxes({
-          queue: page.locator('[data-repair-region=queue]'),
-          detail: page.locator('[data-repair-region=detail]')
-        });
-        expect
-          .soft(detail.x, 'desktop light keeps the detail beside the queue')
-          .toBeGreaterThan(queue.right);
-        assertNear(queue.y, detail.y, 'desktop light regions share a row', 1);
-        await expect(page.locator('[data-repair-detail]')).toBeVisible();
-      }
-    });
-    await assertTargets(root, 'diagnostics desktop light');
-    await assertContrast(root, 'diagnostics desktop light');
-    await assertReducedMotion(page, root, 'diagnostics desktop light');
-    await assertNoOverflow(page, 'diagnostics desktop light');
-  });
 
   for (const locale of locales) {
     test(`diagnostics keep long ${locale} text inside 320px without overlap`, async () => {
@@ -2024,6 +1404,9 @@ test.describe('repair diagnostics', () => {
         .click();
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
+      const detail = root.locator('[data-repair-detail]');
+      const jobId = await detail.getAttribute('data-repair-detail');
+      await expect(detail.locator('[data-repair-identifier]')).toHaveText(jobId!);
       await assertNoOverflow(page, `diagnostics dialog ${locale}`);
       await assertTargets(dialog, `diagnostics dialog ${locale}`);
     });
