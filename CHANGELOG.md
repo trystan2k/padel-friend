@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/trystan2k/padel-friend/compare/v0.7.0...v0.8.0) (2026-11-24)
+
+
+### Features
+
+* implement Clubhouse design across app pages ([#75](https://github.com/trystan2k/padel-friend/issues/75)) ([8d14773](https://github.com/trystan2k/padel-friend/commit/8d147733add08828a7048417fc90f89242a80b5c))
+
 ## [0.7.0](https://github.com/trystan2k/padel-friend/compare/v0.6.0...v0.7.0) (2026-11-19)
 
 
