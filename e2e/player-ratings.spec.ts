@@ -858,6 +858,15 @@ test('sign-in recovery returns to the result detail or the dashboard and ignores
     .filter({ has: dash.locator('time') })
     .first()
     .getByRole('button');
+  await expect(trigger).toBeVisible();
+  // The home view re-reads every 3 s while visible. Once the cookies are gone that poll fails
+  // authentication and replaces the history with the error banner, so the row would vanish
+  // before focus() lands and the locator never resolves (the 180 s hang). A hidden tab pauses
+  // the loop, leaving the explanation read as the one that reports the expired session.
+  await dash.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
   await dash.context().clearCookies();
   await trigger.focus();
   await trigger.press('Enter');
