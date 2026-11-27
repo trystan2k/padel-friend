@@ -734,7 +734,11 @@ describe.skipIf(!environment.env)(
         displayName: 'Lone Subject',
         level: 3
       });
-      const since = String(await scalar('select clock_timestamp()::text'));
+      const [cut] = await sqlRows(
+        'select txid_current()::text as xid, clock_timestamp()::text as at'
+      );
+      const since = String(cut?.['at']);
+      const sinceXid = Number(cut?.['xid']);
       const withdrawnBefore = Number(
         await scalar(
           "select count(*)::int from public.participant_identities where state = 'withdrawn'"
@@ -762,7 +766,12 @@ describe.skipIf(!environment.env)(
         )
       ).toEqual([{ tombstone_created: false }]);
       expect(
-        (await trustedClient().rpc('privacy_op_erasure_count_since', { p_since: since })).data
+        (
+          await trustedClient().rpc('privacy_op_erasure_count_since', {
+            p_cutoff_xid: sinceXid,
+            p_cutoff_time: since
+          })
+        ).data
       ).toEqual({ count: 1 });
       expect(
         await sqlRows(
@@ -771,7 +780,8 @@ describe.skipIf(!environment.env)(
       ).toEqual([
         { column_name: 'erased_at' },
         { column_name: 'id' },
-        { column_name: 'tombstone_created' }
+        { column_name: 'tombstone_created' },
+        { column_name: 'xid' }
       ]);
       expect(await privacyTablesMentioning(lone.id)).toEqual([]);
       // No client role can touch the events; the retired tombstone counters are gone.
@@ -858,6 +868,146 @@ describe.skipIf(!environment.env)(
       });
       expect(withdrawn.error).toBeNull();
       expect(await caseRow(reference)).toMatchObject({ state: 'withdrawn' });
+    });
+
+    it('F38: an erasure that began before the dump cutoff and committed after it is still counted', async () => {
+      const holder = await openDedicatedSqlConnection();
+      let cleanupXids: number[] = [];
+      try {
+        // The slow erasure transaction starts (and gets its xid) BEFORE the cutoff is captured...
+        await holder.query('begin');
+        const started = await holder.query('select txid_current()::text as xid');
+        const slowXid = Number(started.rows[0]?.['xid']);
+        const [cutoff] = await sqlRows(
+          'select txid_current()::text as xid, clock_timestamp()::text as at'
+        );
+        const cutoffXid = Number(cutoff?.['xid']);
+        const cutoffTime = String(cutoff?.['at']);
+        expect(slowXid).toBeLessThan(cutoffXid);
+        cleanupXids = [slowXid, slowXid - 1];
+        // ...and commits its event after it: pre-cutoff xid, post-cutoff time. A completed older event is not counted.
+        await holder.query(
+          'insert into privacy_internal.erasure_events (tombstone_created, xid) values (false, ' +
+            String(slowXid) +
+            ')'
+        );
+        await fixtureSql(
+          "insert into privacy_internal.erasure_events (erased_at, tombstone_created, xid) values (now() - interval '1 hour', false, " +
+            String(slowXid - 1) +
+            ')'
+        );
+        await holder.query('commit');
+        const counted = await trustedClient().rpc('privacy_op_erasure_count_since', {
+          p_cutoff_xid: cutoffXid,
+          p_cutoff_time: cutoffTime
+        });
+        expect(counted.data).toEqual({ count: 1 });
+        // The xid alone (or the time alone) would have missed it or over-counted: the union is what bounds the proof.
+        expect(
+          await scalar(
+            'select count(*)::int from privacy_internal.erasure_events where xid > ' +
+              String(cutoffXid)
+          )
+        ).toBe(0);
+      } finally {
+        await holder.query('rollback').catch(() => undefined);
+        await holder.close();
+        await fixtureSql(
+          'delete from privacy_internal.erasure_events where xid = any (' +
+            L('{' + cleanupXids.join(',') + '}') +
+            '::bigint[])'
+        );
+      }
+    });
+
+    it('F40: a worker whose lease expired before its ban call undoes the late ban and aborts', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'f40-stale', {
+        displayName: 'Stale Worker Subject',
+        level: 3
+      });
+      const request = await lone.client.rpc('request_account_deletion', {
+        p_command_id: crypto.randomUUID()
+      });
+      const reference = String(asRecord(request.data)['reference']);
+      await verifyCase(reference, lone.email);
+      await armCase(reference);
+      // Worker A marked its ban (token T1) and stalls before the external call; meanwhile the address changes, the lease
+      // expires and worker B recovers the case (stale proof + unconfirmed ban: PENDING_UNBAN, unban, restartable).
+      const moved = 'moved-' + crypto.randomUUID() + '@changed.test';
+      expect(
+        await sweep({
+          client: scriptedAdmin({
+            beforeBan: async () => {
+              await fixtureSql(
+                'update auth.users set email = ' + L(moved) + ' where id = ' + L(lone.id)
+              );
+              await expireLease(reference);
+              expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+              expect(await caseRow(reference)).toMatchObject({
+                state: 'blocked',
+                blocker_code: 'VERIFICATION_STALE'
+              });
+            }
+          })
+        })
+      ).toEqual({ disabled: false, processed: 1 });
+      // A woke up, banned, found it no longer owns an executing case, undid the ban and did no freeze work.
+      expect(
+        (await trustedClient().auth.admin.getUserById(lone.id)).data.user?.banned_until ?? null
+      ).toBeNull();
+      expect(await caseRow(reference)).toMatchObject({
+        state: 'blocked',
+        blocker_code: 'VERIFICATION_STALE',
+        last_phase: null,
+        destructive_started_at: null
+      });
+      expect(
+        await scalar(
+          'select count(*)::int from privacy_internal.frozen_subjects where subject_id = ' +
+            L(lone.id)
+        )
+      ).toBe(0);
+      await operator('refuse', reference);
+    });
+
+    it('F40: a ban owned by a newer worker on an executing case is kept; the stale worker only aborts; the benign path completes', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'f40-owner', {
+        displayName: 'Owned Ban Subject',
+        level: 3
+      });
+      const request = await lone.client.rpc('request_account_deletion', {
+        p_command_id: crypto.randomUUID()
+      });
+      const reference = String(asRecord(request.data)['reference']);
+      await verifyCase(reference, lone.email);
+      await armCase(reference);
+      expect(
+        await sweep({
+          client: scriptedAdmin({
+            // Another worker re-marked the ban under its own token while this one stalled.
+            beforeBan: () =>
+              fixtureSql(
+                'update privacy_internal.privacy_cases set ban_lease_token = gen_random_uuid() where reference = ' +
+                  L(reference)
+              )
+          })
+        })
+      ).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(reference)).toMatchObject({ state: 'executing', last_phase: null });
+      // No unban (the owner wants the ban), and no freeze work by the stale worker.
+      expect(
+        (await trustedClient().auth.admin.getUserById(lone.id)).data.user?.banned_until
+      ).toBeTruthy();
+      expect(
+        await scalar(
+          'select count(*)::int from privacy_internal.frozen_subjects where subject_id = ' +
+            L(lone.id)
+        )
+      ).toBe(0);
+      // The recovering run (same token end to end) is unaffected and completes the erasure.
+      await expireLease(reference);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });
     });
 
     it('F25: the freeze refuses an address that changed after the claim (before any ban), and verification restarts', async () => {

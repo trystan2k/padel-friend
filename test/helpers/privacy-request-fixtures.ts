@@ -144,6 +144,7 @@ export async function uploadObject(bucket: string, name: string, contentType: st
  * applied (a concurrent change), or with the ban lift failing (a provider outage).
  */
 export function scriptedAdmin(hooks: {
+  beforeBan?: (id: string) => Promise<void>;
   afterBan?: (id: string) => Promise<void>;
   beforeUnban?: (id: string) => Promise<void>;
   unbanError?: boolean;
@@ -155,6 +156,8 @@ export function scriptedAdmin(hooks: {
     auth: {
       admin: {
         updateUserById: async (id: string, attributes: { ban_duration?: string }) => {
+          if (attributes.ban_duration && attributes.ban_duration !== 'none')
+            await hooks.beforeBan?.(id);
           if (attributes.ban_duration === 'none') await hooks.beforeUnban?.(id);
           if (attributes.ban_duration === 'none' && hooks.unbanError)
             return { data: { user: null }, error: { status: 500, message: 'outage' } };

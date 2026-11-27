@@ -87,12 +87,16 @@ describe.skipIf(!environment.env)(
       const emails = { a: await emailOf(idA), b: await emailOf(idB), c: await emailOf(idC) };
 
       snapshot = takeSnapshot(docker);
-      const takenAt = snapshot.takenAt;
+      // The coverage cutoff was captured at DUMP START (xid and time).
+      const takenAt = snapshot.cutoffTime;
+      const cutoffXid = snapshot.cutoffXid;
       // The parity authority: identity-free erasure events recorded after the snapshot.
       const erasuresNow = async () =>
         Number(
           await scalar(
-            'select count(*)::int from privacy_internal.erasure_events where erased_at > ' +
+            'select count(*)::int from privacy_internal.erasure_events where xid > ' +
+              String(cutoffXid) +
+              ' or erased_at >= ' +
               L(takenAt)
           )
         );
@@ -129,6 +133,7 @@ describe.skipIf(!environment.env)(
       const liveBegin = await trustedClient().rpc('privacy_op_restore_gate', {
         p_action: 'begin',
         p_snapshot_at: takenAt,
+        p_cutoff_xid: cutoffXid,
         p_expected_subjects: [idA, idB],
         p_restore_project_ref: 'live',
         p_tombstone_count: 2
@@ -203,6 +208,7 @@ describe.skipIf(!environment.env)(
       expect(
         applyRestoreGate(docker, destination, {
           snapshotAt: takenAt,
+          cutoffXid,
           expectedSubjects: derive(destination),
           tombstoneCount: 2
         })
@@ -317,6 +323,16 @@ describe.skipIf(!environment.env)(
         )
       ).toContain('RESTORE_NOT_ISOLATED');
       markRestoreTarget(docker, destination);
+      expect(gate()).toBe('pending|2|0');
+
+      // F39: a snapshot that predates the erasure-event coverage cannot be proven complete: refused (manual path).
+      expect(
+        query(
+          "select public.privacy_op_restore_gate('begin', null, now() - interval '3650 days', array[]::uuid[], '" +
+            destination +
+            "', 0, 0)::text;"
+        )
+      ).toContain('PRE_LEDGER_SNAPSHOT');
       expect(gate()).toBe('pending|2|0');
 
       // F21/F22: outside the expected set, wrong project, no trace: refused, nothing changes.
@@ -454,6 +470,7 @@ describe.skipIf(!environment.env)(
       expect(
         applyRestoreGate(docker, destination, {
           snapshotAt: takenAt,
+          cutoffXid,
           expectedSubjects: deriveExpectedSubjects({
             restored: query(
               "select id from public.participant_identities where state = 'live' order by id;"
@@ -521,7 +538,7 @@ describe.skipIf(!environment.env)(
             L(later) +
             ", array[]::uuid[], '" +
             destination +
-            "', 1)::text;"
+            "', 1, 0)::text;"
         )
       ).toContain('COUNT_MISMATCH');
       expect(

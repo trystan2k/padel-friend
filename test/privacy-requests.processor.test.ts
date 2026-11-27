@@ -40,6 +40,8 @@ function fakeAdmin(options: {
       const scripted = options.rpc?.(name, args);
       if (scripted)
         return Promise.resolve({ data: scripted.data ?? null, error: scripted.error ?? null });
+      if (name === 'privacy_proc_ban_check')
+        return Promise.resolve({ data: { ok: true }, error: null });
       if (name === 'privacy_proc_storage_set')
         return Promise.resolve({ data: storage.shift() ?? [], error: null });
       return Promise.resolve({ data: { status: 'done' }, error: null });
@@ -92,6 +94,7 @@ describe('privacy processor phases', () => {
     expect(names(calls)).toEqual([
       'freeze',
       'ban_mark',
+      'ban_check',
       'freeze',
       'erase_relational',
       'storage_set',
@@ -104,7 +107,9 @@ describe('privacy processor phases', () => {
     });
     expect(raw.auth.admin.deleteUser).toHaveBeenCalledWith('subject', false);
     expect(
-      calls.every((call) => call.args['p_fence'] === 1 && call.args['p_token'] === 'lease')
+      calls
+        .filter((call) => call.name !== 'privacy_proc_ban_check')
+        .every((call) => call.args['p_fence'] === 1 && call.args['p_token'] === 'lease')
     ).toBe(true);
   });
 
@@ -211,7 +216,7 @@ describe('privacy processor phases', () => {
       })
     ).rejects.toBe(crash);
     // Address pre-check, the ban recorded on the case before the external call, then the freeze commit.
-    expect(names(calls)).toEqual(['freeze', 'ban_mark', 'freeze']);
+    expect(names(calls)).toEqual(['freeze', 'ban_mark', 'ban_check', 'freeze']);
   });
 
   it('blocks on a stale verified address BEFORE the ban (F25)', async () => {
@@ -247,6 +252,33 @@ describe('privacy processor phases', () => {
       ban_duration: 'none'
     });
     expect(names(calls)).toEqual(['freeze', 'unban_done']);
+  });
+
+  it('undoes a late ban and aborts when this worker no longer owns the case (F40)', async () => {
+    const { admin, calls, raw } = fakeAdmin({
+      rpc: (name) =>
+        name === 'privacy_proc_ban_check' ? { data: { ok: false, unban: true } } : undefined
+    });
+    expect(await processPrivacyCase(admin, claim())).toEqual({ status: 'fenced', steps: [] });
+    expect(raw.auth.admin.updateUserById).toHaveBeenNthCalledWith(1, 'subject', {
+      ban_duration: '876000h'
+    });
+    expect(raw.auth.admin.updateUserById).toHaveBeenNthCalledWith(2, 'subject', {
+      ban_duration: 'none'
+    });
+    // No freeze phase work follows.
+    expect(names(calls)).toEqual(['freeze', 'ban_mark', 'ban_check']);
+  });
+
+  it('aborts without undoing the ban when a newer worker owns it on an executing case (F40)', async () => {
+    const { admin, raw } = fakeAdmin({
+      rpc: (name) =>
+        name === 'privacy_proc_ban_check' ? { data: { ok: false, unban: false } } : undefined
+    });
+    expect(await processPrivacyCase(admin, claim())).toEqual({ status: 'fenced', steps: [] });
+    expect(raw.auth.admin.updateUserById).toHaveBeenCalledExactlyOnceWith('subject', {
+      ban_duration: '876000h'
+    });
   });
 
   it('blocks the case as BAN_LIFT_FAILED when the temporary ban cannot be lifted (F33)', async () => {

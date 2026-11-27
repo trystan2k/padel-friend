@@ -6263,7 +6263,10 @@ export type Database = {
         Args: { p_all_matches?: boolean; p_confirm: boolean; p_email: string }
         Returns: Json
       }
-      privacy_op_erasure_count_since: { Args: { p_since: string }; Returns: Json }
+      privacy_op_erasure_count_since: {
+        Args: { p_cutoff_time: string; p_cutoff_xid: number }
+        Returns: Json
+      }
       privacy_op_list_cases: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_live_identity_ids: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_purge_expired: { Args: Record<PropertyKey, never>; Returns: Json }
@@ -6277,6 +6280,7 @@ export type Database = {
       privacy_op_restore_gate: {
         Args: {
           p_action: string
+          p_cutoff_xid?: number
           p_evidence?: string
           p_expected_subjects?: string[]
           p_restore_project_ref?: string
@@ -6309,6 +6313,7 @@ export type Database = {
         Args: { p_digest: string; p_reference: string; p_ttl_seconds?: number }
         Returns: Json
       }
+      privacy_proc_ban_check: { Args: { p_case: string; p_token: string }; Returns: Json }
       privacy_proc_ban_lift_failed: { Args: { p_case: string }; Returns: Json }
       privacy_proc_ban_mark: {
         Args: { p_case: string; p_fence: number; p_token: string }

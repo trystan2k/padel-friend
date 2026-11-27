@@ -67,6 +67,7 @@ async function rpc(
     | 'privacy_proc_fail'
     | 'privacy_proc_ban_lift_failed'
     | 'privacy_proc_ban_mark'
+    | 'privacy_proc_ban_check'
     | 'privacy_proc_unban_done'
     | 'privacy_op_purge_expired',
   args: Record<string, unknown>
@@ -218,6 +219,26 @@ export async function processPrivacyCase(
           ban_duration: BAN_DURATION
         });
         if (error && !isNotFound(error)) throw new Error('FREEZE_FAILED');
+        // A worker whose lease expired while it stalled before this call must not leave its late ban behind: ask the
+        // case whether this worker's token still holds the ban on an executing case.
+        const fence = record(
+          await rpc(admin, 'privacy_proc_ban_check', {
+            p_case: claim.case_id,
+            p_token: claim.lease_token
+          })
+        );
+        if (fence?.ok !== true) {
+          emitDiagnostic('privacy.case', 'rejected', { stage: step, code: 'BAN_FENCE_ABORTED' });
+          // A newer worker that owns the ban on an executing case keeps it; otherwise nobody wants it: undo it.
+          if (fence?.unban === true) {
+            const undone = await admin.auth.admin.updateUserById(claim.subject_id, {
+              ban_duration: 'none'
+            });
+            if (undone.error && !isNotFound(undone.error))
+              await rpc(admin, 'privacy_proc_ban_lift_failed', { p_case: claim.case_id });
+          }
+          return { status: 'fenced', steps };
+        }
         const frozen = record(await rpc(admin, 'privacy_proc_freeze', keys));
         if (frozen?.status === 'blocked') return liftTemporaryBan(String(frozen.code));
         lastPhase = 'freeze';

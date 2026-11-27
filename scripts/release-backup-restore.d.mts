@@ -22,13 +22,21 @@ export type RestoreReport = {
   sourceStable: boolean;
   pass: boolean;
 };
-export type Snapshot = { dump: Buffer; dumpPath: string; tocPath: string; takenAt: string };
+export type Snapshot = {
+  dump: Buffer;
+  dumpPath: string;
+  tocPath: string;
+  takenAt: string;
+  cutoffXid: number;
+  cutoffTime: string;
+};
 export function markRestoreTarget(docker: Docker, database: string): void;
 export function applyRestoreGate(
   docker: Docker,
   database: string,
   options?: {
     snapshotAt?: string;
+    cutoffXid?: number;
     expectedSubjects?: string[];
     projectRef?: string;
     tombstoneCount?: number;

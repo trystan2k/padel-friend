@@ -150,21 +150,42 @@ describe('privacy operator: restore gate', () => {
     const source = withIds(['kept'], { privacy_op_erasure_count_since: { count: 2 } });
     await runCommand(
       restored,
-      parse('restore-gate', 'begin', '--snapshot-at', '2026-11-20T10:00:00Z'),
+      parse(
+        'restore-gate',
+        'begin',
+        '--snapshot-at',
+        '2026-11-20T10:00:00Z',
+        '--cutoff-xid',
+        '4242'
+      ),
       target,
       source
     );
+    // Parity uses the union cutoff (xid AND time) captured at dump start.
+    expect(calls.find((call) => call.name === 'privacy_op_erasure_count_since')?.args).toEqual({
+      p_cutoff_xid: 4242,
+      p_cutoff_time: '2026-11-20T10:00:00.000Z'
+    });
     expect(calls.find((call) => call.name === 'privacy_op_restore_gate')?.args).toEqual({
       p_action: 'begin',
       p_evidence: null,
       p_snapshot_at: '2026-11-20T10:00:00.000Z',
       p_expected_subjects: [subjectA, subjectB],
       p_restore_project_ref: 'local',
-      p_tombstone_count: 2
+      p_tombstone_count: 2,
+      p_cutoff_xid: 4242
     });
+    await expect(
+      runCommand(
+        client(),
+        parse('restore-gate', 'begin', '--snapshot-at', '2026-11-20T10:00:00Z'),
+        target,
+        source
+      )
+    ).rejects.toThrow('CUTOFF_XID_REQUIRED');
     calls.length = 0;
     const gate = withIds([], {
-      privacy_op_restore_gate_status: { snapshot_at: '2026-11-20T10:00:00+00:00' }
+      privacy_op_restore_gate_status: { snapshot_at: '2026-11-20T10:00:00+00:00', cutoff_xid: 4242 }
     });
     await runCommand(
       gate,
@@ -499,18 +520,31 @@ describe('privacy operator: restore gate', () => {
       { shells: ['shell'], swept }
     );
     const result = await runCommand(sweeper, parse('sweep-remnants', 'PR-AAAAAAAAAAAA'), target);
-    // A pass that deleted something is repeated; the second pass is clean and is the one that records the sweep.
-    expect(result).toEqual({
-      status: 'ok',
-      code: 'REMNANTS_REMOVED',
-      scanned: 3,
-      matched: 1,
-      removed: 1
+    // The shell is removed, but a REAL account (profile or sign-in) holds the erased address: never ignored silently,
+    // never deleted, and the sweep is not recorded until the operator resolves it (F41).
+    expect(result).toMatchObject({
+      status: 'matched_non_shell',
+      code: 'MATCHED_NON_SHELL',
+      matchedNonShell: 1
     });
     expect(checked).toEqual(['shell', 'real', 'real']);
     expect(deleted).toEqual(['shell']);
-    expect(swept).toEqual(['PR-AAAAAAAAAAAA']);
+    expect(swept).toEqual([]);
     expect(JSON.stringify(result)).not.toContain('example.test');
+    // The explicit override accepts the unresolved match and records the sweep.
+    const resolved = await runCommand(
+      sweeper,
+      parse('sweep-remnants', 'PR-AAAAAAAAAAAA', '--resolve-non-shell'),
+      target
+    );
+    expect(resolved).toEqual({
+      status: 'ok',
+      code: 'NO_REMNANTS',
+      scanned: 3,
+      matched: 1,
+      removed: 0
+    });
+    expect(swept).toEqual(['PR-AAAAAAAAAAAA']);
   });
 
   it('re-scans from the start when a deletion shifts later users onto already scanned offsets (F36)', async () => {

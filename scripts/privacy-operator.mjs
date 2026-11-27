@@ -26,7 +26,7 @@ export const HELP = [
   '                                         that you verified and mentioned them in the response.',
   '  purge                                  purge expired case records to outcome counts',
   '  switch <intake|executor> <on|off>      fail-closed kill switch',
-  '  restore-gate begin --snapshot-at <iso>',
+  '  restore-gate begin --snapshot-at <iso> --cutoff-xid <n>   (both captured at DUMP START by takeSnapshot)',
   '                                         ISOLATED restore target only (never production; the database must be flagged',
   '                                         app.restore_target by the restore flow): derives the expected subjects (live in',
   '                                         the restored copy, gone from the source project given by PRIVACY_SOURCE_SUPABASE_URL',
@@ -106,7 +106,15 @@ export function parseArgs(argv) {
     const token = rest[index];
     if (token.startsWith('--')) {
       const key = token.slice(2);
-      if (['confirm', 'allow-production', 'all-matches', 'ack-external-followup'].includes(key))
+      if (
+        [
+          'confirm',
+          'allow-production',
+          'all-matches',
+          'ack-external-followup',
+          'resolve-non-shell'
+        ].includes(key)
+      )
         options[key] = true;
       else options[key] = rest[++index];
     } else positional.push(token);
@@ -302,7 +310,7 @@ export async function reconcileRestoredSubject(client, subject, projectRef) {
 export async function sweepRemnants(
   client,
   reference,
-  { perPage = 200, maxPages = 100, maxPasses = 10 } = {}
+  { perPage = 200, maxPages = 100, maxPasses = 10, resolveNonShell = false } = {}
 ) {
   const context = plainObject(
     await call(client, 'privacy_op_remnant_context', { p_reference: reference }),
@@ -317,6 +325,7 @@ export async function sweepRemnants(
   for (let pass = 0; pass < maxPasses; pass++) {
     scanned = 0;
     let matched = 0;
+    let nonShell = 0;
     let deletions = 0;
     let reachedEnd = false;
     for (let page = 1; page <= maxPages; page++) {
@@ -333,7 +342,11 @@ export async function sweepRemnants(
           await call(client, 'privacy_op_remnant_is_shell', { p_user: user.id }),
           'OPERATOR_RESPONSE_INVALID'
         );
-        if (shell.shell !== true) continue;
+        if (shell.shell !== true) {
+          // A real account with the erased address (profile or sign-in) is never deleted, and never ignored silently.
+          nonShell += 1;
+          continue;
+        }
         const { error: deleteError } = await client.auth.admin.deleteUser(user.id, false);
         if (deleteError) throw new Error('REMNANT_DELETE_FAILED');
         deletions += 1;
@@ -346,6 +359,15 @@ export async function sweepRemnants(
     }
     // The page cap was hit on a full page: unscanned users may remain. Fail closed, record nothing.
     if (!reachedEnd) return { status: 'incomplete', code: 'SWEEP_INCOMPLETE', scanned };
+    if (deletions === 0 && nonShell > 0 && !resolveNonShell) {
+      return {
+        status: 'matched_non_shell',
+        code: 'MATCHED_NON_SHELL',
+        matchedNonShell: nonShell,
+        scanned,
+        hint: 'A real account holds the erased address: resolve it, then repeat with --resolve-non-shell to record the sweep.'
+      };
+    }
     if (deletions === 0) {
       // A complete, deletion-free pass: only now is the sweep recorded on the case.
       await call(client, 'privacy_op_remnants_swept', { p_reference: reference });
@@ -431,7 +453,9 @@ export async function runCommand(client, parsed, target, source) {
     case 'ack-external-followup':
       return call(client, 'privacy_op_ack_external_followup', { p_reference: reference });
     case 'sweep-remnants':
-      return sweepRemnants(client, reference);
+      return sweepRemnants(client, reference, {
+        resolveNonShell: options['resolve-non-shell'] === true
+      });
     case 'refuse':
       return call(client, 'privacy_op_close_refused', { p_reference: reference });
     case 'record-response': {
@@ -456,10 +480,13 @@ export async function runCommand(client, parsed, target, source) {
       const [action] = positional;
       if (!['begin', 'clear'].includes(action)) throw new Error('RESTORE_GATE_ACTION_INVALID');
       if (!source) throw new Error('OPERATOR_SOURCE_MISSING');
-      const erasuresSince = async (instant) =>
+      const erasuresSince = async (cutoffXid, instant) =>
         Number(
           plainObject(
-            await call(source, 'privacy_op_erasure_count_since', { p_since: instant }),
+            await call(source, 'privacy_op_erasure_count_since', {
+              p_cutoff_xid: cutoffXid,
+              p_cutoff_time: instant
+            }),
             'OPERATOR_RESPONSE_INVALID'
           ).count
         );
@@ -475,6 +502,7 @@ export async function runCommand(client, parsed, target, source) {
             p_action: 'clear',
             p_evidence: options.evidence ?? null,
             p_tombstone_count: await erasuresSince(
+              Number(status.cutoff_xid),
               new Date(String(status.snapshot_at)).toISOString()
             )
           }),
@@ -491,6 +519,8 @@ export async function runCommand(client, parsed, target, source) {
       if (!snapshotAt || Number.isNaN(Date.parse(snapshotAt)))
         throw new Error('SNAPSHOT_AT_REQUIRED');
       const since = new Date(snapshotAt).toISOString();
+      const cutoffXid = Number(options['cutoff-xid']);
+      if (!Number.isSafeInteger(cutoffXid) || cutoffXid < 0) throw new Error('CUTOFF_XID_REQUIRED');
       const restored = idList(await call(client, 'privacy_op_live_identity_ids', {}));
       const live = idList(await call(source, 'privacy_op_live_identity_ids', {}));
       // The set is the difference (closed case records keep no subject id); its size must equal the identity-free erasure events the
@@ -501,7 +531,8 @@ export async function runCommand(client, parsed, target, source) {
         p_snapshot_at: since,
         p_expected_subjects: deriveExpectedSubjects({ restored, live }),
         p_restore_project_ref: target.projectRef,
-        p_tombstone_count: await erasuresSince(since)
+        p_tombstone_count: await erasuresSince(cutoffXid, since),
+        p_cutoff_xid: cutoffXid
       });
     }
     case 'restore-reconcile':

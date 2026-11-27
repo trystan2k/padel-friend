@@ -141,6 +141,7 @@ export function applyRestoreGate(
   database,
   {
     snapshotAt = new Date().toISOString(),
+    cutoffXid = 0,
     expectedSubjects = [],
     projectRef = database,
     tombstoneCount = expectedSubjects.length
@@ -154,7 +155,7 @@ export function applyRestoreGate(
     docker.sql(
       database,
       `select public.privacy_op_restore_gate('begin', null, '${new Date(snapshotAt).toISOString()}'::timestamptz, ` +
-        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], '${projectRef.replaceAll("'", '')}', ${Number(tombstoneCount)})::text;`
+        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], '${projectRef.replaceAll("'", '')}', ${Number(tombstoneCount)}, ${cutoffXid})::text;`
     )
   );
   const settings = Object.fromEntries(
@@ -183,6 +184,11 @@ export function takeSnapshot(docker, { source = 'postgres' } = {}) {
   const artifactId = randomUUID();
   const dumpPath = '/tmp/release-rehearsal-' + artifactId + '.dump';
   const tocPath = '/tmp/release-rehearsal-' + artifactId + '.toc';
+  // The coverage cutoff is captured BEFORE the dump starts (transaction id and clock, one statement): an erasure that
+  // began before the dump but commits after it has an earlier xid yet a later event time, and is still counted.
+  const [cutoffXid, cutoffTime] = docker
+    .sql(source, 'select txid_current(), clock_timestamp()')
+    .split('|');
   const dump = docker.dump(source, [
     '-Fc',
     '--no-owner',
@@ -193,7 +199,14 @@ export function takeSnapshot(docker, { source = 'postgres' } = {}) {
     .filter((line) => !line.includes('DEFAULT ACL'))
     .join('\n');
   docker.exec(['sh', '-c', 'cat > "$1"', 'sh', tocPath], { input: toc });
-  return { dump, dumpPath, tocPath, takenAt: new Date().toISOString() };
+  return {
+    dump,
+    dumpPath,
+    tocPath,
+    takenAt: new Date().toISOString(),
+    cutoffXid: Number(cutoffXid),
+    cutoffTime: new Date(cutoffTime).toISOString()
+  };
 }
 
 export function discardSnapshot(docker, snapshot) {
@@ -225,7 +238,8 @@ export function restoreSnapshotWithGate(
     return {
       destination,
       gate: applyRestoreGate(docker, destination, {
-        snapshotAt: snapshot.takenAt,
+        snapshotAt: snapshot.cutoffTime,
+        cutoffXid: snapshot.cutoffXid,
         expectedSubjects: expected,
         tombstoneCount: tombstoneCount ?? expected.length
       })

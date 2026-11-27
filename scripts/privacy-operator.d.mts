@@ -48,7 +48,12 @@ export type OperatorClient = {
 export function sweepRemnants(
   client: OperatorClient,
   reference: string,
-  options?: { perPage?: number; maxPages?: number; maxPasses?: number }
+  options?: {
+    perPage?: number;
+    maxPages?: number;
+    maxPasses?: number;
+    resolveNonShell?: boolean;
+  }
 ): Promise<unknown>;
 export function reconcileRestoredSubject(
   client: OperatorClient,
