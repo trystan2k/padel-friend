@@ -473,10 +473,14 @@ test('happy path: request, operator verification, armed worker erasure, history 
     expect(signedIn.error).not.toBeNull();
     expect(signedIn.data.session).toBeNull();
     expect((await subject.client.auth.getUser()).error).not.toBeNull();
-    // The stale browser cookie may still carry a signature-valid JWT until it expires, so the page can
-    // route to onboarding instead of login; what matters is that the old token can recreate nothing.
+    // The stale browser cookie still carries a signature-valid JWT until it expires. The protected boundary
+    // checks live existence (no live participant identity), so the browser resolves as signed OUT: it lands
+    // on the login page, never on /me, onboarding or any authenticated UI.
     await page.goto('/me');
-    await expect(page).not.toHaveURL(/\/me$/);
+    await expect(page).toHaveURL(/\/login(\?|$)/);
+    await expect(page).not.toHaveURL(/onboarding|\/me/);
+    await page.goto('/onboarding');
+    await expect(page).toHaveURL(/\/login(\?|$)/);
     const revived = await subject.client.rpc('onboard_player', {
       p_display_name: 'Revived Player',
       p_preferred_side: 'EITHER',

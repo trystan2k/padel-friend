@@ -359,6 +359,7 @@ describe.skipIf(!environment.env)('Privacy request lifecycle', { timeout: 900_00
     expect((await player(3).client.from('communities').select('id')).data?.length).toBeGreaterThan(
       0
     );
+    expect((await player(3).client.rpc('is_actor_live')).data).toBe(true);
 
     // Crash right after the freeze commits: the stale access token is rejected at every boundary.
     await expect(
@@ -372,6 +373,9 @@ describe.skipIf(!environment.env)('Privacy request lifecycle', { timeout: 900_00
     ).rejects.toBe(crash);
     expect(await caseRow(reference)).toMatchObject({ state: 'executing', last_phase: 'freeze' });
     expect((await player(3).client.from('communities').select('id')).data).toEqual([]);
+    // The protected boundary resolves a frozen subject as signed out; bystanders stay live.
+    expect((await player(3).client.rpc('is_actor_live')).data).toBe(false);
+    expect((await player(1).client.rpc('is_actor_live')).data).toBe(true);
     expect(
       (await player(3).client.rpc('get_league', { p_league_id: leagueId })).error?.message
     ).toBe('PROVISIONAL_PLAYER_RESTRICTED');
@@ -422,6 +426,8 @@ describe.skipIf(!environment.env)('Privacy request lifecycle', { timeout: 900_00
     // Auth: the user is gone and the old token is rejected.
     expect((await trustedClient().auth.admin.getUserById(subject)).error?.status).toBe(404);
     expect((await player(3).client.auth.getUser()).error).not.toBeNull();
+    // Erased: the signature-valid old token still resolves as signed out (no live identity).
+    expect((await player(3).client.rpc('is_actor_live')).data).toBe(false);
     expect((await player(3).client.from('player_profiles').select('user_id')).data).toEqual([]);
 
     // The final response starts the 90-day purge down to outcome counts.

@@ -29,7 +29,7 @@ Date of evidence: **2026-11-27**. Evidence classes follow the design doc: **MS**
    - **Rectification**: correct the record or point the user to the profile edit.
    - **Restriction, objection**: assess case by case; record the decision and grounds.
    - **Portability**: provide the data the requester provided, in a structured machine-readable format.
-   - **Erasure for someone who cannot sign in, an unclaimed invitee, a representative**: verify by email (§3) and then run the same operator tooling (§2) against the case the operator opens for them.
+   - **Erasure for someone who cannot sign in or a representative**: verify by email (§3) and then run the same operator tooling (§2) against the case the operator opens for them. **An unclaimed invitee with no account**: verify by email, then `erase-unclaimed` (§3).
 5. **Timing (GDPR Art. 12, operational description).** Act and respond without undue delay and in any event within one month of receipt. Where complexity or the number of requests requires it, the period may be extended by up to two further months; tell the requester within the first month, with the reasons. **Verification never restarts the clock.** If no action is taken, say why and describe the complaint route (AEPD for Spain, www.aepd.es) and judicial remedy.
 6. **Identity (Art. 12(6)).** Ask for additional information only where there are reasonable doubts about identity, and keep it proportionate. Never ask for passwords. Never ask for routine ID copies. If the mailbox is lost, mistyped, recycled, or an agent writes on someone's behalf: do not execute and do not disclose existence; seek proportionate alternative evidence or representation checks and escalate unresolved cases.
 7. **Erasure grounds and exceptions (Art. 17).** Assess per case. Record any refusal or partial retention and its ground: for example the retained, anonymized official history of **other** players (owner decision 1), or a legal claim. Assess whether recipients received the data and whether notifying them is possible without disproportionate effort (Art. 19).
@@ -73,9 +73,17 @@ Case logs hold safe codes, counts and timestamps only. Never copy subject UUIDs,
 
 For an unclaimed invitee, an awaiting-identity person (an add-by-email with no Auth user), a provisional account, or anyone who cannot sign in:
 
-1. Challenge the address independently of any claim or sign-up: send a short-lived random code to the address, and require it back. Check privately that the invitation or addition really links to that address; never match by public search.
-2. Scope all matches (duplicates, aliases) before acting. Awaiting-identity operations hold the address and name as plain text with no retention evidenced: erasure for them is an operator query under the same access controls, and queued dispatch must be fenced so it cannot recreate the identity.
-3. Authorization never comes from request text, an old session, `email_confirmed_at` alone, knowledge of an invitation, or editable JWT metadata.
+1. **Challenge the address first** (same rule as the in-app verification, before anything is erased). `pnpm privacy:operator generate-code` prints a one-time code locally (nothing is stored or sent). Email it yourself from the operator mailbox to the address the request names, and require it back within a short time. A reply from another address, a wrong code, or no reply means no erasure.
+2. **Account holders are not handled here.** If the address has an Auth user, the command refuses (`ACCOUNT_EXISTS`): that person goes through the case flow in §2 (they can request in-app, or you open the case for them).
+3. **Erase the add-by-email record** (awaiting identity: a name and address typed by someone who invited them, no Auth user):
+   - `pnpm privacy:operator erase-unclaimed <email>` is a dry run. It prints counts only (operations, recipient sends, throttle hits) and changes nothing.
+   - `pnpm privacy:operator erase-unclaimed <email> --confirm` applies it. The address is matched exactly, lower-cased, in state `awaiting_identity` only. The command never echoes the address.
+   - If more than one operation matches (several people invited the same address, or retries), it fails closed with `AMBIGUOUS` and the count. Review with the requester, then repeat with `--all-matches` to accept every match.
+   - Applying it scrubs the address and name in those operations, removes the capability and its digest, the recipient-send and throttle rows for that address, and clears the dispatch attempt, so no queued or in-flight invitation can create the account afterwards. Only non-identifying facts remain (event, inviter, timing). A second call finds nothing and succeeds. There is no suppression list: a new invitation of the same address later is a new operation.
+   - `EMAIL_INVALID` means the address was malformed; an unknown address returns the same zero counts as a blind lookup.
+4. Scope duplicates and aliases deliberately (other spellings of the address) and repeat per address. Never match by public search.
+5. Include this in the final response (§5): what was removed, and that the inviting player's own records (for example the event they invited to) are unchanged.
+6. Authorization never comes from request text, an old session, `email_confirmed_at` alone, knowledge of an invitation, or editable JWT metadata.
 
 ## 4. Per-provider manual handling
 

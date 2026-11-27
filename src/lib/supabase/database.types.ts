@@ -5561,6 +5561,7 @@ export type Database = {
         Args: { p_level: number; p_reason?: string; p_user_id: string }
         Returns: undefined
       }
+      is_actor_live: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
       is_community_member: { Args: { p_community_id: string }; Returns: boolean }
       is_match_event_participant: {
@@ -6249,6 +6250,10 @@ export type Database = {
         Returns: Json
       }
       privacy_op_dry_run: { Args: { p_reference: string; p_successors?: Json }; Returns: Json }
+      privacy_op_erase_unclaimed: {
+        Args: { p_all_matches?: boolean; p_confirm: boolean; p_email: string }
+        Returns: Json
+      }
       privacy_op_list_cases: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_purge_expired: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_record_response: { Args: { p_reference: string }; Returns: Json }

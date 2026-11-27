@@ -23,6 +23,10 @@ export const HELP = [
   '  record-response <ref>                  record the final mail sent (purge after 90 days)',
   '  purge                                  purge expired case records to outcome counts',
   '  switch <intake|executor> <on|off>      fail-closed kill switch',
+  '  generate-code                          one-time code for an email challenge to an unclaimed person (not stored)',
+  '  erase-unclaimed <email> [--confirm] [--all-matches]',
+  '                                         erase an add-by-email invitation record that has no account; without',
+  '                                         --confirm it only reports counts. Verify the address by challenge first.',
   '',
   'Environment (fail closed when missing):',
   '  SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY   target project (service role: handle as a production secret)',
@@ -44,7 +48,9 @@ const COMMANDS = [
   'refuse',
   'record-response',
   'purge',
-  'switch'
+  'switch',
+  'generate-code',
+  'erase-unclaimed'
 ];
 
 /** Loopback instances are the 'local' project; a hosted project is the first host label. */
@@ -79,7 +85,7 @@ export function parseArgs(argv) {
     const token = rest[index];
     if (token.startsWith('--')) {
       const key = token.slice(2);
-      if (['confirm', 'allow-production'].includes(key)) options[key] = true;
+      if (['confirm', 'allow-production', 'all-matches'].includes(key)) options[key] = true;
       else options[key] = rest[++index];
     } else positional.push(token);
   }
@@ -135,8 +141,8 @@ async function call(client, name, args) {
 export async function runCommand(client, parsed, target) {
   const { command, positional, options } = parsed;
   const reference = positional[0];
-  if (command !== 'list' && command !== 'purge' && command !== 'switch' && !reference)
-    throw new Error('REFERENCE_REQUIRED');
+  const referenceless = ['list', 'purge', 'switch', 'generate-code', 'erase-unclaimed'];
+  if (!referenceless.includes(command) && !reference) throw new Error('REFERENCE_REQUIRED');
   switch (command) {
     case 'list':
       return call(client, 'privacy_op_list_cases', {});
@@ -186,6 +192,19 @@ export async function runCommand(client, parsed, target) {
       return call(client, 'privacy_op_record_response', { p_reference: reference });
     case 'purge':
       return call(client, 'privacy_op_purge_expired', {});
+    case 'generate-code':
+      // Printed once for the operator's own email challenge; nothing is stored or sent from here.
+      return { status: 'ok', code: generateChallenge() };
+    case 'erase-unclaimed': {
+      const email = positional[0];
+      if (!email) throw new Error('EMAIL_REQUIRED');
+      // The address is sent to the database and never echoed, logged or stored by this script.
+      return call(client, 'privacy_op_erase_unclaimed', {
+        p_email: email,
+        p_confirm: options.confirm === true,
+        p_all_matches: options['all-matches'] === true
+      });
+    }
     case 'switch': {
       const [key, value] = positional;
       if (!['intake', 'executor'].includes(key) || !['on', 'off'].includes(value))

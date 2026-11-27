@@ -119,6 +119,48 @@ describe('privacy operator environment guard', () => {
   });
 });
 
+describe('privacy operator: unclaimed erasure and local codes', () => {
+  it('is a dry run unless --confirm is given, and never forwards the address anywhere else', async () => {
+    calls.length = 0;
+    const result = await runCommand(
+      client({ status: 'ok', applied: false, operations: 1 }),
+      parse('erase-unclaimed', 'someone@example.test'),
+      target
+    );
+    expect(calls).toEqual([
+      {
+        name: 'privacy_op_erase_unclaimed',
+        args: { p_email: 'someone@example.test', p_confirm: false, p_all_matches: false }
+      }
+    ]);
+    // The console result is exactly what the database returned: the address is not echoed.
+    expect(JSON.stringify(result)).not.toContain('someone@example.test');
+    await runCommand(
+      client(),
+      parse('erase-unclaimed', 'someone@example.test', '--confirm', '--all-matches'),
+      target
+    );
+    expect(calls[1]?.args).toEqual({
+      p_email: 'someone@example.test',
+      p_confirm: true,
+      p_all_matches: true
+    });
+  });
+
+  it('requires the address and produces a local one-time code without any database call', async () => {
+    await expect(runCommand(client(), parse('erase-unclaimed'), target)).rejects.toThrow(
+      'EMAIL_REQUIRED'
+    );
+    calls.length = 0;
+    const generated = await runCommand(client(), parse('generate-code'), target);
+    expect(calls).toEqual([]);
+    expect(Object.fromEntries(Object.entries(Object(generated)))['code']).toMatch(
+      /^[A-HJKMNP-Z2-9]{10}$/
+    );
+    expect(HELP).toContain('erase-unclaimed');
+  });
+});
+
 describe('privacy operator commands', () => {
   it('binds the approval to the project and the dry-run plan', async () => {
     calls.length = 0;
