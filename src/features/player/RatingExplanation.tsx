@@ -91,7 +91,7 @@ function PlayerExplanation({
   return (
     <li {...stylex.props(s.playerCard, selected && s.playerSelected)}>
       <h4 {...stylex.props(s.playerName)}>
-        {player.display_name}
+        {player.display_name || t('player.formerPlayer')}
         {player.is_provisional && <ProvisionalBadge />}
       </h4>
       <dl {...stylex.props(s.facts)}>

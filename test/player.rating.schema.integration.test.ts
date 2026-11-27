@@ -299,10 +299,11 @@ describe('global rating ledger schema', { timeout: 120_000 }, () => {
     );
     expect(constraints.length).toBeGreaterThanOrEqual(8);
     expect(constraints.filter((row) => row['delete_action'] !== 'r')).toEqual([]);
-    // Source rows cannot be removed from under the evidence.
+    // The evidence references the participant anchor, never the profile: erasing a profile leaves the
+    // ledger intact, and the anchor of a live account cannot be removed from under it.
     expect(
-      await rejection(`delete from public.player_profiles where user_id = '${playerIds[0]}'`)
-    ).toMatch(/violates foreign key constraint|RATING_EVIDENCE_IMMUTABLE|Cascade/i);
+      await rejection(`delete from public.participant_identities where id = '${playerIds[0]}'`)
+    ).toMatch(/PARTICIPANT_IDENTITY_LIVE_ACCOUNT|violates foreign key constraint/i);
   });
 
   it.skipIf(!environment.env)(

@@ -1,4 +1,4 @@
-import { validateMatchUuid } from './matches.validators';
+import { validateMatchParticipantRef, validateMatchUuid } from './matches.validators';
 import { validateLocalDate, validateLocalTime } from './match-time';
 import type {
   ResultClassification,
@@ -106,7 +106,8 @@ export function classifyMatchResultSets(value: unknown): ResultClassification {
   return a > b ? 'team_a' : 'team_b';
 }
 
-export function validateMatchResultTeams(value: unknown): ResultTeams {
+/** `historic` accepts the scope-local key of a departed player (retained-history payloads only). */
+export function validateMatchResultTeams(value: unknown, historic = false): ResultTeams {
   if (!exact(value, ['team_a', 'team_b'])) throw new MatchResultValidationError('INVALID_TEAMS');
   const teams: ResultTeams = { team_a: ['', ''], team_b: ['', ''] };
   const seen = new Set<string>();
@@ -117,7 +118,9 @@ export function validateMatchResultTeams(value: unknown): ResultTeams {
     for (let index = 0; index < 2; index++) {
       let player: string;
       try {
-        player = validateMatchUuid(players[index]).toLowerCase();
+        player = (
+          historic ? validateMatchParticipantRef(players[index]) : validateMatchUuid(players[index])
+        ).toLowerCase();
       } catch {
         throw new MatchResultValidationError('INVALID_TEAMS', null, side);
       }

@@ -1,3 +1,4 @@
+import { isParticipantRef } from '../../lib/participant-ref';
 import { DEFAULT_STATISTICS_THRESHOLDS } from './statistics-config';
 import {
   HISTORY_STATUSES,
@@ -48,6 +49,9 @@ function exactObject(value: unknown, keys: readonly string[]): ObjectValue {
 }
 function uuid(value: unknown): string {
   return typeof value === 'string' && UUID.test(value) ? value : fail();
+}
+function participantRef(value: unknown): string {
+  return isParticipantRef(value) ? value : fail();
 }
 function nullableUuid(value: unknown): string | null {
   return value === null ? null : uuid(value);
@@ -389,7 +393,7 @@ export function decodeHistoryPage(value: unknown): HistoryPage {
 function actor(value: unknown): DetailActor | null {
   if (value === null) return null;
   const row = exactObject(value, ['user_id', 'display_name']);
-  return { user_id: uuid(row.user_id), display_name: nullableText(row.display_name) };
+  return { user_id: participantRef(row.user_id), display_name: nullableText(row.display_name) };
 }
 
 function playerRating(value: unknown): DetailPlayerRating {
@@ -437,7 +441,7 @@ function players(value: unknown): DetailPlayer[] {
   return value.map((item) => {
     const row = exactObject(item, ['user_id', 'display_name', 'is_provisional', 'rating']);
     return {
-      user_id: uuid(row.user_id),
+      user_id: participantRef(row.user_id),
       display_name: nullableText(row.display_name),
       is_provisional: boolean(row.is_provisional),
       rating: playerRating(row.rating)
@@ -577,7 +581,7 @@ export function decodeGroupDetail(value: unknown): GroupDetail {
       approver: actor(confirmation.approver)
     },
     submitter: {
-      user_id: uuid(submitter.user_id),
+      user_id: participantRef(submitter.user_id),
       display_name: nullableText(submitter.display_name),
       submitted_at: instant(submitter.submitted_at)
     },

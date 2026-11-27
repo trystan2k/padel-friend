@@ -61,7 +61,7 @@ function PlayerLabel({ entry, isOwn }: { entry: LeagueStandingEntry; isOwn: bool
   return (
     <>
       <span {...stylex.props(styles.playerName)}>
-        {entry.display_name ?? t('leagues.counters.unknownPlayer')}
+        {entry.display_name ?? t('player.formerPlayer')}
       </span>
       {entry.is_provisional && (
         <span {...stylex.props(styles.tag)}>{t('player.provisional.badge')}</span>

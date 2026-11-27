@@ -291,6 +291,7 @@
     "avatarConflictContinue": "Continuar con la foto actual"
   },
   "player": {
+    "formerPlayer": "Antiguo jugador",
     "provisional": {
       "badge": "Provisional",
       "reviewNote": "Aún sin registrar — no puede revisar resultados"

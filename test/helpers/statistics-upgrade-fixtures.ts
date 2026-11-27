@@ -11,6 +11,12 @@ const DATABASE_NAME = 'statistics_upgrade_test';
 const DROP_DATABASE_SQL = 'drop database if exists ' + DATABASE_NAME + ' with (force)';
 const MIGRATIONS_DIRECTORY = fileURLToPath(new URL('../../supabase/migrations/', import.meta.url));
 const FIRST_STATISTICS_MIGRATION = '20261102100000_statistics_domain.sql';
+const FIRST_ACCOUNT_ERASURE_MIGRATION = '20261117090000_participant_identities.sql';
+export type UpgradePhase =
+  | 'pre-statistics'
+  | 'statistics'
+  | 'pre-account-erasure'
+  | 'account-erasure';
 const INSUFFICIENT_PRIVILEGE = '42501';
 
 /** Projection tables compared before/after; updated_at and projected_at are operational bookkeeping. */
@@ -33,8 +39,8 @@ export type UpgradeSeed = {
 
 export type UpgradeDatabase = {
   client: Client;
-  /** Applies the migration files strictly before (or from) the first statistics migration. */
-  applyMigrations: (phase: 'pre-statistics' | 'statistics') => Promise<string[]>;
+  /** Applies the migration files strictly before (or from) a boundary migration. */
+  applyMigrations: (phase: UpgradePhase) => Promise<string[]>;
   drop: () => Promise<void>;
 };
 
@@ -68,15 +74,15 @@ create function storage.foldername(name text) returns text[] language sql immuta
 grant usage on schema storage to anon, authenticated, service_role;
 `;
 
-function migrationFiles(phase: 'pre-statistics' | 'statistics'): string[] {
+function migrationFiles(phase: UpgradePhase): string[] {
+  const [boundary, before] =
+    phase === 'pre-statistics' || phase === 'statistics'
+      ? [FIRST_STATISTICS_MIGRATION, phase === 'pre-statistics']
+      : [FIRST_ACCOUNT_ERASURE_MIGRATION, phase === 'pre-account-erasure'];
   return readdirSync(MIGRATIONS_DIRECTORY)
     .filter((file) => file.endsWith('.sql'))
     .sort()
-    .filter((file) =>
-      phase === 'pre-statistics'
-        ? file < FIRST_STATISTICS_MIGRATION
-        : file >= FIRST_STATISTICS_MIGRATION
-    );
+    .filter((file) => (before ? file < boundary : file >= boundary));
 }
 
 /**

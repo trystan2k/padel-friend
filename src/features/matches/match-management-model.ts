@@ -1,3 +1,4 @@
+import { isParticipantRef } from '../../lib/participant-ref';
 import type { MatchRegistrationParticipation } from './match-registration-model';
 import type { Json } from '../../lib/supabase/database.types';
 import { MATCH_EDIT_KEYS } from './match-management-edit';
@@ -268,7 +269,7 @@ export function parseMatchEventManagement(value: unknown): MatchEventManagement 
   if (
     !record(value) ||
     !integer(value.version, 1) ||
-    !isUuid(value.owner_id) ||
+    !isParticipantRef(value.owner_id) ||
     !(value.status === 'open' || value.status === 'cancelled') ||
     !(
       value.phase === 'open' ||
@@ -392,7 +393,7 @@ export function parseManagementParticipants(value: unknown): ManagementParticipa
     if (
       !record(row) ||
       !isUuid(row.registration_id) ||
-      !isUuid(row.user_id) ||
+      !isParticipantRef(row.user_id) ||
       !isUuid(row.attempt_id) ||
       row.lifecycle !== 'accepted' ||
       !integer(row.accepted_order, 1) ||
@@ -443,8 +444,8 @@ export function parseMatchAudit(value: unknown): MatchAuditEntry[] | null {
       !isUuid(row.id) ||
       !isUuid(row.match_event_id) ||
       !isUuid(row.community_id) ||
-      !(row.actor_id === null || isUuid(row.actor_id)) ||
-      !(row.target_user_id === null || isUuid(row.target_user_id)) ||
+      !(row.actor_id === null || isParticipantRef(row.actor_id)) ||
+      !(row.target_user_id === null || isParticipantRef(row.target_user_id)) ||
       !(row.request_id === null || isUuid(row.request_id)) ||
       typeof row.action !== 'string' ||
       !MATCH_AUDIT_ACTIONS.includes(row.action) ||

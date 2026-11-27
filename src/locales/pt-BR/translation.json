@@ -291,6 +291,7 @@
     "avatarConflictContinue": "Continuar com a foto atual"
   },
   "player": {
+    "formerPlayer": "Ex-jogador",
     "provisional": {
       "badge": "Provisório",
       "reviewNote": "Ainda não cadastrado — não pode revisar resultados"

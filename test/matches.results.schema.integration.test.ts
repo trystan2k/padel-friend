@@ -193,7 +193,7 @@ describe('match result proposal schema integration', () => {
         if v_count <> 1 then raise exception 'proposals event FK must be RESTRICT'; end if;
          select count(*) into v_count from pg_constraint
           where conrelid = 'public.match_event_result_proposals'::regclass and contype = 'f'
-            and pg_get_constraintdef(oid) ilike '%foreign key (submitted_by) references auth.users(id) on delete restrict%';
+            and pg_get_constraintdef(oid) ilike '%foreign key (submitted_by) references participant_identities(id) on delete restrict%';
          if v_count <> 1 then raise exception 'proposals submitter FK must be RESTRICT'; end if;
          select count(*) into v_count from pg_constraint
           where conrelid = 'public.match_event_result_proposals'::regclass
