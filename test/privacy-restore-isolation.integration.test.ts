@@ -1591,6 +1591,117 @@ describe.skipIf(!environment.env)(
       ).toBe(0);
     });
 
+    it('F49: a NULL token never confirms, dispatches or releases a cleanup, and never owns a ban or a lease', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'f49', {
+        displayName: 'Null Token Subject',
+        level: 3
+      });
+      const request = await lone.client.rpc('request_account_deletion', {
+        p_command_id: crypto.randomUUID()
+      });
+      const reference = String(asRecord(request.data)['reference']);
+      await verifyCase(reference, lone.email);
+      await armCase(reference);
+      expect(
+        await sweep({
+          client: scriptedAdmin({
+            unbanError: true,
+            beforeBan: async () => {
+              await fixtureSql(
+                "update privacy_internal.privacy_cases set state = 'blocked', resume_state = null, blocker_code = 'VERIFICATION_STALE', next_action = 'operator_review', armed_consumed_at = null, lease_expires_at = null, ban_lifted_at = now() where reference = " +
+                  L(reference)
+              );
+              await fixtureSql(
+                "update privacy_internal.privacy_cases set state = 'withdrawn', outcome = 'withdrawn', blocker_code = null, next_action = null, final_response_at = now(), closed_at = now() where reference = " +
+                  L(reference)
+              );
+            }
+          })
+        })
+      ).toEqual({ disabled: false, processed: 1 });
+      const admitted = asRecord(
+        (await trustedClient().rpc('privacy_op_cleanup_target', { p_reference: reference })).data
+      );
+      const token = String(admitted['token']);
+      const snapshot = async () => ({
+        admission: await sqlRows(
+          'select token::text as token, state, unban_dispatch_token::text as dispatched, confirmed_at is null as unconfirmed from privacy_internal.cleanup_admissions where case_ref = ' +
+            L(reference)
+        ),
+        open: Number(
+          await scalar(
+            'select count(*)::int from privacy_internal.ban_cleanup_obligations where resolved_at is null and case_ref = ' +
+              L(reference)
+          )
+        )
+      });
+      const before = await snapshot();
+      expect(before.open).toBe(1);
+      const answer = async (statement: string) =>
+        String((await sqlRows('select ' + statement + '::text as r'))[0]?.['r']);
+
+      // SQL three-valued logic must not wave a NULL token through any step.
+      expect(
+        await answer('public.privacy_op_cleanup_confirm(null::uuid, ' + L(reference) + ')')
+      ).toContain('CLEANUP_TOKEN_STALE');
+      expect(await answer('public.privacy_op_cleanup_confirm(null::uuid, null::text)')).toContain(
+        'CLEANUP_TOKEN_STALE'
+      );
+      expect(
+        await answer('public.privacy_op_cleanup_dispatch(null::uuid, ' + L(reference) + ')')
+      ).toContain('CLEANUP_TOKEN_STALE');
+      expect(await answer('public.privacy_op_cleanup_release(null::text)')).toContain(
+        'NO_OPEN_OBLIGATION'
+      );
+      // The real token without a dispatch still cannot confirm (no accidental NULL = NULL match on the dispatch token).
+      expect(
+        await answer(
+          'public.privacy_op_cleanup_confirm(' + L(token) + '::uuid, ' + L(reference) + ')'
+        )
+      ).toContain('CLEANUP_NOT_DISPATCHED');
+      // Nothing moved: the obligation is unresolved and the admission untouched.
+      expect(await snapshot()).toEqual(before);
+
+      // A NULL fence or token is a lost lease, and NULL never owns a ban.
+      const caseId = String((await caseRow(reference))['id']);
+      await expect(
+        fixtureSql(
+          'select public.privacy_proc_ban_mark(' + L(caseId) + '::uuid, null::bigint, null::uuid)'
+        )
+      ).rejects.toThrow(/PRIVACY_LEASE_LOST/);
+      await expect(
+        fixtureSql(
+          'select public.privacy_proc_freeze(' + L(caseId) + '::uuid, null::bigint, null::uuid)'
+        )
+      ).rejects.toThrow(/PRIVACY_LEASE_LOST/);
+      expect(
+        await answer('public.privacy_proc_ban_check(' + L(caseId) + '::uuid, null::uuid)')
+      ).toContain('"ok": false');
+      await expect(
+        fixtureSql(
+          'select public.privacy_proc_ban_cleanup_pending(' + L(caseId) + '::uuid, null::uuid)'
+        )
+      ).rejects.toThrow(/PRIVACY_LEASE_LOST/);
+
+      // The real generation still works end to end.
+      expect(
+        (
+          await trustedClient().rpc('privacy_op_cleanup_dispatch', {
+            p_token: token,
+            p_case_ref: reference
+          })
+        ).data
+      ).toEqual({ status: 'ok' });
+      expect(
+        (
+          await trustedClient().rpc('privacy_op_cleanup_confirm', {
+            p_token: token,
+            p_case_ref: reference
+          })
+        ).data
+      ).toMatchObject({ status: 'ok' });
+    });
+
     it('F25: the freeze refuses an address that changed after the claim (before any ban), and verification restarts', async () => {
       const subject = player(3).id;
       const reference = await requested(3);
