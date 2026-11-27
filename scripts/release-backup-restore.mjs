@@ -119,9 +119,21 @@ function disableDispatch(docker, database) {
  * plus a zero-residue proof) and the operator closed the gate with an evidence reference. Nothing here
  * remembers who was erased: the gate row keeps the evidence reference, not a standing identity ledger.
  */
-export function applyRestoreGate(docker, database) {
+export function applyRestoreGate(
+  docker,
+  database,
+  { snapshotAt = new Date().toISOString(), expectedSubjects = [], projectRef = database } = {}
+) {
+  // Only canonical ids reach the SQL text; an empty set is an explicit, confirmed statement.
+  if (!expectedSubjects.every((id) => /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(id)))
+    throw new Error('Expected subjects must be canonical uuids');
+  if (Number.isNaN(Date.parse(snapshotAt))) throw new Error('snapshotAt must be a timestamp');
   const begun = JSON.parse(
-    docker.sql(database, "select public.privacy_op_restore_gate('begin')::text;")
+    docker.sql(
+      database,
+      `select public.privacy_op_restore_gate('begin', null, '${new Date(snapshotAt).toISOString()}'::timestamptz, ` +
+        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], ${expectedSubjects.length === 0}, '${projectRef.replaceAll("'", '')}')::text;`
+    )
   );
   const settings = Object.fromEntries(
     docker
@@ -133,7 +145,9 @@ export function applyRestoreGate(docker, database) {
       .map((line) => line.split('='))
   );
   return {
-    pending: begun.restore_gate === 'pending' && settings.restore_gate === 'pending',
+    // Open = not closed: pending (subjects to reconcile) or reconciled (nothing to reconcile, evidence still due).
+    pending:
+      ['pending', 'reconciled'].includes(begun.restore_gate) && settings.restore_gate !== 'closed',
     intakeOff: settings.intake_enabled === 'false',
     executorOff: settings.executor_enabled === 'false'
   };
@@ -157,7 +171,7 @@ export function takeSnapshot(docker, { source = 'postgres' } = {}) {
     .filter((line) => !line.includes('DEFAULT ACL'))
     .join('\n');
   docker.exec(['sh', '-c', 'cat > "$1"', 'sh', tocPath], { input: toc });
-  return { dump, dumpPath, tocPath };
+  return { dump, dumpPath, tocPath, takenAt: new Date().toISOString() };
 }
 
 export function discardSnapshot(docker, snapshot) {
@@ -165,7 +179,11 @@ export function discardSnapshot(docker, snapshot) {
 }
 
 /** Restores a snapshot into a disposable scratch database and closes the restore gate on it. */
-export function restoreSnapshotWithGate(docker, snapshot, { base, source = 'postgres' }) {
+export function restoreSnapshotWithGate(
+  docker,
+  snapshot,
+  { base, source = 'postgres', expectedSubjects = () => [] }
+) {
   const destination = assertDisposableDatabase({
     name: base,
     prefix: RESTORE_PREFIX,
@@ -179,7 +197,14 @@ export function restoreSnapshotWithGate(docker, snapshot, { base, source = 'post
       '--exit-on-error',
       '--use-list=' + snapshot.tocPath
     ]);
-    return { destination, gate: applyRestoreGate(docker, destination) };
+    // The expected set is derived from the RESTORED copy (the caller compares it with the live project).
+    return {
+      destination,
+      gate: applyRestoreGate(docker, destination, {
+        snapshotAt: snapshot.takenAt,
+        expectedSubjects: expectedSubjects(destination)
+      })
+    };
   } catch (error) {
     dropDatabase(docker, destination);
     throw error;

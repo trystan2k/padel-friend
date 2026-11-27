@@ -22,17 +22,18 @@ export type RestoreReport = {
   sourceStable: boolean;
   pass: boolean;
 };
-export type Snapshot = { dump: Buffer; dumpPath: string; tocPath: string };
+export type Snapshot = { dump: Buffer; dumpPath: string; tocPath: string; takenAt: string };
 export function applyRestoreGate(
   docker: Docker,
-  database: string
+  database: string,
+  options?: { snapshotAt?: string; expectedSubjects?: string[]; projectRef?: string }
 ): { pending: boolean; intakeOff: boolean; executorOff: boolean };
 export function takeSnapshot(docker: Docker, options?: { source?: string }): Snapshot;
 export function discardSnapshot(docker: Docker, snapshot: Snapshot): void;
 export function restoreSnapshotWithGate(
   docker: Docker,
   snapshot: Snapshot,
-  options: { base: string; source?: string }
+  options: { base: string; source?: string; expectedSubjects?: (destination: string) => string[] }
 ): { destination: string; gate: { pending: boolean; intakeOff: boolean; executorOff: boolean } };
 export function parseArgs(argv: string[]): {
   runs: number;

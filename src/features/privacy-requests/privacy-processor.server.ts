@@ -180,13 +180,28 @@ export async function processPrivacyCase(
     await hooks.beforeStep?.(step);
     try {
       if (step === 'freeze') {
+        // The verified address must still be the one on file BEFORE anything locks the person out: a stale
+        // proof blocks the case (verification restarts) without a ban.
+        const precheck = record(
+          await rpc(admin, 'privacy_proc_freeze', { ...keys, p_check_only: true })
+        );
+        if (precheck?.status === 'blocked') {
+          emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(precheck.code) });
+          return { status: 'blocked', code: String(precheck.code), steps };
+        }
         // Sessions cannot be listed through the admin API: banning stops refresh and sign-in, and the
         // database freeze (committed next) rejects every stale access token at each boundary.
         const { error } = await admin.auth.admin.updateUserById(claim.subject_id, {
           ban_duration: BAN_DURATION
         });
         if (error && !isNotFound(error)) throw new Error('FREEZE_FAILED');
-        await rpc(admin, 'privacy_proc_freeze', keys);
+        const frozen = record(await rpc(admin, 'privacy_proc_freeze', keys));
+        if (frozen?.status === 'blocked') {
+          // The address moved between the pre-check and the freeze: nothing destructive happened, lift the ban.
+          await admin.auth.admin.updateUserById(claim.subject_id, { ban_duration: 'none' });
+          emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(frozen.code) });
+          return { status: 'blocked', code: String(frozen.code), steps };
+        }
         lastPhase = 'freeze';
       } else if (step === 'relational') {
         const result = record(await rpc(admin, 'privacy_proc_erase_relational', keys));

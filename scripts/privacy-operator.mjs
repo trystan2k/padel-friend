@@ -20,14 +20,20 @@ export const HELP = [
   '  arm <ref> --plan <json|file>           bind a one-use approval to the dry-run plan and this project',
   '  retry <ref>                            resume a blocked case from its last committed phase',
   '  refuse <ref>                           close a case that has not started (refusal)',
-  '  record-response <ref>                  record the final mail sent (purge after 90 days)',
+  '  record-response <ref> [--ack-external-followup]',
+  '                                         record the final mail sent (purge after 90 days); a case with outstanding',
+  '                                         external sends (list: external_followup) needs the explicit acknowledgment',
+  '                                         that you verified and mentioned them in the response.',
   '  purge                                  purge expired case records to outcome counts',
   '  switch <intake|executor> <on|off>      fail-closed kill switch',
-  '  restore-gate <begin|clear> [--evidence <ref>]',
-  '                                         restored environment: begin turns intake and executor off; clear needs a',
-  '                                         reconciled gate AND an evidence reference (switches stay off).',
-  '  restore-reconcile <subject-id>         restored environment: replay the real erasure for one subject erased after',
-  '                                         the snapshot and prove zero residue (refuses on any residue).',
+  '  restore-gate begin --snapshot-at <iso> [--confirm-empty]',
+  '                                         ISOLATED restore target only (never production): derives the expected',
+  '                                         subjects (live in the restored copy, gone from the source project given by',
+  '                                         PRIVACY_SOURCE_SUPABASE_URL / PRIVACY_SOURCE_SERVICE_ROLE_KEY), turns intake and',
+  '                                         executor off and binds the gate to this project. An empty set needs --confirm-empty.',
+  '  restore-gate clear --evidence <ref>    needs EVERY expected subject reconciled AND an evidence reference.',
+  "  restore-reconcile <subject-id>         restore target only: remove the subject's objects through the Storage API,",
+  '                                         replay the real erasure and prove zero residue. Only expected subjects.',
   '  generate-code                          one-time code for an email challenge to an unclaimed person (not stored)',
   '  erase-unclaimed <email> [--confirm] [--all-matches]',
   '                                         erase an add-by-email invitation record that has no account; without',
@@ -92,20 +98,36 @@ export function parseArgs(argv) {
     const token = rest[index];
     if (token.startsWith('--')) {
       const key = token.slice(2);
-      if (['confirm', 'allow-production', 'all-matches'].includes(key)) options[key] = true;
+      if (
+        [
+          'confirm',
+          'allow-production',
+          'all-matches',
+          'confirm-empty',
+          'ack-external-followup'
+        ].includes(key)
+      )
+        options[key] = true;
       else options[key] = rest[++index];
     } else positional.push(token);
   }
   return { command, positional, options };
 }
 
+const RESTORE_COMMANDS = ['restore-gate', 'restore-reconcile'];
+const RESTORE_BUCKETS = ['player-avatars', 'match-event-photos', 'community-venue-photos'];
+
 /** Fail closed: no default project, an explicit allowlist, and production only with evidence. */
-export function resolveTarget(env, options = {}) {
+export function resolveTarget(env, options = {}, command) {
   const url = env.SUPABASE_URL ?? env.VITE_SUPABASE_URL;
   const key = env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !key) throw new Error('OPERATOR_CONFIG_MISSING');
   const projectRef = projectRefOf(url);
   if (!projectRef) throw new Error('OPERATOR_PROJECT_UNKNOWN');
+  // Restore reconciliation erases people from the database it runs against: only an isolated (local) copy may be
+  // its target. This is decided before the allowlist and before any --allow-production override.
+  if (RESTORE_COMMANDS.includes(command) && projectRef !== 'local')
+    throw new Error('OPERATOR_RESTORE_PRODUCTION_REFUSED');
   const allowed = (env.PRIVACY_OPERATOR_ALLOWED_PROJECTS ?? 'local')
     .split(',')
     .map((entry) => entry.trim())
@@ -122,6 +144,32 @@ export function resolveTarget(env, options = {}) {
     projectRef,
     environment: projectRef === 'local' ? 'local' : 'production'
   };
+}
+
+/** The project the restored copy is compared with (read-only use): allowlisted, production only with evidence. */
+export function resolveSource(env, options = {}) {
+  const url = env.PRIVACY_SOURCE_SUPABASE_URL;
+  const key = env.PRIVACY_SOURCE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error('OPERATOR_SOURCE_MISSING');
+  const projectRef = projectRefOf(url);
+  if (!projectRef) throw new Error('OPERATOR_PROJECT_UNKNOWN');
+  const allowed = (env.PRIVACY_OPERATOR_ALLOWED_PROJECTS ?? 'local')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  if (!allowed.includes(projectRef)) throw new Error('OPERATOR_PROJECT_NOT_ALLOWED');
+  if (projectRef !== 'local') {
+    if (!options['allow-production']) throw new Error('OPERATOR_PRODUCTION_FLAG_REQUIRED');
+    if (!env.PRIVACY_OPERATOR_PRODUCTION_EVIDENCE)
+      throw new Error('OPERATOR_PRODUCTION_EVIDENCE_MISSING');
+  }
+  return { url, key, projectRef };
+}
+
+/** Subjects live in the restored copy but gone from the source project: erased after the snapshot. */
+export function deriveExpectedSubjects({ restored, live }) {
+  const present = new Set(live);
+  return [...new Set(restored)].filter((id) => !present.has(id)).sort((a, b) => a.localeCompare(b));
 }
 
 function plainObject(value, code) {
@@ -144,8 +192,67 @@ async function call(client, name, args) {
   return data;
 }
 
+function idList(value) {
+  if (!Array.isArray(value) || value.some((id) => typeof id !== 'string'))
+    throw new Error('OPERATOR_RESPONSE_INVALID');
+  return value;
+}
+
+function refuseRestoreOnProduction(target) {
+  if (target.environment === 'production' || target.projectRef !== 'local')
+    throw new Error('OPERATOR_RESTORE_PRODUCTION_REFUSED');
+}
+
+/**
+ * Restore reconciliation of ONE expected subject in the restored environment: the Storage API phase (objects the
+ * restored copy references are removed in bounded batches and re-listed to prove absence), then the database
+ * erasure replay with its zero-residue proof. Every refusal (gate, project, expected set) comes from the database
+ * before anything is deleted.
+ */
+export async function reconcileRestoredSubject(client, subject, projectRef) {
+  const listed = plainObject(
+    await call(client, 'privacy_op_restore_storage_set', {
+      p_subject: subject,
+      p_project_ref: projectRef
+    }),
+    'OPERATOR_RESPONSE_INVALID'
+  );
+  if (listed.status !== 'ok') return listed;
+  const byBucket = new Map();
+  for (const entry of Array.isArray(listed.objects) ? listed.objects : []) {
+    if (
+      typeof entry?.bucket !== 'string' ||
+      typeof entry?.name !== 'string' ||
+      !RESTORE_BUCKETS.includes(entry.bucket)
+    )
+      throw new Error('RESTORE_STORAGE_BUCKET_REJECTED');
+    byBucket.set(entry.bucket, [...(byBucket.get(entry.bucket) ?? []), entry.name]);
+  }
+  for (const [bucket, names] of byBucket) {
+    for (let index = 0; index < names.length; index += 100) {
+      const { error } = await client.storage.from(bucket).remove(names.slice(index, index + 100));
+      if (error) throw new Error('RESTORE_STORAGE_REMOVE_FAILED');
+    }
+    for (const name of names) {
+      const slash = name.lastIndexOf('/');
+      const base = name.slice(slash + 1);
+      const { data, error } = await client.storage
+        .from(bucket)
+        .list(slash < 0 ? '' : name.slice(0, slash), { search: base });
+      if (error) throw new Error('RESTORE_STORAGE_UNVERIFIED');
+      if ((data ?? []).some((object) => object.name === base))
+        throw new Error('RESTORE_STORAGE_RESIDUE');
+    }
+  }
+  return call(client, 'privacy_op_restore_reconcile', {
+    p_subject: subject,
+    p_project_ref: projectRef,
+    p_storage_verified: true
+  });
+}
+
 /** Executes one parsed command against a service-role client. Returns console-safe data. */
-export async function runCommand(client, parsed, target) {
+export async function runCommand(client, parsed, target, source) {
   const { command, positional, options } = parsed;
   const reference = positional[0];
   const referenceless = [
@@ -202,21 +309,61 @@ export async function runCommand(client, parsed, target) {
       return call(client, 'privacy_op_retry', { p_reference: reference });
     case 'refuse':
       return call(client, 'privacy_op_close_refused', { p_reference: reference });
-    case 'record-response':
-      return call(client, 'privacy_op_record_response', { p_reference: reference });
+    case 'record-response': {
+      const result = plainObject(
+        await call(client, 'privacy_op_record_response', {
+          p_reference: reference,
+          p_external_followup_ack: options['ack-external-followup'] === true
+        }),
+        'OPERATOR_RESPONSE_INVALID'
+      );
+      return result.code === 'EXTERNAL_FOLLOWUP_ACK_REQUIRED'
+        ? {
+            ...result,
+            hint: 'Verify and mention the outstanding sends in the final response, then repeat with --ack-external-followup.'
+          }
+        : result;
+    }
     case 'purge':
       return call(client, 'privacy_op_purge_expired', {});
     case 'restore-gate': {
+      refuseRestoreOnProduction(target);
       const [action] = positional;
       if (!['begin', 'clear'].includes(action)) throw new Error('RESTORE_GATE_ACTION_INVALID');
-      return call(client, 'privacy_op_restore_gate', {
-        p_action: action,
-        p_evidence: options.evidence ?? null
-      });
+      if (action === 'clear')
+        return call(client, 'privacy_op_restore_gate', {
+          p_action: 'clear',
+          p_evidence: options.evidence ?? null
+        });
+      if (!source) throw new Error('OPERATOR_SOURCE_MISSING');
+      const snapshotAt = options['snapshot-at'];
+      if (!snapshotAt || Number.isNaN(Date.parse(snapshotAt)))
+        throw new Error('SNAPSHOT_AT_REQUIRED');
+      const since = new Date(snapshotAt).toISOString();
+      const restored = idList(await call(client, 'privacy_op_live_identity_ids', {}));
+      const live = idList(await call(source, 'privacy_op_live_identity_ids', {}));
+      // Informational: closed case records no longer carry subject ids, so the set comes from the difference.
+      const recorded = plainObject(
+        await call(source, 'privacy_op_erasures_since', { p_since: since }),
+        'OPERATOR_RESPONSE_INVALID'
+      );
+      const begun = plainObject(
+        await call(client, 'privacy_op_restore_gate', {
+          p_action: 'begin',
+          p_evidence: null,
+          p_snapshot_at: since,
+          p_expected_subjects: deriveExpectedSubjects({ restored, live }),
+          p_confirm_empty: options['confirm-empty'] === true,
+          p_restore_project_ref: target.projectRef
+        }),
+        'OPERATOR_RESPONSE_INVALID'
+      );
+      return { ...begun, erasures_recorded_since_snapshot: recorded.count };
     }
     case 'restore-reconcile':
       // The subject id is the operator's own post-snapshot erasure record; it is never echoed back.
-      return call(client, 'privacy_op_restore_reconcile', { p_subject: reference });
+      refuseRestoreOnProduction(target);
+      return reconcileRestoredSubject(client, reference, target.projectRef);
     case 'generate-code':
       // Printed once for the operator's own email challenge; nothing is stored or sent from here.
       return { status: 'ok', code: generateChallenge() };
@@ -250,11 +397,18 @@ export async function main(argv, env) {
     return 0;
   }
   const parsed = parseArgs(argv);
-  const target = resolveTarget(env, parsed.options);
-  const client = createClient(target.url, target.key, {
+  const target = resolveTarget(env, parsed.options, parsed.command);
+  const clientOptions = {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-  });
-  console.log(JSON.stringify(await runCommand(client, parsed, target), null, 2));
+  };
+  const client = createClient(target.url, target.key, clientOptions);
+  let source;
+  if (parsed.command === 'restore-gate' && parsed.positional[0] === 'begin') {
+    const resolved = resolveSource(env, parsed.options);
+    if (resolved.url === target.url) throw new Error('OPERATOR_RESTORE_SOURCE_IS_TARGET');
+    source = createClient(resolved.url, resolved.key, clientOptions);
+  }
+  console.log(JSON.stringify(await runCommand(client, parsed, target, source), null, 2));
   return 0;
 }
 

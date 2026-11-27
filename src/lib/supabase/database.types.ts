@@ -6254,11 +6254,33 @@ export type Database = {
         Args: { p_all_matches?: boolean; p_confirm: boolean; p_email: string }
         Returns: Json
       }
+      privacy_op_erasures_since: { Args: { p_since: string }; Returns: Json }
       privacy_op_list_cases: { Args: Record<PropertyKey, never>; Returns: Json }
+      privacy_op_live_identity_ids: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_purge_expired: { Args: Record<PropertyKey, never>; Returns: Json }
-      privacy_op_record_response: { Args: { p_reference: string }; Returns: Json }
-      privacy_op_restore_gate: { Args: { p_action: string; p_evidence?: string }; Returns: Json }
-      privacy_op_restore_reconcile: { Args: { p_subject: string }; Returns: Json }
+      privacy_op_record_response: {
+        Args: { p_external_followup_ack?: boolean; p_reference: string }
+        Returns: Json
+      }
+      privacy_op_restore_gate: {
+        Args: {
+          p_action: string
+          p_confirm_empty?: boolean
+          p_evidence?: string
+          p_expected_subjects?: string[]
+          p_restore_project_ref?: string
+          p_snapshot_at?: string
+        }
+        Returns: Json
+      }
+      privacy_op_restore_reconcile: {
+        Args: { p_project_ref: string; p_storage_verified?: boolean; p_subject: string }
+        Returns: Json
+      }
+      privacy_op_restore_storage_set: {
+        Args: { p_project_ref: string; p_subject: string }
+        Returns: Json
+      }
       privacy_op_retry: { Args: { p_reference: string }; Returns: Json }
       privacy_op_set_switch: { Args: { p_key: string; p_value: boolean }; Returns: Json }
       privacy_op_start_verification: {
@@ -6298,7 +6320,7 @@ export type Database = {
         Returns: Json
       }
       privacy_proc_freeze: {
-        Args: { p_case: string; p_fence: number; p_token: string }
+        Args: { p_case: string; p_check_only?: boolean; p_fence: number; p_token: string }
         Returns: Json
       }
       privacy_proc_storage_set: {

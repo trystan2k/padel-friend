@@ -63,7 +63,16 @@ export async function sweep(
     client: options.client ?? admin(),
     env: {},
     projectRef: 'local',
-    ...(options.hooks ? { hooks: options.hooks } : {}),
+    hooks: {
+      ...options.hooks,
+      // The freeze transaction's own commit can still be visible as an "older open transaction" to the very next
+      // call (the quiescence check would then wait one 5 s cycle): give the commit a moment, as production's
+      // cron-driven calls always do.
+      afterStep: async (step) => {
+        if (step === 'freeze') await new Promise((resolve) => setTimeout(resolve, 150));
+        await options.hooks?.afterStep?.(step);
+      }
+    },
     ...(options.maxCases ? { maxCases: options.maxCases } : {})
   });
 }

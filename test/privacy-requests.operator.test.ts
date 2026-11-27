@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   HELP,
   challengeDigest,
+  deriveExpectedSubjects,
   generateChallenge,
   parseArgs,
   projectRefOf,
+  reconcileRestoredSubject,
+  resolveSource,
   resolveTarget,
   runCommand,
   type OperatorClient
@@ -120,34 +123,207 @@ describe('privacy operator environment guard', () => {
 });
 
 describe('privacy operator: restore gate', () => {
-  it('begins and clears the gate through the database, clearing only with an evidence reference', async () => {
+  const subjectA = '11111111-2222-4333-8444-555555555555';
+  const subjectB = '66666666-7777-4888-9999-000000000000';
+  const withIds = (ids: string[], extra: Record<string, unknown> = {}): OperatorClient => ({
+    rpc: (name, args) => {
+      calls.push({ name, args });
+      return Promise.resolve({
+        data: name === 'privacy_op_live_identity_ids' ? ids : (extra[name] ?? { status: 'ok' }),
+        error: null
+      });
+    }
+  });
+
+  it('derives the expected subjects from the restored copy against the source project', () => {
+    expect(
+      deriveExpectedSubjects({ restored: [subjectB, subjectA, 'c', subjectA], live: ['c', 'd'] })
+    ).toEqual([subjectA, subjectB]);
+    expect(deriveExpectedSubjects({ restored: ['c'], live: ['c'] })).toEqual([]);
+  });
+
+  it('begins the gate with the derived set bound to the restore project, and clears it with evidence only', async () => {
     calls.length = 0;
-    await runCommand(client(), parse('restore-gate', 'begin'), target);
+    const restored = withIds([subjectA, subjectB, 'kept']);
+    const source = withIds(['kept'], { privacy_op_erasures_since: { count: 2 } });
+    const begun = await runCommand(
+      restored,
+      parse('restore-gate', 'begin', '--snapshot-at', '2026-11-20T10:00:00Z'),
+      target,
+      source
+    );
+    expect(calls.find((call) => call.name === 'privacy_op_restore_gate')?.args).toEqual({
+      p_action: 'begin',
+      p_evidence: null,
+      p_snapshot_at: '2026-11-20T10:00:00.000Z',
+      p_expected_subjects: [subjectA, subjectB],
+      p_confirm_empty: false,
+      p_restore_project_ref: 'local'
+    });
+    expect(begun).toMatchObject({ erasures_recorded_since_snapshot: 2 });
+    calls.length = 0;
     await runCommand(client(), parse('restore-gate', 'clear', '--evidence', 'ticket-123'), target);
     expect(calls).toEqual([
-      { name: 'privacy_op_restore_gate', args: { p_action: 'begin', p_evidence: null } },
       { name: 'privacy_op_restore_gate', args: { p_action: 'clear', p_evidence: 'ticket-123' } }
     ]);
     await expect(runCommand(client(), parse('restore-gate', 'open'), target)).rejects.toThrow(
       'RESTORE_GATE_ACTION_INVALID'
     );
+    await expect(
+      runCommand(client(), parse('restore-gate', 'begin', '--snapshot-at', 'x'), target, source)
+    ).rejects.toThrow('SNAPSHOT_AT_REQUIRED');
+    await expect(
+      runCommand(client(), parse('restore-gate', 'begin', '--snapshot-at', '2026-11-20'), target)
+    ).rejects.toThrow('OPERATOR_SOURCE_MISSING');
     expect(HELP).toContain('restore-gate');
   });
 
-  it('reconciles one restored subject through the database and never echoes the id', async () => {
+  it('passes --confirm-empty only when asked for', async () => {
     calls.length = 0;
-    const subject = '11111111-2222-4333-8444-555555555555';
-    const result = await runCommand(
-      client({ status: 'ok', restore_gate: 'reconciled' }),
-      parse('restore-reconcile', subject),
-      target
+    await runCommand(
+      withIds(['kept']),
+      parse('restore-gate', 'begin', '--snapshot-at', '2026-11-20', '--confirm-empty'),
+      target,
+      withIds(['kept'], { privacy_op_erasures_since: { count: 0 } })
     );
-    expect(calls).toEqual([{ name: 'privacy_op_restore_reconcile', args: { p_subject: subject } }]);
-    expect(JSON.stringify(result)).not.toContain(subject);
+    expect(calls.find((call) => call.name === 'privacy_op_restore_gate')?.args).toMatchObject({
+      p_expected_subjects: [],
+      p_confirm_empty: true
+    });
+  });
+
+  it('refuses production for every restore command, before any override is considered (F22)', async () => {
+    const hosted = {
+      SUPABASE_URL: 'https://abcdefgh.supabase.co',
+      SUPABASE_SERVICE_ROLE_KEY: 'k',
+      PRIVACY_OPERATOR_ALLOWED_PROJECTS: 'abcdefgh',
+      PRIVACY_OPERATOR_PRODUCTION_EVIDENCE: 'ticket'
+    };
+    for (const command of ['restore-gate', 'restore-reconcile']) {
+      expect(() => resolveTarget(hosted, { 'allow-production': true }, command)).toThrow(
+        'OPERATOR_RESTORE_PRODUCTION_REFUSED'
+      );
+    }
+    // The same project stays reachable for the ordinary commands, with the usual override.
+    expect(resolveTarget(hosted, { 'allow-production': true }, 'list')).toMatchObject({
+      environment: 'production'
+    });
+    // And a production-shaped target handed to the runner is refused as well.
+    const production = { projectRef: 'abcdefgh', environment: 'production' };
+    calls.length = 0;
+    await expect(
+      runCommand(client(), parse('restore-reconcile', subjectA), production)
+    ).rejects.toThrow('OPERATOR_RESTORE_PRODUCTION_REFUSED');
+    await expect(
+      runCommand(client(), parse('restore-gate', 'clear', '--evidence', 'x'), production)
+    ).rejects.toThrow('OPERATOR_RESTORE_PRODUCTION_REFUSED');
+    expect(calls).toEqual([]);
+  });
+
+  it('resolves the source project read-only and only through the allowlist', () => {
+    const env = {
+      PRIVACY_SOURCE_SUPABASE_URL: 'https://abcdefgh.supabase.co',
+      PRIVACY_SOURCE_SERVICE_ROLE_KEY: 'k',
+      PRIVACY_OPERATOR_ALLOWED_PROJECTS: 'local,abcdefgh'
+    };
+    expect(() => resolveSource({}, {})).toThrow('OPERATOR_SOURCE_MISSING');
+    expect(() => resolveSource(env, {})).toThrow('OPERATOR_PRODUCTION_FLAG_REQUIRED');
+    expect(() => resolveSource(env, { 'allow-production': true })).toThrow(
+      'OPERATOR_PRODUCTION_EVIDENCE_MISSING'
+    );
+    expect(
+      resolveSource(
+        { ...env, PRIVACY_OPERATOR_PRODUCTION_EVIDENCE: 'ticket' },
+        { 'allow-production': true }
+      )
+    ).toMatchObject({ projectRef: 'abcdefgh' });
+    expect(() => resolveSource({ ...env, PRIVACY_OPERATOR_ALLOWED_PROJECTS: 'local' }, {})).toThrow(
+      'OPERATOR_PROJECT_NOT_ALLOWED'
+    );
+  });
+
+  it('removes the subject objects through the Storage API, proves absence, then reconciles (F27)', async () => {
+    calls.length = 0;
+    const removed: string[] = [];
+    let listed = 0;
+    const storage: NonNullable<OperatorClient['storage']> = {
+      from: (bucket) => ({
+        remove: (names) => {
+          removed.push(...names.map((name) => bucket + '/' + name));
+          return Promise.resolve({ error: null });
+        },
+        list: () => {
+          listed++;
+          return Promise.resolve({ data: [], error: null });
+        }
+      })
+    };
+    const reply = (name: string) =>
+      name === 'privacy_op_restore_storage_set'
+        ? { status: 'ok', objects: [{ bucket: 'player-avatars', name: subjectA + '/a.png' }] }
+        : { status: 'ok', restore_gate: 'pending' };
+    const result = await reconcileRestoredSubject(
+      {
+        rpc: (name, args) => {
+          calls.push({ name, args });
+          return Promise.resolve({ data: reply(name), error: null });
+        },
+        storage
+      },
+      subjectA,
+      'local'
+    );
+    expect(removed).toEqual(['player-avatars/' + subjectA + '/a.png']);
+    expect(listed).toBe(1);
+    expect(calls.map((call) => call.name)).toEqual([
+      'privacy_op_restore_storage_set',
+      'privacy_op_restore_reconcile'
+    ]);
+    expect(calls[1]?.args).toEqual({
+      p_subject: subjectA,
+      p_project_ref: 'local',
+      p_storage_verified: true
+    });
+    expect(JSON.stringify(result)).not.toContain(subjectA);
     await expect(runCommand(client(), parse('restore-reconcile'), target)).rejects.toThrow(
       'REFERENCE_REQUIRED'
     );
     expect(HELP).toContain('restore-reconcile');
+  });
+
+  it('stops before any deletion when the database refuses the subject, and rejects foreign buckets', async () => {
+    calls.length = 0;
+    const refused = await reconcileRestoredSubject(
+      client({ status: 'rejected', code: 'RESTORE_SUBJECT_NOT_EXPECTED' }),
+      subjectA,
+      'local'
+    );
+    expect(refused).toEqual({ status: 'rejected', code: 'RESTORE_SUBJECT_NOT_EXPECTED' });
+    expect(calls.map((call) => call.name)).toEqual(['privacy_op_restore_storage_set']);
+    await expect(
+      reconcileRestoredSubject(
+        client({ status: 'ok', objects: [{ bucket: 'secrets', name: 'x' }] }),
+        subjectA,
+        'local'
+      )
+    ).rejects.toThrow('RESTORE_STORAGE_BUCKET_REJECTED');
+  });
+
+  it('asks for the external follow-up acknowledgment before recording the response (F23)', async () => {
+    calls.length = 0;
+    const pending = await runCommand(
+      client({ status: 'rejected', code: 'EXTERNAL_FOLLOWUP_ACK_REQUIRED' }),
+      parse('record-response', 'PR-AAAAAAAAAAAA'),
+      target
+    );
+    expect(pending).toMatchObject({ code: 'EXTERNAL_FOLLOWUP_ACK_REQUIRED' });
+    expect(JSON.stringify(pending)).toContain('--ack-external-followup');
+    await runCommand(
+      client(),
+      parse('record-response', 'PR-AAAAAAAAAAAA', '--ack-external-followup'),
+      target
+    );
+    expect(calls.map((call) => call.args['p_external_followup_ack'])).toEqual([false, true]);
   });
 });
 

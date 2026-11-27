@@ -80,6 +80,7 @@ describe('privacy processor phases', () => {
     });
     expect(names(calls)).toEqual([
       'freeze',
+      'freeze',
       'erase_relational',
       'storage_set',
       'complete_phase',
@@ -197,7 +198,40 @@ describe('privacy processor phases', () => {
         }
       })
     ).rejects.toBe(crash);
+    // Address pre-check, then the freeze commit.
+    expect(names(calls)).toEqual(['freeze', 'freeze']);
+  });
+
+  it('blocks on a stale verified address BEFORE the ban (F25)', async () => {
+    const { admin, calls, raw } = fakeAdmin({
+      rpc: (name, args) =>
+        name === 'privacy_proc_freeze' && args['p_check_only'] === true
+          ? { data: { status: 'blocked', code: 'VERIFICATION_STALE' } }
+          : undefined
+    });
+    expect(await processPrivacyCase(admin, claim())).toEqual({
+      status: 'blocked',
+      code: 'VERIFICATION_STALE',
+      steps: []
+    });
+    expect(raw.auth.admin.updateUserById).not.toHaveBeenCalled();
     expect(names(calls)).toEqual(['freeze']);
+  });
+
+  it('lifts the ban when the freeze itself refuses a stale address (F25)', async () => {
+    const { admin, raw } = fakeAdmin({
+      rpc: (name, args) =>
+        name === 'privacy_proc_freeze' && args['p_check_only'] !== true
+          ? { data: { status: 'blocked', code: 'VERIFICATION_STALE' } }
+          : undefined
+    });
+    expect((await processPrivacyCase(admin, claim())).status).toBe('blocked');
+    expect(raw.auth.admin.updateUserById).toHaveBeenNthCalledWith(1, 'subject', {
+      ban_duration: '876000h'
+    });
+    expect(raw.auth.admin.updateUserById).toHaveBeenNthCalledWith(2, 'subject', {
+      ban_duration: 'none'
+    });
   });
 });
 

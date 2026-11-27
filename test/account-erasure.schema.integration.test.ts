@@ -234,6 +234,51 @@ describe.skipIf(!environment.env)(
       expect((await erasurePlan(lone.id)).blockers).toEqual([]);
     });
 
+    // The reviewed mapping set the migration carries is what the registry holds; the apply-time comparison is
+    // the same function, fed here with that set.
+    const reviewedSet =
+      "(select jsonb_agg(jsonb_build_object('source_schema', source_schema, 'source_table', source_table, " +
+      "'source_columns', source_columns, 'target_schema', target_schema, 'target_table', target_table, " +
+      "'target_columns', target_columns)) from privacy_internal.erasure_fk_registry)";
+    const compare = (setup: string, reviewed: string) =>
+      fixtureSql(
+        'do $probe$ declare v_detail text; begin ' +
+          setup +
+          ' begin perform privacy_internal.assert_fk_registry_reviewed(' +
+          reviewed +
+          "); raise exception 'PROBE:accepted'; exception when sqlstate 'P0001' then " +
+          'get stacked diagnostics v_detail = pg_exception_detail; ' +
+          "raise exception 'PROBE:%', coalesce(nullif(v_detail, ''), 'accepted'); end; end $probe$;"
+      );
+
+    it('accepts the live catalog when it matches the reviewed mapping set exactly (F26)', async () => {
+      await expect(compare('', reviewedSet)).rejects.toThrow(/PROBE:accepted/);
+    });
+
+    it('aborts on a live composite FK from classified columns that was never reviewed (F26)', async () => {
+      const probe = compare(
+        'alter table public.player_profiles add constraint zz_reviewed_pair unique (user_id, invited_by); ' +
+          'create table public.zz_hosted_edge(a uuid, b uuid, foreign key (a, b) references public.player_profiles(user_id, invited_by)); ' +
+          "insert into privacy_internal.erasure_dispositions(table_name, column_name, disposition, note) values ('zz_hosted_edge', 'a', 'account_owned', 'probe'), ('zz_hosted_edge', 'b', 'account_owned', 'probe'); ",
+        reviewedSet
+      );
+      await expect(probe).rejects.toThrow(/PROBE:\["unclassified_dependency"\]/);
+      expect(
+        await scalar("select count(*)::int from pg_class where relname = 'zz_hosted_edge'")
+      ).toBe(0);
+    });
+
+    it('aborts when a reviewed edge no longer exists in the catalog (F26)', async () => {
+      const probe = compare(
+        '',
+        '(' +
+          reviewedSet +
+          " || jsonb_build_array(jsonb_build_object('source_schema', 'public', 'source_table', 'zz_removed_edge', " +
+          "'source_columns', '[\"owner_id\"]'::jsonb, 'target_schema', 'auth', 'target_table', 'users', 'target_columns', '[\"id\"]'::jsonb)))"
+      );
+      await expect(probe).rejects.toThrow(/PROBE:\["registry_drift"\]/);
+    });
+
     it('opens the guard exemption only inside the private window', async () => {
       const rows = await sqlRows(
         "select count(*)::int as n from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any (array[" +
