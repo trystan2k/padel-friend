@@ -41,6 +41,7 @@ export const SPEC_WEIGHTS = {
   'e2e/onboarding.spec.ts': 34,
   'e2e/player-ratings.spec.ts': 81,
   'e2e/offline-mutations.spec.ts': 8,
+  'e2e/privacy-requests.spec.ts': 20,
   'e2e/realtime-convergence.spec.ts': 15,
   'e2e/release-accessibility.spec.ts': 12,
   'e2e/release-integrity.spec.ts': 20,

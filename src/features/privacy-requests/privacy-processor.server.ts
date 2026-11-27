@@ -65,6 +65,7 @@ async function rpc(
     | 'privacy_proc_complete_phase'
     | 'privacy_proc_finish'
     | 'privacy_proc_fail'
+    | 'privacy_proc_ban_lift_failed'
     | 'privacy_op_purge_expired',
   args: Record<string, unknown>
 ): Promise<unknown> {
@@ -198,7 +199,15 @@ export async function processPrivacyCase(
         const frozen = record(await rpc(admin, 'privacy_proc_freeze', keys));
         if (frozen?.status === 'blocked') {
           // The address moved between the pre-check and the freeze: nothing destructive happened, lift the ban.
-          await admin.auth.admin.updateUserById(claim.subject_id, { ban_duration: 'none' });
+          const lifted = await admin.auth.admin.updateUserById(claim.subject_id, {
+            ban_duration: 'none'
+          });
+          if (lifted.error && !isNotFound(lifted.error)) {
+            // The person must not stay locked out silently: the case becomes an operator-actionable blocker.
+            await rpc(admin, 'privacy_proc_ban_lift_failed', { p_case: claim.case_id });
+            emitDiagnostic('privacy.case', 'rejected', { stage: step, code: 'BAN_LIFT_FAILED' });
+            return { status: 'blocked', code: 'BAN_LIFT_FAILED', steps };
+          }
           emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(frozen.code) });
           return { status: 'blocked', code: String(frozen.code), steps };
         }
@@ -224,7 +233,18 @@ export async function processPrivacyCase(
         lastPhase = 'storage';
       } else if (step === 'auth') {
         await eraseAuthUser(admin, claim.subject_id);
-        await rpc(admin, 'privacy_proc_complete_phase', { ...keys, p_phase: 'auth', p_removed: 0 });
+        const completed = record(
+          await rpc(admin, 'privacy_proc_complete_phase', {
+            ...keys,
+            p_phase: 'auth',
+            p_removed: 0
+          })
+        );
+        if (completed?.status === 'blocked') {
+          // Outstanding external sends need the operator's acknowledgment before the case leaves the boundary.
+          emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(completed.code) });
+          return { status: 'blocked', code: String(completed.code), steps };
+        }
         state = 'supabase_erased';
         lastPhase = 'auth';
       } else {

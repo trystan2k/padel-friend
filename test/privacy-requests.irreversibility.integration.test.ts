@@ -366,9 +366,19 @@ describe.skipIf(!environment.env)(
       );
       await armCase(reference);
       expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      // Outstanding external work: the case waits at the destructive boundary for the operator's acknowledgment.
+      expect(await caseRow(reference)).toMatchObject({
+        state: 'blocked',
+        blocker_code: 'EXTERNAL_FOLLOWUP_ACK_REQUIRED',
+        resume_state: 'app_data_erased'
+      });
+      expect(await sweep()).toEqual({ disabled: false, processed: 0 });
+      expect((await operator('ack-external-followup', reference))['state']).toBe('app_data_erased');
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
       expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });
       expect(asRecord((await caseRow(reference))['phase_manifest'])).toMatchObject({
-        external_followup: true
+        external_followup: true,
+        external_followup_ack: true
       });
       expect(await listed()).toContain('"external_followup":true');
     });

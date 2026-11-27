@@ -89,6 +89,14 @@ export async function deliverPlayerAddInvite(
   });
   const context = loaded.error ? null : parseInviteContext(loaded.data, dispatch.locale);
   if (!context) return false;
+  // The admission happened earlier and the send is not atomic with it: a subject paused since (privacy erasure)
+  // must not receive this send. Not allowed settles as an undelivered attempt (failed-safe, nothing sent).
+  const allowed = await admin.rpc('match_player_add_send_allowed', {
+    p_actor_id: input.actor_id,
+    p_match_event_id: dispatch.match_event_id,
+    p_request_id: input.request_id
+  });
+  if (allowed.error || !allowed.data) return false;
   const metadata = buildInvitationEmailMetadata({ ...context, origin: input.origin });
   if (dispatch.action === 'resend') {
     if (!context.targetUserId) return false;

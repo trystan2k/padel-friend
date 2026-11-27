@@ -27,6 +27,7 @@ function fakeAdmin(options: {
   ) => { data?: unknown; error?: { message: string } } | undefined;
   getUser?: Array<{ error: { status?: number } | null }>;
   removeError?: boolean;
+  unbanError?: boolean;
   storage?: Array<Array<{ bucket: string; name: string }>>;
 }) {
   const calls: Call[] = [];
@@ -53,8 +54,18 @@ function fakeAdmin(options: {
     },
     auth: {
       admin: {
-        updateUserById: vi.fn<(id: string, attributes: unknown) => Promise<{ error: null }>>(() =>
-          Promise.resolve({ error: null })
+        updateUserById: vi.fn<
+          (id: string, attributes: unknown) => Promise<{ error: { status?: number } | null }>
+        >((_id, attributes) =>
+          Promise.resolve({
+            error:
+              options.unbanError &&
+              typeof attributes === 'object' &&
+              attributes !== null &&
+              Reflect.get(attributes, 'ban_duration') === 'none'
+                ? { status: 500 }
+                : null
+          })
         ),
         getUserById: vi.fn<(id: string) => Promise<{ error: { status?: number } | null }>>(() =>
           Promise.resolve(users.shift() ?? { error: { status: 404 } })
@@ -216,6 +227,37 @@ describe('privacy processor phases', () => {
     });
     expect(raw.auth.admin.updateUserById).not.toHaveBeenCalled();
     expect(names(calls)).toEqual(['freeze']);
+  });
+
+  it('blocks the case as BAN_LIFT_FAILED when the temporary ban cannot be lifted (F33)', async () => {
+    const { admin, calls } = fakeAdmin({
+      unbanError: true,
+      rpc: (name, args) =>
+        name === 'privacy_proc_freeze' && args['p_check_only'] !== true
+          ? { data: { status: 'blocked', code: 'VERIFICATION_STALE' } }
+          : undefined
+    });
+    expect(await processPrivacyCase(admin, claim())).toEqual({
+      status: 'blocked',
+      code: 'BAN_LIFT_FAILED',
+      steps: []
+    });
+    expect(calls.at(-1)).toEqual({
+      name: 'privacy_proc_ban_lift_failed',
+      args: { p_case: 'case' }
+    });
+  });
+
+  it('blocks at the auth boundary until the operator acknowledged outstanding sends (F31)', async () => {
+    const { admin } = fakeAdmin({
+      rpc: (name, args) =>
+        name === 'privacy_proc_complete_phase' && args['p_phase'] === 'auth'
+          ? { data: { status: 'blocked', code: 'EXTERNAL_FOLLOWUP_ACK_REQUIRED' } }
+          : undefined
+    });
+    expect(
+      await processPrivacyCase(admin, claim({ state: 'app_data_erased', last_phase: 'storage' }))
+    ).toEqual({ status: 'blocked', code: 'EXTERNAL_FOLLOWUP_ACK_REQUIRED', steps: [] });
   });
 
   it('lifts the ban when the freeze itself refuses a stale address (F25)', async () => {

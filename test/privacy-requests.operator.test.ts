@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   HELP,
@@ -142,11 +143,11 @@ describe('privacy operator: restore gate', () => {
     expect(deriveExpectedSubjects({ restored: ['c'], live: ['c'] })).toEqual([]);
   });
 
-  it('begins the gate with the derived set bound to the restore project, and clears it with evidence only', async () => {
+  it('begins the gate with the derived set and the source tombstone count (F29), clears with parity (F29)', async () => {
     calls.length = 0;
     const restored = withIds([subjectA, subjectB, 'kept']);
-    const source = withIds(['kept'], { privacy_op_erasures_since: { count: 2 } });
-    const begun = await runCommand(
+    const source = withIds(['kept'], { privacy_op_tombstone_count_since: { count: 2 } });
+    await runCommand(
       restored,
       parse('restore-gate', 'begin', '--snapshot-at', '2026-11-20T10:00:00Z'),
       target,
@@ -157,15 +158,24 @@ describe('privacy operator: restore gate', () => {
       p_evidence: null,
       p_snapshot_at: '2026-11-20T10:00:00.000Z',
       p_expected_subjects: [subjectA, subjectB],
-      p_confirm_empty: false,
-      p_restore_project_ref: 'local'
+      p_restore_project_ref: 'local',
+      p_tombstone_count: 2
     });
-    expect(begun).toMatchObject({ erasures_recorded_since_snapshot: 2 });
     calls.length = 0;
-    await runCommand(client(), parse('restore-gate', 'clear', '--evidence', 'ticket-123'), target);
-    expect(calls).toEqual([
-      { name: 'privacy_op_restore_gate', args: { p_action: 'clear', p_evidence: 'ticket-123' } }
-    ]);
+    const gate = withIds([], {
+      privacy_op_restore_gate_status: { snapshot_at: '2026-11-20T10:00:00+00:00' }
+    });
+    await runCommand(
+      gate,
+      parse('restore-gate', 'clear', '--evidence', 'ticket-123'),
+      target,
+      withIds([], { privacy_op_tombstone_count_since: { count: 2 } })
+    );
+    expect(calls.find((call) => call.name === 'privacy_op_restore_gate')?.args).toEqual({
+      p_action: 'clear',
+      p_evidence: 'ticket-123',
+      p_tombstone_count: 2
+    });
     await expect(runCommand(client(), parse('restore-gate', 'open'), target)).rejects.toThrow(
       'RESTORE_GATE_ACTION_INVALID'
     );
@@ -178,18 +188,18 @@ describe('privacy operator: restore gate', () => {
     expect(HELP).toContain('restore-gate');
   });
 
-  it('passes --confirm-empty only when asked for', async () => {
-    calls.length = 0;
-    await runCommand(
-      withIds(['kept']),
-      parse('restore-gate', 'begin', '--snapshot-at', '2026-11-20', '--confirm-empty'),
+  it('tells the operator to re-derive when the clear parity fails', async () => {
+    const result = await runCommand(
+      withIds([], {
+        privacy_op_restore_gate_status: { snapshot_at: '2026-11-20T10:00:00+00:00' },
+        privacy_op_restore_gate: { status: 'rejected', code: 'COUNT_MISMATCH' }
+      }),
+      parse('restore-gate', 'clear', '--evidence', 'x'),
       target,
-      withIds(['kept'], { privacy_op_erasures_since: { count: 0 } })
+      withIds([], { privacy_op_tombstone_count_since: { count: 3 } })
     );
-    expect(calls.find((call) => call.name === 'privacy_op_restore_gate')?.args).toMatchObject({
-      p_expected_subjects: [],
-      p_confirm_empty: true
-    });
+    expect(result).toMatchObject({ code: 'COUNT_MISMATCH' });
+    expect(JSON.stringify(result)).toContain('restore-gate begin');
   });
 
   it('refuses production for every restore command, before any override is considered (F22)', async () => {
@@ -204,11 +214,9 @@ describe('privacy operator: restore gate', () => {
         'OPERATOR_RESTORE_PRODUCTION_REFUSED'
       );
     }
-    // The same project stays reachable for the ordinary commands, with the usual override.
     expect(resolveTarget(hosted, { 'allow-production': true }, 'list')).toMatchObject({
       environment: 'production'
     });
-    // And a production-shaped target handed to the runner is refused as well.
     const production = { projectRef: 'abcdefgh', environment: 'production' };
     calls.length = 0;
     await expect(
@@ -242,26 +250,44 @@ describe('privacy operator: restore gate', () => {
     );
   });
 
-  it('removes the subject objects through the Storage API, proves absence, then reconciles (F27)', async () => {
-    calls.length = 0;
+  /** Storage double: a set of existing 'bucket/name' paths; list serves folders and searches. */
+  const storageOf = (existing: Set<string>, behaviour: { keepOnRemove?: boolean } = {}) => {
     const removed: string[] = [];
-    let listed = 0;
     const storage: NonNullable<OperatorClient['storage']> = {
       from: (bucket) => ({
         remove: (names) => {
-          removed.push(...names.map((name) => bucket + '/' + name));
+          for (const name of names) {
+            removed.push(bucket + '/' + name);
+            if (!behaviour.keepOnRemove) existing.delete(bucket + '/' + name);
+          }
           return Promise.resolve({ error: null });
         },
-        list: () => {
-          listed++;
-          return Promise.resolve({ data: [], error: null });
-        }
+        list: (prefix, options) =>
+          Promise.resolve({
+            data: [...existing]
+              .filter((path) => path.startsWith(bucket + '/' + prefix + (prefix ? '/' : '')))
+              .map((path) => path.slice((bucket + '/' + prefix + (prefix ? '/' : '')).length))
+              .filter((name) => !name.includes('/') && (!options.search || name === options.search))
+              .map((name) => ({ name })),
+            error: null
+          })
       })
     };
-    const reply = (name: string) =>
-      name === 'privacy_op_restore_storage_set'
-        ? { status: 'ok', objects: [{ bucket: 'player-avatars', name: subjectA + '/a.png' }] }
+    return { storage, removed };
+  };
+  const planReply = (plan: string[]) => (name: string) =>
+    name === 'privacy_op_restore_storage_set'
+      ? { status: 'ok', plan }
+      : name === 'privacy_op_restore_storage_confirm'
+        ? { status: 'ok', storage_verified: true }
         : { status: 'ok', restore_gate: 'pending' };
+
+  it('plans from the prefix listing, deletes exactly the plan, re-lists, confirms, then reconciles (F30)', async () => {
+    calls.length = 0;
+    const orphan = 'player-avatars/' + subjectA + '/orphan.png';
+    const pointer = 'player-avatars/' + subjectA + '/pointer.png';
+    const { storage, removed } = storageOf(new Set([orphan, pointer]));
+    const reply = planReply([orphan, pointer]);
     const result = await reconcileRestoredSubject(
       {
         rpc: (name, args) => {
@@ -273,17 +299,23 @@ describe('privacy operator: restore gate', () => {
       subjectA,
       'local'
     );
-    expect(removed).toEqual(['player-avatars/' + subjectA + '/a.png']);
-    expect(listed).toBe(1);
     expect(calls.map((call) => call.name)).toEqual([
       'privacy_op_restore_storage_set',
+      'privacy_op_restore_storage_confirm',
       'privacy_op_restore_reconcile'
     ]);
-    expect(calls[1]?.args).toEqual({
-      p_subject: subjectA,
-      p_project_ref: 'local',
-      p_storage_verified: true
-    });
+    // The prefix listing (orphans included) travels with the plan request.
+    expect(
+      [
+        ...(Array.isArray(calls[0]?.args['p_prefix_paths']) ? calls[0].args['p_prefix_paths'] : [])
+      ].sort((a, b) => a.localeCompare(b))
+    ).toEqual([orphan, pointer].sort((a, b) => a.localeCompare(b)));
+    expect(removed.sort((a, b) => a.localeCompare(b))).toEqual(
+      [orphan, pointer].sort((a, b) => a.localeCompare(b))
+    );
+    expect(calls[1]?.args).toMatchObject({ p_subject: subjectA, p_relisted_paths: [] });
+    expect(JSON.stringify(calls[1]?.args['p_deleted_paths'])).toContain('orphan.png');
+    expect(calls[2]?.args).toEqual({ p_subject: subjectA, p_project_ref: 'local' });
     expect(JSON.stringify(result)).not.toContain(subjectA);
     await expect(runCommand(client(), parse('restore-reconcile'), target)).rejects.toThrow(
       'REFERENCE_REQUIRED'
@@ -291,18 +323,48 @@ describe('privacy operator: restore gate', () => {
     expect(HELP).toContain('restore-reconcile');
   });
 
+  it('reports what is still listed after the deletion so the database can refuse the lie (F30)', async () => {
+    calls.length = 0;
+    const path = 'player-avatars/' + subjectA + '/stuck.png';
+    const { storage } = storageOf(new Set([path]), { keepOnRemove: true });
+    const reply = (name: string) =>
+      name === 'privacy_op_restore_storage_set'
+        ? { status: 'ok', plan: [path] }
+        : { status: 'rejected', code: 'STORAGE_LIE' };
+    const result = await reconcileRestoredSubject(
+      {
+        rpc: (name, args) => {
+          calls.push({ name, args });
+          return Promise.resolve({ data: reply(name), error: null });
+        },
+        storage
+      },
+      subjectA,
+      'local'
+    );
+    expect(result).toEqual({ status: 'rejected', code: 'STORAGE_LIE' });
+    expect(calls[1]?.args['p_relisted_paths']).toEqual([path]);
+    // The database refused the confirmation: the erasure replay never ran.
+    expect(calls.map((call) => call.name)).not.toContain('privacy_op_restore_reconcile');
+  });
+
   it('stops before any deletion when the database refuses the subject, and rejects foreign buckets', async () => {
     calls.length = 0;
+    const { storage, removed } = storageOf(new Set());
     const refused = await reconcileRestoredSubject(
-      client({ status: 'rejected', code: 'RESTORE_SUBJECT_NOT_EXPECTED' }),
+      {
+        ...client({ status: 'rejected', code: 'RESTORE_SUBJECT_NOT_EXPECTED' }),
+        storage
+      },
       subjectA,
       'local'
     );
     expect(refused).toEqual({ status: 'rejected', code: 'RESTORE_SUBJECT_NOT_EXPECTED' });
     expect(calls.map((call) => call.name)).toEqual(['privacy_op_restore_storage_set']);
+    expect(removed).toEqual([]);
     await expect(
       reconcileRestoredSubject(
-        client({ status: 'ok', objects: [{ bucket: 'secrets', name: 'x' }] }),
+        { ...client({ status: 'ok', plan: ['secrets/x'] }), storage },
         subjectA,
         'local'
       )
@@ -324,6 +386,99 @@ describe('privacy operator: restore gate', () => {
       target
     );
     expect(calls.map((call) => call.args['p_external_followup_ack'])).toEqual([false, true]);
+  });
+
+  it('acknowledges outstanding external sends through the database (F31)', async () => {
+    calls.length = 0;
+    await runCommand(client(), parse('ack-external-followup', 'PR-AAAAAAAAAAAA'), target);
+    expect(calls).toEqual([
+      { name: 'privacy_op_ack_external_followup', args: { p_reference: 'PR-AAAAAAAAAAAA' } }
+    ]);
+  });
+
+  it('retries a failed ban lift through the Auth admin API before the case is restartable (F33)', async () => {
+    calls.length = 0;
+    const lifted: string[] = [];
+    const admin = (error: { status?: number } | null): OperatorClient => ({
+      rpc: (name, args) => {
+        calls.push({ name, args });
+        return Promise.resolve({
+          data:
+            name === 'privacy_op_retry'
+              ? { status: 'ban_lift_required', subject_id: subjectA }
+              : { status: 'ok' },
+          error: null
+        });
+      },
+      auth: {
+        admin: {
+          updateUserById: (id, attributes) => {
+            lifted.push(id + ':' + String(attributes['ban_duration']));
+            return Promise.resolve({ error });
+          },
+          listUsers: () => Promise.resolve({ data: { users: [] }, error: null }),
+          deleteUser: () => Promise.resolve({ error: null })
+        }
+      }
+    });
+    expect(
+      await runCommand(admin({ status: 500 }), parse('retry', 'PR-AAAAAAAAAAAA'), target)
+    ).toEqual({ status: 'rejected', code: 'BAN_LIFT_FAILED' });
+    expect(calls.map((call) => call.name)).toEqual(['privacy_op_retry']);
+    calls.length = 0;
+    await runCommand(admin(null), parse('retry', 'PR-AAAAAAAAAAAA'), target);
+    expect(calls.map((call) => call.name)).toEqual([
+      'privacy_op_retry',
+      'privacy_op_ban_lift_done'
+    ]);
+    expect(lifted).toEqual([subjectA + ':none', subjectA + ':none']);
+  });
+
+  it('sweeps only invite shells created after the freeze for the erased address (F31)', async () => {
+    const digest = (email: string) =>
+      createHash('sha256').update(email.toLowerCase()).digest('hex');
+    const frozen = '2026-11-20T10:00:00.000Z';
+    const users = [
+      { id: 'shell', email: 'Erased@Example.test', created_at: '2026-11-20T10:05:00.000Z' },
+      { id: 'older', email: 'erased@example.test', created_at: '2026-11-20T09:00:00.000Z' },
+      { id: 'benign', email: 'other@example.test', created_at: '2026-11-20T10:06:00.000Z' },
+      { id: 'real', email: 'erased@example.test', created_at: '2026-11-20T10:07:00.000Z' }
+    ];
+    const deleted: string[] = [];
+    const checked: string[] = [];
+    const sweeper: OperatorClient = {
+      rpc: (name, args) => {
+        if (name === 'privacy_op_remnant_is_shell') checked.push(String(args['p_user']));
+        const data =
+          name === 'privacy_op_remnant_context'
+            ? { status: 'ok', since: frozen, digest: digest('erased@example.test') }
+            : { shell: args['p_user'] === 'shell' };
+        return Promise.resolve({ data, error: null });
+      },
+      auth: {
+        admin: {
+          updateUserById: () => Promise.resolve({ error: null }),
+          listUsers: ({ page }) =>
+            Promise.resolve({ data: { users: page === 1 ? users : [] }, error: null }),
+          deleteUser: (id) => {
+            deleted.push(id);
+            return Promise.resolve({ error: null });
+          }
+        }
+      }
+    };
+    const result = await runCommand(sweeper, parse('sweep-remnants', 'PR-AAAAAAAAAAAA'), target);
+    expect(result).toEqual({
+      status: 'ok',
+      code: 'REMNANTS_REMOVED',
+      scanned: 4,
+      matched: 2,
+      removed: 1
+    });
+    // Older users and other addresses are never even looked at; a real person (not a shell) is kept.
+    expect(checked).toEqual(['shell', 'real']);
+    expect(deleted).toEqual(['shell']);
+    expect(JSON.stringify(result)).not.toContain('example.test');
   });
 });
 

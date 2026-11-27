@@ -139,6 +139,37 @@ export async function uploadObject(bucket: string, name: string, contentType: st
   if (error) throw new Error('fixture upload failed');
 }
 
+/**
+ * Admin client that runs the real Auth admin API but lets a test act in the middle of a phase: after the ban is
+ * applied (a concurrent change), or with the ban lift failing (a provider outage).
+ */
+export function scriptedAdmin(hooks: {
+  afterBan?: (id: string) => Promise<void>;
+  unbanError?: boolean;
+}): AdminClient {
+  const real = trustedClient();
+  const wrapper = {
+    rpc: (name: string, args: Record<string, unknown>) => real.rpc(name, args),
+    storage: real.storage,
+    auth: {
+      admin: {
+        updateUserById: async (id: string, attributes: { ban_duration?: string }) => {
+          if (attributes.ban_duration === 'none' && hooks.unbanError)
+            return { data: { user: null }, error: { status: 500, message: 'outage' } };
+          const result = await real.auth.admin.updateUserById(id, attributes);
+          if (attributes.ban_duration && attributes.ban_duration !== 'none')
+            await hooks.afterBan?.(id);
+          return result;
+        },
+        getUserById: real.auth.admin.getUserById.bind(real.auth.admin),
+        deleteUser: real.auth.admin.deleteUser.bind(real.auth.admin)
+      }
+    }
+  };
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrow double: only the calls the processor makes
+  return wrapper as unknown as AdminClient;
+}
+
 type Faults = { removeFails?: number; deleteUserFails?: number; finishFails?: number };
 
 /** Admin client whose Storage remove / Auth delete fail a set number of times (provider outage). */

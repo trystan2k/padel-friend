@@ -27,11 +27,25 @@ export type OperatorClient = {
       remove: (names: string[]) => PromiseLike<{ error: unknown }>;
       list: (
         prefix: string,
-        options: { search: string }
+        options: { search?: string; limit?: number; offset?: number }
       ) => PromiseLike<{ data: Array<{ name: string }> | null; error: unknown }>;
     };
   };
+  auth?: {
+    admin: {
+      updateUserById: (
+        id: string,
+        attributes: Record<string, unknown>
+      ) => PromiseLike<{ error: { status?: number } | null }>;
+      listUsers: (options: { page: number; perPage: number }) => PromiseLike<{
+        data: { users: Array<{ id: string; email?: string; created_at: string }> } | null;
+        error: unknown;
+      }>;
+      deleteUser: (id: string, soft?: boolean) => PromiseLike<{ error: unknown }>;
+    };
+  };
 };
+export function sweepRemnants(client: OperatorClient, reference: string): Promise<unknown>;
 export function reconcileRestoredSubject(
   client: OperatorClient,
   subject: string,

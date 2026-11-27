@@ -119,10 +119,27 @@ function disableDispatch(docker, database) {
  * plus a zero-residue proof) and the operator closed the gate with an evidence reference. Nothing here
  * remembers who was erased: the gate row keeps the evidence reference, not a standing identity ledger.
  */
+/**
+ * The authoritative isolation boundary: a database flagged at creation as a restore target. The restore/privacy
+ * RPCs refuse to run anywhere else (a live database never carries the flag; ALTER DATABASE ... SET is not part of
+ * a dump, so a restore cannot copy it either).
+ */
+export function markRestoreTarget(docker, database) {
+  // Setting a custom database parameter needs the container's superuser role (the application role may not).
+  docker.exec(['psql', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q'], {
+    input: `alter database "${database}" set app.restore_target = 'on';`
+  });
+}
+
 export function applyRestoreGate(
   docker,
   database,
-  { snapshotAt = new Date().toISOString(), expectedSubjects = [], projectRef = database } = {}
+  {
+    snapshotAt = new Date().toISOString(),
+    expectedSubjects = [],
+    projectRef = database,
+    tombstoneCount = expectedSubjects.length
+  } = {}
 ) {
   // Only canonical ids reach the SQL text; an empty set is an explicit, confirmed statement.
   if (!expectedSubjects.every((id) => /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(id)))
@@ -132,7 +149,7 @@ export function applyRestoreGate(
     docker.sql(
       database,
       `select public.privacy_op_restore_gate('begin', null, '${new Date(snapshotAt).toISOString()}'::timestamptz, ` +
-        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], ${expectedSubjects.length === 0}, '${projectRef.replaceAll("'", '')}')::text;`
+        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], '${projectRef.replaceAll("'", '')}', ${Number(tombstoneCount)})::text;`
     )
   );
   const settings = Object.fromEntries(
@@ -182,7 +199,7 @@ export function discardSnapshot(docker, snapshot) {
 export function restoreSnapshotWithGate(
   docker,
   snapshot,
-  { base, source = 'postgres', expectedSubjects = () => [] }
+  { base, source = 'postgres', expectedSubjects = () => [], tombstoneCount }
 ) {
   const destination = assertDisposableDatabase({
     name: base,
@@ -197,12 +214,15 @@ export function restoreSnapshotWithGate(
       '--exit-on-error',
       '--use-list=' + snapshot.tocPath
     ]);
-    // The expected set is derived from the RESTORED copy (the caller compares it with the live project).
+    // Only now may the privacy RPCs run here; the expected set is derived from the RESTORED copy.
+    markRestoreTarget(docker, destination);
+    const expected = expectedSubjects(destination);
     return {
       destination,
       gate: applyRestoreGate(docker, destination, {
         snapshotAt: snapshot.takenAt,
-        expectedSubjects: expectedSubjects(destination)
+        expectedSubjects: expected,
+        tombstoneCount: tombstoneCount ?? expected.length
       })
     };
   } catch (error) {
@@ -298,6 +318,7 @@ export function runRestoreRehearsal({
         const restoredReads = authorizedReads(docker, destination, users);
         const readsMatch = JSON.stringify(sourceReads) === JSON.stringify(restoredReads);
         const dispatch = disableDispatch(docker, destination);
+        markRestoreTarget(docker, destination);
         const restoreGate = applyRestoreGate(docker, destination);
         const pass =
           !mismatched.length &&

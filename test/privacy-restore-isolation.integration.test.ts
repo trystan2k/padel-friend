@@ -4,17 +4,20 @@ import { privacyTablesMentioning, setQuiescence } from './helpers/privacy-reques
 import { scalar, tablesMentioning } from './helpers/account-erasure-fixtures';
 import { localSupabaseEnv } from './helpers/local-supabase-env';
 import { asRecord, fixtureSql, sqlRows } from './helpers/match-registration-sql';
+import type { AdminClient } from '../src/lib/supabase/admin.server';
+import { deliverMatchPlayerAdd } from '../src/features/matches/match-add-player.server';
 import {
   armCase,
   caseRow,
   expireLease,
   operator,
+  scriptedAdmin,
   sweep,
   verifyCase
 } from './helpers/privacy-request-fixtures';
 import { sqlText } from './helpers/provisional-player-fixtures';
 import { createRankedResultFixtures, type RankedResultKit } from './helpers/ranked-result-fixtures';
-import { openDedicatedSqlConnection } from './helpers/sql-transport';
+import { executeTrustedSql, openDedicatedSqlConnection } from './helpers/sql-transport';
 import { trustedClient } from './helpers/trusted-client';
 
 const environment = localSupabaseEnv();
@@ -66,14 +69,12 @@ describe.skipIf(!environment.env)(
     it('F22: a live database (gate closed) refuses every restore RPC and keeps the subject', async () => {
       const live = player(4).id;
       for (const [name, args] of [
-        [
-          'privacy_op_restore_reconcile',
-          { p_subject: live, p_project_ref: 'local', p_storage_verified: true }
-        ],
+        ['privacy_op_restore_reconcile', { p_subject: live, p_project_ref: 'local' }],
         ['privacy_op_restore_storage_set', { p_subject: live, p_project_ref: 'local' }]
       ] as const) {
         const result = await trustedClient().rpc(name, args);
-        expect(result.data).toEqual({ status: 'rejected', code: 'RESTORE_GATE_NOT_PENDING' });
+        // The database-level isolation flag is the first, authoritative boundary (a live database never has it).
+        expect(result.data).toEqual({ status: 'rejected', code: 'RESTORE_NOT_ISOLATED' });
       }
       expect(
         await scalar('select count(*)::int from public.player_profiles where user_id = ' + L(live))
@@ -147,6 +148,54 @@ describe.skipIf(!environment.env)(
       );
       try {
         await armCase(reference);
+        expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+        // Outstanding external work (leased push, in-flight dispatch): the case stops at the destructive boundary.
+        expect(await caseRow(reference)).toMatchObject({
+          state: 'blocked',
+          blocker_code: 'EXTERNAL_FOLLOWUP_ACK_REQUIRED',
+          resume_state: 'app_data_erased',
+          last_phase: 'storage'
+        });
+        expect((await operator('record-response', reference))['code']).toBe('CASE_NOT_FINAL');
+        expect(await sweep()).toEqual({ disabled: false, processed: 0 });
+
+        // F31(c): the in-flight invitation created its Auth shell AFTER the erasure; the sweep removes exactly that
+        // (digest match, invited, never signed in, no profile) and leaves an unrelated new user untouched.
+        const admin = trustedClient().auth.admin;
+        const shell = await admin.createUser({
+          email,
+          password: 'Password123!',
+          email_confirm: false
+        });
+        const benign = await admin.createUser({
+          email: 'benign-' + crypto.randomUUID() + '@changed.test',
+          password: 'Password123!'
+        });
+        expect(shell.error).toBeNull();
+        expect(benign.error).toBeNull();
+        const shellId = String(shell.data.user?.id);
+        const benignId = String(benign.data.user?.id);
+        await fixtureSql('update auth.users set invited_at = now() where id = ' + L(shellId));
+        const swept = await operator('sweep-remnants', reference);
+        expect(swept).toMatchObject({
+          status: 'ok',
+          code: 'REMNANTS_REMOVED',
+          removed: 1,
+          matched: 1
+        });
+        expect(JSON.stringify(swept)).not.toContain(email);
+        expect(await scalar('select count(*)::int from auth.users where id = ' + L(shellId))).toBe(
+          0
+        );
+        expect(await scalar('select count(*)::int from auth.users where id = ' + L(benignId))).toBe(
+          1
+        );
+        expect((await operator('sweep-remnants', reference))['code']).toBe('NO_REMNANTS');
+
+        // F31(b): the acknowledgment lifts the boundary and the case completes.
+        expect((await operator('ack-external-followup', reference))['state']).toBe(
+          'app_data_erased'
+        );
         expect(await sweep()).toEqual({ disabled: false, processed: 1 });
         expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });
         expect(await tablesMentioning(subject)).toEqual([]);
@@ -241,25 +290,12 @@ describe.skipIf(!environment.env)(
         ).toBe(0);
         expect(await tablesMentioning(subject)).toEqual([]);
 
-        // The response of a case with outstanding external work needs the acknowledgment.
+        // The acknowledgment was given at the boundary: recording the response needs nothing more.
         expect(asRecord((await caseRow(reference))['phase_manifest'])).toMatchObject({
-          external_followup: true
-        });
-        const refused = await operator('record-response', reference);
-        expect(refused).toMatchObject({
-          status: 'rejected',
-          code: 'EXTERNAL_FOLLOWUP_ACK_REQUIRED'
-        });
-        expect((await caseRow(reference))['final_response_at']).toBeNull();
-        const acknowledged = await operator(
-          'record-response',
-          reference,
-          '--ack-external-followup'
-        );
-        expect(acknowledged['status']).toBe('ok');
-        expect(asRecord((await caseRow(reference))['phase_manifest'])).toMatchObject({
+          external_followup: true,
           external_followup_ack: true
         });
+        expect((await operator('record-response', reference))['status']).toBe('ok');
       } finally {
         await fixtureSql(
           'delete from public.match_player_add_operations where id = any (' +
@@ -333,6 +369,322 @@ describe.skipIf(!environment.env)(
         );
       }
       await operator('refuse', reference);
+    });
+
+    it('F31: the dispatch worker re-checks the pause right before the external send', async () => {
+      const subject = player(5).id;
+      const actor = player(0).id;
+      const reference = await requested(5);
+      const eventId = String(
+        await scalar('select id::text from public.match_events order by created_at desc limit 1')
+      );
+      const invites: string[] = [];
+      const operations: string[] = [];
+      const addOperation = async () => {
+        const id = crypto.randomUUID();
+        const request = crypto.randomUUID();
+        operations.push(id);
+        await fixtureSql(
+          'insert into public.match_player_add_operations(id, match_event_id, actor_id, request_id, fingerprint, email, display_name, estimated_level, locale, state, dispatch_state, email_eligible, retry_after, target_user_id) values (' +
+            [
+              L(id),
+              L(eventId),
+              L(actor),
+              L(request),
+              L('fp-' + id),
+              L('f31-' + crypto.randomUUID() + '@invitee.test'),
+              L('Boundary Invitee'),
+              '3.5',
+              L('en'),
+              "'awaiting_identity'",
+              "'none'",
+              'true',
+              "now() - interval '1 minute'",
+              L(subject)
+            ].join(', ') +
+            ')'
+        );
+        return { id, request };
+      };
+      // A worker whose invite context load is the moment the pause flips (the admission was already granted).
+      const worker = (beforeSend?: () => Promise<void>) => {
+        const real = trustedClient();
+        const wrapper = {
+          rpc: async (name: string, args: Record<string, unknown>) => {
+            if (name === 'get_match_player_add_invite_context') {
+              await beforeSend?.();
+              return {
+                data: {
+                  inviter_name: 'Inviter',
+                  venue_name: 'Venue',
+                  starts_at: '2026-12-01T10:00:00Z',
+                  timezone: 'UTC'
+                },
+                error: null
+              };
+            }
+            return real.rpc(name, args);
+          },
+          auth: {
+            admin: {
+              inviteUserByEmail: (email: string) => {
+                invites.push(email);
+                return Promise.resolve({ error: null });
+              },
+              updateUserById: () => Promise.resolve({ error: null })
+            }
+          }
+        };
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- narrow double: only the calls the dispatch worker makes
+        return wrapper as unknown as AdminClient;
+      };
+      const origin = 'http://localhost:4173';
+      try {
+        // Control: nothing paused, the invitation is sent and settles as sent.
+        const open = await addOperation();
+        await deliverMatchPlayerAdd(
+          worker(),
+          { actor_id: actor, event_id: eventId, request_id: open.request, origin },
+          { redriveWaiting: false }
+        );
+        expect(invites).toHaveLength(1);
+        expect(
+          await scalar(
+            'select dispatch_state from public.match_player_add_operations where id = ' + L(open.id)
+          )
+        ).toBe('sent');
+        // The pause flips after the admission and before the send: nothing is sent, the attempt settles failed-safe.
+        const raced = await addOperation();
+        await deliverMatchPlayerAdd(
+          worker(() =>
+            fixtureSql(
+              'update privacy_internal.case_producer_pause set active = true where subject_id = ' +
+                L(subject)
+            )
+          ),
+          { actor_id: actor, event_id: eventId, request_id: raced.request, origin },
+          { redriveWaiting: false }
+        );
+        expect(invites).toHaveLength(1);
+        expect(
+          await sqlRows(
+            'select dispatch_state, dispatch_attempt is null as cleared from public.match_player_add_operations where id = ' +
+              L(raced.id)
+          )
+        ).toEqual([{ dispatch_state: 'failed', cleared: true }]);
+      } finally {
+        await fixtureSql(
+          'update privacy_internal.case_producer_pause set active = false where subject_id = ' +
+            L(subject) +
+            ';delete from public.match_player_add_recipient_sends where operation_id = any (' +
+            L('{' + operations.join(',') + '}') +
+            '::uuid[]);delete from public.match_player_add_operations where id = any (' +
+            L('{' + operations.join(',') + '}') +
+            '::uuid[])'
+        );
+        await operator('refuse', reference);
+      }
+    });
+
+    it('F31: a pause flipping after the push admission skips the delivery at the prepare boundary', async () => {
+      const user = crypto.randomUUID();
+      const notification = crypto.randomUUID();
+      const device = crypto.randomUUID();
+      // Everything rolls back: claim and materialize admit the push, the pause flips, prepare (the last database step
+      // before the vendor call) must then refuse and mark the delivery skipped.
+      const result = await executeTrustedSql(
+        "begin; update public.notification_push_jobs set next_attempt_at = now() + interval '2 days' where status = 'pending'; " +
+          "insert into auth.users(id, email) values ('" +
+          user +
+          "', '" +
+          user +
+          "@example.test'); " +
+          "insert into public.push_subscriptions(id,user_id,endpoint,p256dh,auth,vapid_key_id,locale,created_at) values ('" +
+          device +
+          "','" +
+          user +
+          "','https://fcm.googleapis.com/fcm/send/" +
+          device +
+          "', 'B' || repeat('A',86), repeat('A',22), 'key-1', 'en', now() - interval '1 minute'); " +
+          "insert into public.notification_preferences(user_id, push_enabled) values ('" +
+          user +
+          "', true); " +
+          "insert into public.notifications(id, recipient_user_id, event_key, kind, category, target_type, target_id) values ('" +
+          notification +
+          "', '" +
+          user +
+          "', 'f31:" +
+          notification +
+          "', 'community_invitation', 'community', 'community_invitation', '" +
+          notification +
+          "'); " +
+          'do $t$ declare j public.notification_push_jobs; token uuid; begin ' +
+          "select * into j from public.claim_notification_push_jobs(25) where notification_id = '" +
+          notification +
+          "'; token := j.claim_token; " +
+          "perform public.materialize_notification_push('" +
+          notification +
+          "', token); " +
+          "insert into privacy_internal.frozen_subjects(subject_id, case_id) values ('" +
+          user +
+          "', gen_random_uuid()); " +
+          "if public.prepare_notification_push('" +
+          notification +
+          "', '" +
+          device +
+          "', token) is not null then raise exception 'paused recipient prepared'; end if; " +
+          "if (select status from public.notification_push_deliveries where notification_id = '" +
+          notification +
+          "') <> 'skipped' then raise exception 'not skipped'; end if; " +
+          'end $t$; rollback;'
+      );
+      expect(result).toBeUndefined();
+    });
+
+    it('F32: an email change after the ban and before the freeze commit is refused by the freeze (no pause, arm un-consumed)', async () => {
+      const subject = player(6).id;
+      const reference = await requested(6);
+      await verifyCase(reference, await emailOf(subject));
+      await armCase(reference);
+      // The pre-ban probe passes; the address moves right after the ban was applied.
+      const moved = 'moved-' + crypto.randomUUID() + '@changed.test';
+      expect(
+        await sweep({
+          client: scriptedAdmin({
+            afterBan: () =>
+              fixtureSql('update auth.users set email = ' + L(moved) + ' where id = ' + L(subject))
+          })
+        })
+      ).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(reference)).toMatchObject({
+        state: 'blocked',
+        blocker_code: 'VERIFICATION_STALE',
+        armed_consumed_at: null,
+        destructive_started_at: null,
+        last_phase: null
+      });
+      expect(
+        await scalar(
+          'select active from privacy_internal.case_producer_pause where subject_id = ' + L(subject)
+        )
+      ).toBe(false);
+      expect(
+        await scalar(
+          'select count(*)::int from privacy_internal.frozen_subjects where subject_id = ' +
+            L(subject)
+        )
+      ).toBe(0);
+      expect(
+        (await trustedClient().auth.admin.getUserById(subject)).data.user?.banned_until ?? null
+      ).toBeNull();
+      const restarted = await operator('start-verification', reference);
+      expect(restarted['address']).toBe(moved);
+      await operator('confirm-proof', reference, '--code', String(restarted['code']), '--confirm');
+      await armCase(reference);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });
+    });
+
+    it('F32: a concurrent email change holds the freeze back under the row lock and is then refused', async () => {
+      const subject = player(7).id;
+      const reference = await requested(7);
+      await verifyCase(reference, await emailOf(subject));
+      await armCase(reference);
+      const claimed = asRecord(
+        (
+          await trustedClient().rpc('privacy_proc_claim', {
+            p_lease_seconds: 120,
+            p_project_ref: 'local'
+          })
+        ).data
+      );
+      expect(claimed['status']).toBe('claimed');
+      const mover = await openDedicatedSqlConnection();
+      const freezer = await openDedicatedSqlConnection();
+      try {
+        await mover.query('begin');
+        await mover.query(
+          'update auth.users set email = ' +
+            L('moved-' + crypto.randomUUID() + '@changed.test') +
+            ' where id = ' +
+            L(subject)
+        );
+        const freezing = freezer.query(
+          'select public.privacy_proc_freeze(' +
+            [
+              L(String(claimed['case_id'])),
+              String(claimed['fence']),
+              L(String(claimed['lease_token']))
+            ].join(', ') +
+            ')::text as result'
+        );
+        // The freeze waits on the Auth row (FOR SHARE vs the uncommitted change) instead of verifying a stale address.
+        expect(await settles(freezing, 600)).toBe(false);
+        await mover.query('commit');
+        expect(String((await freezing).rows[0]?.['result'])).toContain('VERIFICATION_STALE');
+      } finally {
+        await mover.query('rollback').catch(() => undefined);
+        await mover.close();
+        await freezer.close();
+      }
+      expect(await caseRow(reference)).toMatchObject({
+        state: 'blocked',
+        blocker_code: 'VERIFICATION_STALE',
+        armed_consumed_at: null,
+        destructive_started_at: null
+      });
+      expect(
+        await scalar(
+          'select active from privacy_internal.case_producer_pause where subject_id = ' + L(subject)
+        )
+      ).toBe(false);
+      await operator('refuse', reference);
+    });
+
+    it('F33: a failed ban lift blocks the case (not silently restartable); retry lifts it, then verification restarts', async () => {
+      const subject = player(4).id;
+      const reference = await requested(4);
+      await verifyCase(reference, await emailOf(subject));
+      await armCase(reference);
+      const moved = 'moved-' + crypto.randomUUID() + '@changed.test';
+      expect(
+        await sweep({
+          client: scriptedAdmin({
+            unbanError: true,
+            afterBan: () =>
+              fixtureSql('update auth.users set email = ' + L(moved) + ' where id = ' + L(subject))
+          })
+        })
+      ).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(reference)).toMatchObject({
+        state: 'blocked',
+        blocker_code: 'BAN_LIFT_FAILED',
+        next_action: 'operator_retry',
+        destructive_started_at: null
+      });
+      // The person is still locked out, and the case cannot restart verification until the ban is lifted.
+      expect(
+        (await trustedClient().auth.admin.getUserById(subject)).data.user?.banned_until
+      ).toBeTruthy();
+      expect((await operator('start-verification', reference))['code']).toBe(
+        'STATE_NOT_VERIFIABLE'
+      );
+      expect(await sweep()).toEqual({ disabled: false, processed: 0 });
+      // The operator retry re-attempts the unban through the Auth admin API.
+      expect((await operator('retry', reference))['status']).toBe('ok');
+      expect(await caseRow(reference)).toMatchObject({
+        state: 'blocked',
+        blocker_code: 'VERIFICATION_STALE'
+      });
+      expect(
+        (await trustedClient().auth.admin.getUserById(subject)).data.user?.banned_until ?? null
+      ).toBeNull();
+      const restarted = await operator('start-verification', reference);
+      expect(restarted['address']).toBe(moved);
+      await operator('confirm-proof', reference, '--code', String(restarted['code']), '--confirm');
+      await armCase(reference);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });
     });
 
     it('F25: the freeze refuses an address that changed after the claim (before any ban), and verification restarts', async () => {

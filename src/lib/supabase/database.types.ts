@@ -2626,15 +2626,18 @@ export type Database = {
       }
       participant_identities: {
         Row: {
+          created_at: string | null
           id: string
           state: string
         }
         ComputedFields: never
         Insert: {
+          created_at?: string | null
           id: string
           state?: string
         }
         Update: {
+          created_at?: string | null
           id?: string
           state?: string
         }
@@ -6067,6 +6070,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Record<string, unknown>
       }
+      match_player_add_send_allowed: {
+        Args: { p_actor_id: string; p_match_event_id: string; p_request_id: string }
+        Returns: boolean
+      }
       match_registration_counts:
         | {
             Args: { p_match_event_id: string }
@@ -6235,6 +6242,7 @@ export type Database = {
         Args: { p_claim_token: string; p_notification_id: string; p_subscription_id: string }
         Returns: Json
       }
+      privacy_op_ack_external_followup: { Args: { p_reference: string }; Returns: Json }
       privacy_op_arm: {
         Args: {
           p_environment: string
@@ -6244,6 +6252,7 @@ export type Database = {
         }
         Returns: Json
       }
+      privacy_op_ban_lift_done: { Args: { p_reference: string }; Returns: Json }
       privacy_op_close_refused: { Args: { p_reference: string }; Returns: Json }
       privacy_op_confirm_proof: {
         Args: { p_digest: string; p_operator_confirmed: boolean; p_reference: string }
@@ -6262,23 +6271,35 @@ export type Database = {
         Args: { p_external_followup_ack?: boolean; p_reference: string }
         Returns: Json
       }
+      privacy_op_remnant_context: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_remnant_is_shell: { Args: { p_user: string }; Returns: Json }
       privacy_op_restore_gate: {
         Args: {
           p_action: string
-          p_confirm_empty?: boolean
           p_evidence?: string
           p_expected_subjects?: string[]
           p_restore_project_ref?: string
           p_snapshot_at?: string
+          p_tombstone_count?: number
         }
         Returns: Json
       }
+      privacy_op_restore_gate_status: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_restore_reconcile: {
-        Args: { p_project_ref: string; p_storage_verified?: boolean; p_subject: string }
+        Args: { p_project_ref: string; p_subject: string }
+        Returns: Json
+      }
+      privacy_op_restore_storage_confirm: {
+        Args: {
+          p_deleted_paths: string[]
+          p_project_ref: string
+          p_relisted_paths: string[]
+          p_subject: string
+        }
         Returns: Json
       }
       privacy_op_restore_storage_set: {
-        Args: { p_project_ref: string; p_subject: string }
+        Args: { p_prefix_paths?: string[]; p_project_ref: string; p_subject: string }
         Returns: Json
       }
       privacy_op_retry: { Args: { p_reference: string }; Returns: Json }
@@ -6287,6 +6308,8 @@ export type Database = {
         Args: { p_digest: string; p_reference: string; p_ttl_seconds?: number }
         Returns: Json
       }
+      privacy_op_tombstone_count_since: { Args: { p_since: string }; Returns: Json }
+      privacy_proc_ban_lift_failed: { Args: { p_case: string }; Returns: Json }
       privacy_proc_claim: {
         Args: { p_lease_seconds: number; p_project_ref: string }
         Returns: Json

@@ -26,12 +26,17 @@ export const HELP = [
   '                                         that you verified and mentioned them in the response.',
   '  purge                                  purge expired case records to outcome counts',
   '  switch <intake|executor> <on|off>      fail-closed kill switch',
-  '  restore-gate begin --snapshot-at <iso> [--confirm-empty]',
-  '                                         ISOLATED restore target only (never production): derives the expected',
-  '                                         subjects (live in the restored copy, gone from the source project given by',
-  '                                         PRIVACY_SOURCE_SUPABASE_URL / PRIVACY_SOURCE_SERVICE_ROLE_KEY), turns intake and',
-  '                                         executor off and binds the gate to this project. An empty set needs --confirm-empty.',
-  '  restore-gate clear --evidence <ref>    needs EVERY expected subject reconciled AND an evidence reference.',
+  '  restore-gate begin --snapshot-at <iso>',
+  '                                         ISOLATED restore target only (never production; the database must be flagged',
+  '                                         app.restore_target by the restore flow): derives the expected subjects (live in',
+  '                                         the restored copy, gone from the source project given by PRIVACY_SOURCE_SUPABASE_URL',
+  '                                         / PRIVACY_SOURCE_SERVICE_ROLE_KEY) and proves it by count parity with the source',
+  '                                         tombstones created after the snapshot (mismatch: refused, escalate). Re-run after',
+  '                                         late erasures to extend the open gate.',
+  '  restore-gate clear --evidence <ref>    needs EVERY expected subject reconciled, count parity again, AND an evidence reference.',
+  '  ack-external-followup <ref>            acknowledge outstanding external sends (list: external_followup); unblocks the case',
+  '  sweep-remnants <ref>                   open case after the freeze: delete invite-shell Auth users created after it for the',
+  '                                         erased address (invited, never signed in, no profile); others untouched',
   "  restore-reconcile <subject-id>         restore target only: remove the subject's objects through the Storage API,",
   '                                         replay the real erasure and prove zero residue. Only expected subjects.',
   '  generate-code                          one-time code for an email challenge to an unclaimed person (not stored)',
@@ -63,7 +68,9 @@ const COMMANDS = [
   'generate-code',
   'erase-unclaimed',
   'restore-gate',
-  'restore-reconcile'
+  'restore-reconcile',
+  'ack-external-followup',
+  'sweep-remnants'
 ];
 
 /** Loopback instances are the 'local' project; a hosted project is the first host label. */
@@ -98,15 +105,7 @@ export function parseArgs(argv) {
     const token = rest[index];
     if (token.startsWith('--')) {
       const key = token.slice(2);
-      if (
-        [
-          'confirm',
-          'allow-production',
-          'all-matches',
-          'confirm-empty',
-          'ack-external-followup'
-        ].includes(key)
-      )
+      if (['confirm', 'allow-production', 'all-matches', 'ack-external-followup'].includes(key))
         options[key] = true;
       else options[key] = rest[++index];
     } else positional.push(token);
@@ -203,52 +202,128 @@ function refuseRestoreOnProduction(target) {
     throw new Error('OPERATOR_RESTORE_PRODUCTION_REFUSED');
 }
 
+const AVATAR_BUCKET = 'player-avatars';
+
+/** Objects under the subject's avatar prefix, as 'bucket/name' paths (orphans included). */
+async function listAvatarPrefix(client, subject) {
+  const paths = [];
+  for (let offset = 0; offset < 10_000; offset += 1000) {
+    const { data, error } = await client.storage
+      .from(AVATAR_BUCKET)
+      .list(subject, { limit: 1000, offset });
+    if (error) throw new Error('RESTORE_STORAGE_UNVERIFIED');
+    const names = (data ?? []).map((object) => object.name);
+    paths.push(...names.map((name) => AVATAR_BUCKET + '/' + subject + '/' + name));
+    if (names.length < 1000) break;
+  }
+  return paths;
+}
+
+/** Whether one 'bucket/name' path still resolves in Storage. */
+async function stillListed(client, path) {
+  const bucket = path.slice(0, path.indexOf('/'));
+  const name = path.slice(path.indexOf('/') + 1);
+  const slash = name.lastIndexOf('/');
+  const base = name.slice(slash + 1);
+  const { data, error } = await client.storage
+    .from(bucket)
+    .list(slash < 0 ? '' : name.slice(0, slash), { search: base });
+  if (error) throw new Error('RESTORE_STORAGE_UNVERIFIED');
+  return (data ?? []).some((object) => object.name === base);
+}
+
 /**
- * Restore reconciliation of ONE expected subject in the restored environment: the Storage API phase (objects the
- * restored copy references are removed in bounded batches and re-listed to prove absence), then the database
- * erasure replay with its zero-residue proof. Every refusal (gate, project, expected set) comes from the database
- * before anything is deleted.
+ * Restore reconciliation of ONE expected subject in the restored environment, in two proven storage phases and the
+ * database replay. (1) The avatar prefix is listed through the Storage API and sent with the request: the database
+ * builds the deletion plan (restored pointers + that listing, so detached orphans are covered). (2) Exactly the plan
+ * is deleted in bounded batches, the prefix and every plan path are listed again, and the database accepts the
+ * confirmation only when the deleted set equals the plan and nothing is left. Only then does the erasure replay
+ * run. Every refusal (isolation flag, gate, project, expected set) comes from the database before anything is deleted.
  */
 export async function reconcileRestoredSubject(client, subject, projectRef) {
-  const listed = plainObject(
+  const planned = plainObject(
     await call(client, 'privacy_op_restore_storage_set', {
       p_subject: subject,
-      p_project_ref: projectRef
+      p_project_ref: projectRef,
+      p_prefix_paths: await listAvatarPrefix(client, subject)
     }),
     'OPERATOR_RESPONSE_INVALID'
   );
-  if (listed.status !== 'ok') return listed;
+  if (planned.status !== 'ok') return planned;
+  const plan = Array.isArray(planned.plan) ? planned.plan : [];
   const byBucket = new Map();
-  for (const entry of Array.isArray(listed.objects) ? listed.objects : []) {
-    if (
-      typeof entry?.bucket !== 'string' ||
-      typeof entry?.name !== 'string' ||
-      !RESTORE_BUCKETS.includes(entry.bucket)
-    )
-      throw new Error('RESTORE_STORAGE_BUCKET_REJECTED');
-    byBucket.set(entry.bucket, [...(byBucket.get(entry.bucket) ?? []), entry.name]);
+  for (const path of plan) {
+    const bucket = typeof path === 'string' ? path.slice(0, path.indexOf('/')) : '';
+    if (!RESTORE_BUCKETS.includes(bucket)) throw new Error('RESTORE_STORAGE_BUCKET_REJECTED');
+    byBucket.set(bucket, [...(byBucket.get(bucket) ?? []), path.slice(bucket.length + 1)]);
   }
   for (const [bucket, names] of byBucket) {
     for (let index = 0; index < names.length; index += 100) {
       const { error } = await client.storage.from(bucket).remove(names.slice(index, index + 100));
       if (error) throw new Error('RESTORE_STORAGE_REMOVE_FAILED');
     }
-    for (const name of names) {
-      const slash = name.lastIndexOf('/');
-      const base = name.slice(slash + 1);
-      const { data, error } = await client.storage
-        .from(bucket)
-        .list(slash < 0 ? '' : name.slice(0, slash), { search: base });
-      if (error) throw new Error('RESTORE_STORAGE_UNVERIFIED');
-      if ((data ?? []).some((object) => object.name === base))
-        throw new Error('RESTORE_STORAGE_RESIDUE');
-    }
   }
+  const relisted = new Set(await listAvatarPrefix(client, subject));
+  for (const path of plan) if (await stillListed(client, path)) relisted.add(path);
+  const confirmed = plainObject(
+    await call(client, 'privacy_op_restore_storage_confirm', {
+      p_subject: subject,
+      p_project_ref: projectRef,
+      p_deleted_paths: plan,
+      p_relisted_paths: [...relisted]
+    }),
+    'OPERATOR_RESPONSE_INVALID'
+  );
+  if (confirmed.status !== 'ok') return confirmed;
   return call(client, 'privacy_op_restore_reconcile', {
     p_subject: subject,
-    p_project_ref: projectRef,
-    p_storage_verified: true
+    p_project_ref: projectRef
   });
+}
+
+/**
+ * Deletes invite-shell Auth users that a send admitted before the freeze created for the erased address afterwards.
+ * Only users created after the freeze whose address digest matches the case, that were invited and never signed in
+ * and have no profile are removed; everyone else is left alone. Console output holds counts and safe codes only.
+ */
+export async function sweepRemnants(client, reference) {
+  const context = plainObject(
+    await call(client, 'privacy_op_remnant_context', { p_reference: reference }),
+    'OPERATOR_RESPONSE_INVALID'
+  );
+  if (context.status !== 'ok') return context;
+  const since = Date.parse(String(context.since));
+  let scanned = 0;
+  let matched = 0;
+  let removed = 0;
+  for (let page = 1; page <= 100; page++) {
+    const { data, error } = await client.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) throw new Error('REMNANT_LIST_FAILED');
+    const users = data?.users ?? [];
+    for (const user of users) {
+      scanned += 1;
+      if (!user.email || !(Date.parse(user.created_at) > since)) continue;
+      const digest = createHash('sha256').update(user.email.toLowerCase()).digest('hex');
+      if (digest !== context.digest) continue;
+      matched += 1;
+      const shell = plainObject(
+        await call(client, 'privacy_op_remnant_is_shell', { p_user: user.id }),
+        'OPERATOR_RESPONSE_INVALID'
+      );
+      if (shell.shell !== true) continue;
+      const { error: deleteError } = await client.auth.admin.deleteUser(user.id, false);
+      if (deleteError) throw new Error('REMNANT_DELETE_FAILED');
+      removed += 1;
+    }
+    if (users.length < 200) break;
+  }
+  return {
+    status: 'ok',
+    code: removed > 0 ? 'REMNANTS_REMOVED' : 'NO_REMNANTS',
+    scanned,
+    matched,
+    removed
+  };
 }
 
 /** Executes one parsed command against a service-role client. Returns console-safe data. */
@@ -305,8 +380,23 @@ export async function runCommand(client, parsed, target, source) {
         p_environment: target.environment
       });
     }
-    case 'retry':
-      return call(client, 'privacy_op_retry', { p_reference: reference });
+    case 'retry': {
+      const result = plainObject(
+        await call(client, 'privacy_op_retry', { p_reference: reference }),
+        'OPERATOR_RESPONSE_INVALID'
+      );
+      if (result.status !== 'ban_lift_required') return result;
+      // A stale-verification abort could not lift its temporary ban: lift it here, then the case is restartable.
+      const { error } = await client.auth.admin.updateUserById(String(result.subject_id), {
+        ban_duration: 'none'
+      });
+      if (error && error.status !== 404) return { status: 'rejected', code: 'BAN_LIFT_FAILED' };
+      return call(client, 'privacy_op_ban_lift_done', { p_reference: reference });
+    }
+    case 'ack-external-followup':
+      return call(client, 'privacy_op_ack_external_followup', { p_reference: reference });
+    case 'sweep-remnants':
+      return sweepRemnants(client, reference);
     case 'refuse':
       return call(client, 'privacy_op_close_refused', { p_reference: reference });
     case 'record-response': {
@@ -330,35 +420,54 @@ export async function runCommand(client, parsed, target, source) {
       refuseRestoreOnProduction(target);
       const [action] = positional;
       if (!['begin', 'clear'].includes(action)) throw new Error('RESTORE_GATE_ACTION_INVALID');
-      if (action === 'clear')
-        return call(client, 'privacy_op_restore_gate', {
-          p_action: 'clear',
-          p_evidence: options.evidence ?? null
-        });
       if (!source) throw new Error('OPERATOR_SOURCE_MISSING');
+      const tombstonesSince = async (instant) =>
+        Number(
+          plainObject(
+            await call(source, 'privacy_op_tombstone_count_since', { p_since: instant }),
+            'OPERATOR_RESPONSE_INVALID'
+          ).count
+        );
+      if (action === 'clear') {
+        // Parity once more at the end: erasures made while reconciling force a re-derivation (restore-gate begin).
+        const status = plainObject(
+          await call(client, 'privacy_op_restore_gate_status', {}),
+          'OPERATOR_RESPONSE_INVALID'
+        );
+        if (!status.snapshot_at) throw new Error('RESTORE_GATE_NOT_BEGUN');
+        const cleared = plainObject(
+          await call(client, 'privacy_op_restore_gate', {
+            p_action: 'clear',
+            p_evidence: options.evidence ?? null,
+            p_tombstone_count: await tombstonesSince(
+              new Date(String(status.snapshot_at)).toISOString()
+            )
+          }),
+          'OPERATOR_RESPONSE_INVALID'
+        );
+        return cleared.code === 'COUNT_MISMATCH'
+          ? {
+              ...cleared,
+              hint: 'Erasures were made after the set was derived: repeat restore-gate begin with the same --snapshot-at, reconcile the new subjects, then clear.'
+            }
+          : cleared;
+      }
       const snapshotAt = options['snapshot-at'];
       if (!snapshotAt || Number.isNaN(Date.parse(snapshotAt)))
         throw new Error('SNAPSHOT_AT_REQUIRED');
       const since = new Date(snapshotAt).toISOString();
       const restored = idList(await call(client, 'privacy_op_live_identity_ids', {}));
       const live = idList(await call(source, 'privacy_op_live_identity_ids', {}));
-      // Informational: closed case records no longer carry subject ids, so the set comes from the difference.
-      const recorded = plainObject(
-        await call(source, 'privacy_op_erasures_since', { p_since: since }),
-        'OPERATOR_RESPONSE_INVALID'
-      );
-      const begun = plainObject(
-        await call(client, 'privacy_op_restore_gate', {
-          p_action: 'begin',
-          p_evidence: null,
-          p_snapshot_at: since,
-          p_expected_subjects: deriveExpectedSubjects({ restored, live }),
-          p_confirm_empty: options['confirm-empty'] === true,
-          p_restore_project_ref: target.projectRef
-        }),
-        'OPERATOR_RESPONSE_INVALID'
-      );
-      return { ...begun, erasures_recorded_since_snapshot: recorded.count };
+      // The set is the difference (closed case records keep no subject id); its size must equal the tombstones the
+      // erasures left after the snapshot, which the database checks (COUNT_MISMATCH: fail closed, escalate).
+      return call(client, 'privacy_op_restore_gate', {
+        p_action: 'begin',
+        p_evidence: null,
+        p_snapshot_at: since,
+        p_expected_subjects: deriveExpectedSubjects({ restored, live }),
+        p_restore_project_ref: target.projectRef,
+        p_tombstone_count: await tombstonesSince(since)
+      });
     }
     case 'restore-reconcile':
       // The subject id is the operator's own post-snapshot erasure record; it is never echoed back.
@@ -403,7 +512,7 @@ export async function main(argv, env) {
   };
   const client = createClient(target.url, target.key, clientOptions);
   let source;
-  if (parsed.command === 'restore-gate' && parsed.positional[0] === 'begin') {
+  if (parsed.command === 'restore-gate') {
     const resolved = resolveSource(env, parsed.options);
     if (resolved.url === target.url) throw new Error('OPERATOR_RESTORE_SOURCE_IS_TARGET');
     source = createClient(resolved.url, resolved.key, clientOptions);

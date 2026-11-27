@@ -4,6 +4,7 @@ import type { OperatorClient } from '../scripts/privacy-operator.mjs';
 import {
   applyRestoreGate,
   discardSnapshot,
+  markRestoreTarget,
   restoreSnapshotWithGate,
   takeSnapshot,
   type Snapshot
@@ -29,10 +30,11 @@ const environment = localSupabaseEnv();
 const L = sqlText;
 
 /**
- * Restore rehearsal with account erasure (F8, F17, F21, F22, F27). Two subjects are erased by the real path after a
- * snapshot; the snapshot is restored into an isolated scratch database. The restored environment starts gated:
- * the expected subjects (live in the copy, gone from the live project) must ALL be reconciled by the real erasure
- * replay plus the Storage API phase, in THIS database and project, before the gate closes with persisted evidence.
+ * Restore rehearsal with account erasure (F8, F17, F21, F22, F27-F30). Three subjects are erased by the real path
+ * after a snapshot; the snapshot is restored into an isolated scratch database that the restore flow flags
+ * (app.restore_target). The restored gate proves its expected set by count parity with the source tombstones, each
+ * subject is reconciled through the two-phase Storage proof and the database replay, and the gate closes only with
+ * complete coverage, parity again and a persisted evidence reference.
  */
 describe.skipIf(!environment.env)(
   'Restore rehearsal with account erasure',
@@ -46,271 +48,405 @@ describe.skipIf(!environment.env)(
       if (snapshot) discardSnapshot(docker, snapshot);
     });
 
-    it('reconciles every expected subject (database + object bytes) before the restored gate can close', async () => {
+    it('proves isolation, count parity, the storage proof and exact coverage before the restored gate can close', async () => {
       await setQuiescence(0);
       const kit = await createRankedResultFixtures(environment.env!);
-      const [subjectA, subjectB, keeper] = [kit.players[3]!, kit.players[4]!, kit.players[5]!];
-      const idsA = subjectA.id;
-      const idsB = subjectB.id;
-
-      // Pre-snapshot state: A's avatar pointer references a fake object that exists as real bytes in the TEST bucket.
-      const avatarKey = idsA + '/' + crypto.randomUUID() + '.png';
-      await uploadObject('player-avatars', avatarKey, 'image/png');
-      await fixtureSql(
-        'update public.player_profiles set avatar_url = ' +
-          L(avatarKey) +
-          ' where user_id = ' +
-          L(idsA)
-      );
+      const [subjectA, subjectB, keeper, subjectC] = [
+        kit.players[3]!,
+        kit.players[4]!,
+        kit.players[5]!,
+        kit.players[6]!
+      ];
+      const [idA, idB, idC] = [subjectA.id, subjectB.id, subjectC.id];
       const emailOf = async (id: string) =>
         String(await scalar('select email from auth.users where id = ' + L(id)));
-      const emails = { a: await emailOf(idsA), b: await emailOf(idsB) };
+
+      // Pre-snapshot state: A's avatar pointer references a fake object, and an ORPHAN object (no pointer) sits under
+      // the same prefix. Both are real bytes in the TEST bucket, uploaded through the Storage API.
+      const avatarPath = idA + '/' + crypto.randomUUID() + '.png';
+      const orphanPath = idA + '/orphan-' + crypto.randomUUID() + '.png';
+      await uploadObject('player-avatars', avatarPath, 'image/png');
+      await uploadObject('player-avatars', orphanPath, 'image/png');
+      await fixtureSql(
+        'update public.player_profiles set avatar_url = ' +
+          L(avatarPath) +
+          ' where user_id = ' +
+          L(idA)
+      );
+      const emails = { a: await emailOf(idA), b: await emailOf(idB), c: await emailOf(idC) };
 
       snapshot = takeSnapshot(docker);
-
-      // The real erasure path for both subjects, after the snapshot.
-      const references: string[] = [];
-      for (const subject of [subjectA, subjectB]) {
+      const takenAt = snapshot.takenAt;
+      const tombstonesNow = async () =>
+        Number(
+          await scalar(
+            "select count(*)::int from public.participant_identities where state = 'withdrawn' and created_at > " +
+              L(takenAt)
+          )
+        );
+      const erase = async (subject: typeof subjectA, email: string) => {
         const request = await subject.client.rpc('request_account_deletion', {
           p_command_id: crypto.randomUUID()
         });
         expect(request.error).toBeNull();
-        references.push(
-          String(Object.fromEntries(Object.entries(Object(request.data)))['reference'])
+        const reference = String(
+          Object.fromEntries(Object.entries(Object(request.data)))['reference']
         );
-      }
-      await verifyCase(references[0]!, emails.a);
-      await verifyCase(references[1]!, emails.b);
-      // One at a time: the second plan is computed after the first erasure changed shared projections.
-      await armCase(references[0]!);
-      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
-      await armCase(references[1]!);
-      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
-      for (const reference of references)
+        await verifyCase(reference, email);
+        await armCase(reference);
+        expect(await sweep()).toEqual({ disabled: false, processed: 1 });
         expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });
-      expect(await tablesMentioning(idsA)).toEqual([]);
-      expect(await objectExists('player-avatars', avatarKey)).toBe(false);
-      // A real storage restore brings the pre-snapshot bytes back; simulate it before reconciling.
-      await uploadObject('player-avatars', avatarKey, 'image/png');
-      expect(await objectExists('player-avatars', avatarKey)).toBe(true);
+      };
 
-      // The expected set is derived: live in the restored copy, gone from the live project.
+      // The real erasure path for A and B (one at a time: the second plan sees the first erasure).
+      await erase(subjectA, emails.a);
+      await erase(subjectB, emails.b);
+      expect(await tablesMentioning(idA)).toEqual([]);
+      expect(await objectExists('player-avatars', avatarPath)).toBe(false);
+      // A real storage restore brings the pre-snapshot bytes back; simulate it before reconciling.
+      await uploadObject('player-avatars', avatarPath, 'image/png');
+      await uploadObject('player-avatars', orphanPath, 'image/png');
+      expect(await tombstonesNow()).toBe(2);
+
+      // F28: the live database never carries the isolation flag and refuses every restore RPC.
+      expect(
+        await scalar("select coalesce(current_setting('app.restore_target', true), 'unset')")
+      ).not.toBe('on');
+      const liveBegin = await trustedClient().rpc('privacy_op_restore_gate', {
+        p_action: 'begin',
+        p_snapshot_at: takenAt,
+        p_expected_subjects: [idA, idB],
+        p_restore_project_ref: 'live',
+        p_tombstone_count: 2
+      });
+      expect(liveBegin.data).toEqual({ status: 'rejected', code: 'RESTORE_NOT_ISOLATED' });
+      expect(await scalar('select status from privacy_internal.restore_gate')).toBe('closed');
+      expect(
+        (
+          await trustedClient().rpc('privacy_op_restore_reconcile', {
+            p_subject: keeper.id,
+            p_project_ref: 'live'
+          })
+        ).data
+      ).toEqual({ status: 'rejected', code: 'RESTORE_NOT_ISOLATED' });
+
       const liveIds = (
         await sqlRows(
           "select id::text as id from public.participant_identities where state = 'live'"
         )
       ).map((row) => String(row['id']));
-      const restored = restoreSnapshotWithGate(docker, snapshot, {
+      const derive = (destination: string) =>
+        deriveExpectedSubjects({
+          restored: docker
+            .sql(
+              destination,
+              "select id from public.participant_identities where state = 'live' order by id;"
+            )
+            .split('\n')
+            .filter(Boolean),
+          live: liveIds
+        });
+
+      // F29: the derived set (2) must equal the source tombstones: a source reporting another number is refused.
+      const refusedRestore = restoreSnapshotWithGate(docker, snapshot, {
         base,
-        expectedSubjects: (destination) =>
-          deriveExpectedSubjects({
-            restored: docker
-              .sql(
-                destination,
-                "select id from public.participant_identities where state = 'live' order by id;"
-              )
-              .split('\n')
-              .filter(Boolean),
-            live: liveIds
-          })
+        expectedSubjects: derive,
+        tombstoneCount: 1
       });
-      expect(restored.gate).toEqual({ pending: true, intakeOff: true, executorOff: true });
-      const query = (statement: string) => docker.sql(restored.destination, statement);
+      expect(refusedRestore.gate.pending).toBe(false);
+      const query = (statement: string) => docker.sql(refusedRestore.destination, statement);
+      const destination = refusedRestore.destination;
+      expect(query("select current_setting('app.restore_target', true);")).toBe('on');
+      expect(query('select status from privacy_internal.restore_gate;')).toBe('closed');
+      // Fail closed even though the begin was refused: the restored switches are off.
+      expect(
+        query(
+          "select count(*) from privacy_internal.privacy_settings where key like '%_enabled' and value = 'true';"
+        )
+      ).toBe('0');
+      expect(
+        applyRestoreGate(docker, destination, {
+          snapshotAt: takenAt,
+          expectedSubjects: derive(destination),
+          tombstoneCount: 2
+        })
+      ).toEqual({ pending: true, intakeOff: true, executorOff: true });
+
       const count = (table: string, column: string, id: string) =>
         Number(query('select count(*) from ' + table + ' where ' + column + ' = ' + L(id) + ';'));
       const gate = () =>
         query(
           "select status || '|' || cardinality(expected_subjects) || '|' || cardinality(reconciled_subjects) from privacy_internal.restore_gate;"
         );
-      const literal = (value: unknown) =>
+      const literal = (value: unknown): string =>
         value === null || value === undefined
           ? 'null'
-          : typeof value === 'boolean'
+          : typeof value === 'boolean' || typeof value === 'number'
             ? String(value)
-            : L(typeof value === 'string' ? value : JSON.stringify(value));
-      // The operator driver against the scratch database (RPCs) and the environment's Storage (the TEST bucket).
+            : Array.isArray(value)
+              ? 'array[' + value.map(literal).join(',') + ']::text[]'
+              : L(typeof value === 'string' ? value : JSON.stringify(value));
+      const rpc = (name: string, args: Record<string, unknown>) =>
+        JSON.parse(
+          query(
+            'select public.' +
+              name +
+              '(' +
+              Object.entries(args)
+                .map(([key, value]) => key + ' => ' + literal(value))
+                .join(', ') +
+              ')::text;'
+          )
+        );
       const scratch: OperatorClient = {
         rpc: (name, args) => {
           try {
-            return Promise.resolve({
-              data: JSON.parse(
-                query(
-                  'select public.' +
-                    name +
-                    '(' +
-                    Object.entries(args)
-                      .map(([key, value]) => key + ' => ' + literal(value))
-                      .join(', ') +
-                    ')::text;'
-                )
-              ),
-              error: null
-            });
+            return Promise.resolve({ data: rpc(name, args), error: null });
           } catch (error) {
             return Promise.resolve({ data: null, error });
           }
         },
         storage: trustedClient().storage
       };
-      const reconcile = async (subject: string, ref = restored.destination) =>
+      const reconcile = async (subject: string, ref = destination) =>
         Object.fromEntries(
           Object.entries(Object(await reconcileRestoredSubject(scratch, subject, ref)))
         );
 
-      // Snapshot semantics: both erased subjects are back in the scratch copy only, with A's pointer intact.
-      expect(
-        query("select array_to_string(expected_subjects, ',') from privacy_internal.restore_gate;")
-          .split(',')
-          .sort()
-      ).toEqual([idsA, idsB].sort());
       expect(gate()).toBe('pending|2|0');
-      for (const id of [idsA, idsB]) {
+      for (const id of [idA, idB, idC])
         expect(count('public.player_profiles', 'user_id', id)).toBe(1);
-        expect(count('auth.users', 'id', id)).toBe(1);
-      }
       expect(
-        query('select avatar_url from public.player_profiles where user_id = ' + L(idsA) + ';')
-      ).toBe(avatarKey);
-      expect(await scalar('select count(*)::int from auth.users where id = ' + L(idsA))).toBe(0);
-
-      // The gate is fail-closed: switches stay off and nothing can be claimed.
-      expect(
-        query(
-          "select string_agg(key || '=' || value, ',' order by key) from privacy_internal.privacy_settings;"
-        )
-      ).toBe(
-        'executor_enabled=false,freeze_quiescence_seconds=0,intake_enabled=false,privacy_quiescence_max_attempts=12'
-      );
+        query('select avatar_url from public.player_profiles where user_id = ' + L(idA) + ';')
+      ).toBe(avatarPath);
       expect(
         query("select public.privacy_op_set_switch('executor_enabled', true)::text;")
       ).toContain('RESTORE_GATE_PENDING');
       expect(query("select coalesce(public.privacy_proc_claim(120, 'local')::text, 'none');")).toBe(
         'none'
       );
-      expect(query("select to_regclass('cron.job') is null;")).toBe('t');
 
-      // F21: an empty expected set must be confirmed, and an unreconciled gate cannot be cleared.
+      // F28: without the database flag every restore RPC refuses; the restore flow sets it.
+      docker.exec(
+        ['psql', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q'],
+        {
+          input: 'alter database "' + destination + '" reset app.restore_target;'
+        }
+      );
       expect(
         query(
-          "select public.privacy_op_restore_gate('begin', null, now(), array[]::uuid[], false, 'x')::text;"
+          "select current_setting('app.restore_target', true) is null or current_setting('app.restore_target', true) = '';"
         )
-      ).toContain('EXPECTED_SUBJECTS_REQUIRED');
+      ).toBe('t');
+      for (const statement of [
+        "select public.privacy_op_restore_gate('begin', null, now(), array[]::uuid[], 'x', 0)::text;",
+        'select public.privacy_op_restore_storage_set(' +
+          L(idA) +
+          ", '" +
+          destination +
+          "')::text;",
+        'select public.privacy_op_restore_storage_confirm(' +
+          L(idA) +
+          ", '" +
+          destination +
+          "', array[]::text[], array[]::text[])::text;",
+        'select public.privacy_op_restore_reconcile(' + L(idA) + ", '" + destination + "')::text;"
+      ])
+        expect(query(statement)).toContain('RESTORE_NOT_ISOLATED');
       expect(gate()).toBe('pending|2|0');
-      const evidence = 'post-snapshot erasures reconciled: ticket 123';
-      expect(
-        query("select public.privacy_op_restore_gate('clear', " + L(evidence) + ')::text;')
-      ).toContain('RECONCILIATION_REQUIRED');
+      markRestoreTarget(docker, destination);
 
-      // F21: a subject outside the expected set is refused (nothing changes), whether random or a live person.
+      // F21/F22: outside the expected set, wrong project, no trace: refused, nothing changes.
       const random = crypto.randomUUID();
-      expect(await reconcile(random)).toMatchObject({
-        status: 'rejected',
-        code: 'RESTORE_SUBJECT_NOT_EXPECTED'
-      });
-      // F22: a live project subject present in the copy is refused even though the gate and refs match.
+      expect(await reconcile(random)).toMatchObject({ code: 'RESTORE_SUBJECT_NOT_EXPECTED' });
+      expect(await reconcile(keeper.id)).toMatchObject({ code: 'RESTORE_SUBJECT_NOT_EXPECTED' });
       expect(count('public.player_profiles', 'user_id', keeper.id)).toBe(1);
-      expect(await reconcile(keeper.id)).toMatchObject({
-        status: 'rejected',
-        code: 'RESTORE_SUBJECT_NOT_EXPECTED'
-      });
-      expect(count('public.player_profiles', 'user_id', keeper.id)).toBe(1);
-      // F22: the project binding refuses another project (e.g. the live one) outright.
-      expect(await reconcile(idsA, 'local')).toMatchObject({
-        status: 'rejected',
-        code: 'RESTORE_PROJECT_MISMATCH'
-      });
-      expect(count('public.player_profiles', 'user_id', idsA)).toBe(1);
+      expect(await reconcile(idA, 'local')).toMatchObject({ code: 'RESTORE_PROJECT_MISMATCH' });
+      query(
+        'update privacy_internal.restore_gate set expected_subjects = expected_subjects || ' +
+          L(random) +
+          '::uuid;'
+      );
+      expect(await reconcile(random)).toMatchObject({ code: 'RESTORE_SUBJECT_NOT_FOUND' });
+      query(
+        'update privacy_internal.restore_gate set expected_subjects = array_remove(expected_subjects, ' +
+          L(random) +
+          '::uuid);'
+      );
       expect(gate()).toBe('pending|2|0');
+      expect(query("select public.privacy_op_restore_gate('clear', 'ticket 1')::text;")).toContain(
+        'RECONCILIATION_REQUIRED'
+      );
 
-      // F21: an expected id with no trace in the copy (typo) is refused and changes nothing.
-      applyRestoreGate(docker, restored.destination, {
-        snapshotAt: snapshot.takenAt,
-        expectedSubjects: [idsA, idsB, random]
+      // F30: the plan covers the pointer AND the orphan found only through the prefix listing.
+      const avatar = 'player-avatars/' + avatarPath;
+      const orphan = 'player-avatars/' + orphanPath;
+      const planned = rpc('privacy_op_restore_storage_set', {
+        p_subject: idA,
+        p_project_ref: destination,
+        p_prefix_paths: [orphan]
       });
-      expect(await reconcile(random)).toMatchObject({
-        status: 'rejected',
-        code: 'RESTORE_SUBJECT_NOT_FOUND'
+      expect([...planned.plan].sort((a, b) => a.localeCompare(b))).toEqual(
+        [avatar, orphan].sort((a, b) => a.localeCompare(b))
+      );
+      expect(
+        rpc('privacy_op_restore_storage_set', {
+          p_subject: idA,
+          p_project_ref: destination,
+          p_prefix_paths: ['player-avatars/' + idB + '/x.png']
+        })
+      ).toMatchObject({ code: 'STORAGE_PATH_REJECTED' });
+      // The DB phase refuses before the proof exists (no caller boolean any more).
+      expect(
+        rpc('privacy_op_restore_reconcile', { p_subject: idA, p_project_ref: destination })
+      ).toMatchObject({
+        code: 'RESTORE_STORAGE_PHASE_REQUIRED'
       });
-      expect(gate()).toBe('pending|3|0');
-      applyRestoreGate(docker, restored.destination, {
-        snapshotAt: snapshot.takenAt,
-        expectedSubjects: [idsA, idsB]
-      });
-      expect(gate()).toBe('pending|2|0');
+      // A subset of the plan, or a lie about what is left, is refused.
+      expect(
+        rpc('privacy_op_restore_storage_confirm', {
+          p_subject: idA,
+          p_project_ref: destination,
+          p_deleted_paths: [avatar],
+          p_relisted_paths: []
+        })
+      ).toMatchObject({ code: 'STORAGE_INCOMPLETE' });
+      const bucket = trustedClient().storage.from('player-avatars');
+      expect((await bucket.remove([avatarPath, orphanPath])).error).toBeNull();
+      expect(await objectExists('player-avatars', avatarPath)).toBe(false);
+      expect(await objectExists('player-avatars', orphanPath)).toBe(false);
+      expect(
+        rpc('privacy_op_restore_storage_confirm', {
+          p_subject: idA,
+          p_project_ref: destination,
+          p_deleted_paths: [avatar, orphan],
+          p_relisted_paths: [orphan]
+        })
+      ).toMatchObject({ code: 'STORAGE_LIE' });
+      expect(
+        rpc('privacy_op_restore_storage_confirm', {
+          p_subject: idA,
+          p_project_ref: destination,
+          p_deleted_paths: [avatar, orphan],
+          p_relisted_paths: []
+        })
+      ).toMatchObject({ status: 'ok', storage_verified: true });
 
       // Residue the erasure cannot remove (an unclassified copy of B's id) fails closed and rolls B back untouched.
       query('create table public.zz_restore_residue(note text);');
-      query('insert into public.zz_restore_residue values (' + L('copy of ' + idsB) + ');');
-      expect(await reconcile(idsB)).toMatchObject({
+      query('insert into public.zz_restore_residue values (' + L('copy of ' + idB) + ');');
+      expect(await reconcile(idB)).toMatchObject({
         status: 'rejected',
         code: 'RESTORE_RECONCILE_RESIDUE',
         detail: 'public.zz_restore_residue'
       });
-      expect(count('public.player_profiles', 'user_id', idsB)).toBe(1);
+      expect(count('public.player_profiles', 'user_id', idB)).toBe(1);
       query('drop table public.zz_restore_residue;');
 
-      // F27: reconciling A removes the object BYTES through the Storage API, replays the erasure, proves zero residue.
-      expect(await reconcile(idsA)).toMatchObject({ status: 'ok', restore_gate: 'pending' });
-      expect(await objectExists('player-avatars', avatarKey)).toBe(false);
-      expect(count('public.player_profiles', 'user_id', idsA)).toBe(0);
-      expect(count('public.participant_identities', 'id', idsA)).toBe(0);
-      expect(count('auth.users', 'id', idsA)).toBe(0);
-      expect(query('select cardinality(privacy_internal.subject_residue(' + L(idsA) + '));')).toBe(
-        '0'
-      );
-      // Publication isolation: with only 1 of 2 expected subjects reconciled the gate cannot close.
+      // A: database replay after its proven storage phase.
+      expect(
+        rpc('privacy_op_restore_reconcile', { p_subject: idA, p_project_ref: destination })
+      ).toMatchObject({
+        status: 'ok',
+        restore_gate: 'pending'
+      });
+      expect(count('public.player_profiles', 'user_id', idA)).toBe(0);
+      expect(count('auth.users', 'id', idA)).toBe(0);
       expect(gate()).toBe('pending|2|1');
-      expect(
-        query("select public.privacy_op_restore_gate('clear', " + L(evidence) + ')::text;')
-      ).toContain('RECONCILIATION_REQUIRED');
-      expect(query("select public.privacy_op_set_switch('intake_enabled', true)::text;")).toContain(
-        'RESTORE_GATE_PENDING'
-      );
-
-      // Complete coverage: reconciled; clearing then needs the evidence, which is persisted.
-      expect(await reconcile(idsB)).toMatchObject({ status: 'ok', restore_gate: 'reconciled' });
+      // B through the operator driver (listing, plan, deletion, re-list, confirmation, replay).
+      expect(await reconcile(idB)).toMatchObject({ status: 'ok', restore_gate: 'reconciled' });
       expect(gate()).toBe('reconciled|2|2');
-      expect(query("select public.privacy_op_restore_gate('clear', '   ')::text;")).toContain(
-        'RECONCILIATION_EVIDENCE_REQUIRED'
-      );
+
+      // F29: an erasure made after the set was derived (C) shows at clear as extra parity: refused, then re-derived.
+      await erase(subjectC, emails.c);
+      expect(await tombstonesNow()).toBe(3);
+      const evidence = 'post-snapshot erasures reconciled: ticket 123';
       expect(
-        query("select public.privacy_op_restore_gate('clear', " + L(evidence) + ')::text;')
+        query(
+          "select public.privacy_op_restore_gate('clear', " +
+            L(evidence) +
+            ', null, null, null, 3)::text;'
+        )
+      ).toContain('COUNT_MISMATCH');
+      expect(gate()).toBe('reconciled|2|2');
+      // Re-begin with the same snapshot EXTENDS the gate: C joins, A and B stay reconciled.
+      const liveNow = (
+        await sqlRows(
+          "select id::text as id from public.participant_identities where state = 'live'"
+        )
+      ).map((row) => String(row['id']));
+      expect(
+        applyRestoreGate(docker, destination, {
+          snapshotAt: takenAt,
+          expectedSubjects: deriveExpectedSubjects({
+            restored: query(
+              "select id from public.participant_identities where state = 'live' order by id;"
+            )
+              .split('\n')
+              .filter(Boolean),
+            live: liveNow
+          }),
+          tombstoneCount: 3
+        })
+      ).toEqual({ pending: true, intakeOff: true, executorOff: true });
+      expect(gate()).toBe('pending|3|2');
+      expect(await reconcile(idC)).toMatchObject({ status: 'ok', restore_gate: 'reconciled' });
+      expect(gate()).toBe('reconciled|3|3');
+
+      // Close: parity holds, the evidence is persisted, the subject ids are not.
+      expect(
+        query("select public.privacy_op_restore_gate('clear', '   ', null, null, null, 3)::text;")
+      ).toContain('RECONCILIATION_EVIDENCE_REQUIRED');
+      expect(
+        query(
+          "select public.privacy_op_restore_gate('clear', " +
+            L(evidence) +
+            ', null, null, null, 3)::text;'
+        )
       ).toContain('"closed"');
       expect(
         query(
-          "select status || '|' || evidence_ref || '|' || cardinality(expected_subjects) || '|' || cardinality(reconciled_subjects) || '|' || restore_project_ref from privacy_internal.restore_gate;"
+          "select status || '|' || evidence_ref || '|' || cardinality(expected_subjects) || '|' || cardinality(reconciled_subjects) || '|' || restore_project_ref || '|' || tombstone_count from privacy_internal.restore_gate;"
         )
-      ).toBe('closed|' + evidence + '|0|0|' + restored.destination);
-      expect(await reconcile(idsA)).toMatchObject({ code: 'RESTORE_GATE_NOT_PENDING' });
-      expect(
-        query("select value from privacy_internal.privacy_settings where key = 'executor_enabled';")
-      ).toBe('false');
+      ).toBe('closed|' + evidence + '|0|0|' + destination + '|3');
+      expect(await reconcile(idA)).toMatchObject({ code: 'RESTORE_GATE_NOT_PENDING' });
       expect(
         query("select public.privacy_op_set_switch('executor_enabled', true)::text;")
       ).toContain('"ok"');
 
-      // F21: a verified-empty expected set is reconciled at once (evidence is still due).
+      // F29: a verified-empty set needs zero parity: a source that still sees a tombstone cannot be declared empty.
+      const later = new Date().toISOString();
       expect(
-        applyRestoreGate(docker, restored.destination, {
-          snapshotAt: snapshot.takenAt,
-          expectedSubjects: []
+        query(
+          "select public.privacy_op_restore_gate('begin', null, " +
+            L(later) +
+            ", array[]::uuid[], '" +
+            destination +
+            "', 1)::text;"
+        )
+      ).toContain('COUNT_MISMATCH');
+      expect(
+        applyRestoreGate(docker, destination, {
+          snapshotAt: later,
+          expectedSubjects: [],
+          tombstoneCount: 0
         })
       ).toEqual({ pending: true, intakeOff: true, executorOff: true });
       expect(gate()).toBe('reconciled|0|0');
       expect(
-        query("select public.privacy_op_restore_gate('clear', " + L(evidence) + ')::text;')
+        query(
+          "select public.privacy_op_restore_gate('clear', " +
+            L(evidence) +
+            ', null, null, null, 0)::text;'
+        )
       ).toContain('"closed"');
 
-      // The live stack never regained either account.
-      for (const id of [idsA, idsB])
+      // The live stack never regained any account, and no object came back.
+      for (const id of [idA, idB, idC])
         expect(
           await scalar('select count(*)::int from public.player_profiles where user_id = ' + L(id))
         ).toBe(0);
-      expect(
-        await scalar(
-          'select count(*)::int from public.player_profiles where user_id = ' + L(keeper.id)
-        )
-      ).toBe(1);
+      expect(await objectExists('player-avatars', avatarPath)).toBe(false);
     });
   }
 );
