@@ -142,7 +142,7 @@ export function applyRestoreGate(
   {
     snapshotAt = new Date().toISOString(),
     cutoffXid = 0,
-    cutoffSnapshot = null,
+    cutoffSnapshot = '',
     expectedSubjects = [],
     projectRef = database,
     tombstoneCount = expectedSubjects.length
@@ -156,7 +156,7 @@ export function applyRestoreGate(
     docker.sql(
       database,
       `select public.privacy_op_restore_gate('begin', null, '${new Date(snapshotAt).toISOString()}'::timestamptz, ` +
-        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], '${projectRef.replaceAll("'", '')}', ${Number(tombstoneCount)}, ${cutoffXid}, ${cutoffSnapshot === null ? 'null' : `'${String(cutoffSnapshot).replace(/[^0-9:,]/g, '')}'`})::text;`
+        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], '${projectRef.replaceAll("'", '')}', ${Number(tombstoneCount)}, ${cutoffXid}, '${cutoffSnapshot.replace(/[^0-9:,]/g, '')}')::text;`
     )
   );
   const settings = Object.fromEntries(
@@ -297,6 +297,8 @@ export function runRestoreRehearsal({
   // One dump and one filtered TOC are shared by every restore, so all runs restore identical
   // input. A failure here throws before any destination is provisioned.
   const dumpStarted = now();
+  // The gate refuses a begin without the dump-start snapshot: capture it before the dump, like takeSnapshot does.
+  const cutoffSnapshot = docker.sql(source, 'select pg_current_snapshot()::text');
   // Invocation-owned container paths: concurrent rehearsals must not overwrite each other, and the
   // staged files are removed on every exit path.
   const artifactId = randomUUID();
@@ -343,7 +345,7 @@ export function runRestoreRehearsal({
         const readsMatch = JSON.stringify(sourceReads) === JSON.stringify(restoredReads);
         const dispatch = disableDispatch(docker, destination);
         markRestoreTarget(docker, destination);
-        const restoreGate = applyRestoreGate(docker, destination);
+        const restoreGate = applyRestoreGate(docker, destination, { cutoffSnapshot });
         const pass =
           !mismatched.length &&
           !schemaDiff.length &&

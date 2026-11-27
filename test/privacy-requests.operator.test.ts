@@ -236,7 +236,11 @@ describe('privacy operator: restore gate', () => {
   it('tells the operator to re-derive when the clear parity fails', async () => {
     const result = await runCommand(
       withIds([], {
-        privacy_op_restore_gate_status: { snapshot_at: '2026-11-20T10:00:00+00:00' },
+        privacy_op_restore_gate_status: {
+          snapshot_at: '2026-11-20T10:00:00+00:00',
+          cutoff_xid: 4242,
+          cutoff_snapshot: '100:110:101,105'
+        },
         privacy_op_restore_gate: { status: 'rejected', code: 'COUNT_MISMATCH' }
       }),
       parse('restore-gate', 'clear', '--evidence', 'x'),
@@ -245,6 +249,84 @@ describe('privacy operator: restore gate', () => {
     );
     expect(result).toMatchObject({ code: 'COUNT_MISMATCH' });
     expect(JSON.stringify(result)).toContain('restore-gate begin');
+  });
+
+  it('never turns a missing or refused dump snapshot into a count (F45)', async () => {
+    const gate = (snapshot: string | null) =>
+      withIds([], {
+        privacy_op_restore_gate_status: {
+          snapshot_at: '2026-11-20T10:00:00+00:00',
+          cutoff_xid: 4242,
+          cutoff_snapshot: snapshot
+        }
+      });
+    // The gate row has no snapshot: clear refuses before any count.
+    await expect(
+      runCommand(
+        gate(null),
+        parse('restore-gate', 'clear', '--evidence', 'x'),
+        target,
+        withIds([], { privacy_op_erasure_count_since: { count: 0 } })
+      )
+    ).rejects.toThrow('CUTOFF_SNAPSHOT_REQUIRED');
+    // The database refused the count (SNAPSHOT_REQUIRED): it is never read as a number.
+    await expect(
+      runCommand(
+        gate('100:110:101'),
+        parse('restore-gate', 'clear', '--evidence', 'x'),
+        target,
+        withIds([], {
+          privacy_op_erasure_count_since: { status: 'rejected', code: 'SNAPSHOT_REQUIRED' }
+        })
+      )
+    ).rejects.toThrow('CUTOFF_SNAPSHOT_REQUIRED');
+    // begin without the snapshot never reaches the database.
+    calls.length = 0;
+    await expect(
+      runCommand(
+        withIds([]),
+        parse(
+          'restore-gate',
+          'begin',
+          '--snapshot-at',
+          '2026-11-20T10:00:00Z',
+          '--cutoff-xid',
+          '4242'
+        ),
+        target,
+        withIds([])
+      )
+    ).rejects.toThrow('CUTOFF_SNAPSHOT_REQUIRED');
+    expect(calls.map((call) => call.name)).toEqual([]);
+  });
+
+  it('refuses a cleanup retry that a newer open case supersedes, without touching the ban (F46)', async () => {
+    calls.length = 0;
+    const lifted: string[] = [];
+    const superseded: OperatorClient = {
+      rpc: (name, args) => {
+        calls.push({ name, args });
+        return Promise.resolve({
+          data: { status: 'rejected', code: 'CLEANUP_SUPERSEDED' },
+          error: null
+        });
+      },
+      auth: {
+        admin: {
+          updateUserById: (id) => {
+            lifted.push(id);
+            return Promise.resolve({ error: null });
+          },
+          listUsers: () => Promise.resolve({ data: { users: [] }, error: null }),
+          deleteUser: () => Promise.resolve({ error: null })
+        }
+      }
+    };
+    expect(
+      await runCommand(superseded, parse('retry-cleanup-unban', 'PR-AAAAAAAAAAAA'), target)
+    ).toEqual({ status: 'rejected', code: 'CLEANUP_SUPERSEDED' });
+    expect(lifted).toEqual([]);
+    expect(calls.map((call) => call.name)).toEqual(['privacy_op_cleanup_target']);
   });
 
   it('refuses production for every restore command, before any override is considered (F22)', async () => {

@@ -502,17 +502,21 @@ export async function runCommand(client, parsed, target, source) {
       const [action] = positional;
       if (!['begin', 'clear'].includes(action)) throw new Error('RESTORE_GATE_ACTION_INVALID');
       if (!source) throw new Error('OPERATOR_SOURCE_MISSING');
-      const erasuresSince = async (cutoffXid, instant, cutoffSnapshot) =>
-        Number(
-          plainObject(
-            await call(source, 'privacy_op_erasure_count_since', {
-              p_cutoff_xid: cutoffXid,
-              p_cutoff_time: instant,
-              p_cutoff_snapshot: cutoffSnapshot
-            }),
-            'OPERATOR_RESPONSE_INVALID'
-          ).count
+      const erasuresSince = async (cutoffXid, instant, cutoffSnapshot) => {
+        if (typeof cutoffSnapshot !== 'string' || cutoffSnapshot === '')
+          throw new Error('CUTOFF_SNAPSHOT_REQUIRED');
+        const counted = plainObject(
+          await call(source, 'privacy_op_erasure_count_since', {
+            p_cutoff_xid: cutoffXid,
+            p_cutoff_time: instant,
+            p_cutoff_snapshot: cutoffSnapshot
+          }),
+          'OPERATOR_RESPONSE_INVALID'
         );
+        // The database refuses a count without the dump snapshot: never turn that into a number.
+        if (counted.code === 'SNAPSHOT_REQUIRED') throw new Error('CUTOFF_SNAPSHOT_REQUIRED');
+        return Number(counted.count);
+      };
       if (action === 'clear') {
         // Parity once more at the end: erasures made while reconciling force a re-derivation (restore-gate begin).
         const status = plainObject(
@@ -527,7 +531,7 @@ export async function runCommand(client, parsed, target, source) {
             p_tombstone_count: await erasuresSince(
               Number(status.cutoff_xid),
               new Date(String(status.snapshot_at)).toISOString(),
-              status.cutoff_snapshot ?? null
+              status.cutoff_snapshot
             )
           }),
           'OPERATOR_RESPONSE_INVALID'

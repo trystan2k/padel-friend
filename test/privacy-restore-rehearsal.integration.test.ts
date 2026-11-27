@@ -335,9 +335,19 @@ describe.skipIf(!environment.env)(
         query(
           "select public.privacy_op_restore_gate('begin', null, now() - interval '3650 days', array[]::uuid[], '" +
             destination +
-            "', 0, 0)::text;"
+            "', 0, 0, " +
+            L(cutoffSnapshot) +
+            ')::text;'
         )
       ).toContain('PRE_LEDGER_SNAPSHOT');
+      // F45: a begin without the dump-start snapshot is refused, whatever else is right with it.
+      expect(
+        query(
+          "select public.privacy_op_restore_gate('begin', null, now(), array[]::uuid[], '" +
+            destination +
+            "', 0, 0, null)::text;"
+        )
+      ).toContain('SNAPSHOT_REQUIRED');
       expect(gate()).toBe('pending|2|0');
 
       // F21/F22: outside the expected set, wrong project, no trace: refused, nothing changes.
@@ -544,12 +554,15 @@ describe.skipIf(!environment.env)(
             L(later) +
             ", array[]::uuid[], '" +
             destination +
-            "', 1, 0)::text;"
+            "', 1, 0, " +
+            L(cutoffSnapshot) +
+            ')::text;'
         )
       ).toContain('COUNT_MISMATCH');
       expect(
         applyRestoreGate(docker, destination, {
           snapshotAt: later,
+          cutoffSnapshot,
           expectedSubjects: [],
           tombstoneCount: 0
         })
