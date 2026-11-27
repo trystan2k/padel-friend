@@ -306,7 +306,7 @@ describe.skipIf(!environment.env)('Privacy review fixes', { timeout: 600_000 }, 
     }
   });
 
-  it('F9: a settle time also holds the destructive phase back, and a live push lease delays it', async () => {
+  it('F9: a settle time holds the destructive phase back while the paused producers refuse the subject', async () => {
     const subject = player(5).id;
     const email = await emailOf(subject);
     const reference = await requested(5);
@@ -336,6 +336,8 @@ describe.skipIf(!environment.env)('Privacy review fixes', { timeout: 600_000 }, 
     expect(Date.parse(String((await caseRow(reference))['next_attempt_at']))).toBeGreaterThan(
       Date.now()
     );
+    // Every wait cycle is counted (bounded by the quiescence cap), never recorded as a failure.
+    expect(await caseRow(reference)).toMatchObject({ quiescence_attempts: 1, attempt_count: 0 });
     await setQuiescence(0);
 
     // Producers refuse the frozen subject: no push claim, no notification, no player-add redrive or dispatch.

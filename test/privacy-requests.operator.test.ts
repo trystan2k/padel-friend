@@ -133,6 +133,22 @@ describe('privacy operator: restore gate', () => {
     );
     expect(HELP).toContain('restore-gate');
   });
+
+  it('reconciles one restored subject through the database and never echoes the id', async () => {
+    calls.length = 0;
+    const subject = '11111111-2222-4333-8444-555555555555';
+    const result = await runCommand(
+      client({ status: 'ok', restore_gate: 'reconciled' }),
+      parse('restore-reconcile', subject),
+      target
+    );
+    expect(calls).toEqual([{ name: 'privacy_op_restore_reconcile', args: { p_subject: subject } }]);
+    expect(JSON.stringify(result)).not.toContain(subject);
+    await expect(runCommand(client(), parse('restore-reconcile'), target)).rejects.toThrow(
+      'REFERENCE_REQUIRED'
+    );
+    expect(HELP).toContain('restore-reconcile');
+  });
 });
 
 describe('privacy operator: unclaimed erasure and local codes', () => {

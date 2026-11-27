@@ -113,10 +113,11 @@ function disableDispatch(docker, database) {
 }
 
 /**
- * Restore gate (review F8). A restored environment is an OLD copy of the data: accounts erased after the
- * snapshot exist again in it. The gate turns intake and executor off and refuses to turn them on until the
- * operator records that the post-snapshot erasures were reconciled (privacy_op_restore_gate). Nothing here
- * remembers who was erased: reconciliation is the operator's evidence, not a standing identity ledger.
+ * Restore gate (review F8/F17). A restored environment is an OLD copy of the data: accounts erased after the
+ * snapshot exist again in it. The gate turns intake and executor off and refuses to turn them on until every
+ * post-snapshot erasure was replayed IN the restored database (privacy_op_restore_reconcile: the real erasure
+ * plus a zero-residue proof) and the operator closed the gate with an evidence reference. Nothing here
+ * remembers who was erased: the gate row keeps the evidence reference, not a standing identity ledger.
  */
 export function applyRestoreGate(docker, database) {
   const begun = JSON.parse(
@@ -126,7 +127,7 @@ export function applyRestoreGate(docker, database) {
     docker
       .sql(
         database,
-        "select key || '=' || value from privacy_internal.privacy_settings order by key;"
+        "select key || '=' || value from privacy_internal.privacy_settings union all select 'restore_gate=' || status from privacy_internal.restore_gate order by 1;"
       )
       .split('\n')
       .map((line) => line.split('='))

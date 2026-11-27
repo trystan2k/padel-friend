@@ -248,9 +248,33 @@ describe('account deletion status and withdrawal', () => {
     await user.click(refresh);
     const live = screen.getByRole('status');
     await waitFor(() =>
-      expect(live.textContent).toBe(`Status updated: ${en.accountDeletion.state.executing}.`)
+      expect(live.textContent).toBe(
+        `Status updated: ${en.accountDeletion.state.executing}. ${en.accountDeletion.detail.executing}`
+      )
     );
     expect(live.getAttribute('aria-live')).toBe('polite');
+    expect(document.activeElement).toBe(refresh);
+  });
+
+  it('re-announces an unchanged state on every refresh by clearing the region first', async () => {
+    const user = userEvent.setup();
+    mocks.status.mockResolvedValue(
+      ok(status({ state: 'blocked', blocked: true, can_withdraw: false }))
+    );
+    renderPage(ok(status({ state: 'blocked', blocked: true, can_withdraw: false })));
+    const refresh = screen.getByRole('button', { name: en.accountDeletion.status.refresh });
+    const live = screen.getByRole('status');
+    const expected = `Status updated: ${en.accountDeletion.state.blocked}. ${en.accountDeletion.detail.blocked}`;
+    const seen: string[] = [];
+    const observer = new MutationObserver(() => seen.push(live.textContent ?? ''));
+    observer.observe(live, { childList: true, characterData: true, subtree: true });
+    await user.click(refresh);
+    await waitFor(() => expect(live.textContent).toBe(expected));
+    await user.click(refresh);
+    await waitFor(() => expect(seen.filter((text) => text === expected)).toHaveLength(2));
+    observer.disconnect();
+    // Between two identical announcements the region was emptied.
+    expect(seen).toContain('');
     expect(document.activeElement).toBe(refresh);
   });
 

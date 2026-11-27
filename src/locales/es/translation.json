@@ -3600,7 +3600,7 @@
     "announce": {
       "requested": "Solicitud enviada. Tu referencia es {{reference}}.",
       "withdrawn": "Solicitud retirada. No se eliminó nada.",
-      "statusUpdated": "Estado actualizado: {{state}}."
+      "statusUpdated": "Estado actualizado: {{state}}. {{detail}}"
     },
     "errors": {
       "unauthenticated": "Tu sesión terminó. Inicia sesión de nuevo para continuar.",

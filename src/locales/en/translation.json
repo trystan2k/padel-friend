@@ -3600,7 +3600,7 @@
     "announce": {
       "requested": "Request sent. Your reference is {{reference}}.",
       "withdrawn": "Request withdrawn. Nothing was deleted.",
-      "statusUpdated": "Status updated: {{state}}."
+      "statusUpdated": "Status updated: {{state}}. {{detail}}"
     },
     "errors": {
       "unauthenticated": "Your session ended. Sign in again to continue.",

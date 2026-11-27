@@ -177,6 +177,63 @@ describe.skipIf(!environment.env)(
       expect((await erasurePlan(lone.id)).blockers).toEqual([]);
     });
 
+    it('registers the exact source-to-target mapping of every identity FK (live catalog)', async () => {
+      const mapping = (rows: Awaited<ReturnType<typeof sqlRows>>) =>
+        rows.map((row) => String(row['m'])).toSorted();
+      const live = mapping(
+        await sqlRows(
+          "select format('%s.%s %s -> %s.%s %s', tn.nspname, t.relname, privacy_internal.fk_columns(k.conrelid, k.conkey), rn.nspname, r.relname, " +
+            'privacy_internal.fk_columns(k.confrelid, k.confkey)) as m ' +
+            'from pg_constraint k join pg_class t on t.oid = k.conrelid join pg_namespace tn on tn.oid = t.relnamespace ' +
+            'join pg_class r on r.oid = k.confrelid join pg_namespace rn on rn.oid = r.relnamespace ' +
+            "where k.contype = 'f' and k.connamespace = 'public'::regnamespace " +
+            "and k.confrelid in ('auth.users'::regclass, 'public.player_profiles'::regclass, 'public.participant_identities'::regclass)"
+        )
+      );
+      const registered = mapping(
+        await sqlRows(
+          "select format('%s.%s %s -> %s.%s %s', source_schema, source_table, source_columns, target_schema, target_table, target_columns) as m " +
+            'from privacy_internal.erasure_fk_registry'
+        )
+      );
+      expect(live.length).toBeGreaterThan(0);
+      expect(registered).toEqual(live);
+    });
+
+    it('accepts a composite FK only once its exact ordered mapping is registered', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'mapping-probe', {
+        displayName: 'Mapping Probe',
+        level: 3
+      });
+      const probe = fixtureSql(
+        'do $probe$ declare v_unregistered jsonb; v_reversed jsonb; v_registered jsonb; begin ' +
+          'alter table public.player_profiles add constraint zz_profile_pair unique (user_id, invited_by); ' +
+          'create table public.zz_mapped_edge(a uuid, b uuid, foreign key (a, b) references public.player_profiles(user_id, invited_by)); ' +
+          // Both source columns are already classified: only the mapping is new.
+          "insert into privacy_internal.erasure_dispositions(table_name, column_name, disposition, note) values ('zz_mapped_edge', 'a', 'account_owned', 'probe'), ('zz_mapped_edge', 'b', 'account_owned', 'probe'); " +
+          'v_unregistered := privacy_internal.account_erasure_plan(' +
+          L(lone.id) +
+          ", '{}'::jsonb) -> 'blockers'; " +
+          // The same columns in another order are another mapping.
+          "insert into privacy_internal.erasure_fk_registry values ('public', 'zz_mapped_edge', '[\"b\", \"a\"]', 'public', 'player_profiles', '[\"user_id\", \"invited_by\"]'); " +
+          'v_reversed := privacy_internal.account_erasure_plan(' +
+          L(lone.id) +
+          ", '{}'::jsonb) -> 'blockers'; " +
+          "insert into privacy_internal.erasure_fk_registry values ('public', 'zz_mapped_edge', '[\"a\", \"b\"]', 'public', 'player_profiles', '[\"user_id\", \"invited_by\"]'); " +
+          'v_registered := privacy_internal.account_erasure_plan(' +
+          L(lone.id) +
+          ", '{}'::jsonb) -> 'blockers'; " +
+          "raise exception 'PROBE:%|%|%', v_unregistered::text, v_reversed::text, v_registered::text; end $probe$;"
+      );
+      await expect(probe).rejects.toThrow(
+        /PROBE:\["unclassified_dependency"\]\|\["unclassified_dependency"\]\|\[\]/
+      );
+      expect(
+        await scalar("select count(*)::int from pg_class where relname = 'zz_mapped_edge'")
+      ).toBe(0);
+      expect((await erasurePlan(lone.id)).blockers).toEqual([]);
+    });
+
     it('opens the guard exemption only inside the private window', async () => {
       const rows = await sqlRows(
         "select count(*)::int as n from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any (array[" +

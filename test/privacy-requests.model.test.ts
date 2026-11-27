@@ -77,6 +77,23 @@ describe('privacy case state graph', () => {
     expect(canWithdraw('blocked', true)).toBe(false);
   });
 
+  it('closes withdrawal, restart and refusal once the destructive phase started (F15)', () => {
+    const started = { destructiveStarted: true, armConsumed: true };
+    for (const from of ['ready', 'blocked'] as const) {
+      expect(canTransition(from, 'withdrawn', started)).toBe(false);
+      expect(canTransition(from, 'received', started)).toBe(false);
+      expect(canTransition(from, 'closed', started)).toBe(false);
+    }
+    expect(canTransition('ready', 'verified', started)).toBe(false);
+    // Only the resume paths remain, and the finish.
+    expect(canTransition('blocked', 'executing', started)).toBe(true);
+    expect(canTransition('blocked', 'supabase_erased', started)).toBe(true);
+    expect(canTransition('blocked', 'ready', started)).toBe(true);
+    expect(canTransition('supabase_erased', 'closed', started)).toBe(true);
+    expect(canWithdraw('ready', false, true)).toBe(false);
+    expect(canWithdraw('blocked', false, true)).toBe(false);
+  });
+
   it('runs one phase at a time and never repeats a committed one', () => {
     expect(nextPhase('executing', null)).toBe('freeze');
     expect(nextPhase('executing', 'freeze')).toBe('relational');

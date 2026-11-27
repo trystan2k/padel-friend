@@ -439,7 +439,7 @@ test('happy path: request, operator verification, armed worker erasure, history 
     await expect(page.getByRole('heading', { name: ad.state.ready, level: 2 })).toBeVisible();
     // The refreshed state is announced to screen readers through the polite live region.
     await expect(page.locator('main output[aria-live="polite"]')).toHaveText(
-      fill(ad.announce.statusUpdated, { state: ad.state.ready })
+      fill(ad.announce.statusUpdated, { state: ad.state.ready, detail: ad.detail.ready })
     );
     await expect(page.getByRole('button', { name: ad.status.withdraw })).toBeVisible();
   });
@@ -634,7 +634,10 @@ test('blocked: generic needs-attention copy without raw codes; operator re-arms 
   await test.step('the user sees generic text, never a raw code, in every locale', async () => {
     await page.getByRole('button', { name: ad.status.refresh }).click();
     await expect(page.getByRole('heading', { name: ad.state.blocked, level: 2 })).toBeVisible();
-    await expect(page.getByText(ad.detail.blocked)).toBeVisible();
+    await expect(page.getByText(ad.detail.blocked, { exact: true })).toBeVisible();
+    await expect(page.locator('main output[aria-live="polite"]')).toHaveText(
+      fill(ad.announce.statusUpdated, { state: ad.state.blocked, detail: ad.detail.blocked })
+    );
     const body = await page.locator('main').innerText();
     expect(body).not.toMatch(/ENVIRONMENT_MISMATCH|operator_rearm|elsewhere|blocker/i);
     expect(body).not.toContain(subject.id);

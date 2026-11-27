@@ -28,7 +28,8 @@ const L = sqlText;
  * real erasure path runs, and the snapshot is restored into an isolated scratch database. The erased subject
  * exists again ONLY in the restored copy (why post-restore reconciliation is mandatory), and the restored
  * environment starts with the privacy executor and intake off behind a restore gate that cannot be lifted
- * without reconciliation evidence. No identity ledger: the gate is a flag plus an evidence reference.
+ * before the real erasure was replayed on the restored subject (zero residue proven) and an evidence reference
+ * was recorded. No identity ledger: the gate row keeps the evidence reference only.
  */
 describe.skipIf(!environment.env)(
   'Restore rehearsal with account erasure',
@@ -111,8 +112,9 @@ describe.skipIf(!environment.env)(
           "select string_agg(key || '=' || value, ',' order by key) from privacy_internal.privacy_settings;"
         )
       ).toBe(
-        'executor_enabled=false,freeze_quiescence_seconds=0,intake_enabled=false,restore_gate=pending'
+        'executor_enabled=false,freeze_quiescence_seconds=0,intake_enabled=false,privacy_quiescence_max_attempts=12'
       );
+      expect(query('select status from privacy_internal.restore_gate;')).toBe('pending');
       expect(
         query("select public.privacy_op_set_switch('executor_enabled', true)::text;")
       ).toContain('RESTORE_GATE_PENDING');
@@ -124,18 +126,61 @@ describe.skipIf(!environment.env)(
       );
       expect(query("select to_regclass('cron.job') is null;")).toBe('t');
 
-      // Lifting it needs reconciliation evidence; even then the switches stay off until the operator turns them on.
-      expect(query("select public.privacy_op_restore_gate('clear', 'short')::text;")).toContain(
+      // NEGATIVE: the gate cannot be cleared by assertion alone, however good the evidence text looks.
+      const evidence = 'post-snapshot erasures reconciled: ticket 123';
+      expect(
+        query("select public.privacy_op_restore_gate('clear', " + L(evidence) + ')::text;')
+      ).toContain('RECONCILIATION_REQUIRED');
+      expect(query('select status from privacy_internal.restore_gate;')).toBe('pending');
+
+      // NEGATIVE: residue the erasure cannot remove (an unclassified copy of the subject id) fails closed and
+      // leaves the restored subject untouched (the whole reconcile rolls back).
+      query('create table public.zz_restore_residue(note text);');
+      query('insert into public.zz_restore_residue values (' + L('copy of ' + subject.id) + ');');
+      const refused = query(
+        'select public.privacy_op_restore_reconcile(' + L(subject.id) + ')::text;'
+      );
+      expect(refused).toContain('RESTORE_RECONCILE_RESIDUE');
+      expect(refused).toContain('public.zz_restore_residue');
+      expect(count('public.player_profiles', 'user_id')).toBe(1);
+      expect(query('select status from privacy_internal.restore_gate;')).toBe('pending');
+      query('drop table public.zz_restore_residue;');
+
+      // The real reconciliation: the erasure replays on the restored subject and proves zero residue.
+      expect(
+        query('select public.privacy_op_restore_reconcile(' + L(subject.id) + ')::text;')
+      ).toContain('"reconciled"');
+      expect(count('public.player_profiles', 'user_id')).toBe(0);
+      expect(count('public.participant_identities', 'id')).toBe(0);
+      expect(count('auth.users', 'id')).toBe(0);
+      expect(
+        query(
+          'select count(*) from public.player_profiles where avatar_url = ' + L(avatarKey) + ';'
+        )
+      ).toBe('0');
+      expect(
+        query(
+          'select pg_catalog.cardinality(privacy_internal.subject_residue(' + L(subject.id) + '));'
+        )
+      ).toBe('0');
+      expect(query('select status from privacy_internal.restore_gate;')).toBe('reconciled');
+
+      // Closing needs the evidence reference, which is persisted (the restored subject id is not kept).
+      expect(query("select public.privacy_op_restore_gate('clear', '   ')::text;")).toContain(
         'RECONCILIATION_EVIDENCE_REQUIRED'
       );
       expect(
-        query("select value from privacy_internal.privacy_settings where key = 'restore_gate';")
-      ).toBe('pending');
+        query("select public.privacy_op_restore_gate('clear', " + L(evidence) + ')::text;')
+      ).toContain('"closed"');
       expect(
         query(
-          "select public.privacy_op_restore_gate('clear', 'post-snapshot erasures reconciled: ticket 123')::text;"
+          "select status || '|' || evidence_ref || '|' || (reconciled_at is not null) || '|' || (reconciled_subject is null) from privacy_internal.restore_gate;"
         )
-      ).toContain('"clear"');
+      ).toBe('closed|' + evidence + '|true|true');
+      // A closed gate has nothing left to reconcile, and the switches stay off until turned on explicitly.
+      expect(
+        query('select public.privacy_op_restore_reconcile(' + L(subject.id) + ')::text;')
+      ).toContain('RESTORE_GATE_NOT_OPEN');
       expect(
         query("select value from privacy_internal.privacy_settings where key = 'executor_enabled';")
       ).toBe('false');

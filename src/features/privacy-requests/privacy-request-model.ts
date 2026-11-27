@@ -36,7 +36,12 @@ const GRAPH: Record<PrivacyCaseState, readonly PrivacyCaseState[]> = {
   withdrawn: []
 };
 
-export type TransitionContext = { lastPhase?: PrivacyPhase | null; armConsumed?: boolean };
+export type TransitionContext = {
+  lastPhase?: PrivacyPhase | null;
+  armConsumed?: boolean;
+  /** Monotonic marker set at the first freeze: from then on only resume paths remain. */
+  destructiveStarted?: boolean;
+};
 
 export function canTransition(
   from: PrivacyCaseState,
@@ -46,14 +51,28 @@ export function canTransition(
   if (!GRAPH[from].includes(to)) return false;
   if (from === 'executing' && to === 'app_data_erased') return context.lastPhase === 'relational';
   if (from === 'app_data_erased' && to === 'supabase_erased') return context.lastPhase === 'auth';
+  // After the destructive start no case can be withdrawn, restarted, un-verified or refused.
+  if (
+    context.destructiveStarted &&
+    (to === 'withdrawn' ||
+      to === 'received' ||
+      to === 'verified' ||
+      (to === 'closed' && from !== 'supabase_erased'))
+  )
+    return false;
   // After the one-use arm is consumed the case is irreversible: no withdrawal and no refusal.
   if (from === 'blocked' && (to === 'withdrawn' || to === 'closed' || to === 'received'))
     return !context.armConsumed;
   return true;
 }
 
-/** Withdrawal is allowed until the executor claim consumes the arm. */
-export function canWithdraw(state: PrivacyCaseState, armConsumed: boolean): boolean {
+/** Withdrawal is allowed until the executor claim consumes the arm or the destructive phase starts. */
+export function canWithdraw(
+  state: PrivacyCaseState,
+  armConsumed: boolean,
+  destructiveStarted = false
+): boolean {
+  if (destructiveStarted) return false;
   return (
     state === 'received' ||
     state === 'verified' ||

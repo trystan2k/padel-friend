@@ -24,8 +24,10 @@ export const HELP = [
   '  purge                                  purge expired case records to outcome counts',
   '  switch <intake|executor> <on|off>      fail-closed kill switch',
   '  restore-gate <begin|clear> [--evidence <ref>]',
-  '                                         restored environment: begin turns intake and executor off; clear needs the',
-  '                                         reconciliation evidence of post-snapshot erasures (switches stay off).',
+  '                                         restored environment: begin turns intake and executor off; clear needs a',
+  '                                         reconciled gate AND an evidence reference (switches stay off).',
+  '  restore-reconcile <subject-id>         restored environment: replay the real erasure for one subject erased after',
+  '                                         the snapshot and prove zero residue (refuses on any residue).',
   '  generate-code                          one-time code for an email challenge to an unclaimed person (not stored)',
   '  erase-unclaimed <email> [--confirm] [--all-matches]',
   '                                         erase an add-by-email invitation record that has no account; without',
@@ -54,7 +56,8 @@ const COMMANDS = [
   'switch',
   'generate-code',
   'erase-unclaimed',
-  'restore-gate'
+  'restore-gate',
+  'restore-reconcile'
 ];
 
 /** Loopback instances are the 'local' project; a hosted project is the first host label. */
@@ -211,6 +214,9 @@ export async function runCommand(client, parsed, target) {
         p_evidence: options.evidence ?? null
       });
     }
+    case 'restore-reconcile':
+      // The subject id is the operator's own post-snapshot erasure record; it is never echoed back.
+      return call(client, 'privacy_op_restore_reconcile', { p_subject: reference });
     case 'generate-code':
       // Printed once for the operator's own email challenge; nothing is stored or sent from here.
       return { status: 'ok', code: generateChallenge() };

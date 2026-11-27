@@ -67,6 +67,8 @@ export function AccountDeletionPage({
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<PrivacyRequestErrorCode | null>(null);
   const [announcement, setAnnouncement] = useState('');
+  // Refresh announcements are spoken only: the status card already shows the same text.
+  const [quiet, setQuiet] = useState(false);
   const [existing, setExisting] = useState<string | null>(null);
   const inFlight = useRef(false);
   const commandId = useRef<string>('');
@@ -74,18 +76,24 @@ export function AccountDeletionPage({
   const withdrawTrigger = useRef<HTMLButtonElement | null>(null);
   const status = useRef<HTMLHeadingElement | null>(null);
 
+  // Clear first, then set on the next frame, so an unchanged state is announced again.
+  function announceStatus(state: PrivacyCaseState) {
+    const text = t('accountDeletion.announce.statusUpdated', {
+      state: t(`accountDeletion.state.${state}`),
+      detail: t(`accountDeletion.detail.${state}`)
+    });
+    setQuiet(true);
+    setAnnouncement('');
+    requestAnimationFrame(() => setAnnouncement(text));
+  }
+
   async function refresh() {
     try {
       const result = await getMyDeletionRequest();
       if (result.status === 'ok') {
         setCurrent(result.value);
         setLoadFailure(null);
-        if (result.value)
-          setAnnouncement(
-            t('accountDeletion.announce.statusUpdated', {
-              state: t(`accountDeletion.state.${result.value.state}`)
-            })
-          );
+        if (result.value) announceStatus(result.value.state);
       } else setLoadFailure(result.code);
     } catch {
       setLoadFailure('unavailable');
@@ -125,6 +133,7 @@ export function AccountDeletionPage({
       (receipt) => {
         setCurrent(toStatus(receipt));
         setExisting(receipt.replayed ? receipt.reference : null);
+        setQuiet(false);
         setAnnouncement(t('accountDeletion.announce.requested', { reference: receipt.reference }));
         setRequestOpen(false);
       }
@@ -135,6 +144,7 @@ export function AccountDeletionPage({
       (receipt) => {
         setCurrent(toStatus(receipt));
         setExisting(null);
+        setQuiet(false);
         setAnnouncement(t('accountDeletion.announce.withdrawn'));
         setWithdrawOpen(false);
       }
@@ -169,7 +179,7 @@ export function AccountDeletionPage({
           {t(`accountDeletion.errors.${failure}`)}
         </p>
       )}
-      <output aria-live="polite" {...stylex.props(announcement ? s.notice : s.srOnly)}>
+      <output aria-live="polite" {...stylex.props(announcement && !quiet ? s.notice : s.srOnly)}>
         {announcement}
       </output>
       {existing && (
