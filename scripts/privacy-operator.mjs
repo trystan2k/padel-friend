@@ -32,7 +32,7 @@ export const HELP = [
   '  retry-cleanup-unban <ref> [--release-cleanup]',
   '                                         re-attempt the unban of a late ban left on a withdrawn/closed case. While it runs a',
   '                                         cleanup ADMISSION blocks any new case of that subject from banning (CLEANUP_IN_PROGRESS);',
-  '                                         success (confirm) resolves the obligation and releases it. --release-cleanup drops the',
+  '                                         only the current retry may dispatch the unban (a stale one is refused before any Auth call); success (confirm) resolves the obligation and keeps the admission for a settle window. --release-cleanup drops the',
   '                                         admission WITHOUT unbanning (the newer case owns the ban; obligation resolves as superseded).',
   '                                         ISOLATED restore target only (never production; the database must be flagged',
   '                                         app.restore_target by the restore flow): derives the expected subjects (live in',
@@ -474,6 +474,20 @@ export async function runCommand(client, parsed, target, source) {
         'OPERATOR_RESPONSE_INVALID'
       );
       if (obligation.status !== 'ok') return obligation;
+      // The unban is DISPATCHED under the current admission generation first: a stale run (another retry refreshed the
+      // token) must not call Auth at all, or its late unban could lift the ban of a case that started meanwhile.
+      const dispatched = plainObject(
+        await call(client, 'privacy_op_cleanup_dispatch', {
+          p_token: obligation.token,
+          p_case_ref: reference
+        }),
+        'OPERATOR_RESPONSE_INVALID'
+      );
+      if (dispatched.status !== 'ok')
+        return {
+          ...dispatched,
+          hint: 'Another retry owns this cleanup (or it was released): nothing was sent to Auth. Re-run retry-cleanup-unban.'
+        };
       const { error } = await client.auth.admin.updateUserById(String(obligation.subject_id), {
         ban_duration: 'none'
       });

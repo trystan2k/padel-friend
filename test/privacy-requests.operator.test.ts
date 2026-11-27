@@ -300,6 +300,39 @@ describe('privacy operator: restore gate', () => {
     expect(calls.map((call) => call.name)).toEqual([]);
   });
 
+  it('never calls Auth when another retry refreshed the admission: a stale generation cannot dispatch (F48)', async () => {
+    calls.length = 0;
+    const lifted: string[] = [];
+    const stale: OperatorClient = {
+      rpc: (name, args) => {
+        calls.push({ name, args });
+        const data =
+          name === 'privacy_op_cleanup_target'
+            ? { status: 'ok', subject_id: subjectA, token: 'old-generation' }
+            : { status: 'rejected', code: 'CLEANUP_TOKEN_STALE' };
+        return Promise.resolve({ data, error: null });
+      },
+      auth: {
+        admin: {
+          updateUserById: (id) => {
+            lifted.push(id);
+            return Promise.resolve({ error: null });
+          },
+          listUsers: () => Promise.resolve({ data: { users: [] }, error: null }),
+          deleteUser: () => Promise.resolve({ error: null })
+        }
+      }
+    };
+    const result = await runCommand(stale, parse('retry-cleanup-unban', 'PR-AAAAAAAAAAAA'), target);
+    expect(result).toMatchObject({ status: 'rejected', code: 'CLEANUP_TOKEN_STALE' });
+    expect(JSON.stringify(result)).toContain('Another retry owns this cleanup');
+    expect(lifted).toEqual([]);
+    expect(calls.map((call) => call.name)).toEqual([
+      'privacy_op_cleanup_target',
+      'privacy_op_cleanup_dispatch'
+    ]);
+  });
+
   it('refuses a cleanup retry that a newer open case supersedes, without touching the ban (F46)', async () => {
     calls.length = 0;
     const lifted: string[] = [];
@@ -535,15 +568,21 @@ describe('privacy operator: restore gate', () => {
         target
       )
     ).toEqual({ status: 'rejected', code: 'BAN_CLEANUP_PENDING' });
-    expect(calls.map((call) => call.name)).toEqual(['privacy_op_cleanup_target']);
-    calls.length = 0;
-    await runCommand(admin(null), parse('retry-cleanup-unban', 'PR-AAAAAAAAAAAA'), target);
-    // The confirmation carries the admission token of THIS run (it also releases the admission).
+    // The unban is dispatched under the current token before Auth is called (and the failure leaves the obligation open).
     expect(calls.map((call) => call.name)).toEqual([
       'privacy_op_cleanup_target',
+      'privacy_op_cleanup_dispatch'
+    ]);
+    calls.length = 0;
+    await runCommand(admin(null), parse('retry-cleanup-unban', 'PR-AAAAAAAAAAAA'), target);
+    // dispatch -> Auth unban -> confirm, all under the admission token of THIS run.
+    expect(calls.map((call) => call.name)).toEqual([
+      'privacy_op_cleanup_target',
+      'privacy_op_cleanup_dispatch',
       'privacy_op_cleanup_confirm'
     ]);
     expect(calls[1]?.args).toEqual({ p_token: 'admission-token', p_case_ref: 'PR-AAAAAAAAAAAA' });
+    expect(calls[2]?.args).toEqual({ p_token: 'admission-token', p_case_ref: 'PR-AAAAAAAAAAAA' });
     expect(lifted).toEqual([subjectA + ':none', subjectA + ':none']);
     // The escape hatch drops the admission without any Auth call.
     calls.length = 0;

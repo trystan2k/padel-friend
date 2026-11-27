@@ -6254,6 +6254,7 @@ export type Database = {
       }
       privacy_op_ban_lift_done: { Args: { p_reference: string }; Returns: Json }
       privacy_op_cleanup_confirm: { Args: { p_case_ref: string; p_token: string }; Returns: Json }
+      privacy_op_cleanup_dispatch: { Args: { p_case_ref: string; p_token: string }; Returns: Json }
       privacy_op_cleanup_release: { Args: { p_reference: string }; Returns: Json }
       privacy_op_cleanup_target: { Args: { p_reference: string }; Returns: Json }
       privacy_op_close_refused: { Args: { p_reference: string }; Returns: Json }

@@ -1405,18 +1405,26 @@ describe.skipIf(!environment.env)(
             p_case_ref: b.reference
           })
         ).data
-      ).toEqual({ status: 'rejected', code: 'CLEANUP_NOT_ADMITTED' });
+      ).toEqual({ status: 'rejected', code: 'CLEANUP_TOKEN_STALE' });
       expect((await operator('retry-cleanup-unban', b.reference))['status']).toBe('ok');
       expect(await banned(b.lone.id)).toBeNull();
-      expect(await admissions(b.lone.id)).toBe(0);
+      // Confirmed, but the admission is KEPT for the settle window.
+      expect(await admissions(b.lone.id)).toBe(1);
       expect(
         await scalar(
           'select resolution from privacy_internal.ban_cleanup_obligations where case_ref = ' +
             L(b.reference)
         )
       ).toBe('unbanned');
-      // Confirmed: the subject's next case freezes and completes.
+      // Inside the settle window the subject's next case still may not ban; once it elapsed it freezes and completes.
       const next = await newCase(b.lone);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(next)).toMatchObject({ state: 'executing', last_phase: null });
+      await fixtureSql(
+        "update privacy_internal.cleanup_admissions set confirmed_at = now() - interval '10 minutes' where subject = " +
+          L(b.lone.id)
+      );
+      await expireLease(next);
       expect(await sweep()).toEqual({ disabled: false, processed: 1 });
       expect(await caseRow(next)).toMatchObject({ state: 'closed', outcome: 'erased' });
 
@@ -1430,6 +1438,155 @@ describe.skipIf(!environment.env)(
       expect(
         await scalar(
           "select count(*)::int from privacy_internal.cleanup_admissions where case_ref = 'PR-PURGED00000'"
+        )
+      ).toBe(0);
+    });
+
+    it('F48: a stale cleanup generation can neither dispatch nor confirm, and a confirmed admission keeps gating through its settle window', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'f48', {
+        displayName: 'Generation Subject',
+        level: 3
+      });
+      const request = await lone.client.rpc('request_account_deletion', {
+        p_command_id: crypto.randomUUID()
+      });
+      const reference = String(asRecord(request.data)['reference']);
+      await verifyCase(reference, lone.email);
+      await armCase(reference);
+      expect(
+        await sweep({
+          client: scriptedAdmin({
+            unbanError: true,
+            beforeBan: async () => {
+              await fixtureSql(
+                "update privacy_internal.privacy_cases set state = 'blocked', resume_state = null, blocker_code = 'VERIFICATION_STALE', next_action = 'operator_review', armed_consumed_at = null, lease_expires_at = null, ban_lifted_at = now() where reference = " +
+                  L(reference)
+              );
+              await fixtureSql(
+                "update privacy_internal.privacy_cases set state = 'withdrawn', outcome = 'withdrawn', blocker_code = null, next_action = null, final_response_at = now(), closed_at = now() where reference = " +
+                  L(reference)
+              );
+            }
+          })
+        })
+      ).toEqual({ disabled: false, processed: 1 });
+      const rpc = async (
+        name:
+          | 'privacy_op_cleanup_target'
+          | 'privacy_op_cleanup_dispatch'
+          | 'privacy_op_cleanup_confirm',
+        args: { p_reference?: string; p_token?: string; p_case_ref?: string }
+      ) => {
+        const client = trustedClient();
+        const answer =
+          name === 'privacy_op_cleanup_target'
+            ? await client.rpc(name, { p_reference: String(args.p_reference) })
+            : name === 'privacy_op_cleanup_dispatch'
+              ? await client.rpc(name, {
+                  p_token: String(args.p_token),
+                  p_case_ref: String(args.p_case_ref)
+                })
+              : await client.rpc(name, {
+                  p_token: String(args.p_token),
+                  p_case_ref: String(args.p_case_ref)
+                });
+        return asRecord(answer.data);
+      };
+      const state = async () =>
+        asRecord(
+          (
+            await sqlRows(
+              'select state, unban_dispatch_token::text as dispatched from privacy_internal.cleanup_admissions where subject = ' +
+                L(lone.id)
+            )
+          )[0]
+        );
+
+      // Retry A admits (T1) and dispatches its unban, then stalls in the Auth call.
+      const t1 = String(
+        (await rpc('privacy_op_cleanup_target', { p_reference: reference }))['token']
+      );
+      expect(
+        await rpc('privacy_op_cleanup_dispatch', { p_token: t1, p_case_ref: reference })
+      ).toEqual({
+        status: 'ok'
+      });
+      // Retry B refreshes the generation (T2): A is stale from that moment, for dispatch AND for confirmation.
+      const t2 = String(
+        (await rpc('privacy_op_cleanup_target', { p_reference: reference }))['token']
+      );
+      expect(t2).not.toBe(t1);
+      expect(await state()).toEqual({ state: 'active', dispatched: null });
+      expect(
+        await rpc('privacy_op_cleanup_dispatch', { p_token: t1, p_case_ref: reference })
+      ).toEqual({
+        status: 'rejected',
+        code: 'CLEANUP_TOKEN_STALE'
+      });
+      expect(
+        await rpc('privacy_op_cleanup_confirm', { p_token: t1, p_case_ref: reference })
+      ).toEqual({
+        status: 'rejected',
+        code: 'CLEANUP_TOKEN_STALE'
+      });
+      // B must dispatch before it may confirm.
+      expect(
+        await rpc('privacy_op_cleanup_confirm', { p_token: t2, p_case_ref: reference })
+      ).toEqual({
+        status: 'rejected',
+        code: 'CLEANUP_NOT_DISPATCHED'
+      });
+      expect(
+        await rpc('privacy_op_cleanup_dispatch', { p_token: t2, p_case_ref: reference })
+      ).toEqual({
+        status: 'ok'
+      });
+      expect(
+        await rpc('privacy_op_cleanup_confirm', { p_token: t2, p_case_ref: reference })
+      ).toMatchObject({
+        status: 'ok'
+      });
+      // The obligation resolved, but the admission stays (confirmed) and keeps gating: A's late unban lands NOW and a
+      // new case still may not freeze or ban.
+      expect(await state()).toMatchObject({ state: 'confirmed' });
+      expect(
+        await scalar(
+          'select resolution from privacy_internal.ban_cleanup_obligations where case_ref = ' +
+            L(reference)
+        )
+      ).toBe('unbanned');
+      // A confirmed generation cannot be confirmed again, and cannot be re-dispatched.
+      expect(
+        await rpc('privacy_op_cleanup_confirm', { p_token: t2, p_case_ref: reference })
+      ).toMatchObject({
+        code: 'CLEANUP_TOKEN_STALE'
+      });
+      const fresh = await lone.client.rpc('request_account_deletion', {
+        p_command_id: crypto.randomUUID()
+      });
+      const freshRef = String(asRecord(fresh.data)['reference']);
+      await verifyCase(
+        freshRef,
+        (await trustedClient().auth.admin.getUserById(lone.id)).data.user?.email ?? lone.email
+      );
+      await armCase(freshRef);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(freshRef)).toMatchObject({ state: 'executing', last_phase: null });
+      expect((await caseRow(freshRef))['ban_applied_at']).toBeNull();
+      // After the settle window the gate lifts (the row is ignored even before anything deletes it) and the case proceeds.
+      await fixtureSql(
+        "update privacy_internal.cleanup_admissions set confirmed_at = now() - interval '10 minutes' where subject = " +
+          L(lone.id)
+      );
+      await expireLease(freshRef);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(freshRef)).toMatchObject({ state: 'closed', outcome: 'erased' });
+      // The purge sweep deletes the confirmed row past its settle window.
+      await trustedClient().rpc('privacy_op_purge_expired');
+      expect(
+        await scalar(
+          'select count(*)::int from privacy_internal.cleanup_admissions where case_ref = ' +
+            L(reference)
         )
       ).toBe(0);
     });
