@@ -90,14 +90,18 @@ describe.skipIf(!environment.env)(
       // The coverage cutoff was captured at DUMP START (xid and time).
       const takenAt = snapshot.cutoffTime;
       const cutoffXid = snapshot.cutoffXid;
+      const cutoffSnapshot = snapshot.cutoffSnapshot;
       // The parity authority: identity-free erasure events recorded after the snapshot.
       const erasuresNow = async () =>
         Number(
           await scalar(
-            'select count(*)::int from privacy_internal.erasure_events where xid > ' +
+            'select (public.privacy_op_erasure_count_since(' +
               String(cutoffXid) +
-              ' or erased_at >= ' +
-              L(takenAt)
+              ', ' +
+              L(takenAt) +
+              ', ' +
+              L(cutoffSnapshot) +
+              ")->>'count')::int"
           )
         );
       const erase = async (subject: typeof subjectA, email: string) => {
@@ -209,6 +213,7 @@ describe.skipIf(!environment.env)(
         applyRestoreGate(docker, destination, {
           snapshotAt: takenAt,
           cutoffXid,
+          cutoffSnapshot,
           expectedSubjects: derive(destination),
           tombstoneCount: 2
         })
@@ -471,6 +476,7 @@ describe.skipIf(!environment.env)(
         applyRestoreGate(docker, destination, {
           snapshotAt: takenAt,
           cutoffXid,
+          cutoffSnapshot,
           expectedSubjects: deriveExpectedSubjects({
             restored: query(
               "select id from public.participant_identities where state = 'live' order by id;"

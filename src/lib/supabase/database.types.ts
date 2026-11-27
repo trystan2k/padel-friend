@@ -6253,6 +6253,8 @@ export type Database = {
         Returns: Json
       }
       privacy_op_ban_lift_done: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_cleanup_resolved: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_cleanup_target: { Args: { p_reference: string }; Returns: Json }
       privacy_op_close_refused: { Args: { p_reference: string }; Returns: Json }
       privacy_op_confirm_proof: {
         Args: { p_digest: string; p_operator_confirmed: boolean; p_reference: string }
@@ -6264,10 +6266,11 @@ export type Database = {
         Returns: Json
       }
       privacy_op_erasure_count_since: {
-        Args: { p_cutoff_time: string; p_cutoff_xid: number }
+        Args: { p_cutoff_snapshot?: string; p_cutoff_time: string; p_cutoff_xid: number }
         Returns: Json
       }
       privacy_op_list_cases: { Args: Record<PropertyKey, never>; Returns: Json }
+      privacy_op_list_cleanup_obligations: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_live_identity_ids: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_purge_expired: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_record_response: {
@@ -6280,6 +6283,7 @@ export type Database = {
       privacy_op_restore_gate: {
         Args: {
           p_action: string
+          p_cutoff_snapshot?: string
           p_cutoff_xid?: number
           p_evidence?: string
           p_expected_subjects?: string[]
@@ -6314,6 +6318,7 @@ export type Database = {
         Returns: Json
       }
       privacy_proc_ban_check: { Args: { p_case: string; p_token: string }; Returns: Json }
+      privacy_proc_ban_cleanup_pending: { Args: { p_case: string; p_token: string }; Returns: Json }
       privacy_proc_ban_lift_failed: { Args: { p_case: string }; Returns: Json }
       privacy_proc_ban_mark: {
         Args: { p_case: string; p_fence: number; p_token: string }

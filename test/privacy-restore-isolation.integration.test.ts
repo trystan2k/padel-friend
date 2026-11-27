@@ -1010,6 +1010,209 @@ describe.skipIf(!environment.env)(
       expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });
     });
 
+    it('F42: an erasure event whose transaction was still open at the dump snapshot is counted (visibility, not xid or time)', async () => {
+      const writer = await openDedicatedSqlConnection();
+      const reader = await openDedicatedSqlConnection();
+      let cleanupXids: number[] = [];
+      try {
+        // The erasure transaction inserts its event (early xid, early time) and stays UNCOMMITTED...
+        await writer.query('begin');
+        const lateXid = Number(
+          (await writer.query('select txid_current()::text as xid')).rows[0]?.['xid']
+        );
+        await writer.query(
+          'insert into privacy_internal.erasure_events (tombstone_created, xid) values (false, ' +
+            String(lateXid) +
+            ')'
+        );
+        // ...a control erasure committed BEFORE the dump snapshot (its subject is already absent from the dump)...
+        const [control] = await sqlRows(
+          'with ins as (insert into privacy_internal.erasure_events (tombstone_created, xid) values (false, txid_current()) returning xid) select xid::text as xid from ins'
+        );
+        const controlXid = Number(control?.['xid']);
+        // ...then the dump starts on another connection: cutoff + snapshot, the writer's xid in its in-progress list.
+        const [cut] = await sqlRows(
+          'select pg_current_snapshot()::text as snap, txid_current()::text as xid, clock_timestamp()::text as at'
+        );
+        const snapshot = String(cut?.['snap']);
+        const cutoffXid = Number(cut?.['xid']);
+        const cutoffTime = String(cut?.['at']);
+        expect(snapshot.split(':')[2]?.split(',')).toContain(String(lateXid));
+        void reader;
+        await writer.query('commit');
+        // An erasure that begins after the dump is counted in any case.
+        const [post] = await sqlRows(
+          'with ins as (insert into privacy_internal.erasure_events (tombstone_created, xid) values (false, txid_current()) returning xid) select xid::text as xid from ins'
+        );
+        cleanupXids = [lateXid, controlXid, Number(post?.['xid'])];
+        const counted = (withSnapshot: boolean) =>
+          trustedClient().rpc('privacy_op_erasure_count_since', {
+            p_cutoff_xid: cutoffXid,
+            p_cutoff_time: cutoffTime,
+            ...(withSnapshot ? { p_cutoff_snapshot: snapshot } : {})
+          });
+        // Visibility: the in-progress event and the later one; the control (visible, committed before) is excluded.
+        expect((await counted(true)).data).toEqual({ count: 2 });
+        // Legacy callers fall back to the xid/time union, which cannot see the uncommitted early event (the gap F42 closes).
+        expect((await counted(false)).data).toEqual({ count: 1 });
+      } finally {
+        await writer.query('rollback').catch(() => undefined);
+        await writer.close();
+        await reader.close();
+        await fixtureSql(
+          'delete from privacy_internal.erasure_events where xid = any (' +
+            L('{' + cleanupXids.join(',') + '}') +
+            '::bigint[])'
+        );
+      }
+    });
+
+    it('F43: a stale worker never lifts the ban that protects an irreversible case (after the start, or blocked after it)', async () => {
+      for (const shape of ['app_data_erased', 'blocked_after_start'] as const) {
+        const lone = await signUpFixtureActor(environment.env!, 'f43-' + shape, {
+          displayName: 'Protected Subject',
+          level: 3
+        });
+        const request = await lone.client.rpc('request_account_deletion', {
+          p_command_id: crypto.randomUUID()
+        });
+        const reference = String(asRecord(request.data)['reference']);
+        await verifyCase(reference, lone.email);
+        await armCase(reference);
+        const unbans: string[] = [];
+        expect(
+          await sweep({
+            client: scriptedAdmin({
+              // Worker B advanced the case past the freeze while A stalled before its ban call.
+              beforeBan: () =>
+                fixtureSql(
+                  shape === 'app_data_erased'
+                    ? "update privacy_internal.privacy_cases set state = 'app_data_erased', last_phase = 'relational', destructive_started_at = now(), lease_expires_at = now() + interval '10 minutes' where reference = " +
+                        L(reference)
+                    : "update privacy_internal.privacy_cases set state = 'blocked', resume_state = 'executing', last_phase = 'freeze', destructive_started_at = now(), blocker_code = 'PLAN_MISMATCH', next_action = 'operator_rearm', lease_expires_at = null where reference = " +
+                        L(reference)
+                ),
+              beforeUnban: async (id) => {
+                unbans.push(id);
+              }
+            })
+          })
+        ).toEqual({ disabled: false, processed: 1 });
+        // A's ban landed, no unban was attempted: the protection stays; the case is untouched and nothing else ran.
+        expect(unbans).toEqual([]);
+        expect(
+          (await trustedClient().auth.admin.getUserById(lone.id)).data.user?.banned_until
+        ).toBeTruthy();
+        expect(await caseRow(reference)).toMatchObject({
+          state: shape === 'app_data_erased' ? 'app_data_erased' : 'blocked'
+        });
+        // Park the case so later sweeps do not pick it up.
+        if (shape === 'app_data_erased')
+          await fixtureSql(
+            "update privacy_internal.privacy_cases set state = 'blocked', resume_state = 'app_data_erased', blocker_code = 'RETRIES_EXHAUSTED', next_action = 'operator_retry' where reference = " +
+              L(reference)
+          );
+      }
+    });
+
+    it('F44: a failed undo of a late ban on a withdrawn case becomes a durable obligation the operator resolves', async () => {
+      const withdrawnByRecovery = (reference: string) => async () => {
+        // Worker B recovered the case while A stalled: stale proof, unbanned, then the requester withdrew.
+        await fixtureSql(
+          "update privacy_internal.privacy_cases set state = 'blocked', resume_state = null, blocker_code = 'VERIFICATION_STALE', next_action = 'operator_review', armed_consumed_at = null, lease_expires_at = null, ban_lifted_at = now() where reference = " +
+            L(reference)
+        );
+        await fixtureSql(
+          "update privacy_internal.privacy_cases set state = 'withdrawn', outcome = 'withdrawn', blocker_code = null, next_action = null, final_response_at = now(), closed_at = now() where reference = " +
+            L(reference)
+        );
+      };
+      const open = async (reference: string) =>
+        Number(
+          await scalar(
+            'select count(*)::int from privacy_internal.ban_cleanup_obligations where resolved_at is null and case_ref = ' +
+              L(reference)
+          )
+        );
+
+      // Terminal + failing unban: the obligation is recorded and listed (references and codes only).
+      const lone = await signUpFixtureActor(environment.env!, 'f44-fail', {
+        displayName: 'Cleanup Subject',
+        level: 3
+      });
+      const request = await lone.client.rpc('request_account_deletion', {
+        p_command_id: crypto.randomUUID()
+      });
+      const reference = String(asRecord(request.data)['reference']);
+      await verifyCase(reference, lone.email);
+      await armCase(reference);
+      expect(
+        await sweep({
+          client: scriptedAdmin({ unbanError: true, beforeBan: withdrawnByRecovery(reference) })
+        })
+      ).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(reference)).toMatchObject({ state: 'withdrawn' });
+      expect(await open(reference)).toBe(1);
+      expect(
+        (await trustedClient().auth.admin.getUserById(lone.id)).data.user?.banned_until
+      ).toBeTruthy();
+      const obligations = JSON.stringify(
+        (await trustedClient().rpc('privacy_op_list_cleanup_obligations')).data
+      );
+      expect(obligations).toContain(reference);
+      expect(obligations).not.toContain(lone.id);
+      // The case stays visible in the operator list although it is terminal and answered.
+      expect(JSON.stringify((await trustedClient().rpc('privacy_op_list_cases')).data)).toContain(
+        '"ban_cleanup_open":true'
+      );
+      expect(
+        await sqlRows(
+          "select column_name from information_schema.columns where table_schema = 'privacy_internal' and table_name = 'ban_cleanup_obligations' order by 1"
+        )
+      ).toEqual([
+        { column_name: 'case_ref' },
+        { column_name: 'id' },
+        { column_name: 'obligated_at' },
+        { column_name: 'resolved_at' },
+        { column_name: 'token' }
+      ]);
+      // The operator retry lifts the ban and resolves the obligation.
+      expect((await operator('retry-cleanup-unban', reference))['status']).toBe('ok');
+      expect(
+        (await trustedClient().auth.admin.getUserById(lone.id)).data.user?.banned_until ?? null
+      ).toBeNull();
+      expect(await open(reference)).toBe(0);
+      expect((await trustedClient().rpc('privacy_op_list_cleanup_obligations')).data).not.toContain(
+        expect.objectContaining({ case_ref: reference })
+      );
+      expect((await operator('retry-cleanup-unban', reference))['code']).toBe('NO_OPEN_OBLIGATION');
+
+      // Terminal + successful unban: nothing to clean up.
+      const clean = await signUpFixtureActor(environment.env!, 'f44-ok', {
+        displayName: 'Clean Subject',
+        level: 3
+      });
+      const cleanRequest = await clean.client.rpc('request_account_deletion', {
+        p_command_id: crypto.randomUUID()
+      });
+      const cleanRef = String(asRecord(cleanRequest.data)['reference']);
+      await verifyCase(cleanRef, clean.email);
+      await armCase(cleanRef);
+      expect(
+        await sweep({ client: scriptedAdmin({ beforeBan: withdrawnByRecovery(cleanRef) }) })
+      ).toEqual({ disabled: false, processed: 1 });
+      expect(await open(cleanRef)).toBe(0);
+      expect(
+        await scalar(
+          'select count(*)::int from privacy_internal.ban_cleanup_obligations where case_ref = ' +
+            L(cleanRef)
+        )
+      ).toBe(0);
+      expect(
+        (await trustedClient().auth.admin.getUserById(clean.id)).data.user?.banned_until ?? null
+      ).toBeNull();
+    });
+
     it('F25: the freeze refuses an address that changed after the claim (before any ban), and verification restarts', async () => {
       const subject = player(3).id;
       const reference = await requested(3);

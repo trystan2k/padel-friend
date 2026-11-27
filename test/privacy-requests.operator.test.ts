@@ -156,7 +156,9 @@ describe('privacy operator: restore gate', () => {
         '--snapshot-at',
         '2026-11-20T10:00:00Z',
         '--cutoff-xid',
-        '4242'
+        '4242',
+        '--cutoff-snapshot',
+        '100:110:101,105'
       ),
       target,
       source
@@ -164,7 +166,8 @@ describe('privacy operator: restore gate', () => {
     // Parity uses the union cutoff (xid AND time) captured at dump start.
     expect(calls.find((call) => call.name === 'privacy_op_erasure_count_since')?.args).toEqual({
       p_cutoff_xid: 4242,
-      p_cutoff_time: '2026-11-20T10:00:00.000Z'
+      p_cutoff_time: '2026-11-20T10:00:00.000Z',
+      p_cutoff_snapshot: '100:110:101,105'
     });
     expect(calls.find((call) => call.name === 'privacy_op_restore_gate')?.args).toEqual({
       p_action: 'begin',
@@ -173,7 +176,8 @@ describe('privacy operator: restore gate', () => {
       p_expected_subjects: [subjectA, subjectB],
       p_restore_project_ref: 'local',
       p_tombstone_count: 2,
-      p_cutoff_xid: 4242
+      p_cutoff_xid: 4242,
+      p_cutoff_snapshot: '100:110:101,105'
     });
     await expect(
       runCommand(
@@ -183,9 +187,28 @@ describe('privacy operator: restore gate', () => {
         source
       )
     ).rejects.toThrow('CUTOFF_XID_REQUIRED');
+    await expect(
+      runCommand(
+        client(),
+        parse(
+          'restore-gate',
+          'begin',
+          '--snapshot-at',
+          '2026-11-20T10:00:00Z',
+          '--cutoff-xid',
+          '4242'
+        ),
+        target,
+        source
+      )
+    ).rejects.toThrow('CUTOFF_SNAPSHOT_REQUIRED');
     calls.length = 0;
     const gate = withIds([], {
-      privacy_op_restore_gate_status: { snapshot_at: '2026-11-20T10:00:00+00:00', cutoff_xid: 4242 }
+      privacy_op_restore_gate_status: {
+        snapshot_at: '2026-11-20T10:00:00+00:00',
+        cutoff_xid: 4242,
+        cutoff_snapshot: '100:110:101,105'
+      }
     });
     await runCommand(
       gate,
@@ -391,6 +414,53 @@ describe('privacy operator: restore gate', () => {
         'local'
       )
     ).rejects.toThrow('RESTORE_STORAGE_BUCKET_REJECTED');
+  });
+
+  it('lists open cleanup obligations by reference only and retries the unban through the Auth admin API (F44)', async () => {
+    calls.length = 0;
+    const lifted: string[] = [];
+    const admin = (error: { status?: number } | null): OperatorClient => ({
+      rpc: (name, args) => {
+        calls.push({ name, args });
+        const data =
+          name === 'privacy_op_cleanup_target'
+            ? { status: 'ok', subject_id: subjectA }
+            : name === 'privacy_op_list_cleanup_obligations'
+              ? [{ case_ref: 'PR-AAAAAAAAAAAA', code: 'BAN_CLEANUP_PENDING' }]
+              : { status: 'ok' };
+        return Promise.resolve({ data, error: null });
+      },
+      auth: {
+        admin: {
+          updateUserById: (id, attributes) => {
+            lifted.push(id + ':' + String(attributes['ban_duration']));
+            return Promise.resolve({ error });
+          },
+          listUsers: () => Promise.resolve({ data: { users: [] }, error: null }),
+          deleteUser: () => Promise.resolve({ error: null })
+        }
+      }
+    });
+    const listed = await runCommand(admin(null), parse('list-cleanup-obligations'), target);
+    expect(JSON.stringify(listed)).toContain('PR-AAAAAAAAAAAA');
+    expect(JSON.stringify(listed)).not.toContain(subjectA);
+    calls.length = 0;
+    // A failing unban leaves the obligation open.
+    expect(
+      await runCommand(
+        admin({ status: 500 }),
+        parse('retry-cleanup-unban', 'PR-AAAAAAAAAAAA'),
+        target
+      )
+    ).toEqual({ status: 'rejected', code: 'BAN_CLEANUP_PENDING' });
+    expect(calls.map((call) => call.name)).toEqual(['privacy_op_cleanup_target']);
+    calls.length = 0;
+    await runCommand(admin(null), parse('retry-cleanup-unban', 'PR-AAAAAAAAAAAA'), target);
+    expect(calls.map((call) => call.name)).toEqual([
+      'privacy_op_cleanup_target',
+      'privacy_op_cleanup_resolved'
+    ]);
+    expect(lifted).toEqual([subjectA + ':none', subjectA + ':none']);
   });
 
   it('asks for the external follow-up acknowledgment before recording the response (F23)', async () => {

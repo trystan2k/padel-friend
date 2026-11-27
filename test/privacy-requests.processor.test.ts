@@ -270,6 +270,37 @@ describe('privacy processor phases', () => {
     expect(names(calls)).toEqual(['freeze', 'ban_mark', 'ban_check']);
   });
 
+  it('keeps the ban of an irreversible case and aborts with a safe code (F43)', async () => {
+    const { admin, raw } = fakeAdmin({
+      rpc: (name) =>
+        name === 'privacy_proc_ban_check'
+          ? { data: { ok: false, unban: false, code: 'BAN_KEPT_FOR_IRREVERSIBLE' } }
+          : undefined
+    });
+    expect(await processPrivacyCase(admin, claim())).toEqual({ status: 'fenced', steps: [] });
+    // Only the ban itself: the protection of the in-flight erasure is never lifted.
+    expect(raw.auth.admin.updateUserById).toHaveBeenCalledExactlyOnceWith('subject', {
+      ban_duration: '876000h'
+    });
+  });
+
+  it('carries a failed undo as BAN_LIFT_FAILED on a recoverable case, as a cleanup obligation otherwise (F44)', async () => {
+    for (const [recoverable, expected] of [
+      [true, 'privacy_proc_ban_lift_failed'],
+      [false, 'privacy_proc_ban_cleanup_pending']
+    ] as const) {
+      const { admin, calls } = fakeAdmin({
+        unbanError: true,
+        rpc: (name) =>
+          name === 'privacy_proc_ban_check'
+            ? { data: { ok: false, unban: true, recoverable } }
+            : undefined
+      });
+      expect(await processPrivacyCase(admin, claim())).toEqual({ status: 'fenced', steps: [] });
+      expect(calls.at(-1)?.name).toBe(expected);
+    }
+  });
+
   it('aborts without undoing the ban when a newer worker owns it on an executing case (F40)', async () => {
     const { admin, raw } = fakeAdmin({
       rpc: (name) =>

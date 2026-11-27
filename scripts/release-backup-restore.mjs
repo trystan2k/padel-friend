@@ -142,6 +142,7 @@ export function applyRestoreGate(
   {
     snapshotAt = new Date().toISOString(),
     cutoffXid = 0,
+    cutoffSnapshot = null,
     expectedSubjects = [],
     projectRef = database,
     tombstoneCount = expectedSubjects.length
@@ -155,7 +156,7 @@ export function applyRestoreGate(
     docker.sql(
       database,
       `select public.privacy_op_restore_gate('begin', null, '${new Date(snapshotAt).toISOString()}'::timestamptz, ` +
-        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], '${projectRef.replaceAll("'", '')}', ${Number(tombstoneCount)}, ${cutoffXid})::text;`
+        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], '${projectRef.replaceAll("'", '')}', ${Number(tombstoneCount)}, ${cutoffXid}, ${cutoffSnapshot === null ? 'null' : `'${String(cutoffSnapshot).replace(/[^0-9:,]/g, '')}'`})::text;`
     )
   );
   const settings = Object.fromEntries(
@@ -186,8 +187,10 @@ export function takeSnapshot(docker, { source = 'postgres' } = {}) {
   const tocPath = '/tmp/release-rehearsal-' + artifactId + '.toc';
   // The coverage cutoff is captured BEFORE the dump starts (transaction id and clock, one statement): an erasure that
   // began before the dump but commits after it has an earlier xid yet a later event time, and is still counted.
-  const [cutoffXid, cutoffTime] = docker
-    .sql(source, 'select txid_current(), clock_timestamp()')
+  // The snapshot (xmin:xmax:in-progress list) says which transactions the cutoff could see: an erasure that was still
+  // in progress, or started later, is not visible to it and is counted however early its xid and timestamp.
+  const [cutoffXid, cutoffTime, cutoffSnapshot] = docker
+    .sql(source, 'select txid_current(), clock_timestamp(), pg_current_snapshot()')
     .split('|');
   const dump = docker.dump(source, [
     '-Fc',
@@ -205,7 +208,8 @@ export function takeSnapshot(docker, { source = 'postgres' } = {}) {
     tocPath,
     takenAt: new Date().toISOString(),
     cutoffXid: Number(cutoffXid),
-    cutoffTime: new Date(cutoffTime).toISOString()
+    cutoffTime: new Date(cutoffTime).toISOString(),
+    cutoffSnapshot
   };
 }
 
@@ -240,6 +244,7 @@ export function restoreSnapshotWithGate(
       gate: applyRestoreGate(docker, destination, {
         snapshotAt: snapshot.cutoffTime,
         cutoffXid: snapshot.cutoffXid,
+        cutoffSnapshot: snapshot.cutoffSnapshot,
         expectedSubjects: expected,
         tombstoneCount: tombstoneCount ?? expected.length
       })

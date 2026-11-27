@@ -29,6 +29,7 @@ export type Snapshot = {
   takenAt: string;
   cutoffXid: number;
   cutoffTime: string;
+  cutoffSnapshot: string;
 };
 export function markRestoreTarget(docker: Docker, database: string): void;
 export function applyRestoreGate(
@@ -37,6 +38,7 @@ export function applyRestoreGate(
   options?: {
     snapshotAt?: string;
     cutoffXid?: number;
+    cutoffSnapshot?: string | null;
     expectedSubjects?: string[];
     projectRef?: string;
     tombstoneCount?: number;

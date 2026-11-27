@@ -68,6 +68,7 @@ async function rpc(
     | 'privacy_proc_ban_lift_failed'
     | 'privacy_proc_ban_mark'
     | 'privacy_proc_ban_check'
+    | 'privacy_proc_ban_cleanup_pending'
     | 'privacy_proc_unban_done'
     | 'privacy_op_purge_expired',
   args: Record<string, unknown>
@@ -228,14 +229,33 @@ export async function processPrivacyCase(
           })
         );
         if (fence?.ok !== true) {
-          emitDiagnostic('privacy.case', 'rejected', { stage: step, code: 'BAN_FENCE_ABORTED' });
-          // A newer worker that owns the ban on an executing case keeps it; otherwise nobody wants it: undo it.
+          // BAN_FENCE_ABORTED, or BAN_KEPT_FOR_IRREVERSIBLE when an irreversible case keeps the ban's protection.
+          emitDiagnostic('privacy.case', 'rejected', {
+            stage: step,
+            code: typeof fence?.code === 'string' ? fence.code : 'BAN_FENCE_ABORTED'
+          });
+          // Undo only when the case is reversible and nobody wants the ban; an irreversible case or a newer worker's
+          // executing case keeps it (the database decides).
           if (fence?.unban === true) {
             const undone = await admin.auth.admin.updateUserById(claim.subject_id, {
               ban_duration: 'none'
             });
-            if (undone.error && !isNotFound(undone.error))
-              await rpc(admin, 'privacy_proc_ban_lift_failed', { p_case: claim.case_id });
+            if (undone.error && !isNotFound(undone.error)) {
+              if (fence.recoverable === true) {
+                // A blocked stale-proof case carries the failed undo as BAN_LIFT_FAILED.
+                await rpc(admin, 'privacy_proc_ban_lift_failed', { p_case: claim.case_id });
+              } else {
+                // The case left the state machine (withdrawn, closed): a durable, identity-free obligation instead.
+                await rpc(admin, 'privacy_proc_ban_cleanup_pending', {
+                  p_case: claim.case_id,
+                  p_token: claim.lease_token
+                });
+                emitDiagnostic('privacy.case', 'failure', {
+                  stage: step,
+                  code: 'BAN_CLEANUP_PENDING'
+                });
+              }
+            }
           }
           return { status: 'fenced', steps };
         }

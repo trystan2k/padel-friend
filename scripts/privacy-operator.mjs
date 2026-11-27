@@ -26,7 +26,10 @@ export const HELP = [
   '                                         that you verified and mentioned them in the response.',
   '  purge                                  purge expired case records to outcome counts',
   '  switch <intake|executor> <on|off>      fail-closed kill switch',
-  '  restore-gate begin --snapshot-at <iso> --cutoff-xid <n>   (both captured at DUMP START by takeSnapshot)',
+  '  restore-gate begin --snapshot-at <iso> --cutoff-xid <n> --cutoff-snapshot <xmin:xmax:xip,...>',
+  '                                         (all three captured at DUMP START by takeSnapshot)',
+  '  list-cleanup-obligations               open ban-cleanup obligations (case reference + safe code only); resolve before routine work',
+  '  retry-cleanup-unban <ref>              re-attempt the unban of a late ban left on a withdrawn/closed case; success resolves it',
   '                                         ISOLATED restore target only (never production; the database must be flagged',
   '                                         app.restore_target by the restore flow): derives the expected subjects (live in',
   '                                         the restored copy, gone from the source project given by PRIVACY_SOURCE_SUPABASE_URL',
@@ -71,7 +74,9 @@ const COMMANDS = [
   'restore-gate',
   'restore-reconcile',
   'ack-external-followup',
-  'sweep-remnants'
+  'sweep-remnants',
+  'list-cleanup-obligations',
+  'retry-cleanup-unban'
 ];
 
 /** Loopback instances are the 'local' project; a hosted project is the first host label. */
@@ -393,7 +398,8 @@ export async function runCommand(client, parsed, target, source) {
     'switch',
     'generate-code',
     'erase-unclaimed',
-    'restore-gate'
+    'restore-gate',
+    'list-cleanup-obligations'
   ];
   if (!referenceless.includes(command) && !reference) throw new Error('REFERENCE_REQUIRED');
   switch (command) {
@@ -450,6 +456,22 @@ export async function runCommand(client, parsed, target, source) {
       if (error && error.status !== 404) return { status: 'rejected', code: 'BAN_LIFT_FAILED' };
       return call(client, 'privacy_op_ban_lift_done', { p_reference: reference });
     }
+    case 'list-cleanup-obligations':
+      // Case references and safe codes only: never a subject identifier.
+      return call(client, 'privacy_op_list_cleanup_obligations', {});
+    case 'retry-cleanup-unban': {
+      // A late ban on a withdrawn/closed case whose undo failed: re-attempt it through the Auth admin API.
+      const obligation = plainObject(
+        await call(client, 'privacy_op_cleanup_target', { p_reference: reference }),
+        'OPERATOR_RESPONSE_INVALID'
+      );
+      if (obligation.status !== 'ok') return obligation;
+      const { error } = await client.auth.admin.updateUserById(String(obligation.subject_id), {
+        ban_duration: 'none'
+      });
+      if (error && error.status !== 404) return { status: 'rejected', code: 'BAN_CLEANUP_PENDING' };
+      return call(client, 'privacy_op_cleanup_resolved', { p_reference: reference });
+    }
     case 'ack-external-followup':
       return call(client, 'privacy_op_ack_external_followup', { p_reference: reference });
     case 'sweep-remnants':
@@ -480,12 +502,13 @@ export async function runCommand(client, parsed, target, source) {
       const [action] = positional;
       if (!['begin', 'clear'].includes(action)) throw new Error('RESTORE_GATE_ACTION_INVALID');
       if (!source) throw new Error('OPERATOR_SOURCE_MISSING');
-      const erasuresSince = async (cutoffXid, instant) =>
+      const erasuresSince = async (cutoffXid, instant, cutoffSnapshot) =>
         Number(
           plainObject(
             await call(source, 'privacy_op_erasure_count_since', {
               p_cutoff_xid: cutoffXid,
-              p_cutoff_time: instant
+              p_cutoff_time: instant,
+              p_cutoff_snapshot: cutoffSnapshot
             }),
             'OPERATOR_RESPONSE_INVALID'
           ).count
@@ -503,7 +526,8 @@ export async function runCommand(client, parsed, target, source) {
             p_evidence: options.evidence ?? null,
             p_tombstone_count: await erasuresSince(
               Number(status.cutoff_xid),
-              new Date(String(status.snapshot_at)).toISOString()
+              new Date(String(status.snapshot_at)).toISOString(),
+              status.cutoff_snapshot ?? null
             )
           }),
           'OPERATOR_RESPONSE_INVALID'
@@ -521,6 +545,9 @@ export async function runCommand(client, parsed, target, source) {
       const since = new Date(snapshotAt).toISOString();
       const cutoffXid = Number(options['cutoff-xid']);
       if (!Number.isSafeInteger(cutoffXid) || cutoffXid < 0) throw new Error('CUTOFF_XID_REQUIRED');
+      const cutoffSnapshot = options['cutoff-snapshot'];
+      if (typeof cutoffSnapshot !== 'string' || !/^[0-9]+:[0-9]+:[0-9,]*$/.test(cutoffSnapshot))
+        throw new Error('CUTOFF_SNAPSHOT_REQUIRED');
       const restored = idList(await call(client, 'privacy_op_live_identity_ids', {}));
       const live = idList(await call(source, 'privacy_op_live_identity_ids', {}));
       // The set is the difference (closed case records keep no subject id); its size must equal the identity-free erasure events the
@@ -531,8 +558,9 @@ export async function runCommand(client, parsed, target, source) {
         p_snapshot_at: since,
         p_expected_subjects: deriveExpectedSubjects({ restored, live }),
         p_restore_project_ref: target.projectRef,
-        p_tombstone_count: await erasuresSince(cutoffXid, since),
-        p_cutoff_xid: cutoffXid
+        p_tombstone_count: await erasuresSince(cutoffXid, since, cutoffSnapshot),
+        p_cutoff_xid: cutoffXid,
+        p_cutoff_snapshot: cutoffSnapshot
       });
     }
     case 'restore-reconcile':
