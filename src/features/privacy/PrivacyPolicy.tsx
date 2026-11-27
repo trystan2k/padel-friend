@@ -4,7 +4,7 @@ import brandIcon from '../../../docs/design/padel-friends-app-icon.png';
 import { TextLink } from '../../components/ui/TextLink';
 import {
   PRIVACY_CONTACT_EMAIL,
-  PRIVACY_POLICY_APPROVED,
+  PRIVACY_LEGAL_REVIEW_COMPLETED,
   PRIVACY_SECTIONS,
   PRIVACY_UPDATED_AT
 } from './privacy-content';
@@ -12,7 +12,11 @@ import { styles } from './privacy-policy.styles';
 
 const range = (count: number) => Array.from({ length: count }, (_, index) => index + 1);
 
-export function PrivacyPolicy({ approved = PRIVACY_POLICY_APPROVED }: { approved?: boolean }) {
+export function PrivacyPolicy({
+  legalReviewCompleted = PRIVACY_LEGAL_REVIEW_COMPLETED
+}: {
+  legalReviewCompleted?: boolean;
+}) {
   const { t, i18n } = useTranslation();
   const updated = new Intl.DateTimeFormat(i18n.language, {
     dateStyle: 'long',
@@ -45,7 +49,7 @@ export function PrivacyPolicy({ approved = PRIVACY_POLICY_APPROVED }: { approved
         <p {...stylex.props(styles.updated)}>{t('privacy.updated', { date: updated })}</p>
       </header>
 
-      {!approved && (
+      {!legalReviewCompleted && (
         <p role="note" {...stylex.props(styles.notice)}>
           {t('privacy.reviewNotice')}
         </p>

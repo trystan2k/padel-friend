@@ -27,3 +27,7 @@ During alpha, the owner accepts that production data may be lost, including data
 ## Existing local rehearsal
 
 `scripts/release-backup-restore.mjs` exercises a local Supabase database restore into disposable databases. It does not back up hosted production, copy Storage objects to R2, or provide a production recovery service.
+
+## Privacy requests
+
+Any recovery point created under this plan is personal data and must honor account erasures: see the restore gate and the recovery suppression manifest in the [privacy request runbook](privacy-request-runbook.md#6-backups-snapshots-and-restore). Add that gate to the definition of done before enabling automated backups.

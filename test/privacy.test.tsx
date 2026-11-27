@@ -16,7 +16,7 @@ import {
 import { createI18n, supportedLocales, type Locale } from '../src/i18n/config';
 import {
   PRIVACY_CONTACT_EMAIL,
-  PRIVACY_POLICY_APPROVED,
+  PRIVACY_LEGAL_REVIEW_COMPLETED,
   PRIVACY_SECTIONS,
   PRIVACY_UPDATED_AT
 } from '../src/features/privacy/privacy-content';
@@ -155,16 +155,17 @@ describe('PrivacyPolicy page', () => {
   });
 
   it.each(supportedLocales)(
-    'shows no draft notice by default once the policy is approved (%s)',
+    'flags the pending external legal review by default, as a note, in %s',
     async (locale) => {
       await renderPolicy(locale);
 
-      expect(PRIVACY_POLICY_APPROVED).toBe(true);
-      expect(screen.queryByRole('note')).toBeNull();
+      // Published and truthful is not legally reviewed: the review is pending and owner-owned.
+      expect(PRIVACY_LEGAL_REVIEW_COMPLETED).toBe(false);
+      expect(screen.getByRole('note').textContent).toBe(catalogs[locale].privacy.reviewNotice);
     }
   );
 
-  it('hides the draft notice once approved', async () => {
+  it('hides the pending-review note only when the owner records the review as completed', async () => {
     const i18n = createI18n('en');
     render(
       createElement(
@@ -173,7 +174,7 @@ describe('PrivacyPolicy page', () => {
         createElement(RouterProvider, {
           router: createRouter({
             routeTree: createRootRoute({
-              component: () => createElement(PrivacyPolicy, { approved: true })
+              component: () => createElement(PrivacyPolicy, { legalReviewCompleted: true })
             }),
             history: createMemoryHistory()
           })
@@ -207,6 +208,70 @@ describe('PrivacyPolicy page', () => {
     const link = screen.getByRole('link', { name: catalogs[locale].privacy.backHome });
     expect(link.getAttribute('href')).toBe('/');
   });
+});
+
+describe('privacy copy: account deletion flow and banned claims', () => {
+  const allText = (locale: Locale) => JSON.stringify(catalogs[locale].privacy).toLowerCase();
+
+  it.each(supportedLocales)(
+    'never states the removed retention and compliance claims (%s)',
+    (locale) => {
+      const text = allText(locale);
+      // No six-month retention and no unverified Cloudflare three-day value.
+      expect(text).not.toMatch(/six months|6 months|seis meses|6 meses/);
+      expect(text).not.toMatch(/3 days|three days|3 días|tres días|3 dias|três dias/);
+      expect(text).not.toMatch(/seven|siete|sete dias|7 days|7 días/);
+      // Process description only: no compliance assertion.
+      expect(text).not.toMatch(
+        /(gdpr|rgpd)[- ]compliant|compliant with|cumplimos|cumple con|em conformidade com|en conformidad con/
+      );
+    }
+  );
+
+  it.each(supportedLocales)(
+    'describes the in-app route, verification and email intake (%s)',
+    (locale) => {
+      const { requests } = catalogs[locale].privacy;
+      expect(requests.p1).toContain(catalogs[locale].profile.links.accountDeletion);
+      expect(requests.p2.length).toBeGreaterThan(0);
+      expect(requests.p3.toLowerCase()).toMatch(/portab/);
+      expect(requests.p3).not.toContain('@');
+    }
+  );
+
+  it.each(supportedLocales)(
+    'states the one-month period with the two-month extension as process (%s)',
+    (locale) => {
+      const { requests } = catalogs[locale].privacy;
+      expect(requests.p4).toMatch(/one month|un mes|um mês/);
+      expect(requests.p4).toMatch(/two further months|dos meses más|mais dois meses/);
+      expect(requests.p4).toMatch(/first month|primer mes|primeiro mês/);
+    }
+  );
+
+  it.each(supportedLocales)(
+    'describes anonymization with the generic placeholder and no mapping (%s)',
+    (locale) => {
+      const { deletion } = catalogs[locale].privacy;
+      expect(deletion.i2).toContain(catalogs[locale].player.formerPlayer);
+      expect(deletion.i2.toLowerCase()).toMatch(/aleatorio|aleatório|random/);
+      expect(deletion.i1.toLowerCase()).toMatch(/photo|foto/);
+      expect(deletion.i4.length).toBeGreaterThan(0);
+    }
+  );
+
+  it.each(supportedLocales)(
+    'states residuals as current facts: processors by hand, auth residue, no backups (%s)',
+    (locale) => {
+      const { residual, retention } = catalogs[locale].privacy;
+      for (const provider of ['Cloudflare', 'Resend', 'Google'])
+        expect(residual.p1).toContain(provider);
+      expect(residual.p2.length).toBeGreaterThan(0);
+      expect(residual.p3.toLowerCase()).toMatch(/backups|copias de seguridad/);
+      expect(retention.p2.toLowerCase()).toMatch(/backups|copias de seguridad/);
+      expect(residual.p3.toLowerCase()).not.toMatch(/will|serán|serão|futur/);
+    }
+  );
 });
 
 describe('privacy copy contract', () => {
@@ -254,7 +319,6 @@ describe('privacy copy contract', () => {
     const { privacy } = catalogs[locale];
 
     expect(privacy.transfers.p1).toMatch(/London|Londres/);
-    expect(privacy.retention.p2).toContain('3');
     expect(privacy.retention.p2).toContain('Cloudflare');
     expect(JSON.stringify(privacy)).not.toMatch(
       /we do not control|que no controlamos|que não controlamos/

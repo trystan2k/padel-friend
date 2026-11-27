@@ -3,13 +3,17 @@
 export const PRIVACY_CONTACT_EMAIL = 'trystan2k@gmail.com';
 
 // ISO date of the last policy change; shown localized at the top of the page.
-export const PRIVACY_UPDATED_AT = '2026-11-17';
+export const PRIVACY_UPDATED_AT = '2026-11-27';
 
 export type PrivacySection = { id: string; paragraphs: number; items: number };
 
-// Publication gate: stays false until the owner has confirmed the facts and legal bases in the
-// copy and a legal review has happened. While false the page shows a localized draft notice.
-export const PRIVACY_POLICY_APPROVED = true;
+// The policy is published as a truthful description of how the service works today (every claim is
+// backed by the implemented flow or by dated repository/catalog evidence; see
+// docs/account-deletion-design.md). That is NOT a legal sign-off: the external legal review is pending
+// and owner-owned. While this stays false the page shows a localized "no external legal review yet"
+// note. Set it to true only when the owner records that the review has happened; never infer it from
+// the policy being public, and never cite this flag as proof of compliance.
+export const PRIVACY_LEGAL_REVIEW_COMPLETED = false;
 
 export const PRIVACY_SECTIONS: readonly PrivacySection[] = [
   { id: 'who', paragraphs: 1, items: 0 },
@@ -25,7 +29,9 @@ export const PRIVACY_SECTIONS: readonly PrivacySection[] = [
   { id: 'transfers', paragraphs: 2, items: 3 },
   { id: 'retention', paragraphs: 3, items: 0 },
   { id: 'security', paragraphs: 1, items: 0 },
-  { id: 'requests', paragraphs: 3, items: 0 },
+  { id: 'requests', paragraphs: 4, items: 0 },
+  { id: 'deletion', paragraphs: 1, items: 5 },
+  { id: 'residual', paragraphs: 3, items: 0 },
   { id: 'rights', paragraphs: 3, items: 0 },
   { id: 'age', paragraphs: 1, items: 0 },
   { id: 'changes', paragraphs: 1, items: 0 },
