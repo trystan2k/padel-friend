@@ -9,6 +9,7 @@ import {
   projectRefOf,
   reconcileRestoredSubject,
   resolveSource,
+  sweepRemnants,
   resolveTarget,
   runCommand,
   type OperatorClient
@@ -146,7 +147,7 @@ describe('privacy operator: restore gate', () => {
   it('begins the gate with the derived set and the source tombstone count (F29), clears with parity (F29)', async () => {
     calls.length = 0;
     const restored = withIds([subjectA, subjectB, 'kept']);
-    const source = withIds(['kept'], { privacy_op_tombstone_count_since: { count: 2 } });
+    const source = withIds(['kept'], { privacy_op_erasure_count_since: { count: 2 } });
     await runCommand(
       restored,
       parse('restore-gate', 'begin', '--snapshot-at', '2026-11-20T10:00:00Z'),
@@ -169,7 +170,7 @@ describe('privacy operator: restore gate', () => {
       gate,
       parse('restore-gate', 'clear', '--evidence', 'ticket-123'),
       target,
-      withIds([], { privacy_op_tombstone_count_since: { count: 2 } })
+      withIds([], { privacy_op_erasure_count_since: { count: 2 } })
     );
     expect(calls.find((call) => call.name === 'privacy_op_restore_gate')?.args).toEqual({
       p_action: 'clear',
@@ -196,7 +197,7 @@ describe('privacy operator: restore gate', () => {
       }),
       parse('restore-gate', 'clear', '--evidence', 'x'),
       target,
-      withIds([], { privacy_op_tombstone_count_since: { count: 3 } })
+      withIds([], { privacy_op_erasure_count_since: { count: 3 } })
     );
     expect(result).toMatchObject({ code: 'COUNT_MISMATCH' });
     expect(JSON.stringify(result)).toContain('restore-gate begin');
@@ -434,51 +435,165 @@ describe('privacy operator: restore gate', () => {
     expect(lifted).toEqual([subjectA + ':none', subjectA + ':none']);
   });
 
-  it('sweeps only invite shells created after the freeze for the erased address (F31)', async () => {
+  /** Admin double over a mutable user list: deleteUser removes the user, listUsers pages by offset. */
+  const sweeperOver = (
+    users: Array<{ id: string; email: string; created_at: string }>,
+    options: { shells: string[]; swept?: string[] }
+  ) => {
     const digest = (email: string) =>
       createHash('sha256').update(email.toLowerCase()).digest('hex');
-    const frozen = '2026-11-20T10:00:00.000Z';
-    const users = [
-      { id: 'shell', email: 'Erased@Example.test', created_at: '2026-11-20T10:05:00.000Z' },
-      { id: 'older', email: 'erased@example.test', created_at: '2026-11-20T09:00:00.000Z' },
-      { id: 'benign', email: 'other@example.test', created_at: '2026-11-20T10:06:00.000Z' },
-      { id: 'real', email: 'erased@example.test', created_at: '2026-11-20T10:07:00.000Z' }
-    ];
     const deleted: string[] = [];
     const checked: string[] = [];
-    const sweeper: OperatorClient = {
+    const admin: OperatorClient = {
       rpc: (name, args) => {
+        if (name === 'privacy_op_remnants_swept') options.swept?.push(String(args['p_reference']));
         if (name === 'privacy_op_remnant_is_shell') checked.push(String(args['p_user']));
         const data =
           name === 'privacy_op_remnant_context'
-            ? { status: 'ok', since: frozen, digest: digest('erased@example.test') }
-            : { shell: args['p_user'] === 'shell' };
+            ? {
+                status: 'ok',
+                since: '2026-11-20T10:00:00.000Z',
+                digest: digest('erased@example.test')
+              }
+            : name === 'privacy_op_remnant_is_shell'
+              ? { shell: options.shells.includes(String(args['p_user'])) }
+              : { status: 'ok' };
         return Promise.resolve({ data, error: null });
       },
       auth: {
         admin: {
           updateUserById: () => Promise.resolve({ error: null }),
-          listUsers: ({ page }) =>
-            Promise.resolve({ data: { users: page === 1 ? users : [] }, error: null }),
+          listUsers: ({ page, perPage }) =>
+            Promise.resolve({
+              data: { users: users.slice((page - 1) * perPage, page * perPage) },
+              error: null
+            }),
           deleteUser: (id) => {
             deleted.push(id);
+            users.splice(
+              users.findIndex((user) => user.id === id),
+              1
+            );
             return Promise.resolve({ error: null });
           }
         }
       }
     };
+    return { client: admin, deleted, checked };
+  };
+  const stamp = '2026-11-20T10:05:00.000Z';
+
+  it('sweeps only invite shells created after the freeze for the erased address, then records the clean pass (F31, F36)', async () => {
+    const swept: string[] = [];
+    const {
+      client: sweeper,
+      deleted,
+      checked
+    } = sweeperOver(
+      [
+        { id: 'shell', email: 'Erased@Example.test', created_at: stamp },
+        { id: 'older', email: 'erased@example.test', created_at: '2026-11-20T09:00:00.000Z' },
+        { id: 'benign', email: 'other@example.test', created_at: stamp },
+        { id: 'real', email: 'erased@example.test', created_at: stamp }
+      ],
+      { shells: ['shell'], swept }
+    );
     const result = await runCommand(sweeper, parse('sweep-remnants', 'PR-AAAAAAAAAAAA'), target);
+    // A pass that deleted something is repeated; the second pass is clean and is the one that records the sweep.
     expect(result).toEqual({
       status: 'ok',
       code: 'REMNANTS_REMOVED',
-      scanned: 4,
-      matched: 2,
+      scanned: 3,
+      matched: 1,
       removed: 1
     });
-    // Older users and other addresses are never even looked at; a real person (not a shell) is kept.
-    expect(checked).toEqual(['shell', 'real']);
+    expect(checked).toEqual(['shell', 'real', 'real']);
     expect(deleted).toEqual(['shell']);
+    expect(swept).toEqual(['PR-AAAAAAAAAAAA']);
     expect(JSON.stringify(result)).not.toContain('example.test');
+  });
+
+  it('re-scans from the start when a deletion shifts later users onto already scanned offsets (F36)', async () => {
+    const swept: string[] = [];
+    const users = [
+      { id: 'x1', email: 'a@example.test', created_at: stamp },
+      { id: 'x2', email: 'b@example.test', created_at: stamp },
+      { id: 'shellA', email: 'erased@example.test', created_at: stamp },
+      { id: 'x4', email: 'c@example.test', created_at: stamp },
+      { id: 'shellB', email: 'erased@example.test', created_at: stamp }
+    ];
+    const { client: sweeper, deleted } = sweeperOver(users, {
+      shells: ['shellA', 'shellB'],
+      swept
+    });
+    // Page size 2: deleting shellA on page 2 shifts shellB to an offset page 2 already passed.
+    const result = await sweepRemnants(sweeper, 'PR-AAAAAAAAAAAA', { perPage: 2 });
+    expect(deleted).toEqual(['shellA', 'shellB']);
+    expect(result).toMatchObject({ status: 'ok', removed: 2 });
+    expect(swept).toEqual(['PR-AAAAAAAAAAAA']);
+  });
+
+  it('fails closed when the page cap is hit on a full page: nothing is recorded (F36)', async () => {
+    const swept: string[] = [];
+    const users = Array.from({ length: 10 }, (_, index) => ({
+      id: 'u' + index,
+      email: 'u' + index + '@example.test',
+      created_at: stamp
+    }));
+    const { client: sweeper } = sweeperOver(users, { shells: [], swept });
+    const result = await sweepRemnants(sweeper, 'PR-AAAAAAAAAAAA', { perPage: 2, maxPages: 3 });
+    expect(result).toEqual({ status: 'incomplete', code: 'SWEEP_INCOMPLETE', scanned: 6 });
+    expect(swept).toEqual([]);
+    // Exactly at the boundary the last page is full as well: still not complete.
+    const exact = sweeperOver(users.slice(0, 6), { shells: [], swept });
+    expect(
+      await sweepRemnants(exact.client, 'PR-AAAAAAAAAAAA', { perPage: 2, maxPages: 3 })
+    ).toMatchObject({
+      status: 'incomplete'
+    });
+    expect(swept).toEqual([]);
+    // A shorter last page proves the end.
+    const done = sweeperOver(users.slice(0, 5), { shells: [], swept });
+    expect(
+      await sweepRemnants(done.client, 'PR-AAAAAAAAAAAA', { perPage: 2, maxPages: 3 })
+    ).toMatchObject({
+      status: 'ok',
+      code: 'NO_REMNANTS'
+    });
+    expect(swept).toEqual(['PR-AAAAAAAAAAAA']);
+  });
+
+  it('refuses reconciliation when the avatar prefix listing overflows its bound (F35)', async () => {
+    calls.length = 0;
+    let listings = 0;
+    const storage: NonNullable<OperatorClient['storage']> = {
+      from: () => ({
+        remove: () => Promise.resolve({ error: null }),
+        // Every page is full: the bound is reached and completeness cannot be claimed.
+        list: () => {
+          listings++;
+          return Promise.resolve({
+            data: Array.from({ length: 1000 }, (_, index) => ({ name: 'f' + index })),
+            error: null
+          });
+        }
+      })
+    };
+    const result = await reconcileRestoredSubject(
+      {
+        rpc: (name, args) => {
+          calls.push({ name, args });
+          return Promise.resolve({ data: { status: 'ok' }, error: null });
+        },
+        storage
+      },
+      subjectA,
+      'local'
+    );
+    expect(result).toEqual({ status: 'rejected', code: 'LIST_OVERFLOW' });
+    expect(listings).toBe(10);
+    // No plan was requested, nothing was deleted.
+    expect(calls).toEqual([]);
   });
 });
 

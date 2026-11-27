@@ -88,10 +88,11 @@ describe.skipIf(!environment.env)(
 
       snapshot = takeSnapshot(docker);
       const takenAt = snapshot.takenAt;
-      const tombstonesNow = async () =>
+      // The parity authority: identity-free erasure events recorded after the snapshot.
+      const erasuresNow = async () =>
         Number(
           await scalar(
-            "select count(*)::int from public.participant_identities where state = 'withdrawn' and created_at > " +
+            'select count(*)::int from privacy_internal.erasure_events where erased_at > ' +
               L(takenAt)
           )
         );
@@ -119,7 +120,7 @@ describe.skipIf(!environment.env)(
       await uploadObject('player-avatars', orphanPath, 'image/png');
       expect(await objectExists('community-venue-photos', photoPath)).toBe(false);
       await uploadObject('community-venue-photos', photoPath, 'image/webp');
-      expect(await tombstonesNow()).toBe(2);
+      expect(await erasuresNow()).toBe(2);
 
       // F28: the live database never carries the isolation flag and refuses every restore RPC.
       expect(
@@ -434,7 +435,7 @@ describe.skipIf(!environment.env)(
 
       // F29: an erasure made after the set was derived (C) shows at clear as extra parity: refused, then re-derived.
       await erase(subjectC, emails.c);
-      expect(await tombstonesNow()).toBe(3);
+      expect(await erasuresNow()).toBe(3);
       const evidence = 'post-snapshot erasures reconciled: ticket 123';
       expect(
         query(

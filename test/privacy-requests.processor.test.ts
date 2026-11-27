@@ -91,6 +91,7 @@ describe('privacy processor phases', () => {
     });
     expect(names(calls)).toEqual([
       'freeze',
+      'ban_mark',
       'freeze',
       'erase_relational',
       'storage_set',
@@ -209,8 +210,8 @@ describe('privacy processor phases', () => {
         }
       })
     ).rejects.toBe(crash);
-    // Address pre-check, then the freeze commit.
-    expect(names(calls)).toEqual(['freeze', 'freeze']);
+    // Address pre-check, the ban recorded on the case before the external call, then the freeze commit.
+    expect(names(calls)).toEqual(['freeze', 'ban_mark', 'freeze']);
   });
 
   it('blocks on a stale verified address BEFORE the ban (F25)', async () => {
@@ -227,6 +228,25 @@ describe('privacy processor phases', () => {
     });
     expect(raw.auth.admin.updateUserById).not.toHaveBeenCalled();
     expect(names(calls)).toEqual(['freeze']);
+  });
+
+  it('lifts the ban of an interrupted earlier attempt when the reclaimed pre-check finds the proof stale (F37)', async () => {
+    const { admin, calls, raw } = fakeAdmin({
+      rpc: (name, args) =>
+        name === 'privacy_proc_freeze' && args['p_check_only'] === true
+          ? { data: { status: 'blocked', code: 'VERIFICATION_STALE', unban_required: true } }
+          : undefined
+    });
+    expect(await processPrivacyCase(admin, claim())).toEqual({
+      status: 'blocked',
+      code: 'VERIFICATION_STALE',
+      steps: []
+    });
+    // No new ban; the old one is lifted and the lift is durably recorded (restartable only afterwards).
+    expect(raw.auth.admin.updateUserById).toHaveBeenCalledExactlyOnceWith('subject', {
+      ban_duration: 'none'
+    });
+    expect(names(calls)).toEqual(['freeze', 'unban_done']);
   });
 
   it('blocks the case as BAN_LIFT_FAILED when the temporary ban cannot be lifted (F33)', async () => {

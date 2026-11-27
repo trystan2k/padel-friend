@@ -45,7 +45,11 @@ export type OperatorClient = {
     };
   };
 };
-export function sweepRemnants(client: OperatorClient, reference: string): Promise<unknown>;
+export function sweepRemnants(
+  client: OperatorClient,
+  reference: string,
+  options?: { perPage?: number; maxPages?: number; maxPasses?: number }
+): Promise<unknown>;
 export function reconcileRestoredSubject(
   client: OperatorClient,
   subject: string,

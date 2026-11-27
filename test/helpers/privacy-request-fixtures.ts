@@ -41,7 +41,7 @@ export async function operator(...argv: string[]) {
 export async function caseRow(reference: string) {
   const [row] = await sqlRows(
     'select id::text as id, state, resume_state, last_phase, blocker_code, next_action, subject_id::text as subject_id, ' +
-      'armed_consumed_at, arm_expires_at, destructive_started_at, attempt_count, quiescence_attempts, next_attempt_at, outcome, purge_after, ' +
+      'armed_consumed_at, arm_expires_at, destructive_started_at, ban_applied_at, ban_lifted_at, attempt_count, quiescence_attempts, next_attempt_at, outcome, purge_after, ' +
       'final_response_at, lease_token::text as lease_token, phase_manifest, armed_plan from privacy_internal.privacy_cases where reference = ' +
       L(reference)
   );

@@ -31,7 +31,7 @@ export const HELP = [
   '                                         app.restore_target by the restore flow): derives the expected subjects (live in',
   '                                         the restored copy, gone from the source project given by PRIVACY_SOURCE_SUPABASE_URL',
   '                                         / PRIVACY_SOURCE_SERVICE_ROLE_KEY) and proves it by count parity with the source',
-  '                                         tombstones created after the snapshot (mismatch: refused, escalate). Re-run after',
+  '                                         erasure events recorded after the snapshot (mismatch: refused, escalate). Re-run after',
   '                                         late erasures to extend the open gate.',
   '  restore-gate clear --evidence <ref>    needs EVERY expected subject reconciled, count parity again, AND an evidence reference.',
   '  ack-external-followup <ref>            acknowledge outstanding external sends (list: external_followup); needs a completed',
@@ -205,19 +205,25 @@ function refuseRestoreOnProduction(target) {
 
 const AVATAR_BUCKET = 'player-avatars';
 
-/** Objects under the subject's avatar prefix, as 'bucket/name' paths (orphans included). */
+const AVATAR_PAGE = 1000;
+const AVATAR_MAX = 10_000;
+
+/**
+ * Objects under the subject's avatar prefix, as 'bucket/name' paths (orphans included). When every page up to the
+ * bound is full the listing is NOT complete: the caller must refuse (LIST_OVERFLOW), never proceed on a prefix.
+ */
 async function listAvatarPrefix(client, subject) {
   const paths = [];
-  for (let offset = 0; offset < 10_000; offset += 1000) {
+  for (let offset = 0; offset < AVATAR_MAX; offset += AVATAR_PAGE) {
     const { data, error } = await client.storage
       .from(AVATAR_BUCKET)
-      .list(subject, { limit: 1000, offset });
+      .list(subject, { limit: AVATAR_PAGE, offset });
     if (error) throw new Error('RESTORE_STORAGE_UNVERIFIED');
     const names = (data ?? []).map((object) => object.name);
     paths.push(...names.map((name) => AVATAR_BUCKET + '/' + subject + '/' + name));
-    if (names.length < 1000) break;
+    if (names.length < AVATAR_PAGE) return { complete: true, paths };
   }
-  return paths;
+  return { complete: false, paths };
 }
 
 /** Whether one 'bucket/name' path still resolves in Storage. */
@@ -242,11 +248,14 @@ async function stillListed(client, path) {
  * run. Every refusal (isolation flag, gate, project, expected set) comes from the database before anything is deleted.
  */
 export async function reconcileRestoredSubject(client, subject, projectRef) {
+  const prefix = await listAvatarPrefix(client, subject);
+  // An overflowing listing cannot prove the plan complete: refuse before any plan exists.
+  if (!prefix.complete) return { status: 'rejected', code: 'LIST_OVERFLOW' };
   const planned = plainObject(
     await call(client, 'privacy_op_restore_storage_set', {
       p_subject: subject,
       p_project_ref: projectRef,
-      p_prefix_paths: await listAvatarPrefix(client, subject)
+      p_prefix_paths: prefix.paths
     }),
     'OPERATOR_RESPONSE_INVALID'
   );
@@ -264,7 +273,10 @@ export async function reconcileRestoredSubject(client, subject, projectRef) {
       if (error) throw new Error('RESTORE_STORAGE_REMOVE_FAILED');
     }
   }
-  const relisted = new Set(await listAvatarPrefix(client, subject));
+  const after = await listAvatarPrefix(client, subject);
+  // The proof of absence needs a complete listing too (the deletion already ran; the operator re-runs after cleanup).
+  if (!after.complete) return { status: 'rejected', code: 'LIST_OVERFLOW' };
+  const relisted = new Set(after.paths);
   for (const path of plan) if (await stillListed(client, path)) relisted.add(path);
   const confirmed = plainObject(
     await call(client, 'privacy_op_restore_storage_confirm', {
@@ -287,46 +299,66 @@ export async function reconcileRestoredSubject(client, subject, projectRef) {
  * Only users created after the freeze whose address digest matches the case, that were invited and never signed in
  * and have no profile are removed; everyone else is left alone. Console output holds counts and safe codes only.
  */
-export async function sweepRemnants(client, reference) {
+export async function sweepRemnants(
+  client,
+  reference,
+  { perPage = 200, maxPages = 100, maxPasses = 10 } = {}
+) {
   const context = plainObject(
     await call(client, 'privacy_op_remnant_context', { p_reference: reference }),
     'OPERATOR_RESPONSE_INVALID'
   );
   if (context.status !== 'ok') return context;
   const since = Date.parse(String(context.since));
+  let removedTotal = 0;
   let scanned = 0;
-  let matched = 0;
-  let removed = 0;
-  for (let page = 1; page <= 100; page++) {
-    const { data, error } = await client.auth.admin.listUsers({ page, perPage: 200 });
-    if (error) throw new Error('REMNANT_LIST_FAILED');
-    const users = data?.users ?? [];
-    for (const user of users) {
-      scanned += 1;
-      if (!user.email || !(Date.parse(user.created_at) > since)) continue;
-      const digest = createHash('sha256').update(user.email.toLowerCase()).digest('hex');
-      if (digest !== context.digest) continue;
-      matched += 1;
-      const shell = plainObject(
-        await call(client, 'privacy_op_remnant_is_shell', { p_user: user.id }),
-        'OPERATOR_RESPONSE_INVALID'
-      );
-      if (shell.shell !== true) continue;
-      const { error: deleteError } = await client.auth.admin.deleteUser(user.id, false);
-      if (deleteError) throw new Error('REMNANT_DELETE_FAILED');
-      removed += 1;
+  // Offset pagination shifts under deletion (later users move to earlier offsets): any pass that deleted something is
+  // repeated from the start, and completion is only a pass that deleted nothing AND ended on a non-full page.
+  for (let pass = 0; pass < maxPasses; pass++) {
+    scanned = 0;
+    let matched = 0;
+    let deletions = 0;
+    let reachedEnd = false;
+    for (let page = 1; page <= maxPages; page++) {
+      const { data, error } = await client.auth.admin.listUsers({ page, perPage });
+      if (error) throw new Error('REMNANT_LIST_FAILED');
+      const users = data?.users ?? [];
+      for (const user of users) {
+        scanned += 1;
+        if (!user.email || !(Date.parse(user.created_at) > since)) continue;
+        const digest = createHash('sha256').update(user.email.toLowerCase()).digest('hex');
+        if (digest !== context.digest) continue;
+        matched += 1;
+        const shell = plainObject(
+          await call(client, 'privacy_op_remnant_is_shell', { p_user: user.id }),
+          'OPERATOR_RESPONSE_INVALID'
+        );
+        if (shell.shell !== true) continue;
+        const { error: deleteError } = await client.auth.admin.deleteUser(user.id, false);
+        if (deleteError) throw new Error('REMNANT_DELETE_FAILED');
+        deletions += 1;
+        removedTotal += 1;
+      }
+      if (users.length < perPage) {
+        reachedEnd = true;
+        break;
+      }
     }
-    if (users.length < 200) break;
+    // The page cap was hit on a full page: unscanned users may remain. Fail closed, record nothing.
+    if (!reachedEnd) return { status: 'incomplete', code: 'SWEEP_INCOMPLETE', scanned };
+    if (deletions === 0) {
+      // A complete, deletion-free pass: only now is the sweep recorded on the case.
+      await call(client, 'privacy_op_remnants_swept', { p_reference: reference });
+      return {
+        status: 'ok',
+        code: removedTotal > 0 ? 'REMNANTS_REMOVED' : 'NO_REMNANTS',
+        scanned,
+        matched,
+        removed: removedTotal
+      };
+    }
   }
-  // The completed sweep is recorded on the case: a flagged case cannot be acknowledged or answered without it.
-  await call(client, 'privacy_op_remnants_swept', { p_reference: reference });
-  return {
-    status: 'ok',
-    code: removed > 0 ? 'REMNANTS_REMOVED' : 'NO_REMNANTS',
-    scanned,
-    matched,
-    removed
-  };
+  return { status: 'incomplete', code: 'SWEEP_INCOMPLETE', scanned };
 }
 
 /** Executes one parsed command against a service-role client. Returns console-safe data. */
@@ -424,10 +456,10 @@ export async function runCommand(client, parsed, target, source) {
       const [action] = positional;
       if (!['begin', 'clear'].includes(action)) throw new Error('RESTORE_GATE_ACTION_INVALID');
       if (!source) throw new Error('OPERATOR_SOURCE_MISSING');
-      const tombstonesSince = async (instant) =>
+      const erasuresSince = async (instant) =>
         Number(
           plainObject(
-            await call(source, 'privacy_op_tombstone_count_since', { p_since: instant }),
+            await call(source, 'privacy_op_erasure_count_since', { p_since: instant }),
             'OPERATOR_RESPONSE_INVALID'
           ).count
         );
@@ -442,7 +474,7 @@ export async function runCommand(client, parsed, target, source) {
           await call(client, 'privacy_op_restore_gate', {
             p_action: 'clear',
             p_evidence: options.evidence ?? null,
-            p_tombstone_count: await tombstonesSince(
+            p_tombstone_count: await erasuresSince(
               new Date(String(status.snapshot_at)).toISOString()
             )
           }),
@@ -461,7 +493,7 @@ export async function runCommand(client, parsed, target, source) {
       const since = new Date(snapshotAt).toISOString();
       const restored = idList(await call(client, 'privacy_op_live_identity_ids', {}));
       const live = idList(await call(source, 'privacy_op_live_identity_ids', {}));
-      // The set is the difference (closed case records keep no subject id); its size must equal the tombstones the
+      // The set is the difference (closed case records keep no subject id); its size must equal the identity-free erasure events the
       // erasures left after the snapshot, which the database checks (COUNT_MISMATCH: fail closed, escalate).
       return call(client, 'privacy_op_restore_gate', {
         p_action: 'begin',
@@ -469,7 +501,7 @@ export async function runCommand(client, parsed, target, source) {
         p_snapshot_at: since,
         p_expected_subjects: deriveExpectedSubjects({ restored, live }),
         p_restore_project_ref: target.projectRef,
-        p_tombstone_count: await tombstonesSince(since)
+        p_tombstone_count: await erasuresSince(since)
       });
     }
     case 'restore-reconcile':

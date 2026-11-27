@@ -66,6 +66,7 @@ async function rpc(
     | 'privacy_proc_finish'
     | 'privacy_proc_fail'
     | 'privacy_proc_ban_lift_failed'
+    | 'privacy_proc_ban_mark'
     | 'privacy_proc_unban_done'
     | 'privacy_op_purge_expired',
   args: Record<string, unknown>
@@ -187,19 +188,9 @@ export async function processPrivacyCase(
         const precheck = record(
           await rpc(admin, 'privacy_proc_freeze', { ...keys, p_check_only: true })
         );
-        if (precheck?.status === 'blocked') {
-          emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(precheck.code) });
-          return { status: 'blocked', code: String(precheck.code), steps };
-        }
-        // Sessions cannot be listed through the admin API: banning stops refresh and sign-in, and the
-        // database freeze (committed next) rejects every stale access token at each boundary.
-        const { error } = await admin.auth.admin.updateUserById(claim.subject_id, {
-          ban_duration: BAN_DURATION
-        });
-        if (error && !isNotFound(error)) throw new Error('FREEZE_FAILED');
-        const frozen = record(await rpc(admin, 'privacy_proc_freeze', keys));
-        if (frozen?.status === 'blocked') {
-          // The address moved between the pre-check and the freeze: nothing destructive happened, lift the ban.
+        // A stale proof that finds NO ban of an earlier attempt blocks without touching the account; one that finds a
+        // ban from an interrupted attempt must lift it first (the case waits in PENDING_UNBAN meanwhile).
+        const liftTemporaryBan = async (code: string): Promise<PrivacyRunResult> => {
           const lifted = await admin.auth.admin.updateUserById(claim.subject_id, {
             ban_duration: 'none'
           });
@@ -211,9 +202,24 @@ export async function processPrivacyCase(
           }
           // The unban is durably recorded: the case leaves PENDING_UNBAN and may restart verification.
           await rpc(admin, 'privacy_proc_unban_done', { p_case: claim.case_id });
-          emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(frozen.code) });
-          return { status: 'blocked', code: String(frozen.code), steps };
+          emitDiagnostic('privacy.case', 'rejected', { stage: step, code });
+          return { status: 'blocked', code, steps };
+        };
+        if (precheck?.status === 'blocked') {
+          if (precheck.unban_required === true) return liftTemporaryBan(String(precheck.code));
+          emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(precheck.code) });
+          return { status: 'blocked', code: String(precheck.code), steps };
         }
+        // The ban is recorded on the case BEFORE the external call: a crash in between can never strand a banned person.
+        await rpc(admin, 'privacy_proc_ban_mark', keys);
+        // Sessions cannot be listed through the admin API: banning stops refresh and sign-in, and the
+        // database freeze (committed next) rejects every stale access token at each boundary.
+        const { error } = await admin.auth.admin.updateUserById(claim.subject_id, {
+          ban_duration: BAN_DURATION
+        });
+        if (error && !isNotFound(error)) throw new Error('FREEZE_FAILED');
+        const frozen = record(await rpc(admin, 'privacy_proc_freeze', keys));
+        if (frozen?.status === 'blocked') return liftTemporaryBan(String(frozen.code));
         lastPhase = 'freeze';
       } else if (step === 'relational') {
         const result = record(await rpc(admin, 'privacy_proc_erase_relational', keys));

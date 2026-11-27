@@ -15,7 +15,7 @@ import {
   sweep,
   verifyCase
 } from './helpers/privacy-request-fixtures';
-import { sqlText } from './helpers/provisional-player-fixtures';
+import { signUpFixtureActor, sqlText } from './helpers/provisional-player-fixtures';
 import { createRankedResultFixtures, type RankedResultKit } from './helpers/ranked-result-fixtures';
 import { executeTrustedSql, openDedicatedSqlConnection } from './helpers/sql-transport';
 import { trustedClient } from './helpers/trusted-client';
@@ -181,7 +181,8 @@ describe.skipIf(!environment.env)(
           status: 'ok',
           code: 'REMNANTS_REMOVED',
           removed: 1,
-          matched: 1
+          // The reported counts are the final, deletion-free pass (the shell is gone by then).
+          matched: 0
         });
         expect(JSON.stringify(swept)).not.toContain(email);
         expect(await scalar('select count(*)::int from auth.users where id = ' + L(shellId))).toBe(
@@ -728,6 +729,137 @@ describe.skipIf(!environment.env)(
       expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });
     });
 
+    it('F34: an erasure without retained history leaves an identity-free event, so restore parity counts it', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'f34-lone', {
+        displayName: 'Lone Subject',
+        level: 3
+      });
+      const since = String(await scalar('select clock_timestamp()::text'));
+      const withdrawnBefore = Number(
+        await scalar(
+          "select count(*)::int from public.participant_identities where state = 'withdrawn'"
+        )
+      );
+      const request = await lone.client.rpc('request_account_deletion', {
+        p_command_id: crypto.randomUUID()
+      });
+      expect(request.error).toBeNull();
+      const reference = String(asRecord(request.data)['reference']);
+      await verifyCase(reference, lone.email);
+      await armCase(reference);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });
+      // No history: no tombstone was created, yet the erasure is counted (one bare event: time + flag, no identity).
+      expect(
+        await scalar(
+          "select count(*)::int from public.participant_identities where state = 'withdrawn'"
+        )
+      ).toBe(withdrawnBefore);
+      expect(
+        await sqlRows(
+          'select tombstone_created from privacy_internal.erasure_events where erased_at > ' +
+            L(since)
+        )
+      ).toEqual([{ tombstone_created: false }]);
+      expect(
+        (await trustedClient().rpc('privacy_op_erasure_count_since', { p_since: since })).data
+      ).toEqual({ count: 1 });
+      expect(
+        await sqlRows(
+          "select column_name from information_schema.columns where table_schema = 'privacy_internal' and table_name = 'erasure_events' order by 1"
+        )
+      ).toEqual([
+        { column_name: 'erased_at' },
+        { column_name: 'id' },
+        { column_name: 'tombstone_created' }
+      ]);
+      expect(await privacyTablesMentioning(lone.id)).toEqual([]);
+      // No client role can touch the events; the retired tombstone counters are gone.
+      await expect(
+        fixtureSql(
+          'set local role service_role; select count(*) from privacy_internal.erasure_events'
+        )
+      ).rejects.toThrow(/permission denied/);
+      expect(
+        await scalar(
+          "select count(*)::int from pg_proc where proname in ('privacy_op_tombstone_count_since', 'privacy_op_erasures_since')"
+        )
+      ).toBe(0);
+    });
+
+    it('F37: a ban recorded before an interrupted attempt keeps the case unrestartable and unwithdrawable until the unban is confirmed', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'f37-lone', {
+        displayName: 'Banned Subject',
+        level: 3
+      });
+      const request = await lone.client.rpc('request_account_deletion', {
+        p_command_id: crypto.randomUUID()
+      });
+      const reference = String(asRecord(request.data)['reference']);
+      await verifyCase(reference, lone.email);
+      await armCase(reference);
+      // The ban is applied, then the worker fails before the freeze (the interrupted attempt).
+      expect(
+        await sweep({
+          client: scriptedAdmin({
+            afterBan: () => Promise.reject(new Error('CRASH'))
+          })
+        })
+      ).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(reference)).toMatchObject({ state: 'executing', last_phase: null });
+      expect((await caseRow(reference))['ban_applied_at']).not.toBeNull();
+      expect((await caseRow(reference))['ban_lifted_at']).toBeNull();
+      expect(
+        (await trustedClient().auth.admin.getUserById(lone.id)).data.user?.banned_until
+      ).toBeTruthy();
+
+      // The address changes; the reclaimed run finds the proof stale WITH the earlier ban outstanding.
+      await fixtureSql(
+        'update auth.users set email = ' +
+          L('moved-' + crypto.randomUUID() + '@changed.test') +
+          ' where id = ' +
+          L(lone.id)
+      );
+      await expireLease(reference);
+      const inFlight: string[] = [];
+      expect(
+        await sweep({
+          client: scriptedAdmin({
+            beforeUnban: async () => {
+              inFlight.push(String((await caseRow(reference))['blocker_code']));
+              inFlight.push(String((await operator('start-verification', reference))['code']));
+              const withdrawn = await lone.client.rpc('withdraw_my_deletion_request', {
+                p_command_id: crypto.randomUUID()
+              });
+              inFlight.push(String(withdrawn.error?.message));
+              inFlight.push(String((await operator('refuse', reference))['code']));
+            }
+          })
+        })
+      ).toEqual({ disabled: false, processed: 1 });
+      // Not the restartable stale blocker while the unban was in flight; withdraw, refuse and restart were all refused.
+      expect(inFlight).toEqual([
+        'PENDING_UNBAN',
+        'STATE_NOT_VERIFIABLE',
+        'PRIVACY_REQUEST_NOT_WITHDRAWABLE',
+        'STATE_NOT_REFUSABLE'
+      ]);
+      expect(await caseRow(reference)).toMatchObject({
+        state: 'blocked',
+        blocker_code: 'VERIFICATION_STALE'
+      });
+      expect((await caseRow(reference))['ban_lifted_at']).not.toBeNull();
+      expect(
+        (await trustedClient().auth.admin.getUserById(lone.id)).data.user?.banned_until ?? null
+      ).toBeNull();
+      // Unban confirmed: now the person may withdraw (and is not left banned).
+      const withdrawn = await lone.client.rpc('withdraw_my_deletion_request', {
+        p_command_id: crypto.randomUUID()
+      });
+      expect(withdrawn.error).toBeNull();
+      expect(await caseRow(reference)).toMatchObject({ state: 'withdrawn' });
+    });
+
     it('F25: the freeze refuses an address that changed after the claim (before any ban), and verification restarts', async () => {
       const subject = player(3).id;
       const reference = await requested(3);
@@ -744,6 +876,8 @@ describe.skipIf(!environment.env)(
         })
       ).rejects.toBe(crash);
       expect(await caseRow(reference)).toMatchObject({ state: 'executing', last_phase: null });
+      // No ban was recorded before this pre-ban interruption: the stale pre-check keeps its old, restartable behaviour.
+      expect((await caseRow(reference))['ban_applied_at']).toBeNull();
       const moved = 'moved-' + crypto.randomUUID() + '@changed.test';
       await fixtureSql('update auth.users set email = ' + L(moved) + ' where id = ' + L(subject));
       await expireLease(reference);
