@@ -120,14 +120,19 @@ function disableDispatch(docker, database) {
  * remembers who was erased: the gate row keeps the evidence reference, not a standing identity ledger.
  */
 /**
- * The authoritative isolation boundary: a database flagged at creation as a restore target. The restore/privacy
- * RPCs refuse to run anywhere else (a live database never carries the flag; ALTER DATABASE ... SET is not part of
- * a dump, so a restore cannot copy it either).
+ * The authoritative isolation boundary: a database marked at creation as a restore target. The marker row (in
+ * privacy_internal, writable only by the provisioning superuser, named after its database) is the authority; the
+ * app.restore_target setting is a secondary check. The restore/privacy RPCs refuse to run anywhere else.
  */
 export function markRestoreTarget(docker, database) {
-  // Setting a custom database parameter needs the container's superuser role (the application role may not).
+  // Both writes need the container's superuser role: the application roles (service_role included) can neither set
+  // the database parameter nor write the marker table, so a caller cannot declare a database isolated.
   docker.exec(['psql', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q'], {
     input: `alter database "${database}" set app.restore_target = 'on';`
+  });
+  docker.exec(['psql', '-U', 'supabase_admin', '-d', database, '-v', 'ON_ERROR_STOP=1', '-q'], {
+    input: `insert into privacy_internal.restore_isolation_marker (database_name) values ('${database}')
+      on conflict (id) do update set database_name = excluded.database_name, marked_at = clock_timestamp();`
   });
 }
 

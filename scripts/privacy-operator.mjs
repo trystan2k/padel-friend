@@ -34,7 +34,8 @@ export const HELP = [
   '                                         tombstones created after the snapshot (mismatch: refused, escalate). Re-run after',
   '                                         late erasures to extend the open gate.',
   '  restore-gate clear --evidence <ref>    needs EVERY expected subject reconciled, count parity again, AND an evidence reference.',
-  '  ack-external-followup <ref>            acknowledge outstanding external sends (list: external_followup); unblocks the case',
+  '  ack-external-followup <ref>            acknowledge outstanding external sends (list: external_followup); needs a completed',
+  '                                         sweep-remnants first; unblocks the case',
   '  sweep-remnants <ref>                   open case after the freeze: delete invite-shell Auth users created after it for the',
   '                                         erased address (invited, never signed in, no profile); others untouched',
   "  restore-reconcile <subject-id>         restore target only: remove the subject's objects through the Storage API,",
@@ -317,6 +318,8 @@ export async function sweepRemnants(client, reference) {
     }
     if (users.length < 200) break;
   }
+  // The completed sweep is recorded on the case: a flagged case cannot be acknowledged or answered without it.
+  await call(client, 'privacy_op_remnants_swept', { p_reference: reference });
   return {
     status: 'ok',
     code: removed > 0 ? 'REMNANTS_REMOVED' : 'NO_REMNANTS',

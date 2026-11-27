@@ -373,6 +373,12 @@ describe.skipIf(!environment.env)(
         resume_state: 'app_data_erased'
       });
       expect(await sweep()).toEqual({ disabled: false, processed: 0 });
+      // F31: the sweep precedes the acknowledgment (the digests that identify an invitation shell die at close).
+      expect(await operator('ack-external-followup', reference)).toEqual({
+        status: 'rejected',
+        code: 'REMNANTS_SWEEP_REQUIRED'
+      });
+      expect((await operator('sweep-remnants', reference))['code']).toBe('NO_REMNANTS');
       expect((await operator('ack-external-followup', reference))['state']).toBe('app_data_erased');
       expect(await sweep()).toEqual({ disabled: false, processed: 1 });
       expect(await caseRow(reference)).toMatchObject({ state: 'closed', outcome: 'erased' });

@@ -145,6 +145,7 @@ export async function uploadObject(bucket: string, name: string, contentType: st
  */
 export function scriptedAdmin(hooks: {
   afterBan?: (id: string) => Promise<void>;
+  beforeUnban?: (id: string) => Promise<void>;
   unbanError?: boolean;
 }): AdminClient {
   const real = trustedClient();
@@ -154,6 +155,7 @@ export function scriptedAdmin(hooks: {
     auth: {
       admin: {
         updateUserById: async (id: string, attributes: { ban_duration?: string }) => {
+          if (attributes.ban_duration === 'none') await hooks.beforeUnban?.(id);
           if (attributes.ban_duration === 'none' && hooks.unbanError)
             return { data: { user: null }, error: { status: 500, message: 'outage' } };
           const result = await real.auth.admin.updateUserById(id, attributes);

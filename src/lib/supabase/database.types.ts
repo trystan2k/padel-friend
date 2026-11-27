@@ -6273,6 +6273,7 @@ export type Database = {
       }
       privacy_op_remnant_context: { Args: { p_reference: string }; Returns: Json }
       privacy_op_remnant_is_shell: { Args: { p_user: string }; Returns: Json }
+      privacy_op_remnants_swept: { Args: { p_reference: string }; Returns: Json }
       privacy_op_restore_gate: {
         Args: {
           p_action: string
@@ -6350,6 +6351,7 @@ export type Database = {
         Args: { p_case: string; p_fence: number; p_limit?: number; p_token: string }
         Returns: Json
       }
+      privacy_proc_unban_done: { Args: { p_case: string }; Returns: Json }
       process_due_leagues: { Args: { p_as_of?: string; p_limit?: number }; Returns: Json }
       process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
       process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }

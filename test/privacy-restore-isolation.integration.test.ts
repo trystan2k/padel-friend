@@ -295,6 +295,19 @@ describe.skipIf(!environment.env)(
           external_followup: true,
           external_followup_ack: true
         });
+        // F31: a flagged case's response also needs the recorded sweep (consistency check behind the ack gate).
+        const sweepCaseId = String((await caseRow(reference))['id']);
+        await fixtureSql(
+          'update privacy_internal.privacy_cases set remnants_swept_at = null where id = ' +
+            L(sweepCaseId)
+        );
+        expect((await operator('record-response', reference))['code']).toBe(
+          'REMNANTS_SWEEP_REQUIRED'
+        );
+        await fixtureSql(
+          'update privacy_internal.privacy_cases set remnants_swept_at = now() where id = ' +
+            L(sweepCaseId)
+        );
         expect((await operator('record-response', reference))['status']).toBe('ok');
       } finally {
         await fixtureSql(
@@ -548,14 +561,21 @@ describe.skipIf(!environment.env)(
       await armCase(reference);
       // The pre-ban probe passes; the address moves right after the ban was applied.
       const moved = 'moved-' + crypto.randomUUID() + '@changed.test';
+      // The unban is in flight: the case is PENDING_UNBAN and verification cannot restart in that window.
+      const inFlight: string[] = [];
       expect(
         await sweep({
           client: scriptedAdmin({
             afterBan: () =>
-              fixtureSql('update auth.users set email = ' + L(moved) + ' where id = ' + L(subject))
+              fixtureSql('update auth.users set email = ' + L(moved) + ' where id = ' + L(subject)),
+            beforeUnban: async () => {
+              inFlight.push(String((await caseRow(reference))['blocker_code']));
+              inFlight.push(String((await operator('start-verification', reference))['code']));
+            }
           })
         })
       ).toEqual({ disabled: false, processed: 1 });
+      expect(inFlight).toEqual(['PENDING_UNBAN', 'STATE_NOT_VERIFIABLE']);
       expect(await caseRow(reference)).toMatchObject({
         state: 'blocked',
         blocker_code: 'VERIFICATION_STALE',
@@ -627,17 +647,32 @@ describe.skipIf(!environment.env)(
         await mover.close();
         await freezer.close();
       }
+      // The temporary ban may still be on: PENDING_UNBAN is never restartable, armable or refusable (F33).
       expect(await caseRow(reference)).toMatchObject({
         state: 'blocked',
-        blocker_code: 'VERIFICATION_STALE',
+        blocker_code: 'PENDING_UNBAN',
         armed_consumed_at: null,
         destructive_started_at: null
       });
+      expect((await operator('start-verification', reference))['code']).toBe(
+        'STATE_NOT_VERIFIABLE'
+      );
+      expect((await operator('refuse', reference))['code']).toBe('STATE_NOT_REFUSABLE');
+      const plan = { revision: 1, fingerprint: 'x', impact: {}, successors: {} };
+      expect((await operator('arm', reference, '--plan', JSON.stringify(plan)))['code']).toBe(
+        'STATE_NOT_ARMABLE'
+      );
+      expect(await caseRow(reference)).toMatchObject({ blocker_code: 'PENDING_UNBAN' });
       expect(
         await scalar(
           'select active from privacy_internal.case_producer_pause where subject_id = ' + L(subject)
         )
       ).toBe(false);
+      // The unban outcome is recorded: the ordinary restartable stale blocker.
+      await trustedClient().rpc('privacy_proc_unban_done', {
+        p_case: String((await caseRow(reference))['id'])
+      });
+      expect(await caseRow(reference)).toMatchObject({ blocker_code: 'VERIFICATION_STALE' });
       await operator('refuse', reference);
     });
 
@@ -669,6 +704,12 @@ describe.skipIf(!environment.env)(
       expect((await operator('start-verification', reference))['code']).toBe(
         'STATE_NOT_VERIFIABLE'
       );
+      // A re-arm must not turn the unlifted ban into an ordinary stale blocker.
+      const bogus = { revision: 1, fingerprint: 'x', impact: {}, successors: {} };
+      expect((await operator('arm', reference, '--plan', JSON.stringify(bogus)))['code']).toBe(
+        'STATE_NOT_ARMABLE'
+      );
+      expect(await caseRow(reference)).toMatchObject({ blocker_code: 'BAN_LIFT_FAILED' });
       expect(await sweep()).toEqual({ disabled: false, processed: 0 });
       // The operator retry re-attempts the unban through the Auth admin API.
       expect((await operator('retry', reference))['status']).toBe('ok');

@@ -260,8 +260,8 @@ describe('privacy processor phases', () => {
     ).toEqual({ status: 'blocked', code: 'EXTERNAL_FOLLOWUP_ACK_REQUIRED', steps: [] });
   });
 
-  it('lifts the ban when the freeze itself refuses a stale address (F25)', async () => {
-    const { admin, raw } = fakeAdmin({
+  it('lifts the ban when the freeze itself refuses a stale address (F25, F33)', async () => {
+    const { admin, raw, calls } = fakeAdmin({
       rpc: (name, args) =>
         name === 'privacy_proc_freeze' && args['p_check_only'] !== true
           ? { data: { status: 'blocked', code: 'VERIFICATION_STALE' } }
@@ -274,6 +274,8 @@ describe('privacy processor phases', () => {
     expect(raw.auth.admin.updateUserById).toHaveBeenNthCalledWith(2, 'subject', {
       ban_duration: 'none'
     });
+    // The recorded unban moves PENDING_UNBAN to the restartable blocker.
+    expect(calls.at(-1)).toEqual({ name: 'privacy_proc_unban_done', args: { p_case: 'case' } });
   });
 });
 

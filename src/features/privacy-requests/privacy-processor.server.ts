@@ -66,6 +66,7 @@ async function rpc(
     | 'privacy_proc_finish'
     | 'privacy_proc_fail'
     | 'privacy_proc_ban_lift_failed'
+    | 'privacy_proc_unban_done'
     | 'privacy_op_purge_expired',
   args: Record<string, unknown>
 ): Promise<unknown> {
@@ -208,6 +209,8 @@ export async function processPrivacyCase(
             emitDiagnostic('privacy.case', 'rejected', { stage: step, code: 'BAN_LIFT_FAILED' });
             return { status: 'blocked', code: 'BAN_LIFT_FAILED', steps };
           }
+          // The unban is durably recorded: the case leaves PENDING_UNBAN and may restart verification.
+          await rpc(admin, 'privacy_proc_unban_done', { p_case: claim.case_id });
           emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(frozen.code) });
           return { status: 'blocked', code: String(frozen.code), steps };
         }

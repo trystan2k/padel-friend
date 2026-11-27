@@ -51,6 +51,7 @@ describe.skipIf(!environment.env)(
     it('proves isolation, count parity, the storage proof and exact coverage before the restored gate can close', async () => {
       await setQuiescence(0);
       const kit = await createRankedResultFixtures(environment.env!);
+      await kit.event();
       const [subjectA, subjectB, keeper, subjectC] = [
         kit.players[3]!,
         kit.players[4]!,
@@ -72,6 +73,16 @@ describe.skipIf(!environment.env)(
           L(avatarPath) +
           ' where user_id = ' +
           L(idA)
+      );
+      // A subject-owned ATTACHMENT pointer (uploader segment = A) that is still non-null in the snapshot.
+      const venue = crypto.randomUUID();
+      const photoPath =
+        kit.communityId + '/' + venue + '/' + idA + '/p-' + crypto.randomUUID() + '.webp';
+      await uploadObject('community-venue-photos', photoPath, 'image/webp');
+      await fixtureSql(
+        'insert into public.community_venues(id, community_id, name, created_by, photo_path) values (' +
+          [L(venue), L(kit.communityId), L('Rehearsal Venue'), L(idA), L(photoPath)].join(', ') +
+          ')'
       );
       const emails = { a: await emailOf(idA), b: await emailOf(idB), c: await emailOf(idC) };
 
@@ -106,6 +117,8 @@ describe.skipIf(!environment.env)(
       // A real storage restore brings the pre-snapshot bytes back; simulate it before reconciling.
       await uploadObject('player-avatars', avatarPath, 'image/png');
       await uploadObject('player-avatars', orphanPath, 'image/png');
+      expect(await objectExists('community-venue-photos', photoPath)).toBe(false);
+      await uploadObject('community-venue-photos', photoPath, 'image/webp');
       expect(await tombstonesNow()).toBe(2);
 
       // F28: the live database never carries the isolation flag and refuses every restore RPC.
@@ -121,6 +134,28 @@ describe.skipIf(!environment.env)(
       });
       expect(liveBegin.data).toEqual({ status: 'rejected', code: 'RESTORE_NOT_ISOLATED' });
       expect(await scalar('select status from privacy_internal.restore_gate')).toBe('closed');
+      // A caller SETting the session parameter does not make a database isolated (no marker row), and clear checks too.
+      for (const call of [
+        "public.privacy_op_restore_gate('begin', null, now(), array[]::uuid[], 'x', 0)",
+        "public.privacy_op_restore_gate('clear', 'evidence', null, null, null, 0)",
+        'public.privacy_op_restore_reconcile(' + L(keeper.id) + ", 'x')"
+      ])
+        await expect(
+          fixtureSql(
+            "do $p$ begin perform set_config('app.restore_target', 'on', true); raise exception 'PROBE:%', " +
+              call +
+              '::text; end $p$;'
+          )
+        ).rejects.toThrow(/PROBE:.*RESTORE_NOT_ISOLATED/);
+      // And no client role (service_role included) can write the marker.
+      await expect(
+        fixtureSql(
+          'set local role service_role; insert into privacy_internal.restore_isolation_marker(database_name) values (current_database())'
+        )
+      ).rejects.toThrow(/permission denied/);
+      expect(
+        await scalar('select count(*)::int from privacy_internal.restore_isolation_marker')
+      ).toBe(0);
       expect(
         (
           await trustedClient().rpc('privacy_op_restore_reconcile', {
@@ -255,6 +290,33 @@ describe.skipIf(!environment.env)(
         expect(query(statement)).toContain('RESTORE_NOT_ISOLATED');
       expect(gate()).toBe('pending|2|0');
       markRestoreTarget(docker, destination);
+      // The marker is the authority: with the setting on but the marker gone, everything is refused again.
+      const asAdmin = (statement: string) =>
+        docker.exec(
+          ['psql', '-U', 'supabase_admin', '-d', destination, '-v', 'ON_ERROR_STOP=1', '-q'],
+          { input: statement }
+        );
+      asAdmin('delete from privacy_internal.restore_isolation_marker;');
+      expect(query("select current_setting('app.restore_target', true);")).toBe('on');
+      expect(
+        query("select public.privacy_op_restore_gate('clear', 'x', null, null, null, 0)::text;")
+      ).toContain('RESTORE_NOT_ISOLATED');
+      expect(
+        query(
+          'select public.privacy_op_restore_reconcile(' + L(idA) + ", '" + destination + "')::text;"
+        )
+      ).toContain('RESTORE_NOT_ISOLATED');
+      // A marker naming another database (a dump restored under a new name) is not accepted either.
+      asAdmin(
+        "insert into privacy_internal.restore_isolation_marker(database_name) values ('some_other_db');"
+      );
+      expect(
+        query(
+          'select public.privacy_op_restore_reconcile(' + L(idA) + ", '" + destination + "')::text;"
+        )
+      ).toContain('RESTORE_NOT_ISOLATED');
+      markRestoreTarget(docker, destination);
+      expect(gate()).toBe('pending|2|0');
 
       // F21/F22: outside the expected set, wrong project, no trace: refused, nothing changes.
       const random = crypto.randomUUID();
@@ -268,6 +330,13 @@ describe.skipIf(!environment.env)(
           '::uuid;'
       );
       expect(await reconcile(random)).toMatchObject({ code: 'RESTORE_SUBJECT_NOT_FOUND' });
+      // A member that can never be traced keeps the gate pending: closing is impossible (fail closed).
+      expect(gate()).toBe('pending|3|0');
+      expect(
+        query(
+          "select public.privacy_op_restore_gate('clear', 'ticket 1', null, null, null, 2)::text;"
+        )
+      ).toContain('RECONCILIATION_REQUIRED');
       query(
         'update privacy_internal.restore_gate set expected_subjects = array_remove(expected_subjects, ' +
           L(random) +
@@ -286,8 +355,10 @@ describe.skipIf(!environment.env)(
         p_project_ref: destination,
         p_prefix_paths: [orphan]
       });
+      // ...and the attachment pointer that is still non-null in the restored copy.
+      const photo = 'community-venue-photos/' + photoPath;
       expect([...planned.plan].sort((a, b) => a.localeCompare(b))).toEqual(
-        [avatar, orphan].sort((a, b) => a.localeCompare(b))
+        [avatar, orphan, photo].sort((a, b) => a.localeCompare(b))
       );
       expect(
         rpc('privacy_op_restore_storage_set', {
@@ -313,13 +384,17 @@ describe.skipIf(!environment.env)(
       ).toMatchObject({ code: 'STORAGE_INCOMPLETE' });
       const bucket = trustedClient().storage.from('player-avatars');
       expect((await bucket.remove([avatarPath, orphanPath])).error).toBeNull();
+      expect(
+        (await trustedClient().storage.from('community-venue-photos').remove([photoPath])).error
+      ).toBeNull();
       expect(await objectExists('player-avatars', avatarPath)).toBe(false);
       expect(await objectExists('player-avatars', orphanPath)).toBe(false);
+      expect(await objectExists('community-venue-photos', photoPath)).toBe(false);
       expect(
         rpc('privacy_op_restore_storage_confirm', {
           p_subject: idA,
           p_project_ref: destination,
-          p_deleted_paths: [avatar, orphan],
+          p_deleted_paths: [avatar, orphan, photo],
           p_relisted_paths: [orphan]
         })
       ).toMatchObject({ code: 'STORAGE_LIE' });
@@ -327,7 +402,7 @@ describe.skipIf(!environment.env)(
         rpc('privacy_op_restore_storage_confirm', {
           p_subject: idA,
           p_project_ref: destination,
-          p_deleted_paths: [avatar, orphan],
+          p_deleted_paths: [avatar, orphan, photo],
           p_relisted_paths: []
         })
       ).toMatchObject({ status: 'ok', storage_verified: true });
@@ -392,6 +467,29 @@ describe.skipIf(!environment.env)(
       expect(gate()).toBe('pending|3|2');
       expect(await reconcile(idC)).toMatchObject({ status: 'ok', restore_gate: 'reconciled' });
       expect(gate()).toBe('reconciled|3|3');
+      // F29: coverage is re-derived at clear, not trusted from a flag or a status alone.
+      query('update privacy_internal.restore_gate set coverage_complete = false;');
+      expect(
+        query(
+          "select public.privacy_op_restore_gate('clear', 'ticket 1', null, null, null, 3)::text;"
+        )
+      ).toContain('COVERAGE_INCOMPLETE');
+      query(
+        'update privacy_internal.restore_gate set coverage_complete = true, expected_subjects = expected_subjects || ' +
+          L(random) +
+          '::uuid;'
+      );
+      expect(
+        query(
+          "select public.privacy_op_restore_gate('clear', 'ticket 1', null, null, null, 3)::text;"
+        )
+      ).toContain('COVERAGE_INCOMPLETE');
+      query(
+        'update privacy_internal.restore_gate set expected_subjects = array_remove(expected_subjects, ' +
+          L(random) +
+          '::uuid);'
+      );
+      expect(query('select coverage_complete from privacy_internal.restore_gate;')).toBe('t');
 
       // Close: parity holds, the evidence is persisted, the subject ids are not.
       expect(
