@@ -112,6 +112,79 @@ function disableDispatch(docker, database) {
   return { pushJobsRetired: retired, cronAbsent };
 }
 
+/**
+ * Restore gate (review F8). A restored environment is an OLD copy of the data: accounts erased after the
+ * snapshot exist again in it. The gate turns intake and executor off and refuses to turn them on until the
+ * operator records that the post-snapshot erasures were reconciled (privacy_op_restore_gate). Nothing here
+ * remembers who was erased: reconciliation is the operator's evidence, not a standing identity ledger.
+ */
+export function applyRestoreGate(docker, database) {
+  const begun = JSON.parse(
+    docker.sql(database, "select public.privacy_op_restore_gate('begin')::text;")
+  );
+  const settings = Object.fromEntries(
+    docker
+      .sql(
+        database,
+        "select key || '=' || value from privacy_internal.privacy_settings order by key;"
+      )
+      .split('\n')
+      .map((line) => line.split('='))
+  );
+  return {
+    pending: begun.restore_gate === 'pending' && settings.restore_gate === 'pending',
+    intakeOff: settings.intake_enabled === 'false',
+    executorOff: settings.executor_enabled === 'false'
+  };
+}
+
+const SNAPSHOT_SCHEMAS = ['public', 'privacy_internal', 'auth', 'supabase_migrations'];
+
+/** One in-memory dump plus its filtered restore list, staged in the container (removed by discardSnapshot). */
+export function takeSnapshot(docker, { source = 'postgres' } = {}) {
+  if (source !== 'postgres') throw new Error('Only the local postgres source is supported');
+  const artifactId = randomUUID();
+  const dumpPath = '/tmp/release-rehearsal-' + artifactId + '.dump';
+  const tocPath = '/tmp/release-rehearsal-' + artifactId + '.toc';
+  const dump = docker.dump(source, [
+    '-Fc',
+    '--no-owner',
+    ...SNAPSHOT_SCHEMAS.flatMap((schema) => ['-n', schema])
+  ]);
+  const toc = listDumpToc(docker, dump, dumpPath)
+    .split('\n')
+    .filter((line) => !line.includes('DEFAULT ACL'))
+    .join('\n');
+  docker.exec(['sh', '-c', 'cat > "$1"', 'sh', tocPath], { input: toc });
+  return { dump, dumpPath, tocPath };
+}
+
+export function discardSnapshot(docker, snapshot) {
+  docker.exec(['rm', '-f', snapshot.dumpPath, snapshot.tocPath]);
+}
+
+/** Restores a snapshot into a disposable scratch database and closes the restore gate on it. */
+export function restoreSnapshotWithGate(docker, snapshot, { base, source = 'postgres' }) {
+  const destination = assertDisposableDatabase({
+    name: base,
+    prefix: RESTORE_PREFIX,
+    source,
+    confirmation: base
+  });
+  provisionDatabase(docker, destination);
+  try {
+    docker.sql(destination, 'drop schema public cascade;');
+    docker.restore(destination, snapshot.dump, [
+      '--exit-on-error',
+      '--use-list=' + snapshot.tocPath
+    ]);
+    return { destination, gate: applyRestoreGate(docker, destination) };
+  } catch (error) {
+    dropDatabase(docker, destination);
+    throw error;
+  }
+}
+
 export function runRestoreRehearsal({
   docker = createDocker(),
   source = 'postgres',
@@ -199,7 +272,15 @@ export function runRestoreRehearsal({
         const restoredReads = authorizedReads(docker, destination, users);
         const readsMatch = JSON.stringify(sourceReads) === JSON.stringify(restoredReads);
         const dispatch = disableDispatch(docker, destination);
-        const pass = !mismatched.length && !schemaDiff.length && readsMatch && dispatch.cronAbsent;
+        const restoreGate = applyRestoreGate(docker, destination);
+        const pass =
+          !mismatched.length &&
+          !schemaDiff.length &&
+          readsMatch &&
+          dispatch.cronAbsent &&
+          restoreGate.pending &&
+          restoreGate.intakeOff &&
+          restoreGate.executorOff;
         log(`[${pass ? 'PASS' : 'FAIL'}] ${destination}`);
         results.push({
           destination,
@@ -213,6 +294,7 @@ export function runRestoreRehearsal({
           schemaDiff,
           authorizedReads: { users: users.length, match: readsMatch },
           dispatchDisabled: dispatch,
+          restoreGate,
           pass
         });
       } finally {

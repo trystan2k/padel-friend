@@ -240,6 +240,20 @@ describe('account deletion status and withdrawal', () => {
     );
   });
 
+  it('announces the refreshed state politely in the live region without moving focus', async () => {
+    const user = userEvent.setup();
+    mocks.status.mockResolvedValue(ok(status({ state: 'executing', can_withdraw: false })));
+    renderPage(ok(status({ state: 'ready' })));
+    const refresh = screen.getByRole('button', { name: en.accountDeletion.status.refresh });
+    await user.click(refresh);
+    const live = screen.getByRole('status');
+    await waitFor(() =>
+      expect(live.textContent).toBe(`Status updated: ${en.accountDeletion.state.executing}.`)
+    );
+    expect(live.getAttribute('aria-live')).toBe('polite');
+    expect(document.activeElement).toBe(refresh);
+  });
+
   it('maps every state to a localized label and a detail without any timing promise', () => {
     for (const state of PRIVACY_CASE_STATES) {
       cleanup();
@@ -270,7 +284,11 @@ describe('account deletion status and withdrawal', () => {
 
   it('points people who cannot sign in to the published privacy email, not a literal in the component', () => {
     renderPage(ok(null));
-    const link = screen.getByRole('link', { name: en.accountDeletion.fallback.mailLabel });
+    const link = screen.getByRole('link', {
+      name: en.accountDeletion.fallback.mailLabel.replace('{{address}}', PRIVACY_CONTACT_EMAIL)
+    });
+    // The accessible name contains the visible label, so voice control can activate it by speaking it.
+    expect(link.getAttribute('aria-label')).toContain(link.textContent);
     expect(link.getAttribute('href')).toBe('mailto:' + PRIVACY_CONTACT_EMAIL);
     expect(link.textContent).toBe(PRIVACY_CONTACT_EMAIL);
     const source = readFileSync('src/features/privacy-requests/AccountDeletionPage.tsx', 'utf8');
@@ -352,6 +370,14 @@ describe('account deletion entry and copy', () => {
     }
     for (const locale of supportedLocales)
       expect(createI18n(locale).t('accountDeletion.title')).not.toBe('accountDeletion.title');
+  });
+
+  it('never claims absolute anonymity for retained results, in any locale', () => {
+    for (const tree of [en, pt, es]) {
+      const body = tree.accountDeletion.dialog.remains.body;
+      expect(body).not.toMatch(/nothing that links|nada que (os )?ligue|nada que (los )?vincule/i);
+      expect(body).toContain('{{placeholder}}');
+    }
   });
 
   it('renders the dialog in every locale without a missing key', async () => {

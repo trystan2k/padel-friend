@@ -320,6 +320,10 @@ async function playRankedMatch() {
 
 test.beforeAll(async ({ browser }) => {
   test.setTimeout(420_000);
+  // The production settle time between freeze and erasure is not part of these flows.
+  await sql(
+    "update privacy_internal.privacy_settings set value = '0' where key = 'freeze_quiescence_seconds'"
+  );
   f = await leagueFixtures(browser, {
     creatorName: 'Privacy Host',
     memberNames: NAMES,
@@ -433,6 +437,10 @@ test('happy path: request, operator verification, armed worker erasure, history 
     // Armed but not claimed: nothing is erased and the user can still withdraw.
     await page.getByRole('button', { name: ad.status.refresh }).click();
     await expect(page.getByRole('heading', { name: ad.state.ready, level: 2 })).toBeVisible();
+    // The refreshed state is announced to screen readers through the polite live region.
+    await expect(page.locator('main output[aria-live="polite"]')).toHaveText(
+      fill(ad.announce.statusUpdated, { state: ad.state.ready })
+    );
     await expect(page.getByRole('button', { name: ad.status.withdraw })).toBeVisible();
   });
 
@@ -687,10 +695,9 @@ test('unclaimed email-only people have no in-app request: the operator contract 
     await visit(page, '/account-deletion');
     const copy = copies[locale].accountDeletion;
     await expect(page.getByText(copy.fallback.body)).toBeVisible();
-    await expect(page.getByRole('link', { name: copy.fallback.mailLabel })).toHaveAttribute(
-      'href',
-      /^mailto:/
-    );
+    const mail = page.locator('main a[href^="mailto:"]');
+    const address = (await mail.innerText()).trim();
+    await expect(mail).toHaveAttribute('aria-label', fill(copy.fallback.mailLabel, { address }));
     await page.context().close();
   }
 });

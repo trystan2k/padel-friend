@@ -166,6 +166,18 @@ describe('privacy processor phases', () => {
     expect(raw.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
 
+  it('waits for in-flight work without recording a failure', async () => {
+    const { admin, calls } = fakeAdmin({
+      rpc: (name) =>
+        name === 'privacy_proc_erase_relational'
+          ? { data: { status: 'wait', phase: 'relational' } }
+          : undefined
+    });
+    const result = await processPrivacyCase(admin, claim({ last_phase: 'freeze' }));
+    expect(result).toEqual({ status: 'retry', steps: [] });
+    expect(names(calls)).toEqual(['erase_relational']);
+  });
+
   it('is fenced out silently when the lease was lost', async () => {
     const { admin, calls } = fakeAdmin({
       rpc: (name) =>

@@ -80,6 +80,12 @@ export function AccountDeletionPage({
       if (result.status === 'ok') {
         setCurrent(result.value);
         setLoadFailure(null);
+        if (result.value)
+          setAnnouncement(
+            t('accountDeletion.announce.statusUpdated', {
+              state: t(`accountDeletion.state.${result.value.state}`)
+            })
+          );
       } else setLoadFailure(result.code);
     } catch {
       setLoadFailure('unavailable');
@@ -244,7 +250,7 @@ export function AccountDeletionPage({
         <p {...stylex.props(s.body)}>{t('accountDeletion.fallback.body')}</p>
         <a
           href={`mailto:${PRIVACY_CONTACT_EMAIL}`}
-          aria-label={t('accountDeletion.fallback.mailLabel')}
+          aria-label={t('accountDeletion.fallback.mailLabel', { address: PRIVACY_CONTACT_EMAIL })}
           {...stylex.props(s.mailLink)}
         >
           {PRIVACY_CONTACT_EMAIL}

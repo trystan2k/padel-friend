@@ -3542,7 +3542,7 @@
       },
       "remains": {
         "title": "O que pode permanecer",
-        "body": "Placares, resultados e avaliações oficiais das partidas que você jogou também fazem parte do histórico dos outros jogadores. Eles são mantidos sem seu nome ou foto e aparecem como “{{placeholder}}”, sem nada que os ligue a você."
+        "body": "Placares, resultados e avaliações oficiais das partidas que você jogou também fazem parte do histórico dos outros jogadores. Eles são mantidos sem seu nome ou foto e aparecem como “{{placeholder}}”. Quem estava presente ainda pode reconhecer quem jogou."
       },
       "access": {
         "title": "Perda de acesso",
@@ -3599,7 +3599,8 @@
     },
     "announce": {
       "requested": "Pedido enviado. Sua referência é {{reference}}.",
-      "withdrawn": "Pedido retirado. Nada foi excluído."
+      "withdrawn": "Pedido retirado. Nada foi excluído.",
+      "statusUpdated": "Status atualizado: {{state}}."
     },
     "errors": {
       "unauthenticated": "Sua sessão terminou. Entre novamente para continuar.",
@@ -3615,7 +3616,7 @@
     "fallback": {
       "title": "Não consegue entrar ou nunca teve conta?",
       "body": "Se você não consegue entrar, ou só foi convidado para uma partida ou comunidade, escreva para nós no endereço abaixo. Você não precisa de conta para exercer seus direitos de privacidade.",
-      "mailLabel": "Enviar e-mail ao contato de privacidade"
+      "mailLabel": "Enviar e-mail ao contato de privacidade em {{address}}"
     }
   },
   "privacy": {

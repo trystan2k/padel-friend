@@ -23,6 +23,9 @@ export const HELP = [
   '  record-response <ref>                  record the final mail sent (purge after 90 days)',
   '  purge                                  purge expired case records to outcome counts',
   '  switch <intake|executor> <on|off>      fail-closed kill switch',
+  '  restore-gate <begin|clear> [--evidence <ref>]',
+  '                                         restored environment: begin turns intake and executor off; clear needs the',
+  '                                         reconciliation evidence of post-snapshot erasures (switches stay off).',
   '  generate-code                          one-time code for an email challenge to an unclaimed person (not stored)',
   '  erase-unclaimed <email> [--confirm] [--all-matches]',
   '                                         erase an add-by-email invitation record that has no account; without',
@@ -50,7 +53,8 @@ const COMMANDS = [
   'purge',
   'switch',
   'generate-code',
-  'erase-unclaimed'
+  'erase-unclaimed',
+  'restore-gate'
 ];
 
 /** Loopback instances are the 'local' project; a hosted project is the first host label. */
@@ -141,7 +145,14 @@ async function call(client, name, args) {
 export async function runCommand(client, parsed, target) {
   const { command, positional, options } = parsed;
   const reference = positional[0];
-  const referenceless = ['list', 'purge', 'switch', 'generate-code', 'erase-unclaimed'];
+  const referenceless = [
+    'list',
+    'purge',
+    'switch',
+    'generate-code',
+    'erase-unclaimed',
+    'restore-gate'
+  ];
   if (!referenceless.includes(command) && !reference) throw new Error('REFERENCE_REQUIRED');
   switch (command) {
     case 'list':
@@ -192,6 +203,14 @@ export async function runCommand(client, parsed, target) {
       return call(client, 'privacy_op_record_response', { p_reference: reference });
     case 'purge':
       return call(client, 'privacy_op_purge_expired', {});
+    case 'restore-gate': {
+      const [action] = positional;
+      if (!['begin', 'clear'].includes(action)) throw new Error('RESTORE_GATE_ACTION_INVALID');
+      return call(client, 'privacy_op_restore_gate', {
+        p_action: action,
+        p_evidence: options.evidence ?? null
+      });
+    }
     case 'generate-code':
       // Printed once for the operator's own email challenge; nothing is stored or sent from here.
       return { status: 'ok', code: generateChallenge() };

@@ -12,6 +12,15 @@ import { trustedClient } from './trusted-client';
 const L = sqlText;
 const TARGET = { projectRef: 'local', environment: 'local' } as const;
 
+/** Tests execute immediately: the production settle time between freeze and erasure is not part of them. */
+export async function setQuiescence(seconds: number) {
+  await fixtureSql(
+    "update privacy_internal.privacy_settings set value = '" +
+      String(seconds) +
+      "' where key = 'freeze_quiescence_seconds'"
+  );
+}
+
 // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- the untyped trusted client is the service-role admin client
 export const admin = () => trustedClient() as unknown as AdminClient;
 
@@ -23,7 +32,7 @@ export async function operator(...argv: string[]) {
 export async function caseRow(reference: string) {
   const [row] = await sqlRows(
     'select id::text as id, state, resume_state, last_phase, blocker_code, next_action, subject_id::text as subject_id, ' +
-      'armed_consumed_at, attempt_count, next_attempt_at, outcome, purge_after, final_response_at, lease_token::text as lease_token, ' +
+      'armed_consumed_at, arm_expires_at, attempt_count, next_attempt_at, outcome, purge_after, final_response_at, lease_token::text as lease_token, ' +
       'phase_manifest, armed_plan from privacy_internal.privacy_cases where reference = ' +
       L(reference)
   );
@@ -112,14 +121,22 @@ export async function uploadObject(bucket: string, name: string, contentType: st
   if (error) throw new Error('fixture upload failed');
 }
 
-type Faults = { removeFails?: number; deleteUserFails?: number };
+type Faults = { removeFails?: number; deleteUserFails?: number; finishFails?: number };
 
 /** Admin client whose Storage remove / Auth delete fail a set number of times (provider outage). */
 export function faultyAdmin(faults: Faults): AdminClient {
   const real = trustedClient();
-  const state = { remove: faults.removeFails ?? 0, deleteUser: faults.deleteUserFails ?? 0 };
+  const state = {
+    remove: faults.removeFails ?? 0,
+    deleteUser: faults.deleteUserFails ?? 0,
+    finish: faults.finishFails ?? 0
+  };
   const wrapper = {
-    rpc: real.rpc.bind(real),
+    // Finish is the last RPC of a case: an outage there must quarantine it, not loop forever.
+    rpc: (name: string, args: Record<string, unknown>) =>
+      name === 'privacy_proc_finish' && state.finish-- > 0
+        ? Promise.resolve({ data: null, error: { message: 'outage' } })
+        : real.rpc(name, args),
     storage: {
       from: (bucket: string) => ({
         remove: (names: string[]) =>

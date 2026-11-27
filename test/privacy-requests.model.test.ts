@@ -32,6 +32,8 @@ describe('privacy case state graph', () => {
     ['app_data_erased', 'blocked'],
     ['supabase_erased', 'closed'],
     ['blocked', 'executing'],
+    ['supabase_erased', 'blocked'],
+    ['blocked', 'supabase_erased'],
     ['blocked', 'app_data_erased'],
     ['blocked', 'ready']
   ];
@@ -64,6 +66,8 @@ describe('privacy case state graph', () => {
   });
 
   it('keeps a case irreversible once the arm is consumed', () => {
+    expect(canTransition('blocked', 'received', { armConsumed: false })).toBe(true);
+    expect(canTransition('blocked', 'received', { armConsumed: true })).toBe(false);
     expect(canTransition('blocked', 'withdrawn', { armConsumed: false })).toBe(true);
     expect(canTransition('blocked', 'withdrawn', { armConsumed: true })).toBe(false);
     expect(canTransition('blocked', 'closed', { armConsumed: true })).toBe(false);

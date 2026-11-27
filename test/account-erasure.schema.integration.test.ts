@@ -156,6 +156,27 @@ describe.skipIf(!environment.env)(
       expect((await erasurePlan(lone.id)).blockers).toEqual([]);
     });
 
+    it('fails closed on a composite FK to an identity-bearing table', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'composite-probe', {
+        displayName: 'Composite Probe',
+        level: 3
+      });
+      const probe = fixtureSql(
+        'do $probe$ declare v_blockers jsonb; begin ' +
+          'alter table public.player_profiles add constraint zz_profile_key unique (user_id, display_name); ' +
+          'create table public.zz_composite_edge(a uuid, b text, foreign key (a, b) references public.player_profiles(user_id, display_name)); ' +
+          'v_blockers := privacy_internal.account_erasure_plan(' +
+          L(lone.id) +
+          ", '{}'::jsonb) -> 'blockers'; " +
+          "raise exception 'PROBE:%', v_blockers::text; end $probe$;"
+      );
+      await expect(probe).rejects.toThrow(/PROBE:.*unclassified_dependency/);
+      expect(
+        await scalar("select count(*)::int from pg_class where relname = 'zz_composite_edge'")
+      ).toBe(0);
+      expect((await erasurePlan(lone.id)).blockers).toEqual([]);
+    });
+
     it('opens the guard exemption only inside the private window', async () => {
       const rows = await sqlRows(
         "select count(*)::int as n from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any (array[" +

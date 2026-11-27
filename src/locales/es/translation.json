@@ -3542,7 +3542,7 @@
       },
       "remains": {
         "title": "Qué puede permanecer",
-        "body": "Los marcadores, resultados y valoraciones oficiales de los partidos que jugaste también forman parte del historial de los demás jugadores. Se conservan sin tu nombre ni tu foto y aparecen como «{{placeholder}}», sin nada que los vincule contigo."
+        "body": "Los marcadores, resultados y valoraciones oficiales de los partidos que jugaste también forman parte del historial de los demás jugadores. Se conservan sin tu nombre ni tu foto y aparecen como «{{placeholder}}». Quienes estuvieron presentes aún pueden reconocer quién jugó."
       },
       "access": {
         "title": "Pérdida de acceso",
@@ -3599,7 +3599,8 @@
     },
     "announce": {
       "requested": "Solicitud enviada. Tu referencia es {{reference}}.",
-      "withdrawn": "Solicitud retirada. No se eliminó nada."
+      "withdrawn": "Solicitud retirada. No se eliminó nada.",
+      "statusUpdated": "Estado actualizado: {{state}}."
     },
     "errors": {
       "unauthenticated": "Tu sesión terminó. Inicia sesión de nuevo para continuar.",
@@ -3615,7 +3616,7 @@
     "fallback": {
       "title": "¿No puedes iniciar sesión o nunca tuviste cuenta?",
       "body": "Si no puedes iniciar sesión, o solo te invitaron a un partido o comunidad, escríbenos a la dirección de abajo. No necesitas una cuenta para ejercer tus derechos de privacidad.",
-      "mailLabel": "Escribir al contacto de privacidad"
+      "mailLabel": "Escribir al contacto de privacidad en {{address}}"
     }
   },
   "privacy": {

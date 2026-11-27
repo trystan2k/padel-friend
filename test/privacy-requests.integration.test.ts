@@ -20,6 +20,7 @@ import {
   operator,
   privacyTablesMentioning,
   storageNames,
+  setQuiescence,
   sweep,
   uploadObject,
   verifyCase
@@ -92,6 +93,7 @@ describe.skipIf(!environment.env)('Privacy request lifecycle', { timeout: 900_00
   }
 
   beforeAll(async () => {
+    await setQuiescence(0);
     kit = await createRankedResultFixtures(environment.env!);
     leagueId = await kit.league();
     eventId = await kit.event(leagueId);

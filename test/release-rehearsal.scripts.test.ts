@@ -228,6 +228,10 @@ describe('restore rehearsal flow', () => {
       if (statement.includes('to_regclass')) return 't';
       if (statement.includes('notification_push_jobs set status')) return '0';
       if (statement.includes('recipient_user_id')) return '';
+      if (statement.includes('privacy_op_restore_gate'))
+        return JSON.stringify({ status: 'ok', restore_gate: 'pending' });
+      if (statement.includes('privacy_settings'))
+        return 'executor_enabled=false\nintake_enabled=false\nrestore_gate=pending';
       return '{}';
     });
     const dump = vi.fn<() => Buffer>(() => {
@@ -406,7 +410,7 @@ describe('rehearsal helpers', () => {
   it('lists every repository migration in order', () => {
     const versions = migrationFiles().map((entry) => entry.version);
     expect(versions).toEqual([...versions].sort());
-    expect(versions.at(-1)).toBe('20261119090000');
+    expect(versions.at(-1)).toBe('20261120090000');
   });
   it('reports the categories whose fingerprints differ', () => {
     expect(diffFingerprints({ a: 1, b: 'x', c: 2 }, { a: 1, b: 'y', c: 2 })).toEqual(['b']);

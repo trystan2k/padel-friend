@@ -6257,6 +6257,7 @@ export type Database = {
       privacy_op_list_cases: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_purge_expired: { Args: Record<PropertyKey, never>; Returns: Json }
       privacy_op_record_response: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_restore_gate: { Args: { p_action: string; p_evidence?: string }; Returns: Json }
       privacy_op_retry: { Args: { p_reference: string }; Returns: Json }
       privacy_op_set_switch: { Args: { p_key: string; p_value: boolean }; Returns: Json }
       privacy_op_start_verification: {

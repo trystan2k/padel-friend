@@ -119,6 +119,22 @@ describe('privacy operator environment guard', () => {
   });
 });
 
+describe('privacy operator: restore gate', () => {
+  it('begins and clears the gate through the database, clearing only with an evidence reference', async () => {
+    calls.length = 0;
+    await runCommand(client(), parse('restore-gate', 'begin'), target);
+    await runCommand(client(), parse('restore-gate', 'clear', '--evidence', 'ticket-123'), target);
+    expect(calls).toEqual([
+      { name: 'privacy_op_restore_gate', args: { p_action: 'begin', p_evidence: null } },
+      { name: 'privacy_op_restore_gate', args: { p_action: 'clear', p_evidence: 'ticket-123' } }
+    ]);
+    await expect(runCommand(client(), parse('restore-gate', 'open'), target)).rejects.toThrow(
+      'RESTORE_GATE_ACTION_INVALID'
+    );
+    expect(HELP).toContain('restore-gate');
+  });
+});
+
 describe('privacy operator: unclaimed erasure and local codes', () => {
   it('is a dry run unless --confirm is given, and never forwards the address anywhere else', async () => {
     calls.length = 0;

@@ -3542,7 +3542,7 @@
       },
       "remains": {
         "title": "What may remain",
-        "body": "Official scores, results and ratings of matches you played belong to the other players' history too. They are kept without your name or photo and appear as “{{placeholder}}”, with nothing that links them to you."
+        "body": "Official scores, results and ratings of matches you played belong to the other players' history too. They are kept without your name or photo and appear as “{{placeholder}}”. People who were there may still recognize who played."
       },
       "access": {
         "title": "Loss of access",
@@ -3599,7 +3599,8 @@
     },
     "announce": {
       "requested": "Request sent. Your reference is {{reference}}.",
-      "withdrawn": "Request withdrawn. Nothing was deleted."
+      "withdrawn": "Request withdrawn. Nothing was deleted.",
+      "statusUpdated": "Status updated: {{state}}."
     },
     "errors": {
       "unauthenticated": "Your session ended. Sign in again to continue.",
@@ -3615,7 +3616,7 @@
     "fallback": {
       "title": "Can't sign in, or never had an account?",
       "body": "If you cannot sign in, or you were only invited to a match or community, write to us at the address below. You do not need an account to exercise your privacy rights.",
-      "mailLabel": "Email the privacy contact"
+      "mailLabel": "Email the privacy contact at {{address}}"
     }
   },
   "privacy": {

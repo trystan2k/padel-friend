@@ -21,8 +21,17 @@ const GRAPH: Record<PrivacyCaseState, readonly PrivacyCaseState[]> = {
   ready: ['executing', 'verified', 'withdrawn', 'blocked', 'closed'],
   executing: ['app_data_erased', 'blocked'],
   app_data_erased: ['supabase_erased', 'blocked'],
-  supabase_erased: ['closed'],
-  blocked: ['executing', 'app_data_erased', 'ready', 'withdrawn', 'closed'],
+  // A failing finish quarantines the case (blocked) and the operator retry resumes it.
+  supabase_erased: ['closed', 'blocked'],
+  blocked: [
+    'executing',
+    'app_data_erased',
+    'supabase_erased',
+    'ready',
+    'received',
+    'withdrawn',
+    'closed'
+  ],
   closed: [],
   withdrawn: []
 };
@@ -38,7 +47,8 @@ export function canTransition(
   if (from === 'executing' && to === 'app_data_erased') return context.lastPhase === 'relational';
   if (from === 'app_data_erased' && to === 'supabase_erased') return context.lastPhase === 'auth';
   // After the one-use arm is consumed the case is irreversible: no withdrawal and no refusal.
-  if (from === 'blocked' && (to === 'withdrawn' || to === 'closed')) return !context.armConsumed;
+  if (from === 'blocked' && (to === 'withdrawn' || to === 'closed' || to === 'received'))
+    return !context.armConsumed;
   return true;
 }
 

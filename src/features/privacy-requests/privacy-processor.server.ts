@@ -194,6 +194,8 @@ export async function processPrivacyCase(
           emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(result.code) });
           return { status: 'blocked', code: String(result.code), steps };
         }
+        // In-flight work of the subject (older transactions, leased push) must settle first: wait, no failure.
+        if (result?.status === 'wait') return { status: 'retry', steps };
         if (result?.status === 'retry') throw new Error('SEAM_FAILED');
         state = 'app_data_erased';
         lastPhase = 'relational';
