@@ -3,6 +3,7 @@ import { sweepJobDiagnosticsOnSchedule } from './features/result-repairs/job-dia
 import { sweepOperationalAlertsOnSchedule } from './features/notifications/operational-alerts.server';
 import { sweepMatchPlayerAddsOnSchedule } from './features/matches/match-add-player.server';
 import { sweepNotificationPushOnSchedule } from './features/notifications/push-dispatch.server';
+import { sweepPrivacyRequestsOnSchedule } from './features/privacy-requests/privacy-processor.server';
 import {
   emitDiagnostic,
   newCorrelationId,
@@ -89,7 +90,10 @@ export default {
           runSweep('diagnostics', () =>
             Promise.resolve().then(() => sweepJobDiagnosticsOnSchedule())
           ),
-          runSweep('alerts', () => Promise.resolve().then(() => sweepOperationalAlertsOnSchedule()))
+          runSweep('alerts', () =>
+            Promise.resolve().then(() => sweepOperationalAlertsOnSchedule())
+          ),
+          runSweep('privacy', () => Promise.resolve().then(() => sweepPrivacyRequestsOnSchedule()))
         ]).then((results) => {
           const failures = results.filter((result) => result.status === 'rejected');
           if (failures.length) throw new Error('SCHEDULED_SWEEP_FAILED');

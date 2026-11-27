@@ -36,6 +36,7 @@
     "db:stop": "supabase --workdir . stop",
     "db:reset": "pnpm test:stack:reset",
     "db:reset:dev": "supabase --workdir . db reset --local",
+    "privacy:operator": "node scripts/privacy-operator.mjs",
     "db:types": "node scripts/db-types.mjs",
     "db:types:check": "node scripts/db-types.mjs --check",
     "release:restore": "node scripts/release-backup-restore.mjs",

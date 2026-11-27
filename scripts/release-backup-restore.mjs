@@ -168,6 +168,8 @@ export function runRestoreRehearsal({
       '-n',
       'public',
       '-n',
+      'privacy_internal',
+      '-n',
       'auth',
       '-n',
       'supabase_migrations'

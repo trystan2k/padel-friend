@@ -5337,6 +5337,7 @@ export type Database = {
           time_zone: string
         }[]
       }
+      get_my_deletion_request: { Args: Record<PropertyKey, never>; Returns: Json }
       get_my_level_review_request: { Args: { p_request_id: string }; Returns: Json }
       get_my_match_invitation: { Args: { p_match_event_id: string }; Returns: Json }
       get_my_match_notification_contexts: {
@@ -6233,6 +6234,70 @@ export type Database = {
         Args: { p_claim_token: string; p_notification_id: string; p_subscription_id: string }
         Returns: Json
       }
+      privacy_op_arm: {
+        Args: {
+          p_environment: string
+          p_expected: Json
+          p_project_ref: string
+          p_reference: string
+        }
+        Returns: Json
+      }
+      privacy_op_close_refused: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_confirm_proof: {
+        Args: { p_digest: string; p_operator_confirmed: boolean; p_reference: string }
+        Returns: Json
+      }
+      privacy_op_dry_run: { Args: { p_reference: string; p_successors?: Json }; Returns: Json }
+      privacy_op_list_cases: { Args: Record<PropertyKey, never>; Returns: Json }
+      privacy_op_purge_expired: { Args: Record<PropertyKey, never>; Returns: Json }
+      privacy_op_record_response: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_retry: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_set_switch: { Args: { p_key: string; p_value: boolean }; Returns: Json }
+      privacy_op_start_verification: {
+        Args: { p_digest: string; p_reference: string; p_ttl_seconds?: number }
+        Returns: Json
+      }
+      privacy_proc_claim: {
+        Args: { p_lease_seconds: number; p_project_ref: string }
+        Returns: Json
+      }
+      privacy_proc_complete_phase: {
+        Args: {
+          p_case: string
+          p_fence: number
+          p_phase: string
+          p_removed?: number
+          p_token: string
+        }
+        Returns: Json
+      }
+      privacy_proc_erase_relational: {
+        Args: { p_case: string; p_fence: number; p_token: string }
+        Returns: Json
+      }
+      privacy_proc_fail: {
+        Args: {
+          p_case: string
+          p_code: string
+          p_fence: number
+          p_retryable: boolean
+          p_token: string
+        }
+        Returns: Json
+      }
+      privacy_proc_finish: {
+        Args: { p_case: string; p_fence: number; p_token: string }
+        Returns: Json
+      }
+      privacy_proc_freeze: {
+        Args: { p_case: string; p_fence: number; p_token: string }
+        Returns: Json
+      }
+      privacy_proc_storage_set: {
+        Args: { p_case: string; p_fence: number; p_limit?: number; p_token: string }
+        Returns: Json
+      }
       process_due_leagues: { Args: { p_as_of?: string; p_limit?: number }; Returns: Json }
       process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
       process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }
@@ -6689,6 +6754,7 @@ export type Database = {
         }
         Returns: Json
       }
+      request_account_deletion: { Args: { p_command_id: string }; Returns: Json }
       request_result_amendment: {
         Args: {
           p_command_id: string
@@ -7312,6 +7378,7 @@ export type Database = {
         Args: { p_attempt_id: string; p_match_event_id: string; p_request_id: string }
         Returns: Json
       }
+      withdraw_my_deletion_request: { Args: { p_command_id: string }; Returns: Json }
     }
     Enums: {
       community_join_policy: "instant" | "admin_approval"

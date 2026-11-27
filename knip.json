@@ -15,6 +15,7 @@
     "docs/design/**",
     ".opencode/plugins/**",
     "scripts/test-populated-migration-up.d.mts",
+    "scripts/privacy-operator.d.mts",
     "scripts/check-client-secrets.d.mts",
     "scripts/audit-production.d.mts",
     "scripts/production-release-notice.d.mts",
