@@ -1181,6 +1181,7 @@ describe.skipIf(!environment.env)(
         { column_name: 'case_ref' },
         { column_name: 'id' },
         { column_name: 'obligated_at' },
+        { column_name: 'resolution' },
         { column_name: 'resolved_at' },
         { column_name: 'token' }
       ]);
@@ -1295,6 +1296,140 @@ describe.skipIf(!environment.env)(
             'select count(*)::int from privacy_internal.ban_cleanup_obligations where resolved_at is null and case_ref = ' +
               L(second.reference)
           )
+        )
+      ).toBe(0);
+    });
+
+    it('F47: an admitted cleanup blocks a new case of the subject from banning until it is confirmed or released', async () => {
+      const withdrawnByRecovery = (reference: string) => async () => {
+        await fixtureSql(
+          "update privacy_internal.privacy_cases set state = 'blocked', resume_state = null, blocker_code = 'VERIFICATION_STALE', next_action = 'operator_review', armed_consumed_at = null, lease_expires_at = null, ban_lifted_at = now() where reference = " +
+            L(reference)
+        );
+        await fixtureSql(
+          "update privacy_internal.privacy_cases set state = 'withdrawn', outcome = 'withdrawn', blocker_code = null, next_action = null, final_response_at = now(), closed_at = now() where reference = " +
+            L(reference)
+        );
+      };
+      const obligation = async (label: string) => {
+        const lone = await signUpFixtureActor(environment.env!, label, {
+          displayName: 'Admission Subject',
+          level: 3
+        });
+        const request = await lone.client.rpc('request_account_deletion', {
+          p_command_id: crypto.randomUUID()
+        });
+        const reference = String(asRecord(request.data)['reference']);
+        await verifyCase(reference, lone.email);
+        await armCase(reference);
+        expect(
+          await sweep({
+            client: scriptedAdmin({ unbanError: true, beforeBan: withdrawnByRecovery(reference) })
+          })
+        ).toEqual({ disabled: false, processed: 1 });
+        return { lone, reference };
+      };
+      const admissions = async (subject: string) =>
+        Number(
+          await scalar(
+            'select count(*)::int from privacy_internal.cleanup_admissions where subject = ' +
+              L(subject)
+          )
+        );
+      const banned = async (id: string) =>
+        (await trustedClient().auth.admin.getUserById(id)).data.user?.banned_until ?? null;
+      const newCase = async (lone: Awaited<ReturnType<typeof obligation>>['lone']) => {
+        const request = await lone.client.rpc('request_account_deletion', {
+          p_command_id: crypto.randomUUID()
+        });
+        expect(request.error).toBeNull();
+        const reference = String(asRecord(request.data)['reference']);
+        await verifyCase(
+          reference,
+          (await trustedClient().auth.admin.getUserById(lone.id)).data.user?.email ?? lone.email
+        );
+        await armCase(reference);
+        return reference;
+      };
+
+      // A. The console admitted the cleanup and then died: a new case of the subject may not ban.
+      const a = await obligation('f47-release');
+      const admitted = await trustedClient().rpc('privacy_op_cleanup_target', {
+        p_reference: a.reference
+      });
+      expect(admitted.data).toMatchObject({ status: 'ok' });
+      expect(await admissions(a.lone.id)).toBe(1);
+      const fresh = await newCase(a.lone);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(fresh)).toMatchObject({ state: 'executing', last_phase: null });
+      expect((await caseRow(fresh))['ban_applied_at']).toBeNull();
+      expect(
+        await scalar(
+          'select count(*)::int from privacy_internal.frozen_subjects where subject_id = ' +
+            L(a.lone.id)
+        )
+      ).toBe(0);
+      // The operator decision: the newer case owns the ban. Release WITHOUT unbanning; the obligation resolves as superseded.
+      expect(await operator('retry-cleanup-unban', a.reference, '--release-cleanup')).toMatchObject(
+        {
+          status: 'ok',
+          resolution: 'superseded'
+        }
+      );
+      expect(await admissions(a.lone.id)).toBe(0);
+      expect(
+        await scalar(
+          'select resolution from privacy_internal.ban_cleanup_obligations where case_ref = ' +
+            L(a.reference)
+        )
+      ).toBe('superseded');
+      // With the admission gone the new case proceeds through its freeze and completes.
+      await expireLease(fresh);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(fresh)).toMatchObject({ state: 'closed', outcome: 'erased' });
+
+      // B. A re-run refreshes the admission (the dead console's token no longer confirms), then unban + confirm.
+      const b = await obligation('f47-confirm');
+      const first = asRecord(
+        (await trustedClient().rpc('privacy_op_cleanup_target', { p_reference: b.reference })).data
+      );
+      const second = asRecord(
+        (await trustedClient().rpc('privacy_op_cleanup_target', { p_reference: b.reference })).data
+      );
+      expect(first['token']).not.toBe(second['token']);
+      expect(await admissions(b.lone.id)).toBe(1);
+      expect(
+        (
+          await trustedClient().rpc('privacy_op_cleanup_confirm', {
+            p_token: String(first['token']),
+            p_case_ref: b.reference
+          })
+        ).data
+      ).toEqual({ status: 'rejected', code: 'CLEANUP_NOT_ADMITTED' });
+      expect((await operator('retry-cleanup-unban', b.reference))['status']).toBe('ok');
+      expect(await banned(b.lone.id)).toBeNull();
+      expect(await admissions(b.lone.id)).toBe(0);
+      expect(
+        await scalar(
+          'select resolution from privacy_internal.ban_cleanup_obligations where case_ref = ' +
+            L(b.reference)
+        )
+      ).toBe('unbanned');
+      // Confirmed: the subject's next case freezes and completes.
+      const next = await newCase(b.lone);
+      expect(await sweep()).toEqual({ disabled: false, processed: 1 });
+      expect(await caseRow(next)).toMatchObject({ state: 'closed', outcome: 'erased' });
+
+      // C. An abandoned admission of a purged case is released by the purge sweep.
+      await fixtureSql(
+        'insert into privacy_internal.cleanup_admissions(subject, token, case_ref) values (gen_random_uuid(), gen_random_uuid(), ' +
+          L('PR-PURGED00000') +
+          ')'
+      );
+      await trustedClient().rpc('privacy_op_purge_expired');
+      expect(
+        await scalar(
+          "select count(*)::int from privacy_internal.cleanup_admissions where case_ref = 'PR-PURGED00000'"
         )
       ).toBe(0);
     });

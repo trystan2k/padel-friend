@@ -235,6 +235,41 @@ describe('privacy processor phases', () => {
     expect(names(calls)).toEqual(['freeze']);
   });
 
+  it('applies no ban while a cleanup of the subject is admitted, and keeps the case on its lease (F47)', async () => {
+    const { admin, calls, raw } = fakeAdmin({
+      rpc: (name) =>
+        name === 'privacy_proc_ban_mark'
+          ? { data: { status: 'blocked', code: 'CLEANUP_IN_PROGRESS' } }
+          : undefined
+    });
+    expect(await processPrivacyCase(admin, claim())).toEqual({
+      status: 'blocked',
+      code: 'CLEANUP_IN_PROGRESS',
+      steps: []
+    });
+    expect(raw.auth.admin.updateUserById).not.toHaveBeenCalled();
+    expect(names(calls)).toEqual(['freeze', 'ban_mark']);
+  });
+
+  it('refused at the pre-check or the freeze by an admitted cleanup: the case ban is never lifted (F47)', async () => {
+    for (const phase of ['check', 'freeze'] as const) {
+      const { admin, calls, raw } = fakeAdmin({
+        rpc: (name, args) =>
+          name === 'privacy_proc_freeze' && (args['p_check_only'] === true) === (phase === 'check')
+            ? { data: { status: 'blocked', code: 'CLEANUP_IN_PROGRESS' } }
+            : undefined
+      });
+      expect(await processPrivacyCase(admin, claim())).toEqual({
+        status: 'blocked',
+        code: 'CLEANUP_IN_PROGRESS',
+        steps: []
+      });
+      expect(calls.some((call) => call.name === 'privacy_proc_unban_done')).toBe(false);
+      for (const call of raw.auth.admin.updateUserById.mock.calls)
+        expect(call[1]).not.toEqual({ ban_duration: 'none' });
+    }
+  });
+
   it('lifts the ban of an interrupted earlier attempt when the reclaimed pre-check finds the proof stale (F37)', async () => {
     const { admin, calls, raw } = fakeAdmin({
       rpc: (name, args) =>

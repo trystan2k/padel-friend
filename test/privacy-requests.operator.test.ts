@@ -506,7 +506,7 @@ describe('privacy operator: restore gate', () => {
         calls.push({ name, args });
         const data =
           name === 'privacy_op_cleanup_target'
-            ? { status: 'ok', subject_id: subjectA }
+            ? { status: 'ok', subject_id: subjectA, token: 'admission-token' }
             : name === 'privacy_op_list_cleanup_obligations'
               ? [{ case_ref: 'PR-AAAAAAAAAAAA', code: 'BAN_CLEANUP_PENDING' }]
               : { status: 'ok' };
@@ -538,11 +538,23 @@ describe('privacy operator: restore gate', () => {
     expect(calls.map((call) => call.name)).toEqual(['privacy_op_cleanup_target']);
     calls.length = 0;
     await runCommand(admin(null), parse('retry-cleanup-unban', 'PR-AAAAAAAAAAAA'), target);
+    // The confirmation carries the admission token of THIS run (it also releases the admission).
     expect(calls.map((call) => call.name)).toEqual([
       'privacy_op_cleanup_target',
-      'privacy_op_cleanup_resolved'
+      'privacy_op_cleanup_confirm'
     ]);
+    expect(calls[1]?.args).toEqual({ p_token: 'admission-token', p_case_ref: 'PR-AAAAAAAAAAAA' });
     expect(lifted).toEqual([subjectA + ':none', subjectA + ':none']);
+    // The escape hatch drops the admission without any Auth call.
+    calls.length = 0;
+    lifted.length = 0;
+    await runCommand(
+      admin(null),
+      parse('retry-cleanup-unban', 'PR-AAAAAAAAAAAA', '--release-cleanup'),
+      target
+    );
+    expect(calls.map((call) => call.name)).toEqual(['privacy_op_cleanup_release']);
+    expect(lifted).toEqual([]);
   });
 
   it('asks for the external follow-up acknowledgment before recording the response (F23)', async () => {

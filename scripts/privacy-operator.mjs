@@ -29,7 +29,11 @@ export const HELP = [
   '  restore-gate begin --snapshot-at <iso> --cutoff-xid <n> --cutoff-snapshot <xmin:xmax:xip,...>',
   '                                         (all three captured at DUMP START by takeSnapshot)',
   '  list-cleanup-obligations               open ban-cleanup obligations (case reference + safe code only); resolve before routine work',
-  '  retry-cleanup-unban <ref>              re-attempt the unban of a late ban left on a withdrawn/closed case; success resolves it',
+  '  retry-cleanup-unban <ref> [--release-cleanup]',
+  '                                         re-attempt the unban of a late ban left on a withdrawn/closed case. While it runs a',
+  '                                         cleanup ADMISSION blocks any new case of that subject from banning (CLEANUP_IN_PROGRESS);',
+  '                                         success (confirm) resolves the obligation and releases it. --release-cleanup drops the',
+  '                                         admission WITHOUT unbanning (the newer case owns the ban; obligation resolves as superseded).',
   '                                         ISOLATED restore target only (never production; the database must be flagged',
   '                                         app.restore_target by the restore flow): derives the expected subjects (live in',
   '                                         the restored copy, gone from the source project given by PRIVACY_SOURCE_SUPABASE_URL',
@@ -117,7 +121,8 @@ export function parseArgs(argv) {
           'allow-production',
           'all-matches',
           'ack-external-followup',
-          'resolve-non-shell'
+          'resolve-non-shell',
+          'release-cleanup'
         ].includes(key)
       )
         options[key] = true;
@@ -461,6 +466,9 @@ export async function runCommand(client, parsed, target, source) {
       return call(client, 'privacy_op_list_cleanup_obligations', {});
     case 'retry-cleanup-unban': {
       // A late ban on a withdrawn/closed case whose undo failed: re-attempt it through the Auth admin API.
+      // Operator decision: the newer case legitimately owns the ban. Drop the admission WITHOUT unbanning.
+      if (options['release-cleanup'] === true)
+        return call(client, 'privacy_op_cleanup_release', { p_reference: reference });
       const obligation = plainObject(
         await call(client, 'privacy_op_cleanup_target', { p_reference: reference }),
         'OPERATOR_RESPONSE_INVALID'
@@ -470,7 +478,11 @@ export async function runCommand(client, parsed, target, source) {
         ban_duration: 'none'
       });
       if (error && error.status !== 404) return { status: 'rejected', code: 'BAN_CLEANUP_PENDING' };
-      return call(client, 'privacy_op_cleanup_resolved', { p_reference: reference });
+      // Confirm under the admission token of THIS run, which also releases the admission.
+      return call(client, 'privacy_op_cleanup_confirm', {
+        p_token: obligation.token,
+        p_case_ref: reference
+      });
     }
     case 'ack-external-followup':
       return call(client, 'privacy_op_ack_external_followup', { p_reference: reference });

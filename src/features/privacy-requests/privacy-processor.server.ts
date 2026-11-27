@@ -213,7 +213,13 @@ export async function processPrivacyCase(
           return { status: 'blocked', code: String(precheck.code), steps };
         }
         // The ban is recorded on the case BEFORE the external call: a crash in between can never strand a banned person.
-        await rpc(admin, 'privacy_proc_ban_mark', keys);
+        const marked = record(await rpc(admin, 'privacy_proc_ban_mark', keys));
+        if (marked?.status === 'blocked') {
+          // A cleanup of the subject's old ban is admitted: no ban may be applied now (CLEANUP_IN_PROGRESS); the case
+          // keeps its lease and retries once the operator confirmed or released the cleanup.
+          emitDiagnostic('privacy.case', 'rejected', { stage: step, code: String(marked.code) });
+          return { status: 'blocked', code: String(marked.code), steps };
+        }
         // Sessions cannot be listed through the admin API: banning stops refresh and sign-in, and the
         // database freeze (committed next) rejects every stale access token at each boundary.
         const { error } = await admin.auth.admin.updateUserById(claim.subject_id, {
@@ -260,7 +266,12 @@ export async function processPrivacyCase(
           return { status: 'fenced', steps };
         }
         const frozen = record(await rpc(admin, 'privacy_proc_freeze', keys));
-        if (frozen?.status === 'blocked') return liftTemporaryBan(String(frozen.code));
+        if (frozen?.status === 'blocked') {
+          // CLEANUP_IN_PROGRESS leaves this case's own ban in place; only a stale proof lifts it.
+          if (frozen.code === 'CLEANUP_IN_PROGRESS')
+            return { status: 'blocked', code: 'CLEANUP_IN_PROGRESS', steps };
+          return liftTemporaryBan(String(frozen.code));
+        }
         lastPhase = 'freeze';
       } else if (step === 'relational') {
         const result = record(await rpc(admin, 'privacy_proc_erase_relational', keys));
