@@ -311,7 +311,8 @@
       "label": "Profile shortcuts",
       "statistics": "Statistics",
       "matchHistory": "Match history",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "accountDeletion": "Account deletion"
     },
     "edit": "Edit profile",
     "save": "Save changes",
@@ -3516,6 +3517,105 @@
       "confirm": "Cancel request",
       "keep": "Keep request",
       "canceling": "Canceling…"
+    }
+  },
+  "accountDeletion": {
+    "title": "Delete my account",
+    "back": "Back to profile",
+    "retry": "Try again",
+    "intro": {
+      "heading": "Account deletion",
+      "sends": "You can ask us to delete your account. Sending a request deletes nothing by itself.",
+      "review": "We review each request and verify it through the email address of your account before anything is erased. You can withdraw the request until processing starts.",
+      "start": "Request account deletion"
+    },
+    "dialog": {
+      "title": "Request account deletion?",
+      "summary": "Nothing is deleted when you send this. Read what a deletion means first.",
+      "disappears": {
+        "title": "What is deleted",
+        "profile": "Your profile: name, photo, bio and playing preferences",
+        "photos": "Photos you uploaded",
+        "preferences": "Your notification and device settings",
+        "participation": "Your membership and participation as a player in communities and matches",
+        "notifications": "Your notifications and invitations"
+      },
+      "remains": {
+        "title": "What may remain",
+        "body": "Official scores, results and ratings of matches you played belong to the other players' history too. They are kept without your name or photo and appear as “{{placeholder}}”, with nothing that links them to you."
+      },
+      "access": {
+        "title": "Loss of access",
+        "body": "When processing starts, your access is frozen and you are signed out. Deleting the account is permanent and cannot be undone."
+      },
+      "cutoff": {
+        "title": "Until when you can withdraw",
+        "body": "You can withdraw the request until processing begins. After that it can no longer be stopped."
+      },
+      "confirm": "Send request",
+      "sending": "Sending…",
+      "cancel": "Keep my account"
+    },
+    "status": {
+      "heading": "Your deletion request",
+      "reference": "Reference",
+      "received": "Received",
+      "canWithdraw": "You can still withdraw this request.",
+      "cannotWithdraw": "This request can no longer be withdrawn.",
+      "withdraw": "Withdraw request",
+      "refresh": "Refresh status"
+    },
+    "withdrawDialog": {
+      "title": "Withdraw the request?",
+      "body": "Your account stays as it is and nothing is deleted. You can send a new request later.",
+      "confirm": "Withdraw request",
+      "withdrawing": "Withdrawing…",
+      "keep": "Keep the request"
+    },
+    "state": {
+      "received": "Received",
+      "verified": "Verified",
+      "ready": "Waiting to be processed",
+      "executing": "Processing",
+      "app_data_erased": "Removing your data",
+      "supabase_erased": "Closing your account",
+      "closed": "Completed",
+      "withdrawn": "Withdrawn",
+      "blocked": "Needs attention"
+    },
+    "detail": {
+      "received": "We received your request. We will review it and verify it through your account email before anything is erased.",
+      "verified": "Your request was verified through your account email. It still needs a final approval before processing.",
+      "ready": "Your request is approved and waiting to be processed. You can still withdraw it.",
+      "executing": "Processing has started. Your access is closed and this can no longer be withdrawn.",
+      "app_data_erased": "Your account data has been erased. The removal is being finished.",
+      "supabase_erased": "Your sign-in is being removed and your account is being closed.",
+      "closed": "Your request is complete.",
+      "withdrawn": "You withdrew this request. Nothing was deleted.",
+      "blocked": "Processing needs our attention before it can continue. We will follow up through your account email."
+    },
+    "notice": {
+      "existing": "You already have an open request. Its reference is {{reference}}."
+    },
+    "announce": {
+      "requested": "Request sent. Your reference is {{reference}}.",
+      "withdrawn": "Request withdrawn. Nothing was deleted."
+    },
+    "errors": {
+      "unauthenticated": "Your session ended. Sign in again to continue.",
+      "account_required": "Finish setting up your account before requesting its deletion.",
+      "restricted": "This account cannot send this request right now.",
+      "rate_limited": "You sent too many requests recently. Try again later.",
+      "disabled": "Deletion requests are paused right now. Try again later or write to us by email.",
+      "not_found": "There is no open request to withdraw.",
+      "not_withdrawable": "Processing has already started, so this request can no longer be withdrawn.",
+      "unavailable": "We couldn't complete this. Check your connection and try again.",
+      "loadFailed": "We couldn't load your request status."
+    },
+    "fallback": {
+      "title": "Can't sign in, or never had an account?",
+      "body": "If you cannot sign in, or you were only invited to a match or community, write to us at the address below. You do not need an account to exercise your privacy rights.",
+      "mailLabel": "Email the privacy contact"
     }
   },
   "privacy": {

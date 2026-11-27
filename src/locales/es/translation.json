@@ -311,7 +311,8 @@
       "label": "Accesos del perfil",
       "statistics": "Estadísticas",
       "matchHistory": "Historial de partidos",
-      "notifications": "Notificaciones"
+      "notifications": "Notificaciones",
+      "accountDeletion": "Eliminación de cuenta"
     },
     "edit": "Editar perfil",
     "save": "Guardar cambios",
@@ -3516,6 +3517,105 @@
       "confirm": "Cancelar solicitud",
       "keep": "Mantener solicitud",
       "canceling": "Cancelando…"
+    }
+  },
+  "accountDeletion": {
+    "title": "Eliminar mi cuenta",
+    "back": "Volver al perfil",
+    "retry": "Intentar de nuevo",
+    "intro": {
+      "heading": "Eliminación de cuenta",
+      "sends": "Puedes pedirnos que eliminemos tu cuenta. Enviar la solicitud no elimina nada por sí solo.",
+      "review": "Revisamos cada solicitud y la verificamos a través del correo de tu cuenta antes de borrar nada. Puedes retirar la solicitud hasta que empiece el procesamiento.",
+      "start": "Solicitar la eliminación de la cuenta"
+    },
+    "dialog": {
+      "title": "¿Solicitar la eliminación de la cuenta?",
+      "summary": "No se elimina nada al enviarla. Lee antes lo que implica la eliminación.",
+      "disappears": {
+        "title": "Qué se elimina",
+        "profile": "Tu perfil: nombre, foto, biografía y preferencias de juego",
+        "photos": "Las fotos que subiste",
+        "preferences": "Tus ajustes de notificaciones y dispositivos",
+        "participation": "Tu pertenencia y participación como jugador en comunidades y partidos",
+        "notifications": "Tus notificaciones e invitaciones"
+      },
+      "remains": {
+        "title": "Qué puede permanecer",
+        "body": "Los marcadores, resultados y valoraciones oficiales de los partidos que jugaste también forman parte del historial de los demás jugadores. Se conservan sin tu nombre ni tu foto y aparecen como «{{placeholder}}», sin nada que los vincule contigo."
+      },
+      "access": {
+        "title": "Pérdida de acceso",
+        "body": "Cuando empiece el procesamiento, tu acceso se bloquea y se cierra tu sesión. Eliminar la cuenta es permanente y no se puede deshacer."
+      },
+      "cutoff": {
+        "title": "Hasta cuándo puedes retirarla",
+        "body": "Puedes retirar la solicitud hasta que comience el procesamiento. Después ya no se puede detener."
+      },
+      "confirm": "Enviar solicitud",
+      "sending": "Enviando…",
+      "cancel": "Mantener mi cuenta"
+    },
+    "status": {
+      "heading": "Tu solicitud de eliminación",
+      "reference": "Referencia",
+      "received": "Recibida el",
+      "canWithdraw": "Todavía puedes retirar esta solicitud.",
+      "cannotWithdraw": "Esta solicitud ya no se puede retirar.",
+      "withdraw": "Retirar solicitud",
+      "refresh": "Actualizar estado"
+    },
+    "withdrawDialog": {
+      "title": "¿Retirar la solicitud?",
+      "body": "Tu cuenta sigue como está y no se elimina nada. Puedes enviar una nueva solicitud más adelante.",
+      "confirm": "Retirar solicitud",
+      "withdrawing": "Retirando…",
+      "keep": "Mantener la solicitud"
+    },
+    "state": {
+      "received": "Recibida",
+      "verified": "Verificada",
+      "ready": "Pendiente de procesar",
+      "executing": "En proceso",
+      "app_data_erased": "Eliminando tus datos",
+      "supabase_erased": "Cerrando tu cuenta",
+      "closed": "Completada",
+      "withdrawn": "Retirada",
+      "blocked": "Requiere atención"
+    },
+    "detail": {
+      "received": "Hemos recibido tu solicitud. La revisaremos y la verificaremos a través del correo de tu cuenta antes de borrar nada.",
+      "verified": "Tu solicitud se verificó a través del correo de tu cuenta. Aún necesita una aprobación final antes de procesarse.",
+      "ready": "Tu solicitud está aprobada y pendiente de procesar. Todavía puedes retirarla.",
+      "executing": "El procesamiento ha empezado. Tu acceso está cerrado y ya no se puede retirar.",
+      "app_data_erased": "Los datos de tu cuenta se han borrado. Se está terminando la eliminación.",
+      "supabase_erased": "Se está eliminando tu inicio de sesión y cerrando tu cuenta.",
+      "closed": "Tu solicitud está completada.",
+      "withdrawn": "Retiraste esta solicitud. No se eliminó nada.",
+      "blocked": "El procesamiento necesita nuestra atención para continuar. Nos pondremos en contacto a través del correo de tu cuenta."
+    },
+    "notice": {
+      "existing": "Ya tienes una solicitud abierta. Su referencia es {{reference}}."
+    },
+    "announce": {
+      "requested": "Solicitud enviada. Tu referencia es {{reference}}.",
+      "withdrawn": "Solicitud retirada. No se eliminó nada."
+    },
+    "errors": {
+      "unauthenticated": "Tu sesión terminó. Inicia sesión de nuevo para continuar.",
+      "account_required": "Termina de configurar tu cuenta antes de pedir su eliminación.",
+      "restricted": "Esta cuenta no puede enviar esta solicitud ahora.",
+      "rate_limited": "Enviaste demasiadas solicitudes recientemente. Inténtalo más tarde.",
+      "disabled": "Las solicitudes de eliminación están en pausa ahora. Inténtalo más tarde o escríbenos por correo.",
+      "not_found": "No hay ninguna solicitud abierta que retirar.",
+      "not_withdrawable": "El procesamiento ya empezó, así que esta solicitud ya no se puede retirar.",
+      "unavailable": "No pudimos completarlo. Comprueba tu conexión e inténtalo de nuevo.",
+      "loadFailed": "No pudimos cargar el estado de tu solicitud."
+    },
+    "fallback": {
+      "title": "¿No puedes iniciar sesión o nunca tuviste cuenta?",
+      "body": "Si no puedes iniciar sesión, o solo te invitaron a un partido o comunidad, escríbenos a la dirección de abajo. No necesitas una cuenta para ejercer tus derechos de privacidad.",
+      "mailLabel": "Escribir al contacto de privacidad"
     }
   },
   "privacy": {

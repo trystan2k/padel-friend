@@ -311,7 +311,8 @@
       "label": "Atalhos do perfil",
       "statistics": "Estatísticas",
       "matchHistory": "Histórico de partidas",
-      "notifications": "Notificações"
+      "notifications": "Notificações",
+      "accountDeletion": "Exclusão de conta"
     },
     "edit": "Editar perfil",
     "save": "Salvar alterações",
@@ -3516,6 +3517,105 @@
       "confirm": "Cancelar solicitação",
       "keep": "Manter solicitação",
       "canceling": "Cancelando…"
+    }
+  },
+  "accountDeletion": {
+    "title": "Excluir minha conta",
+    "back": "Voltar ao perfil",
+    "retry": "Tentar novamente",
+    "intro": {
+      "heading": "Exclusão de conta",
+      "sends": "Você pode pedir a exclusão da sua conta. Enviar o pedido não exclui nada por si só.",
+      "review": "Analisamos cada pedido e o verificamos pelo e-mail da sua conta antes de apagar qualquer coisa. Você pode retirar o pedido até o início do processamento.",
+      "start": "Pedir exclusão da conta"
+    },
+    "dialog": {
+      "title": "Pedir a exclusão da conta?",
+      "summary": "Nada é excluído ao enviar. Leia antes o que a exclusão significa.",
+      "disappears": {
+        "title": "O que é excluído",
+        "profile": "Seu perfil: nome, foto, bio e preferências de jogo",
+        "photos": "Fotos que você enviou",
+        "preferences": "Suas configurações de notificações e dispositivos",
+        "participation": "Sua participação como jogador em comunidades e partidas",
+        "notifications": "Suas notificações e convites"
+      },
+      "remains": {
+        "title": "O que pode permanecer",
+        "body": "Placares, resultados e avaliações oficiais das partidas que você jogou também fazem parte do histórico dos outros jogadores. Eles são mantidos sem seu nome ou foto e aparecem como “{{placeholder}}”, sem nada que os ligue a você."
+      },
+      "access": {
+        "title": "Perda de acesso",
+        "body": "Quando o processamento começa, seu acesso é bloqueado e você é desconectado. A exclusão da conta é permanente e não pode ser desfeita."
+      },
+      "cutoff": {
+        "title": "Até quando você pode retirar",
+        "body": "Você pode retirar o pedido até o processamento começar. Depois disso, ele não pode mais ser interrompido."
+      },
+      "confirm": "Enviar pedido",
+      "sending": "Enviando…",
+      "cancel": "Manter minha conta"
+    },
+    "status": {
+      "heading": "Seu pedido de exclusão",
+      "reference": "Referência",
+      "received": "Recebido em",
+      "canWithdraw": "Você ainda pode retirar este pedido.",
+      "cannotWithdraw": "Este pedido não pode mais ser retirado.",
+      "withdraw": "Retirar pedido",
+      "refresh": "Atualizar status"
+    },
+    "withdrawDialog": {
+      "title": "Retirar o pedido?",
+      "body": "Sua conta continua como está e nada é excluído. Você pode enviar um novo pedido depois.",
+      "confirm": "Retirar pedido",
+      "withdrawing": "Retirando…",
+      "keep": "Manter o pedido"
+    },
+    "state": {
+      "received": "Recebido",
+      "verified": "Verificado",
+      "ready": "Aguardando processamento",
+      "executing": "Em processamento",
+      "app_data_erased": "Removendo seus dados",
+      "supabase_erased": "Encerrando sua conta",
+      "closed": "Concluído",
+      "withdrawn": "Retirado",
+      "blocked": "Precisa de atenção"
+    },
+    "detail": {
+      "received": "Recebemos seu pedido. Vamos analisá-lo e verificá-lo pelo e-mail da sua conta antes de apagar qualquer coisa.",
+      "verified": "Seu pedido foi verificado pelo e-mail da sua conta. Ainda precisa de uma aprovação final antes do processamento.",
+      "ready": "Seu pedido foi aprovado e aguarda processamento. Você ainda pode retirá-lo.",
+      "executing": "O processamento começou. Seu acesso foi encerrado e isto não pode mais ser retirado.",
+      "app_data_erased": "Os dados da sua conta foram apagados. A remoção está sendo concluída.",
+      "supabase_erased": "Seu login está sendo removido e sua conta está sendo encerrada.",
+      "closed": "Seu pedido foi concluído.",
+      "withdrawn": "Você retirou este pedido. Nada foi excluído.",
+      "blocked": "O processamento precisa da nossa atenção para continuar. Entraremos em contato pelo e-mail da sua conta."
+    },
+    "notice": {
+      "existing": "Você já tem um pedido em aberto. A referência é {{reference}}."
+    },
+    "announce": {
+      "requested": "Pedido enviado. Sua referência é {{reference}}.",
+      "withdrawn": "Pedido retirado. Nada foi excluído."
+    },
+    "errors": {
+      "unauthenticated": "Sua sessão terminou. Entre novamente para continuar.",
+      "account_required": "Conclua a configuração da sua conta antes de pedir a exclusão.",
+      "restricted": "Esta conta não pode enviar este pedido agora.",
+      "rate_limited": "Você enviou pedidos demais recentemente. Tente novamente mais tarde.",
+      "disabled": "Os pedidos de exclusão estão pausados no momento. Tente mais tarde ou escreva para nós por e-mail.",
+      "not_found": "Não há pedido em aberto para retirar.",
+      "not_withdrawable": "O processamento já começou, então este pedido não pode mais ser retirado.",
+      "unavailable": "Não foi possível concluir. Verifique sua conexão e tente novamente.",
+      "loadFailed": "Não foi possível carregar o status do seu pedido."
+    },
+    "fallback": {
+      "title": "Não consegue entrar ou nunca teve conta?",
+      "body": "Se você não consegue entrar, ou só foi convidado para uma partida ou comunidade, escreva para nós no endereço abaixo. Você não precisa de conta para exercer seus direitos de privacidade.",
+      "mailLabel": "Enviar e-mail ao contato de privacidade"
     }
   },
   "privacy": {
