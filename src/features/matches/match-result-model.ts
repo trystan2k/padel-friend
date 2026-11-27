@@ -249,10 +249,15 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
         team_a: parsePlayers(row.teams.team_a),
         team_b: parsePlayers(row.teams.team_b)
       };
-      validateMatchResultTeams({
-        team_a: teams.team_a.map((p) => p.user_id),
-        team_b: teams.team_b.map((p) => p.user_id)
-      });
+      // Read side: a confirmed result may reference a participant whose account was erased, which
+      // surfaces as an opaque historical ref instead of an account uuid.
+      validateMatchResultTeams(
+        {
+          team_a: teams.team_a.map((p) => p.user_id),
+          team_b: teams.team_b.map((p) => p.user_id)
+        },
+        true
+      );
       const sets = validateMatchResultSets(row.sets);
       const classification = classifyMatchResultSets(sets);
       if (
