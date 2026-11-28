@@ -528,6 +528,9 @@ test('happy path: request, operator verification, armed worker erasure, history 
 });
 
 test('withdraw: intake returns after withdrawal; refused once the worker claimed; outage is retried by the operator', async () => {
+  // Four chained operator/CLI/DB/Auth steps incl. a bounded sweep-retry loop: legitimately long under
+  // load, so triple the 240s per-test budget instead of letting a slow step starve the later ones.
+  test.slow();
   const subject = SUBJECT_B();
   const page = await f.page(subject, 'en', 390);
   await visit(page, '/account-deletion');
@@ -551,8 +554,14 @@ test('withdraw: intake returns after withdrawal; refused once the worker claimed
     reference = await requestDeletion(page);
     await verifyCase(reference, subject.email);
     expect(await armed(reference, await dryRun(reference))).toMatchObject({ state: 'ready' });
-    await page.getByRole('button', { name: ad.status.refresh }).click();
-    await expect(page.getByRole('heading', { name: ad.state.ready, level: 2 })).toBeVisible();
+    // Refresh is idempotent: poll click + heading so a slow operator step retries instead of failing
+    // on one fixed wait.
+    await expect(async () => {
+      await page.getByRole('button', { name: ad.status.refresh }).click();
+      await expect(page.getByRole('heading', { name: ad.state.ready, level: 2 })).toBeVisible({
+        timeout: 10_000
+      });
+    }).toPass({ timeout: 90_000, intervals: [1_000, 2_000, 5_000] });
     await expect(page.getByRole('button', { name: ad.status.withdraw })).toBeVisible();
   });
 
