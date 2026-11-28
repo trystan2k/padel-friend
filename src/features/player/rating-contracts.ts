@@ -1,3 +1,4 @@
+import { isParticipantRef } from '../../lib/participant-ref';
 // Sporting-data DTO contracts for the app-wide rating readers. Decoders rebuild every
 // object from a fixed key whitelist and fail closed (null) on any unexpected shape, so a
 // future SQL column can never leak into a browser response by accident.
@@ -200,6 +201,10 @@ function int(value: unknown): number | null {
 function str(value: unknown, max = 200): string | null {
   return typeof value === 'string' && value.length > 0 && value.length <= max ? value : null;
 }
+/** SQL null is a withdrawn identity (no profile): an empty name, rendered as the former-player placeholder. */
+function nameOrEmpty(value: unknown): string | null {
+  return value === null ? '' : str(value, 80);
+}
 function bool(value: unknown): boolean | null {
   return typeof value === 'boolean' ? value : null;
 }
@@ -215,6 +220,10 @@ export function isInstant(value: unknown): value is string {
 }
 function uuid(value: unknown): string | null {
   return isUuid(value) ? value : null;
+}
+/** A live user id or the scope-local key of a departed player. */
+function participantRef(value: unknown): string | null {
+  return isParticipantRef(value) ? value : null;
 }
 function instant(value: unknown): string | null {
   return isInstant(value) ? value : null;
@@ -407,8 +416,8 @@ export function parseRatingProgress(value: unknown): RatingProgress | null {
 function explanationPlayer(value: unknown): RatingExplanationPlayer | null {
   const player = rec(value);
   const decoded = {
-    user_id: uuid(player?.['user_id']),
-    display_name: str(player?.['display_name'], 80),
+    user_id: participantRef(player?.['user_id']),
+    display_name: nameOrEmpty(player?.['display_name']),
     is_provisional: bool(player?.['is_provisional']),
     team: team(player?.['team']),
     calculation_revision: int(player?.['calculation_revision']),
@@ -466,8 +475,8 @@ export function parseRatingGroupExplanation(value: unknown): RatingGroupExplanat
 function changePlayer(value: unknown): RatingChangePlayer | null {
   const player = rec(value);
   const decoded = {
-    user_id: uuid(player?.['user_id']),
-    display_name: str(player?.['display_name'], 80),
+    user_id: participantRef(player?.['user_id']),
+    display_name: nameOrEmpty(player?.['display_name']),
     is_provisional: bool(player?.['is_provisional']),
     team: team(player?.['team']),
     before_display_level: num(player?.['before_display_level']),

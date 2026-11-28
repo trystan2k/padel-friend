@@ -21,6 +21,7 @@ export type DiagnosticEvent =
   | 'league.close'
   | 'push.failure'
   | 'scheduled.sweep'
+  | 'privacy.case'
   | 'alert.send';
 
 export type DiagnosticOutcome = 'success' | 'failure' | 'rejected' | 'race';

@@ -88,8 +88,8 @@ export async function signMatchPhoto(client: AuthClient, eventId: string) {
       .eq('id', eventId)
       .maybeSingle();
     if (eventError || !event) throw new Error('MATCH_PHOTO_UNAVAILABLE');
-    const objectKey = event.photo_path;
-    validateMatchPhotoKey(objectKey);
+    // A null path is the no-photo contract (media detached): it signs nothing.
+    const objectKey = validateMatchPhotoKey(event.photo_path);
     const { data, error } = await client.storage
       .from(MATCH_PHOTO_BUCKET)
       .createSignedUrl(objectKey, 60);

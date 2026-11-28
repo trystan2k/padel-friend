@@ -1,5 +1,5 @@
 import { MATCH_RESULT_ERROR_COPY, type MatchResultErrorCode } from './match-result-error-copy';
-import { validateMatchUuid } from './matches.validators';
+import { validateMatchParticipantRef, validateMatchUuid } from './matches.validators';
 import {
   RESULT_REJECTION_REASONS,
   classifyMatchResultSets,
@@ -237,7 +237,7 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
             throw new Error('INVALID_TEAMS');
           // Additive flag: absent in pre-provisional payloads.
           return {
-            user_id: validateMatchUuid(item.user_id),
+            user_id: validateMatchParticipantRef(item.user_id),
             display_name: item.display_name,
             is_provisional: item.is_provisional ?? false
           };
@@ -249,10 +249,15 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
         team_a: parsePlayers(row.teams.team_a),
         team_b: parsePlayers(row.teams.team_b)
       };
-      validateMatchResultTeams({
-        team_a: teams.team_a.map((p) => p.user_id),
-        team_b: teams.team_b.map((p) => p.user_id)
-      });
+      // Read side: a confirmed result may reference a participant whose account was erased, which
+      // surfaces as an opaque historical ref instead of an account uuid.
+      validateMatchResultTeams(
+        {
+          team_a: teams.team_a.map((p) => p.user_id),
+          team_b: teams.team_b.map((p) => p.user_id)
+        },
+        true
+      );
       const sets = validateMatchResultSets(row.sets);
       const classification = classifyMatchResultSets(sets);
       if (
@@ -280,7 +285,7 @@ export function parseResultProposals(value: unknown): ResultProposal[] | null {
       const rankedBlocked = parseRankedBlock(row.ranked_blocked);
       // A confirmed group was eligible by construction, and a blocked one cannot be approved.
       if (rankedBlocked && (status === 'confirmed' || row.can_approve)) return null;
-      const submittedBy = uuid(row.submitted_by);
+      const submittedBy = validateMatchParticipantRef(row.submitted_by);
       const submittedByName = nullableName(row.submitted_by_name);
       const callerDecision = parseCallerDecision(row.caller_decision);
       const requiredCoverage = coverageCount(row.required_team_coverage_count, 1, 2);
@@ -479,7 +484,7 @@ export function parseOfficialResultFacts(
       const source = item.source;
       const confirmedAt = item.confirmed_at;
       const effectiveAt = item.effective_at;
-      const actorId = item.actor_id === null ? null : validateMatchUuid(item.actor_id);
+      const actorId = item.actor_id === null ? null : validateMatchParticipantRef(item.actor_id);
       if (
         (source !== 'MANUAL' && source !== 'AUTO_48H' && source !== 'ADMIN_OVERRIDE') ||
         !timestamp(confirmedAt) ||
@@ -496,7 +501,7 @@ export function parseOfficialResultFacts(
         team_a: item.teams.team_a,
         team_b: item.teams.team_b
       };
-      const teams = validateMatchResultTeams(rawTeams);
+      const teams = validateMatchResultTeams(rawTeams, true);
       const sets = validateMatchResultSets(item.sets);
       const classification = classifyMatchResultSets(sets);
       if (
@@ -561,9 +566,6 @@ function parseCallerDecision(value: unknown): ResultDecision | null {
 function nullableName(value: unknown): string | null {
   return value === null || typeof value === 'string' ? value : invalid();
 }
-function uuid(value: unknown): string {
-  return validateMatchUuid(value);
-}
 function coverageCount(value: unknown, minimum: 1, maximum: 2): 1 | 2;
 function coverageCount(value: unknown, minimum: 0, maximum: 2): 0 | 1 | 2;
 function coverageCount(value: unknown, minimum: number, maximum: number): 0 | 1 | 2 {
@@ -590,7 +592,7 @@ function resultReason(value: unknown): ResultRejectionReason | null {
 function parseDisputeEvidence(value: unknown): ResultDisputeEvidence | null {
   if (value === null) return null;
   if (!record(value)) return invalid();
-  const rejectorId = uuid(value.rejector_id);
+  const rejectorId = validateMatchParticipantRef(value.rejector_id);
   const rejectorName = nullableName(value.rejector_name);
   const reasonCode = resultReason(value.reason_code);
   const decidedAt = value.decided_at;
@@ -617,7 +619,7 @@ function parseResultConfirmation(value: unknown): ResultConfirmation | null {
   let actorId: string | null;
   try {
     confirmationId = validateMatchUuid(value.confirmation_id);
-    actorId = value.actor_id === null ? null : validateMatchUuid(value.actor_id);
+    actorId = value.actor_id === null ? null : validateMatchParticipantRef(value.actor_id);
   } catch {
     return invalid();
   }
@@ -667,7 +669,7 @@ function parseVersionTimeline(
     let submittedBy: string;
     let confirmationId: string | null;
     try {
-      submittedBy = validateMatchUuid(entry.submitted_by);
+      submittedBy = validateMatchParticipantRef(entry.submitted_by);
       confirmationId =
         entry.confirmation_id === null ? null : validateMatchUuid(entry.confirmation_id);
     } catch {

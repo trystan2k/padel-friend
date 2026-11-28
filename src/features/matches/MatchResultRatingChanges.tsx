@@ -98,7 +98,7 @@ export function MatchResultRatingChanges({
                     <div {...stylex.props(s.rowTop)}>
                       <div {...stylex.props(s.rowMain)}>
                         <p {...stylex.props(s.rowTitle)}>
-                          {player.display_name}
+                          {player.display_name || t('player.formerPlayer')}
                           {player.is_provisional && <ProvisionalBadge />}
                         </p>
                         <p {...stylex.props(s.copy)}>
@@ -127,7 +127,7 @@ export function MatchResultRatingChanges({
                     <button
                       type="button"
                       aria-label={t('rating.changes.explainLabel', {
-                        name: player.display_name,
+                        name: player.display_name || t('player.formerPlayer'),
                         number: group.game_group_number
                       })}
                       onClick={(event) => {

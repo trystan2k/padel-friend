@@ -1,3 +1,4 @@
+import { isParticipantRef } from '../../lib/participant-ref';
 import { COMMUNITY_TIMEZONES, type CommunityTimezone } from '../community/community-settings';
 import {
   LEAGUE_ACCESS_MODES,
@@ -42,6 +43,9 @@ function integer(value: unknown): number {
 function oneOf<T extends string>(value: unknown, values: readonly T[]): T {
   const matched = typeof value === 'string' ? values.find((item) => item === value) : undefined;
   return matched ?? fail();
+}
+function participantRef(value: unknown): string {
+  return isParticipantRef(value) ? value : fail();
 }
 function uuid(value: unknown): string {
   return typeof value === 'string' &&
@@ -106,7 +110,7 @@ export function decodeLeagueDto(value: unknown): LeagueDto {
     community_id: uuid(row.community_id),
     name: text(row.name),
     description: nullable(row.description, text),
-    owner_id: uuid(row.owner_id),
+    owner_id: participantRef(row.owner_id),
     owner_name: nullable(row.owner_name, text),
     timezone: oneOf<CommunityTimezone>(row.timezone, COMMUNITY_TIMEZONES),
     start_at: instant(row.start_at),
@@ -162,7 +166,7 @@ const COUNTER_KEYS = [
 function decodeCounterEntry(value: unknown): LeagueCounterEntry {
   const row = exactObject(value, COUNTER_KEYS);
   const entry: LeagueCounterEntry = {
-    user_id: uuid(row.user_id),
+    user_id: participantRef(row.user_id),
     display_name: nullable(row.display_name, text),
     is_provisional: boolean(row.is_provisional),
     matches: count(row.matches),

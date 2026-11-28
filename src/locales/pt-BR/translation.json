@@ -291,6 +291,7 @@
     "avatarConflictContinue": "Continuar com a foto atual"
   },
   "player": {
+    "formerPlayer": "Ex-jogador",
     "provisional": {
       "badge": "Provisório",
       "reviewNote": "Ainda não cadastrado — não pode revisar resultados"
@@ -310,7 +311,8 @@
       "label": "Atalhos do perfil",
       "statistics": "Estatísticas",
       "matchHistory": "Histórico de partidas",
-      "notifications": "Notificações"
+      "notifications": "Notificações",
+      "accountDeletion": "Exclusão de conta"
     },
     "edit": "Editar perfil",
     "save": "Salvar alterações",
@@ -3517,11 +3519,111 @@
       "canceling": "Cancelando…"
     }
   },
+  "accountDeletion": {
+    "title": "Excluir minha conta",
+    "back": "Voltar ao perfil",
+    "retry": "Tentar novamente",
+    "intro": {
+      "heading": "Exclusão de conta",
+      "sends": "Você pode pedir a exclusão da sua conta. Enviar o pedido não exclui nada por si só.",
+      "review": "Analisamos cada pedido e o verificamos pelo e-mail da sua conta antes de apagar qualquer coisa. Você pode retirar o pedido até o início do processamento.",
+      "start": "Pedir exclusão da conta"
+    },
+    "dialog": {
+      "title": "Pedir a exclusão da conta?",
+      "summary": "Nada é excluído ao enviar. Leia antes o que a exclusão significa.",
+      "disappears": {
+        "title": "O que é excluído",
+        "profile": "Seu perfil: nome, foto, bio e preferências de jogo",
+        "photos": "Fotos que você enviou",
+        "preferences": "Suas configurações de notificações e dispositivos",
+        "participation": "Sua participação como jogador em comunidades e partidas",
+        "notifications": "Suas notificações e convites"
+      },
+      "remains": {
+        "title": "O que pode permanecer",
+        "body": "Placares, resultados e avaliações oficiais das partidas que você jogou também fazem parte do histórico dos outros jogadores. Eles são mantidos sem seu nome ou foto e aparecem como “{{placeholder}}”. Quem estava presente ainda pode reconhecer quem jogou."
+      },
+      "access": {
+        "title": "Perda de acesso",
+        "body": "Quando o processamento começa, seu acesso é bloqueado e você é desconectado. A exclusão da conta é permanente e não pode ser desfeita."
+      },
+      "cutoff": {
+        "title": "Até quando você pode retirar",
+        "body": "Você pode retirar o pedido até o processamento começar. Depois disso, ele não pode mais ser interrompido."
+      },
+      "confirm": "Enviar pedido",
+      "sending": "Enviando…",
+      "cancel": "Manter minha conta"
+    },
+    "status": {
+      "heading": "Seu pedido de exclusão",
+      "reference": "Referência",
+      "received": "Recebido em",
+      "canWithdraw": "Você ainda pode retirar este pedido.",
+      "cannotWithdraw": "Este pedido não pode mais ser retirado.",
+      "withdraw": "Retirar pedido",
+      "refresh": "Atualizar status"
+    },
+    "withdrawDialog": {
+      "title": "Retirar o pedido?",
+      "body": "Sua conta continua como está e nada é excluído. Você pode enviar um novo pedido depois.",
+      "confirm": "Retirar pedido",
+      "withdrawing": "Retirando…",
+      "keep": "Manter o pedido"
+    },
+    "state": {
+      "received": "Recebido",
+      "verified": "Verificado",
+      "ready": "Aguardando processamento",
+      "executing": "Em processamento",
+      "app_data_erased": "Removendo seus dados",
+      "supabase_erased": "Encerrando sua conta",
+      "closed": "Concluído",
+      "withdrawn": "Retirado",
+      "blocked": "Precisa de atenção"
+    },
+    "detail": {
+      "received": "Recebemos seu pedido. Vamos analisá-lo e verificá-lo pelo e-mail da sua conta antes de apagar qualquer coisa.",
+      "verified": "Seu pedido foi verificado pelo e-mail da sua conta. Ainda precisa de uma aprovação final antes do processamento.",
+      "ready": "Seu pedido foi aprovado e aguarda processamento. Você ainda pode retirá-lo.",
+      "executing": "O processamento começou. Seu acesso foi encerrado e isto não pode mais ser retirado.",
+      "app_data_erased": "Os dados da sua conta foram apagados. A remoção está sendo concluída.",
+      "supabase_erased": "Seu login está sendo removido e sua conta está sendo encerrada.",
+      "closed": "Seu pedido foi concluído.",
+      "withdrawn": "Você retirou este pedido. Nada foi excluído.",
+      "blocked": "O processamento precisa da nossa atenção para continuar. Entraremos em contato pelo e-mail da sua conta."
+    },
+    "notice": {
+      "existing": "Você já tem um pedido em aberto. A referência é {{reference}}."
+    },
+    "announce": {
+      "requested": "Pedido enviado. Sua referência é {{reference}}.",
+      "withdrawn": "Pedido retirado. Nada foi excluído.",
+      "statusUpdated": "Status atualizado: {{state}}. {{detail}}"
+    },
+    "errors": {
+      "unauthenticated": "Sua sessão terminou. Entre novamente para continuar.",
+      "account_required": "Conclua a configuração da sua conta antes de pedir a exclusão.",
+      "restricted": "Esta conta não pode enviar este pedido agora.",
+      "rate_limited": "Você enviou pedidos demais recentemente. Tente novamente mais tarde.",
+      "disabled": "Os pedidos de exclusão estão pausados no momento. Tente mais tarde ou escreva para nós por e-mail.",
+      "not_found": "Não há pedido em aberto para retirar.",
+      "not_withdrawable": "O processamento já começou, então este pedido não pode mais ser retirado.",
+      "unavailable": "Não foi possível concluir. Verifique sua conexão e tente novamente.",
+      "loadFailed": "Não foi possível carregar o status do seu pedido."
+    },
+    "fallback": {
+      "title": "Não consegue entrar ou nunca teve conta?",
+      "body": "Se você não consegue entrar, ou só foi convidado para uma partida ou comunidade, escreva para nós no endereço abaixo. Você não precisa de conta para exercer seus direitos de privacidade.",
+      "mailLabel": "Enviar e-mail ao contato de privacidade em {{address}}"
+    }
+  },
   "privacy": {
     "title": "Política de privacidade",
     "backHome": "Voltar ao início",
     "updated": "Última atualização: {{date}}",
-    "reviewNotice": "Rascunho: esta política aguarda confirmação final do responsável pelo serviço e revisão jurídica, e pode mudar antes de ser definitiva.",
+    "reviewNotice": "Esta política descreve como o Padel Friends funciona hoje. Ela ainda não passou por uma revisão jurídica externa e pode mudar depois de uma.",
     "who": {
       "title": "Sobre esta política",
       "p1": "O Padel Friends é operado por Thiago Mendonça, pessoa física com sede na Espanha, que decide como os dados pessoais descritos aqui são usados (controlador de dados). Esta política explica quais dados pessoais o app trata, para quê e quais são os seus direitos."
@@ -3605,18 +3707,34 @@
     "retention": {
       "title": "Por quanto tempo guardamos",
       "p1": "Guardamos os dados da sua conta, perfil e atividade enquanto sua conta existir e até tratarmos um pedido de exclusão seu. No momento, não excluímos contas inativas automaticamente.",
-      "p2": "Não definimos outros prazos fixos de retenção. A Cloudflare mantém logs de requisições por um período curto definido por ela (atualmente 3 dias no nosso plano, o que pode mudar). No momento, não mantemos backups agendados separados do banco de dados. Outros prestadores, como o de envio de e-mails, mantêm seus próprios registros conforme suas próprias práticas de retenção.",
-      "p3": "Quando a lei exige ou permite que guardemos certos dados, por exemplo para tratar uma reivindicação legal ou manter registros de solicitações de privacidade, guardamos apenas enquanto essa necessidade durar."
+      "p2": "Não definimos outros prazos fixos de retenção. Os logs de hospedagem e os caches da Cloudflare seguem configurações e prazos que a Cloudflare controla e que não verificamos; tratamos esses registros manualmente quando você pede. Não mantemos backups automáticos do banco de dados de produção. Outros provedores, como o de envio de e-mails, mantêm seus próprios registros conforme suas próprias práticas de retenção.",
+      "p3": "Quando a lei exige ou permite que mantenhamos certos dados, por exemplo para tratar uma reivindicação legal, mantemos apenas pelo tempo que essa necessidade durar. O nosso registro de um pedido de privacidade (o caso, o resultado da verificação e a nossa resposta) é mantido por 90 dias após o envio da resposta final; depois disso restam apenas contagens anônimas de resultados."
     },
     "security": {
       "title": "Segurança",
       "p1": "As conexões com o Padel Friends usam HTTPS. As senhas são tratadas pelo nosso prestador de autenticação e não as armazenamos em forma legível. O acesso aos dados no banco de dados é restrito por permissões baseadas em conta. Nenhum sistema é perfeitamente seguro e não podemos garantir segurança absoluta."
     },
     "requests": {
-      "title": "Suas solicitações",
-      "p1": "Para exercer qualquer um dos seus direitos, incluindo pedir para acessar, corrigir ou excluir seus dados pessoais, escreva para o endereço da seção Contato.",
-      "p2": "Como meta interna, analisamos as solicitações de privacidade recebidas por e-mail aproximadamente a cada 24 horas. Isso não substitui os prazos fixados em lei: respondemos em até um mês após receber sua solicitação, prazo que a lei permite prorrogar em alguns casos.",
-      "p3": "Seu direito de exclusão está sujeito às condições e exceções da lei de proteção de dados. Se não pudermos atender integralmente a uma solicitação, explicaremos o motivo."
+      "title": "Seus pedidos",
+      "p1": "Se você tem uma conta e está conectado, pode pedir a exclusão da conta no seu próprio perfil (Exclusão de conta). Antes de enviar qualquer coisa, você vê o que é excluído, o que pode permanecer, como o seu acesso termina e que pode retirar o pedido até o início do processamento.",
+      "p2": "Todo pedido é analisado e verificado antes que qualquer coisa seja apagada. Enviamos um código de uso único ao e-mail verificado da conta, e nada é apagado apenas com o pedido.",
+      "p3": "Se você não consegue entrar, se só foi convidado e não tem conta, ou para qualquer outro direito (acesso, correção, restrição, oposição ou portabilidade), escreva para o endereço indicado na seção Contato. Você não precisa de conta, nem de se cadastrar ou reivindicar uma, para exercer seus direitos.",
+      "p4": "Confirmamos o recebimento dos pedidos e os tratamos sem demora injustificada e, em todo caso, no prazo de um mês a partir do recebimento. Quando necessário, pela complexidade ou pelo número de pedidos, a lei permite prorrogar esse prazo por até mais dois meses; se o fizermos, avisamos você no primeiro mês, com os motivos. Verificar sua identidade não reinicia o prazo. Se não pudermos atender totalmente a um pedido, explicamos o motivo. O direito ao apagamento está sujeito às condições e exceções da lei de proteção de dados."
+    },
+    "deletion": {
+      "title": "Quando sua conta é excluída",
+      "p1": "Depois que um pedido é verificado e aprovado, acontece o seguinte:",
+      "i1": "Excluídos: seu perfil, as fotos que você enviou, as configurações de notificações e push, notificações e convites, sua participação como jogador e seu acesso (a conta de autenticação e suas sessões). Seu acesso é bloqueado assim que o processamento começa.",
+      "i2": "Mantidos de forma anonimizada: placares, resultados e avaliações oficiais das partidas que você jogou continuam no histórico dos outros jogadores. Sua identidade nesses registros é substituída por um identificador interno aleatório, sem ligação com a sua conta e que não é guardado junto com ela. As outras pessoas o veem apenas como um genérico “Ex-jogador”, sem nome nem foto.",
+      "i3": "Textos livres que você escreveu em registros que são mantidos, como observações e motivos, são removidos ou substituídos.",
+      "i4": "Comunidades, ligas e partidas que você administrava são repassadas a um membro que concorde. Se ninguém concordar, a comunidade é arquivada sem dono, a atividade futura que não puder continuar é cancelada e os resultados oficiais permanecem.",
+      "i5": "Quem jogou com você ainda pode se lembrar de você e, em um grupo muito pequeno, os resultados mantidos para outros jogadores ainda podem permitir inferir quem você era. Avaliamos isso em cada pedido."
+    },
+    "residual": {
+      "title": "O que não conseguimos remover por completo",
+      "p1": "Nosso banco de dados, a autenticação e o armazenamento de arquivos são apagados automaticamente. Os registros mantidos por outros provedores são tratados manualmente a pedido, e o que pode ser removido depende de cada provedor: logs e caches de hospedagem na Cloudflare, registros de envio de e-mails na Resend, o acesso que você concedeu na sua conta Google (você pode desconectar o app nas configurações da sua conta Google; não podemos remover os registros do próprio Google) e mensagens push já entregues pelo serviço de push do seu navegador.",
+      "p2": "Nosso provedor de autenticação também mantém alguns registros técnicos que não conseguimos apagar por conta própria, como entradas de tokens de atualização e de auditoria. Nós os minimizamos e os revisamos com o provedor.",
+      "p3": "Na data acima, não mantemos backups automáticos do banco de dados de produção."
     },
     "rights": {
       "title": "Seus direitos",

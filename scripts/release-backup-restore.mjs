@@ -112,6 +112,149 @@ function disableDispatch(docker, database) {
   return { pushJobsRetired: retired, cronAbsent };
 }
 
+/**
+ * Restore gate (review F8/F17). A restored environment is an OLD copy of the data: accounts erased after the
+ * snapshot exist again in it. The gate turns intake and executor off and refuses to turn them on until every
+ * post-snapshot erasure was replayed IN the restored database (privacy_op_restore_reconcile: the real erasure
+ * plus a zero-residue proof) and the operator closed the gate with an evidence reference. Nothing here
+ * remembers who was erased: the gate row keeps the evidence reference, not a standing identity ledger.
+ */
+/**
+ * The authoritative isolation boundary: a database marked at creation as a restore target. The marker row (in
+ * privacy_internal, writable only by the provisioning superuser, named after its database) is the authority; the
+ * app.restore_target setting is a secondary check. The restore/privacy RPCs refuse to run anywhere else.
+ */
+export function markRestoreTarget(docker, database) {
+  // Both writes need the container's superuser role: the application roles (service_role included) can neither set
+  // the database parameter nor write the marker table, so a caller cannot declare a database isolated.
+  docker.exec(['psql', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-q'], {
+    input: `alter database "${database}" set app.restore_target = 'on';`
+  });
+  docker.exec(['psql', '-U', 'supabase_admin', '-d', database, '-v', 'ON_ERROR_STOP=1', '-q'], {
+    input: `insert into privacy_internal.restore_isolation_marker (database_name) values ('${database}')
+      on conflict (id) do update set database_name = excluded.database_name, marked_at = clock_timestamp();`
+  });
+}
+
+export function applyRestoreGate(
+  docker,
+  database,
+  {
+    snapshotAt = new Date().toISOString(),
+    cutoffXid = 0,
+    cutoffSnapshot = '',
+    expectedSubjects = [],
+    projectRef = database,
+    tombstoneCount = expectedSubjects.length
+  } = {}
+) {
+  // Only canonical ids reach the SQL text; an empty set is an explicit, confirmed statement.
+  if (!expectedSubjects.every((id) => /^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(id)))
+    throw new Error('Expected subjects must be canonical uuids');
+  if (Number.isNaN(Date.parse(snapshotAt))) throw new Error('snapshotAt must be a timestamp');
+  const begun = JSON.parse(
+    docker.sql(
+      database,
+      `select public.privacy_op_restore_gate('begin', null, '${new Date(snapshotAt).toISOString()}'::timestamptz, ` +
+        `array[${expectedSubjects.map((id) => `'${id}'`).join(',')}]::uuid[], '${projectRef.replaceAll("'", '')}', ${Number(tombstoneCount)}, ${cutoffXid}, '${cutoffSnapshot.replace(/[^0-9:,]/g, '')}')::text;`
+    )
+  );
+  const settings = Object.fromEntries(
+    docker
+      .sql(
+        database,
+        "select key || '=' || value from privacy_internal.privacy_settings union all select 'restore_gate=' || status from privacy_internal.restore_gate order by 1;"
+      )
+      .split('\n')
+      .map((line) => line.split('='))
+  );
+  return {
+    // Open = not closed: pending (subjects to reconcile) or reconciled (nothing to reconcile, evidence still due).
+    pending:
+      ['pending', 'reconciled'].includes(begun.restore_gate) && settings.restore_gate !== 'closed',
+    intakeOff: settings.intake_enabled === 'false',
+    executorOff: settings.executor_enabled === 'false'
+  };
+}
+
+const SNAPSHOT_SCHEMAS = ['public', 'privacy_internal', 'auth', 'supabase_migrations'];
+
+/** One in-memory dump plus its filtered restore list, staged in the container (removed by discardSnapshot). */
+export function takeSnapshot(docker, { source = 'postgres' } = {}) {
+  if (source !== 'postgres') throw new Error('Only the local postgres source is supported');
+  const artifactId = randomUUID();
+  const dumpPath = '/tmp/release-rehearsal-' + artifactId + '.dump';
+  const tocPath = '/tmp/release-rehearsal-' + artifactId + '.toc';
+  // The coverage cutoff is captured BEFORE the dump starts (transaction id and clock, one statement): an erasure that
+  // began before the dump but commits after it has an earlier xid yet a later event time, and is still counted.
+  // The snapshot (xmin:xmax:in-progress list) says which transactions the cutoff could see: an erasure that was still
+  // in progress, or started later, is not visible to it and is counted however early its xid and timestamp.
+  const [cutoffXid, cutoffTime, cutoffSnapshot] = docker
+    .sql(source, 'select txid_current(), clock_timestamp(), pg_current_snapshot()')
+    .split('|');
+  const dump = docker.dump(source, [
+    '-Fc',
+    '--no-owner',
+    ...SNAPSHOT_SCHEMAS.flatMap((schema) => ['-n', schema])
+  ]);
+  const toc = listDumpToc(docker, dump, dumpPath)
+    .split('\n')
+    .filter((line) => !line.includes('DEFAULT ACL'))
+    .join('\n');
+  docker.exec(['sh', '-c', 'cat > "$1"', 'sh', tocPath], { input: toc });
+  return {
+    dump,
+    dumpPath,
+    tocPath,
+    takenAt: new Date().toISOString(),
+    cutoffXid: Number(cutoffXid),
+    cutoffTime: new Date(cutoffTime).toISOString(),
+    cutoffSnapshot
+  };
+}
+
+export function discardSnapshot(docker, snapshot) {
+  docker.exec(['rm', '-f', snapshot.dumpPath, snapshot.tocPath]);
+}
+
+/** Restores a snapshot into a disposable scratch database and closes the restore gate on it. */
+export function restoreSnapshotWithGate(
+  docker,
+  snapshot,
+  { base, source = 'postgres', expectedSubjects = () => [], tombstoneCount }
+) {
+  const destination = assertDisposableDatabase({
+    name: base,
+    prefix: RESTORE_PREFIX,
+    source,
+    confirmation: base
+  });
+  provisionDatabase(docker, destination);
+  try {
+    docker.sql(destination, 'drop schema public cascade;');
+    docker.restore(destination, snapshot.dump, [
+      '--exit-on-error',
+      '--use-list=' + snapshot.tocPath
+    ]);
+    // Only now may the privacy RPCs run here; the expected set is derived from the RESTORED copy.
+    markRestoreTarget(docker, destination);
+    const expected = expectedSubjects(destination);
+    return {
+      destination,
+      gate: applyRestoreGate(docker, destination, {
+        snapshotAt: snapshot.cutoffTime,
+        cutoffXid: snapshot.cutoffXid,
+        cutoffSnapshot: snapshot.cutoffSnapshot,
+        expectedSubjects: expected,
+        tombstoneCount: tombstoneCount ?? expected.length
+      })
+    };
+  } catch (error) {
+    dropDatabase(docker, destination);
+    throw error;
+  }
+}
+
 export function runRestoreRehearsal({
   docker = createDocker(),
   source = 'postgres',
@@ -154,6 +297,8 @@ export function runRestoreRehearsal({
   // One dump and one filtered TOC are shared by every restore, so all runs restore identical
   // input. A failure here throws before any destination is provisioned.
   const dumpStarted = now();
+  // The gate refuses a begin without the dump-start snapshot: capture it before the dump, like takeSnapshot does.
+  const cutoffSnapshot = docker.sql(source, 'select pg_current_snapshot()::text');
   // Invocation-owned container paths: concurrent rehearsals must not overwrite each other, and the
   // staged files are removed on every exit path.
   const artifactId = randomUUID();
@@ -167,6 +312,8 @@ export function runRestoreRehearsal({
       '--no-owner',
       '-n',
       'public',
+      '-n',
+      'privacy_internal',
       '-n',
       'auth',
       '-n',
@@ -197,7 +344,16 @@ export function runRestoreRehearsal({
         const restoredReads = authorizedReads(docker, destination, users);
         const readsMatch = JSON.stringify(sourceReads) === JSON.stringify(restoredReads);
         const dispatch = disableDispatch(docker, destination);
-        const pass = !mismatched.length && !schemaDiff.length && readsMatch && dispatch.cronAbsent;
+        markRestoreTarget(docker, destination);
+        const restoreGate = applyRestoreGate(docker, destination, { cutoffSnapshot });
+        const pass =
+          !mismatched.length &&
+          !schemaDiff.length &&
+          readsMatch &&
+          dispatch.cronAbsent &&
+          restoreGate.pending &&
+          restoreGate.intakeOff &&
+          restoreGate.executorOff;
         log(`[${pass ? 'PASS' : 'FAIL'}] ${destination}`);
         results.push({
           destination,
@@ -211,6 +367,7 @@ export function runRestoreRehearsal({
           schemaDiff,
           authorizedReads: { users: users.length, match: readsMatch },
           dispatchDisabled: dispatch,
+          restoreGate,
           pass
         });
       } finally {

@@ -1,0 +1,350 @@
+import { describe, expect, it } from 'vitest';
+import { localSupabaseEnv } from './helpers/local-supabase-env';
+import { erasurePlan, scalar } from './helpers/account-erasure-fixtures';
+import { fixtureSql, sqlRows } from './helpers/match-registration-sql';
+import { signUpFixtureActor, sqlText } from './helpers/provisional-player-fixtures';
+
+const environment = localSupabaseEnv();
+const L = sqlText;
+
+type Edge = { table: string; column: string; target: string };
+
+/** Every single-column FK from a public table to Auth, the profile or the participant anchor. */
+async function liveEdges(): Promise<Edge[]> {
+  const rows = await sqlRows(
+    'select t.relname::text as t, a.attname::text as c, r.relname::text as target ' +
+      'from pg_constraint k join pg_class t on t.oid = k.conrelid join pg_class r on r.oid = k.confrelid ' +
+      'join pg_attribute a on a.attrelid = k.conrelid and a.attnum = k.conkey[1] ' +
+      "where k.contype = 'f' and k.connamespace = 'public'::regnamespace and array_length(k.conkey, 1) = 1 " +
+      "and k.confrelid in ('auth.users'::regclass, 'public.player_profiles'::regclass, 'public.participant_identities'::regclass) " +
+      'order by 1, 2'
+  );
+  return rows.map((row) => ({
+    table: String(row['t']),
+    column: String(row['c']),
+    target: String(row['target'])
+  }));
+}
+
+async function registry() {
+  const rows = await sqlRows(
+    'select table_name::text as t, column_name::text as c, disposition::text as d from privacy_internal.erasure_dispositions order by 1, 2'
+  );
+  return rows.map((row) => ({
+    table: String(row['t']),
+    column: String(row['c']),
+    disposition: String(row['d'])
+  }));
+}
+
+const key = (edge: { table: string; column: string }) => edge.table + '.' + edge.column;
+const GUARDED_TRIGGER_FUNCTIONS = [
+  'guard_player_profile_provenance',
+  'guard_community_member',
+  'guard_community_invitation',
+  'audit_community_change',
+  'notify_community_membership',
+  'notify_community_role_change',
+  'guard_match_event_mutation',
+  'guard_match_event_league_binding',
+  'guard_match_registration_identity',
+  'guard_match_invitation_mutation',
+  'guard_match_registration_attempt',
+  'guard_match_event_audit',
+  'guard_match_result_proposal_transition',
+  'guard_match_result_proposal_version_immutable',
+  'guard_match_result_review_immutable',
+  'guard_match_event_result_confirmation_insert',
+  'guard_player_rating_evidence_immutable',
+  'guard_league_identity',
+  'guard_league_events_immutable',
+  'guard_league_standings_snapshots_immutable',
+  'guard_level_review_request',
+  'guard_level_review_no_delete',
+  'guard_result_amendment_request',
+  'guard_result_amendment_insert_only',
+  'guard_result_repair_job',
+  'guard_result_repair_attempt',
+  'notify_league_lifecycle',
+  'notify_level_review_resolution'
+];
+
+describe.skipIf(!environment.env)(
+  'Account erasure disposition contract (live catalog)',
+  { timeout: 300_000 },
+  () => {
+    it('classifies every FK edge to Auth, the profile or the anchor', async () => {
+      const classified = new Set((await registry()).map(key));
+      const unclassified = (await liveEdges())
+        .filter((edge) => !classified.has(key(edge)))
+        .map(key);
+      expect(unclassified).toEqual([]);
+    });
+
+    it('keeps the classification and the physical edge in agreement', async () => {
+      const edges = new Map((await liveEdges()).map((edge) => [key(edge), edge.target]));
+      const expectedTargets: Record<string, string[] | undefined> = {
+        anchor_rekey: ['participant_identities'],
+        account_owned: ['users', 'player_profiles'],
+        delete_rows: ['users'],
+        operator_blocker: ['users']
+      };
+      const mismatches: string[] = [];
+      for (const entry of await registry()) {
+        const target = edges.get(key(entry));
+        // Composite and non-FK locations carry no single-column Auth/profile/anchor FK.
+        const allowed = expectedTargets[entry.disposition];
+        if (allowed ? !target || !allowed.includes(target) : target !== undefined)
+          mismatches.push(key(entry) + ' -> ' + String(target));
+        const [column] = await sqlRows(
+          "select count(*)::int as n from information_schema.columns where table_schema = 'public' and table_name = " +
+            L(entry.table) +
+            ' and column_name = ' +
+            L(entry.column)
+        );
+        if (column?.['n'] !== 1) mismatches.push(key(entry) + ' missing column');
+      }
+      expect(mismatches).toEqual([]);
+    });
+
+    it('leaves no history-preserving edge on Auth or the profile', async () => {
+      const allowedOnAuth = new Set(
+        (await registry())
+          .filter((entry) =>
+            ['account_owned', 'delete_rows', 'operator_blocker'].includes(entry.disposition)
+          )
+          .map(key)
+      );
+      const stray = (await liveEdges()).filter(
+        (edge) => edge.target !== 'participant_identities' && !allowedOnAuth.has(key(edge))
+      );
+      expect(stray.map(key)).toEqual([]);
+    });
+
+    it('flags a person-named location that is neither a foreign key nor classified', async () => {
+      const classified = new Set((await registry()).map(key));
+      const rows = await sqlRows(
+        'select c.relname::text as t, a.attname::text as c from pg_attribute a join pg_class c on c.oid = a.attrelid ' +
+          "where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' and a.attnum > 0 and not a.attisdropped " +
+          "and format_type(a.atttypid, a.atttypmod) in ('uuid', 'uuid[]') " +
+          "and a.attname ~ '(user_id|actor|player|owner|creator|invitee|reviewer|requester|sender|recipient|subject|partner|submitted_by|invited_by|granted_by)' " +
+          "and not exists (select 1 from pg_constraint k where k.conrelid = c.oid and k.contype = 'f' and a.attnum = any (k.conkey))"
+      );
+      const unclassified = rows
+        .map((row) => String(row['t']) + '.' + String(row['c']))
+        .filter((name) => !classified.has(name));
+      expect(unclassified).toEqual([]);
+    });
+
+    it('fails closed on a newly added, unclassified FK edge to Auth', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'edge-probe', {
+        displayName: 'Edge Probe',
+        level: 3
+      });
+      const probe = fixtureSql(
+        'do $probe$ declare v_blockers jsonb; begin ' +
+          'create table public.zz_unclassified_edge(owner_id uuid references auth.users(id)); ' +
+          'v_blockers := privacy_internal.account_erasure_plan(' +
+          L(lone.id) +
+          ", '{}'::jsonb) -> 'blockers'; " +
+          "raise exception 'PROBE:%', v_blockers::text; end $probe$;"
+      );
+      await expect(probe).rejects.toThrow(/PROBE:.*unclassified_dependency/);
+      expect(
+        await scalar("select count(*)::int from pg_class where relname = 'zz_unclassified_edge'")
+      ).toBe(0);
+      expect((await erasurePlan(lone.id)).blockers).toEqual([]);
+    });
+
+    it('fails closed on a composite FK to an identity-bearing table', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'composite-probe', {
+        displayName: 'Composite Probe',
+        level: 3
+      });
+      const probe = fixtureSql(
+        'do $probe$ declare v_blockers jsonb; begin ' +
+          'alter table public.player_profiles add constraint zz_profile_key unique (user_id, display_name); ' +
+          'create table public.zz_composite_edge(a uuid, b text, foreign key (a, b) references public.player_profiles(user_id, display_name)); ' +
+          'v_blockers := privacy_internal.account_erasure_plan(' +
+          L(lone.id) +
+          ", '{}'::jsonb) -> 'blockers'; " +
+          "raise exception 'PROBE:%', v_blockers::text; end $probe$;"
+      );
+      await expect(probe).rejects.toThrow(/PROBE:.*unclassified_dependency/);
+      expect(
+        await scalar("select count(*)::int from pg_class where relname = 'zz_composite_edge'")
+      ).toBe(0);
+      expect((await erasurePlan(lone.id)).blockers).toEqual([]);
+    });
+
+    it('registers the exact source-to-target mapping of every identity FK (live catalog)', async () => {
+      const mapping = (rows: Awaited<ReturnType<typeof sqlRows>>) =>
+        rows.map((row) => String(row['m'])).toSorted();
+      const live = mapping(
+        await sqlRows(
+          "select format('%s.%s %s -> %s.%s %s', tn.nspname, t.relname, privacy_internal.fk_columns(k.conrelid, k.conkey), rn.nspname, r.relname, " +
+            'privacy_internal.fk_columns(k.confrelid, k.confkey)) as m ' +
+            'from pg_constraint k join pg_class t on t.oid = k.conrelid join pg_namespace tn on tn.oid = t.relnamespace ' +
+            'join pg_class r on r.oid = k.confrelid join pg_namespace rn on rn.oid = r.relnamespace ' +
+            "where k.contype = 'f' and k.connamespace = 'public'::regnamespace " +
+            "and k.confrelid in ('auth.users'::regclass, 'public.player_profiles'::regclass, 'public.participant_identities'::regclass)"
+        )
+      );
+      const registered = mapping(
+        await sqlRows(
+          "select format('%s.%s %s -> %s.%s %s', source_schema, source_table, source_columns, target_schema, target_table, target_columns) as m " +
+            'from privacy_internal.erasure_fk_registry'
+        )
+      );
+      expect(live.length).toBeGreaterThan(0);
+      expect(registered).toEqual(live);
+    });
+
+    it('accepts a composite FK only once its exact ordered mapping is registered', async () => {
+      const lone = await signUpFixtureActor(environment.env!, 'mapping-probe', {
+        displayName: 'Mapping Probe',
+        level: 3
+      });
+      const probe = fixtureSql(
+        'do $probe$ declare v_unregistered jsonb; v_reversed jsonb; v_registered jsonb; begin ' +
+          'alter table public.player_profiles add constraint zz_profile_pair unique (user_id, invited_by); ' +
+          'create table public.zz_mapped_edge(a uuid, b uuid, foreign key (a, b) references public.player_profiles(user_id, invited_by)); ' +
+          // Both source columns are already classified: only the mapping is new.
+          "insert into privacy_internal.erasure_dispositions(table_name, column_name, disposition, note) values ('zz_mapped_edge', 'a', 'account_owned', 'probe'), ('zz_mapped_edge', 'b', 'account_owned', 'probe'); " +
+          'v_unregistered := privacy_internal.account_erasure_plan(' +
+          L(lone.id) +
+          ", '{}'::jsonb) -> 'blockers'; " +
+          // The same columns in another order are another mapping.
+          "insert into privacy_internal.erasure_fk_registry values ('public', 'zz_mapped_edge', '[\"b\", \"a\"]', 'public', 'player_profiles', '[\"user_id\", \"invited_by\"]'); " +
+          'v_reversed := privacy_internal.account_erasure_plan(' +
+          L(lone.id) +
+          ", '{}'::jsonb) -> 'blockers'; " +
+          "insert into privacy_internal.erasure_fk_registry values ('public', 'zz_mapped_edge', '[\"a\", \"b\"]', 'public', 'player_profiles', '[\"user_id\", \"invited_by\"]'); " +
+          'v_registered := privacy_internal.account_erasure_plan(' +
+          L(lone.id) +
+          ", '{}'::jsonb) -> 'blockers'; " +
+          "raise exception 'PROBE:%|%|%', v_unregistered::text, v_reversed::text, v_registered::text; end $probe$;"
+      );
+      await expect(probe).rejects.toThrow(
+        /PROBE:\["unclassified_dependency"\]\|\["unclassified_dependency"\]\|\[\]/
+      );
+      expect(
+        await scalar("select count(*)::int from pg_class where relname = 'zz_mapped_edge'")
+      ).toBe(0);
+      expect((await erasurePlan(lone.id)).blockers).toEqual([]);
+    });
+
+    // The reviewed mapping set the migration carries is what the registry holds; the apply-time comparison is
+    // the same function, fed here with that set.
+    const reviewedSet =
+      "(select jsonb_agg(jsonb_build_object('source_schema', source_schema, 'source_table', source_table, " +
+      "'source_columns', source_columns, 'target_schema', target_schema, 'target_table', target_table, " +
+      "'target_columns', target_columns)) from privacy_internal.erasure_fk_registry)";
+    const compare = (setup: string, reviewed: string) =>
+      fixtureSql(
+        'do $probe$ declare v_detail text; begin ' +
+          setup +
+          ' begin perform privacy_internal.assert_fk_registry_reviewed(' +
+          reviewed +
+          "); raise exception 'PROBE:accepted'; exception when sqlstate 'P0001' then " +
+          'get stacked diagnostics v_detail = pg_exception_detail; ' +
+          "raise exception 'PROBE:%', coalesce(nullif(v_detail, ''), 'accepted'); end; end $probe$;"
+      );
+
+    it('accepts the live catalog when it matches the reviewed mapping set exactly (F26)', async () => {
+      await expect(compare('', reviewedSet)).rejects.toThrow(/PROBE:accepted/);
+    });
+
+    it('aborts on a live composite FK from classified columns that was never reviewed (F26)', async () => {
+      const probe = compare(
+        'alter table public.player_profiles add constraint zz_reviewed_pair unique (user_id, invited_by); ' +
+          'create table public.zz_hosted_edge(a uuid, b uuid, foreign key (a, b) references public.player_profiles(user_id, invited_by)); ' +
+          "insert into privacy_internal.erasure_dispositions(table_name, column_name, disposition, note) values ('zz_hosted_edge', 'a', 'account_owned', 'probe'), ('zz_hosted_edge', 'b', 'account_owned', 'probe'); ",
+        reviewedSet
+      );
+      await expect(probe).rejects.toThrow(/PROBE:\["unclassified_dependency"\]/);
+      expect(
+        await scalar("select count(*)::int from pg_class where relname = 'zz_hosted_edge'")
+      ).toBe(0);
+    });
+
+    it('aborts when a reviewed edge no longer exists in the catalog (F26)', async () => {
+      const probe = compare(
+        '',
+        '(' +
+          reviewedSet +
+          " || jsonb_build_array(jsonb_build_object('source_schema', 'public', 'source_table', 'zz_removed_edge', " +
+          "'source_columns', '[\"owner_id\"]'::jsonb, 'target_schema', 'auth', 'target_table', 'users', 'target_columns', '[\"id\"]'::jsonb)))"
+      );
+      await expect(probe).rejects.toThrow(/PROBE:\["registry_drift"\]/);
+    });
+
+    it('opens the guard exemption only inside the private window', async () => {
+      const rows = await sqlRows(
+        "select count(*)::int as n from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname = any (array[" +
+          GUARDED_TRIGGER_FUNCTIONS.map(L).join(',') +
+          "]) and pg_get_functiondef(p.oid) like '%privacy_internal.erasure_active()%'"
+      );
+      expect(rows[0]?.['n']).toBe(GUARDED_TRIGGER_FUNCTIONS.length);
+      expect(await scalar('select privacy_internal.erasure_active()')).toBe(false);
+      const clientCanRead = await sqlRows(
+        "select has_table_privilege('authenticated', 'privacy_internal.erasure_windows', 'INSERT') as w, " +
+          "has_table_privilege('service_role', 'privacy_internal.erasure_windows', 'INSERT') as s, " +
+          "has_table_privilege('authenticated', 'privacy_internal.erasure_dispositions', 'UPDATE') as d"
+      );
+      expect(clientCanRead[0]).toEqual({ w: false, s: false, d: false });
+    });
+  }
+);
+
+describe.skipIf(!environment.env)('Participant anchor', { timeout: 300_000 }, () => {
+  it('backfills a live identity for every Auth user and keeps new sign-ups in step', async () => {
+    expect(
+      await scalar(
+        // An erased account keeps its Auth row until the privileged Auth delete (unit C): it has no profile and no anchor.
+        "select count(*)::int from auth.users u join public.player_profiles p on p.user_id = u.id where not exists (select 1 from public.participant_identities i where i.id = u.id and i.state = 'live')"
+      )
+    ).toBe(0);
+    const created = await signUpFixtureActor(environment.env!, 'anchor-signup');
+    expect(
+      await scalar(
+        "select count(*)::int from public.participant_identities where state = 'live' and id = " +
+          L(created.id)
+      )
+    ).toBe(1);
+  });
+
+  it('only lets a live Auth holder have a live identity and never a normal withdrawn one', async () => {
+    await expect(
+      fixtureSql(
+        "insert into public.participant_identities(id, state) values (gen_random_uuid(), 'live')"
+      )
+    ).rejects.toThrow(/PARTICIPANT_IDENTITY_REQUIRES_AUTH_USER/);
+    await expect(
+      fixtureSql(
+        "insert into public.participant_identities(id, state) values (gen_random_uuid(), 'withdrawn')"
+      )
+    ).rejects.toThrow(/PARTICIPANT_WITHDRAWN_ONLY_BY_ERASURE/);
+    const created = await signUpFixtureActor(environment.env!, 'anchor-immutable');
+    await expect(
+      fixtureSql(
+        "update public.participant_identities set state = 'withdrawn' where id = " + L(created.id)
+      )
+    ).rejects.toThrow(/PARTICIPANT_IDENTITY_IMMUTABLE/);
+    await expect(
+      fixtureSql('delete from public.participant_identities where id = ' + L(created.id))
+    ).rejects.toThrow(/PARTICIPANT_IDENTITY_LIVE_ACCOUNT/);
+  });
+
+  it('keeps a plain Auth delete restricted by retained history, as before', async () => {
+    const actor = await signUpFixtureActor(environment.env!, 'anchor-delete', {
+      displayName: 'Anchor Delete',
+      level: 3
+    });
+    // The onboarding rating initialization is retained history: the anchor delete (and so the Auth delete) is restricted.
+    await expect(fixtureSql('delete from auth.users where id = ' + L(actor.id))).rejects.toThrow(
+      /violates foreign key/
+    );
+    expect(await scalar('select count(*)::int from auth.users where id = ' + L(actor.id))).toBe(1);
+  });
+});

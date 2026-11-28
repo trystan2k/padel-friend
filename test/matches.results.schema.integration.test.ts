@@ -159,17 +159,27 @@ describe('match result proposal schema integration', () => {
         -- Grants matrix: authenticated may only SELECT proposals; nothing else anywhere.
         foreach v_role in array array['anon', 'authenticated', 'public'] loop
           foreach v_operation in array array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER'] loop
-            select has_table_privilege(v_role, 'public.match_event_result_proposals', v_operation) into v_allowed;
+            select case when v_operation in ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES')
+               then has_any_column_privilege(v_role, 'public.match_event_result_proposals', v_operation)
+               else has_table_privilege(v_role, 'public.match_event_result_proposals', v_operation) end into v_allowed;
+            -- The re-keyed submitter identity is never readable through the Data API.
+            if has_column_privilege(v_role, 'public.match_event_result_proposals', 'submitted_by', 'SELECT') then
+              raise exception 'proposal submitted_by must not be readable by %', v_role;
+            end if;
             if v_allowed is distinct from (v_role = 'authenticated' and v_operation = 'SELECT') then
               raise exception 'proposal grant matrix violated for % %', v_role, v_operation;
             end if;
              select has_table_privilege(v_role, 'public.match_event_result_proposal_versions', v_operation) into v_allowed;
              if v_allowed then raise exception 'versions must grant nothing: % %', v_role, v_operation; end if;
-             select has_table_privilege(v_role, 'public.match_event_result_reviews', v_operation) into v_allowed;
+             select case when v_operation in ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES')
+               then has_any_column_privilege(v_role, 'public.match_event_result_reviews', v_operation)
+               else has_table_privilege(v_role, 'public.match_event_result_reviews', v_operation) end into v_allowed;
              if v_allowed is distinct from (v_role = 'authenticated' and v_operation = 'SELECT') then
                raise exception 'review grant matrix violated for % %', v_role, v_operation;
              end if;
-             select has_table_privilege(v_role, 'public.match_event_result_confirmations', v_operation) into v_allowed;
+             select case when v_operation in ('SELECT', 'INSERT', 'UPDATE', 'REFERENCES')
+               then has_any_column_privilege(v_role, 'public.match_event_result_confirmations', v_operation)
+               else has_table_privilege(v_role, 'public.match_event_result_confirmations', v_operation) end into v_allowed;
              if v_allowed is distinct from (v_role = 'authenticated' and v_operation = 'SELECT') then
                raise exception 'confirmation grant matrix violated for % %', v_role, v_operation;
              end if;
@@ -193,7 +203,7 @@ describe('match result proposal schema integration', () => {
         if v_count <> 1 then raise exception 'proposals event FK must be RESTRICT'; end if;
          select count(*) into v_count from pg_constraint
           where conrelid = 'public.match_event_result_proposals'::regclass and contype = 'f'
-            and pg_get_constraintdef(oid) ilike '%foreign key (submitted_by) references auth.users(id) on delete restrict%';
+            and pg_get_constraintdef(oid) ilike '%foreign key (submitted_by) references participant_identities(id) on delete restrict%';
          if v_count <> 1 then raise exception 'proposals submitter FK must be RESTRICT'; end if;
          select count(*) into v_count from pg_constraint
           where conrelid = 'public.match_event_result_proposals'::regclass
@@ -823,7 +833,7 @@ describe('match result proposal schema integration', () => {
     async function readProposals(actor: ManagementActor, proposalId: string) {
       const result = await actor.client
         .from('match_event_result_proposals')
-        .select('*')
+        .select('id,match_event_id,group_number,status,active_version')
         .eq('id', proposalId);
       return { error: result.error?.code ?? null, rows: (result.data ?? []).length };
     }
@@ -856,16 +866,23 @@ describe('match result proposal schema integration', () => {
         }
         const creatorRow = await f.creator.client
           .from('match_event_result_proposals')
-          .select('*')
+          .select('id,match_event_id,group_number,status,active_version,submitted_at')
           .eq('id', proposalId);
         expect(creatorRow.data?.[0]).toMatchObject({
           id: proposalId,
           match_event_id: e.id,
           group_number: 1,
           status: 'pending',
-          active_version: 1,
-          submitted_by: f.creator.id
+          active_version: 1
         });
+        // The re-keyed submitter identity is not exposed: neither by name nor through select('*').
+        for (const columns of ['submitted_by', '*']) {
+          const denied = await f.creator.client
+            .from('match_event_result_proposals')
+            .select(columns)
+            .eq('id', proposalId);
+          expect([columns, denied.error?.code]).toEqual([columns, '42501']);
+        }
 
         // Same-community non-participant: RLS hides the row entirely.
         expect(await readProposals(outsider, proposalId)).toEqual({ error: null, rows: 0 });
@@ -1034,18 +1051,20 @@ describe('match result proposal schema integration', () => {
       expect(after).toEqual(before);
       const catalog = await sqlRows(`select
         (select count(*) from pg_policies where schemaname = 'public' and tablename = 'match_event_result_proposals' and permissive = 'PERMISSIVE') as policies,
-        has_table_privilege('authenticated', 'public.match_event_result_proposals', 'SELECT') as read_granted,
-        has_table_privilege('authenticated', 'public.match_event_result_proposals', 'INSERT') as write_granted,
+        has_any_column_privilege('authenticated', 'public.match_event_result_proposals', 'SELECT') as read_granted,
+        has_column_privilege('authenticated', 'public.match_event_result_proposals', 'submitted_by', 'SELECT') as submitter_granted,
+        has_any_column_privilege('authenticated', 'public.match_event_result_proposals', 'INSERT') as write_granted,
         has_table_privilege('authenticated', 'public.match_event_result_proposal_versions', 'SELECT') as versions_granted,
-        has_table_privilege('authenticated', 'public.match_event_result_reviews', 'SELECT') as reviews_granted,
-        has_table_privilege('authenticated', 'public.match_event_result_reviews', 'INSERT') as reviews_write_granted,
-        has_table_privilege('authenticated', 'public.match_event_result_confirmations', 'SELECT') as confirmations_granted,
-        has_table_privilege('authenticated', 'public.match_event_result_confirmations', 'INSERT') as confirmations_write_granted,
+        has_any_column_privilege('authenticated', 'public.match_event_result_reviews', 'SELECT') as reviews_granted,
+        has_any_column_privilege('authenticated', 'public.match_event_result_reviews', 'INSERT') as reviews_write_granted,
+        has_any_column_privilege('authenticated', 'public.match_event_result_confirmations', 'SELECT') as confirmations_granted,
+        has_any_column_privilege('authenticated', 'public.match_event_result_confirmations', 'INSERT') as confirmations_write_granted,
         has_table_privilege('authenticated', 'public.match_event_result_processing_state', 'SELECT') as processing_granted`);
       expect(catalog).toEqual([
         {
           policies: 1,
           read_granted: true,
+          submitter_granted: false,
           write_granted: false,
           versions_granted: false,
           reviews_granted: true,

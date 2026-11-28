@@ -153,7 +153,7 @@ describe('match contract fixtures', () => {
     expect(validateMatchPhotoKey(listRow.photo_path)).toBe(listRow.photo_path);
     expect(validateMatchPhotoKey(publishInput.photo_path)).toBe(publishInput.photo_path);
     // Identity consistency: the key derives from the fixture's own UUIDs.
-    expect(rpcDetail.photo_path.startsWith(`${card.community_id}/${card.event_id}/`)).toBe(true);
+    expect(rpcDetail.photo_path?.startsWith(`${card.community_id}/${card.event_id}/`)).toBe(true);
     expect(
       validatePublishMatch({ event_id: card.event_id, input: publishInput, invitee_ids: [] })
     ).toHaveProperty('input');

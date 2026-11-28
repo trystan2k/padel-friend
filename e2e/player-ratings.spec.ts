@@ -457,6 +457,9 @@ test('AUTO_48H and MANUAL confirmation store equivalent calculations; retries an
 // --- AC3: excluded inputs change nothing --------------------------------------------------
 
 test('friendly, incomplete, pending, disputed, cancelled and reserve inputs have no rating effect', async () => {
+  // ~15 sequential fixture SQL round trips (each a CLI spawn) plus rating-projection finalizes: a
+  // known-heavy chain that must tolerate a loaded machine (3x the 180s per-test budget).
+  test.slow();
   const players = quartet(f.members[3]!, f.members[4]!, f.members[5]!, f.members[6]!);
   const reserve = f.members[2]!;
   const snapshot = async () => ({

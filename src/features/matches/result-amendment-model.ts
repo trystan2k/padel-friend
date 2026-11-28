@@ -7,7 +7,7 @@ import {
 } from './match-result-model';
 import type { MatchResultErrorCode } from './match-result-error-copy';
 import { validateMatchResultSets, validateMatchResultTeams } from './match-result.validators';
-import { validateMatchUuid } from './matches.validators';
+import { validateMatchParticipantRef, validateMatchUuid } from './matches.validators';
 import {
   parseResultDisputeResolution,
   parseResultRepairJob,
@@ -175,6 +175,14 @@ function classificationOf(value: unknown): ResultClassification | null {
     ? value
     : null;
 }
+function participantRefOrNull(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  try {
+    return validateMatchParticipantRef(value);
+  } catch {
+    return undefined;
+  }
+}
 function uuidOrNull(value: unknown): string | null | undefined {
   if (value === null) return null;
   try {
@@ -276,10 +284,10 @@ function candidateOf(value: unknown): ResultAmendmentCandidate | null | undefine
       return undefined;
     return {
       version: value.version,
-      submitted_by: validateMatchUuid(value.submitted_by),
+      submitted_by: validateMatchParticipantRef(value.submitted_by),
       submitted_at: value.submitted_at,
       review_deadline_at: value.review_deadline_at,
-      teams: validateMatchResultTeams(value.teams),
+      teams: validateMatchResultTeams(value.teams, true),
       sets: validateMatchResultSets(value.sets),
       classification,
       played_at_utc: value.played_at_utc,
@@ -317,7 +325,7 @@ export function parseResultAmendments(value: unknown, eventId: string): ResultAm
     if (item.decision !== null) {
       const raw = item.decision;
       const source = record(raw) ? sourceOf(raw.source) : null;
-      const actor = record(raw) ? uuidOrNull(raw.actor_id) : undefined;
+      const actor = record(raw) ? participantRefOrNull(raw.actor_id) : undefined;
       const note = record(raw) ? nullableText(raw.note) : undefined;
       if (
         !record(raw) ||
@@ -367,7 +375,7 @@ export function parseResultAmendments(value: unknown, eventId: string): ResultAm
         base_confirmation_id: validateMatchUuid(item.base_confirmation_id),
         base_version: item.base_version,
         official_confirmation_id: official,
-        requester_id: validateMatchUuid(item.requester_id),
+        requester_id: validateMatchParticipantRef(item.requester_id),
         reason: item.reason,
         requested_at: item.requested_at,
         candidate,

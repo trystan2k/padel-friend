@@ -239,7 +239,7 @@ Organizers and admins can add a not-yet-registered player by name and email. The
 
 ## 9. Web Push delivery operations
 
-Apply subscription, producer and outbox migrations before enabling dispatch. In-app notifications remain authoritative, independent of all Push settings/provider failures. No historical backfill occurs. New devices receive only notifications created after enrollment.
+Apply subscription, producer and outbox migrations before enabling dispatch. In-app notifications remain authoritative, independent of all Push settings/provider failures. No historical backfill occurs. New devices receive only notifications created after enrollment. Push subscriptions are deleted with the account; delivered copies and provider handling are covered by the [privacy request runbook](docs/privacy-request-runbook.md#4-per-provider-manual-handling).
 
 Configure production and preview separately through Workers variables/secrets (local values belong only in ignored `.dev.vars`):
 

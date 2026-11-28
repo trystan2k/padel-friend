@@ -25,6 +25,7 @@ export type Database = {
     Tables: {
       communities: {
         Row: {
+          archived_at: string | null
           city_label: string | null
           created_at: string
           created_by: string
@@ -39,6 +40,7 @@ export type Database = {
         }
         ComputedFields: never
         Insert: {
+          archived_at?: string | null
           city_label?: string | null
           created_at?: string
           created_by: string
@@ -52,6 +54,7 @@ export type Database = {
           visibility: Database["public"]["Enums"]["community_visibility"]
         }
         Update: {
+          archived_at?: string | null
           city_label?: string | null
           created_at?: string
           created_by?: string
@@ -64,7 +67,15 @@ export type Database = {
           updated_at?: string
           visibility?: Database["public"]["Enums"]["community_visibility"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "communities_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       community_audit_log: {
         Row: {
@@ -99,6 +110,13 @@ export type Database = {
           occurred_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "community_audit_log_actor_user_id_fkey"
+            columns: ["actor_user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "community_audit_log_community_id_fkey"
             columns: ["community_id"]
@@ -149,6 +167,20 @@ export type Database = {
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_invitations_invitee_user_id_fkey"
+            columns: ["invitee_user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_invitations_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
             referencedColumns: ["id"]
           },
         ]
@@ -220,6 +252,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "community_members_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "community_members_community_id_fkey"
             columns: ["community_id"]
             isOneToOne: false
@@ -231,6 +270,13 @@ export type Database = {
             columns: ["source_match_event_id"]
             isOneToOne: false
             referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_members_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
             referencedColumns: ["id"]
           },
         ]
@@ -390,6 +436,13 @@ export type Database = {
             referencedRelation: "communities"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "community_venues_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
         ]
       }
       global_player_ratings: {
@@ -513,6 +566,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "league_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "league_events_league_fk"
             columns: ["league_id", "community_id"]
             isOneToOne: false
@@ -569,6 +629,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leagues"
             referencedColumns: ["id", "community_id"]
+          },
+          {
+            foreignKeyName: "league_player_counters_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -811,10 +878,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "leagues_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leagues_community_id_fkey"
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leagues_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
             referencedColumns: ["id"]
           },
         ]
@@ -874,6 +955,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "match_event_audit_log_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "match_event_audit_log_community_id_fkey"
             columns: ["community_id"]
             isOneToOne: false
@@ -892,6 +980,13 @@ export type Database = {
             columns: ["match_event_id"]
             isOneToOne: false
             referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_audit_log_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
             referencedColumns: ["id"]
           },
         ]
@@ -936,10 +1031,31 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "match_event_invites_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_invites_invitee_user_id_fkey"
+            columns: ["invitee_user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "match_event_invites_match_event_id_fkey"
             columns: ["match_event_id"]
             isOneToOne: false
             referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_invites_responded_by_fkey"
+            columns: ["responded_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
             referencedColumns: ["id"]
           },
         ]
@@ -974,6 +1090,13 @@ export type Database = {
           result?: NonNullable<Json>
         }
         Relationships: [
+          {
+            foreignKeyName: "match_event_management_commands_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "match_event_management_commands_match_event_id_fkey"
             columns: ["match_event_id"]
@@ -1049,6 +1172,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "match_event_registration_attempts_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_registration_attempts_ended_by_fkey"
+            columns: ["ended_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "match_event_registration_attempts_match_event_id_user_id_fkey"
             columns: ["match_event_id", "user_id"]
@@ -1205,6 +1342,27 @@ export type Database = {
             referencedRelation: "match_events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "match_event_registrations_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_registrations_resolved_by_fkey"
+            columns: ["resolved_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_registrations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
         ]
       }
       match_event_result_confirmations: {
@@ -1262,6 +1420,13 @@ export type Database = {
           source?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "match_event_result_confirmations_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "match_result_confirmation_pointer_fk"
             columns: ["proposal_id", "match_event_id", "group_number"]
@@ -1481,6 +1646,13 @@ export type Database = {
             referencedRelation: "match_event_result_proposals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "match_event_result_proposal_versions_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
         ]
       }
       match_event_result_proposals: {
@@ -1521,6 +1693,13 @@ export type Database = {
             columns: ["match_event_id"]
             isOneToOne: false
             referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_event_result_proposals_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
             referencedColumns: ["id"]
           },
           {
@@ -1569,6 +1748,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "match_event_result_reviews_reviewer_user_id_fkey"
+            columns: ["reviewer_user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "match_result_review_version_fk"
             columns: ["proposal_id", "proposal_version"]
             isOneToOne: false
@@ -1598,7 +1784,7 @@ export type Database = {
           min_level: number | null
           notes: string | null
           payment_note: string | null
-          photo_path: string
+          photo_path: string | null
           price_minor: number | null
           published_at: string
           published_by: string
@@ -1636,7 +1822,7 @@ export type Database = {
           min_level?: number | null
           notes?: string | null
           payment_note?: string | null
-          photo_path: string
+          photo_path?: string | null
           price_minor?: number | null
           published_at?: string
           published_by: string
@@ -1673,7 +1859,7 @@ export type Database = {
           min_level?: number | null
           notes?: string | null
           payment_note?: string | null
-          photo_path?: string
+          photo_path?: string | null
           price_minor?: number | null
           published_at?: string
           published_by?: string
@@ -1692,10 +1878,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "match_events_cancelled_by_fkey"
+            columns: ["cancelled_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "match_events_community_id_fkey"
             columns: ["community_id"]
             isOneToOne: false
             referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
             referencedColumns: ["id"]
           },
           {
@@ -1704,6 +1904,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "leagues"
             referencedColumns: ["id", "community_id"]
+          },
+          {
+            foreignKeyName: "match_events_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "match_events_saved_venue_id_fkey"
@@ -1812,10 +2019,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "match_player_add_operations_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "match_player_add_operations_match_event_id_fkey"
             columns: ["match_event_id"]
             isOneToOne: false
             referencedRelation: "match_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_player_add_operations_target_user_id_fkey"
+            columns: ["target_user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
             referencedColumns: ["id"]
           },
         ]
@@ -2403,6 +2624,25 @@ export type Database = {
         }
         Relationships: []
       }
+      participant_identities: {
+        Row: {
+          created_at: string | null
+          id: string
+          state: string
+        }
+        ComputedFields: never
+        Insert: {
+          created_at?: string | null
+          id: string
+          state?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          state?: string
+        }
+        Relationships: []
+      }
       platform_admins: {
         Row: {
           granted_at: string
@@ -2513,6 +2753,27 @@ export type Database = {
             referencedRelation: "player_rating_admin_adjustments"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "player_level_review_requests_decision_actor_id_fkey"
+            columns: ["decision_actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_level_review_requests_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "player_level_review_requests_under_review_by_fkey"
+            columns: ["under_review_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
         ]
       }
       player_profiles: {
@@ -2572,6 +2833,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "player_profiles_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "player_profiles_source_match_event_id_fkey"
             columns: ["source_match_event_id"]
@@ -2755,11 +3023,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "player_rating_admin_adjustments_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "player_rating_admin_adjustments_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "player_profiles"
-            referencedColumns: ["user_id"]
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3001,8 +3276,8 @@ export type Database = {
             foreignKeyName: "player_rating_events_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "player_profiles"
-            referencedColumns: ["user_id"]
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3055,8 +3330,8 @@ export type Database = {
             foreignKeyName: "player_rating_initializations_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
-            referencedRelation: "player_profiles"
-            referencedColumns: ["user_id"]
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3279,6 +3554,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "result_amendment_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "result_amendment_events_amendment_id_fkey"
             columns: ["amendment_id"]
             isOneToOne: false
@@ -3384,6 +3666,20 @@ export type Database = {
             referencedRelation: "result_repair_jobs"
             referencedColumns: ["id", "amendment_id"]
           },
+          {
+            foreignKeyName: "result_amendment_requests_decision_actor_id_fkey"
+            columns: ["decision_actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_amendment_requests_requester_id_fkey"
+            columns: ["requester_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
         ]
       }
       result_dispute_resolutions: {
@@ -3464,6 +3760,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "match_event_result_proposal_versions"
             referencedColumns: ["proposal_id", "version"]
+          },
+          {
+            foreignKeyName: "result_dispute_resolutions_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "result_dispute_resolutions_base_confirmation_id_fkey"
@@ -3681,6 +3984,13 @@ export type Database = {
             columns: ["expected_base_confirmation_id"]
             isOneToOne: false
             referencedRelation: "match_event_result_confirmations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "result_repair_jobs_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
             referencedColumns: ["id"]
           },
           {
@@ -4363,6 +4673,13 @@ export type Database = {
             referencedRelation: "match_events"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "statistics_participant_lifecycle_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "participant_identities"
+            referencedColumns: ["id"]
+          },
         ]
       }
       statistics_projection_control: {
@@ -5023,6 +5340,7 @@ export type Database = {
           time_zone: string
         }[]
       }
+      get_my_deletion_request: { Args: Record<PropertyKey, never>; Returns: Json }
       get_my_level_review_request: { Args: { p_request_id: string }; Returns: Json }
       get_my_match_invitation: { Args: { p_match_event_id: string }; Returns: Json }
       get_my_match_notification_contexts: {
@@ -5246,6 +5564,7 @@ export type Database = {
         Args: { p_level: number; p_reason?: string; p_user_id: string }
         Returns: undefined
       }
+      is_actor_live: { Args: Record<PropertyKey, never>; Returns: boolean }
       is_community_admin: { Args: { p_community_id: string }; Returns: boolean }
       is_community_member: { Args: { p_community_id: string }; Returns: boolean }
       is_match_event_participant: {
@@ -5603,7 +5922,7 @@ export type Database = {
           min_level: number | null
           notes: string | null
           payment_note: string | null
-          photo_path: string
+          photo_path: string | null
           price_minor: number | null
           published_at: string
           published_by: string
@@ -5649,7 +5968,7 @@ export type Database = {
           min_level: number | null
           notes: string | null
           payment_note: string | null
-          photo_path: string
+          photo_path: string | null
           price_minor: number | null
           published_at: string
           published_by: string
@@ -5750,6 +6069,10 @@ export type Database = {
       match_player_add_redrive_limits: {
         Args: Record<PropertyKey, never>
         Returns: Record<string, unknown>
+      }
+      match_player_add_send_allowed: {
+        Args: { p_actor_id: string; p_match_event_id: string; p_request_id: string }
+        Returns: boolean
       }
       match_registration_counts:
         | {
@@ -5919,6 +6242,131 @@ export type Database = {
         Args: { p_claim_token: string; p_notification_id: string; p_subscription_id: string }
         Returns: Json
       }
+      privacy_op_ack_external_followup: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_arm: {
+        Args: {
+          p_environment: string
+          p_expected: Json
+          p_project_ref: string
+          p_reference: string
+        }
+        Returns: Json
+      }
+      privacy_op_ban_lift_done: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_cleanup_confirm: { Args: { p_case_ref: string; p_token: string }; Returns: Json }
+      privacy_op_cleanup_dispatch: { Args: { p_case_ref: string; p_token: string }; Returns: Json }
+      privacy_op_cleanup_release: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_cleanup_target: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_close_refused: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_confirm_proof: {
+        Args: { p_digest: string; p_operator_confirmed: boolean; p_reference: string }
+        Returns: Json
+      }
+      privacy_op_dry_run: { Args: { p_reference: string; p_successors?: Json }; Returns: Json }
+      privacy_op_erase_unclaimed: {
+        Args: { p_all_matches?: boolean; p_confirm: boolean; p_email: string }
+        Returns: Json
+      }
+      privacy_op_erasure_count_since: {
+        Args: { p_cutoff_snapshot?: string; p_cutoff_time: string; p_cutoff_xid: number }
+        Returns: Json
+      }
+      privacy_op_list_cases: { Args: Record<PropertyKey, never>; Returns: Json }
+      privacy_op_list_cleanup_obligations: { Args: Record<PropertyKey, never>; Returns: Json }
+      privacy_op_live_identity_ids: { Args: Record<PropertyKey, never>; Returns: Json }
+      privacy_op_purge_expired: { Args: Record<PropertyKey, never>; Returns: Json }
+      privacy_op_record_response: {
+        Args: { p_external_followup_ack?: boolean; p_reference: string }
+        Returns: Json
+      }
+      privacy_op_remnant_context: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_remnant_is_shell: { Args: { p_user: string }; Returns: Json }
+      privacy_op_remnants_swept: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_restore_gate: {
+        Args: {
+          p_action: string
+          p_cutoff_snapshot?: string
+          p_cutoff_xid?: number
+          p_evidence?: string
+          p_expected_subjects?: string[]
+          p_restore_project_ref?: string
+          p_snapshot_at?: string
+          p_tombstone_count?: number
+        }
+        Returns: Json
+      }
+      privacy_op_restore_gate_status: { Args: Record<PropertyKey, never>; Returns: Json }
+      privacy_op_restore_reconcile: {
+        Args: { p_project_ref: string; p_subject: string }
+        Returns: Json
+      }
+      privacy_op_restore_storage_confirm: {
+        Args: {
+          p_deleted_paths: string[]
+          p_project_ref: string
+          p_relisted_paths: string[]
+          p_subject: string
+        }
+        Returns: Json
+      }
+      privacy_op_restore_storage_set: {
+        Args: { p_prefix_paths?: string[]; p_project_ref: string; p_subject: string }
+        Returns: Json
+      }
+      privacy_op_retry: { Args: { p_reference: string }; Returns: Json }
+      privacy_op_set_switch: { Args: { p_key: string; p_value: boolean }; Returns: Json }
+      privacy_op_start_verification: {
+        Args: { p_digest: string; p_reference: string; p_ttl_seconds?: number }
+        Returns: Json
+      }
+      privacy_proc_ban_check: { Args: { p_case: string; p_token: string }; Returns: Json }
+      privacy_proc_ban_cleanup_pending: { Args: { p_case: string; p_token: string }; Returns: Json }
+      privacy_proc_ban_lift_failed: { Args: { p_case: string }; Returns: Json }
+      privacy_proc_ban_mark: {
+        Args: { p_case: string; p_fence: number; p_token: string }
+        Returns: Json
+      }
+      privacy_proc_claim: {
+        Args: { p_lease_seconds: number; p_project_ref: string }
+        Returns: Json
+      }
+      privacy_proc_complete_phase: {
+        Args: {
+          p_case: string
+          p_fence: number
+          p_phase: string
+          p_removed?: number
+          p_token: string
+        }
+        Returns: Json
+      }
+      privacy_proc_erase_relational: {
+        Args: { p_case: string; p_fence: number; p_token: string }
+        Returns: Json
+      }
+      privacy_proc_fail: {
+        Args: {
+          p_case: string
+          p_code: string
+          p_fence: number
+          p_retryable: boolean
+          p_token: string
+        }
+        Returns: Json
+      }
+      privacy_proc_finish: {
+        Args: { p_case: string; p_fence: number; p_token: string }
+        Returns: Json
+      }
+      privacy_proc_freeze: {
+        Args: { p_case: string; p_check_only?: boolean; p_fence: number; p_token: string }
+        Returns: Json
+      }
+      privacy_proc_storage_set: {
+        Args: { p_case: string; p_fence: number; p_limit?: number; p_token: string }
+        Returns: Json
+      }
+      privacy_proc_unban_done: { Args: { p_case: string }; Returns: Json }
       process_due_leagues: { Args: { p_as_of?: string; p_limit?: number }; Returns: Json }
       process_due_match_event_registration_cutoffs: { Args: { p_limit?: number }; Returns: Json }
       process_due_match_event_results: { Args: { p_limit?: number }; Returns: Json }
@@ -6375,6 +6823,7 @@ export type Database = {
         }
         Returns: Json
       }
+      request_account_deletion: { Args: { p_command_id: string }; Returns: Json }
       request_result_amendment: {
         Args: {
           p_command_id: string
@@ -6998,6 +7447,7 @@ export type Database = {
         Args: { p_attempt_id: string; p_match_event_id: string; p_request_id: string }
         Returns: Json
       }
+      withdraw_my_deletion_request: { Args: { p_command_id: string }; Returns: Json }
     }
     Enums: {
       community_join_policy: "instant" | "admin_approval"

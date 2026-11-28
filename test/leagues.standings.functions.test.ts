@@ -113,6 +113,22 @@ describe('League standings decoder', () => {
     expect(decodeLeagueStandings(payload)).toEqual(payload);
   });
 
+  it('accepts the scope-local key of a departed player and keeps its slot distinct', () => {
+    const payload = standings([
+      entry(1),
+      entry(2, { user_id: 'former-0123456789abcdef', display_name: null }),
+      entry(3, { user_id: 'former-fedcba9876543210', display_name: null })
+    ]);
+    const decoded = decodeLeagueStandings(payload);
+    expect(decoded.entries.map((row) => row.user_id).slice(1)).toEqual([
+      'former-0123456789abcdef',
+      'former-fedcba9876543210'
+    ]);
+    expect(() =>
+      decodeLeagueStandings(standings([entry(1), entry(2, { user_id: 'former-not-a-key' })]))
+    ).toThrow('INVALID_LEAGUE_RESPONSE');
+  });
+
   it('accepts zero rows below the threshold and Draw-only records without reordering', () => {
     const zero = (n: number, position: number) =>
       entry(n, {

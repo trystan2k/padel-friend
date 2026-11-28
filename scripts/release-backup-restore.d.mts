@@ -9,6 +9,7 @@ export type RestoreRun = {
   schemaDiff: string[];
   authorizedReads: { users: number; match: boolean };
   dispatchDisabled: { pushJobsRetired: number; cronAbsent: boolean };
+  restoreGate: { pending: boolean; intakeOff: boolean; executorOff: boolean };
   pass: boolean;
 };
 export type RestoreReport = {
@@ -21,6 +22,40 @@ export type RestoreReport = {
   sourceStable: boolean;
   pass: boolean;
 };
+export type Snapshot = {
+  dump: Buffer;
+  dumpPath: string;
+  tocPath: string;
+  takenAt: string;
+  cutoffXid: number;
+  cutoffTime: string;
+  cutoffSnapshot: string;
+};
+export function markRestoreTarget(docker: Docker, database: string): void;
+export function applyRestoreGate(
+  docker: Docker,
+  database: string,
+  options?: {
+    snapshotAt?: string;
+    cutoffXid?: number;
+    cutoffSnapshot?: string | null;
+    expectedSubjects?: string[];
+    projectRef?: string;
+    tombstoneCount?: number;
+  }
+): { pending: boolean; intakeOff: boolean; executorOff: boolean };
+export function takeSnapshot(docker: Docker, options?: { source?: string }): Snapshot;
+export function discardSnapshot(docker: Docker, snapshot: Snapshot): void;
+export function restoreSnapshotWithGate(
+  docker: Docker,
+  snapshot: Snapshot,
+  options: {
+    base: string;
+    source?: string;
+    expectedSubjects?: (destination: string) => string[];
+    tombstoneCount?: number;
+  }
+): { destination: string; gate: { pending: boolean; intakeOff: boolean; executorOff: boolean } };
 export function parseArgs(argv: string[]): {
   runs: number;
   requireRepresentative: boolean;

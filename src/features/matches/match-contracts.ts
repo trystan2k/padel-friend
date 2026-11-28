@@ -90,9 +90,12 @@ export type MatchCallerBadge =
 export type MatchEventCard = MatchEventProjection & { photo_url: string | null };
 export type MatchEventListItem = MatchEventCard;
 export type MatchEventDetail = MatchEventProjection & { photo_url: string | null; as_of: string };
-export type MatchEventRpcDetail = MatchEventProjection & { photo_path: string; as_of: string };
+export type MatchEventRpcDetail = MatchEventProjection & {
+  photo_path: string | null;
+  as_of: string;
+};
 export type MatchEventRpcListRow = MatchEventProjection & {
-  photo_path: string;
+  photo_path: string | null;
   as_of: string;
   cursor: string;
 };

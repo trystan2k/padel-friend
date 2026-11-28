@@ -1,3 +1,4 @@
+import { isParticipantRef } from '../../lib/participant-ref';
 import type { MatchPublishInput } from './match-contracts';
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -13,6 +14,11 @@ function exact(value: unknown, keys: readonly string[]) {
 }
 export function validateMatchUuid(value: unknown): string {
   if (typeof value !== 'string' || !uuid.test(value)) throw new Error('INVALID_MATCH_INPUT');
+  return value;
+}
+/** Participant of retained history: a real user id or the scope-local key of a departed player. */
+export function validateMatchParticipantRef(value: unknown): string {
+  if (!isParticipantRef(value)) throw new Error('INVALID_MATCH_INPUT');
   return value;
 }
 export function validateMatchOptions(value: unknown) {

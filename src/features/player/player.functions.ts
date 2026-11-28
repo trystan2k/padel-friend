@@ -3,7 +3,7 @@ import { toClientError } from '../../lib/client-error.server';
 import { setResponseHeader } from '@tanstack/react-start/server';
 import { getAdminClient } from '../../lib/supabase/admin.server';
 import { getServerClient } from '../../lib/supabase/server';
-import { requireAuthenticatedClient } from '../auth/auth.server';
+import { requireAuthenticatedClient, resolveLiveSubject } from '../auth/auth.server';
 import { playerRows, sportingProfile, verifiedAvatarKey } from './player.server';
 import {
   claimErrorCode,
@@ -47,14 +47,23 @@ export const getOnboardingStatus = createServerFn().handler(async () => {
   setResponseHeader('Cache-Control', 'private, no-store');
   const client = getServerClient();
   const { data, error } = await client.auth.getClaims();
-  if (error || !data?.claims?.sub)
-    return {
-      authenticated: false,
-      userId: null,
-      complete: false,
-      needsPasswordSetup: false,
-      claim: null
-    };
+  const signedOut = {
+    authenticated: false,
+    userId: null,
+    complete: false,
+    needsPasswordSetup: false,
+    claim: null
+  };
+  if (error || !data?.claims?.sub) return signedOut;
+  if (!(await resolveLiveSubject(client))) {
+    // Signature-valid token of an erased or frozen account: drop the local session and resolve as signed out.
+    try {
+      await client.auth.signOut({ scope: 'local' });
+    } catch {
+      /* the session cookie may already be unusable; the signed-out answer is what matters */
+    }
+    return signedOut;
+  }
   const { profile } = await playerRows(client, data.claims.sub);
   if (profile) {
     const { pending } = await readPasswordSetupState(client);

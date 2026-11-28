@@ -291,6 +291,7 @@
     "avatarConflictContinue": "Continue with the current photo"
   },
   "player": {
+    "formerPlayer": "Former player",
     "provisional": {
       "badge": "Provisional",
       "reviewNote": "Not registered yet — can't review results"
@@ -310,7 +311,8 @@
       "label": "Profile shortcuts",
       "statistics": "Statistics",
       "matchHistory": "Match history",
-      "notifications": "Notifications"
+      "notifications": "Notifications",
+      "accountDeletion": "Account deletion"
     },
     "edit": "Edit profile",
     "save": "Save changes",
@@ -3517,11 +3519,111 @@
       "canceling": "Canceling…"
     }
   },
+  "accountDeletion": {
+    "title": "Delete my account",
+    "back": "Back to profile",
+    "retry": "Try again",
+    "intro": {
+      "heading": "Account deletion",
+      "sends": "You can ask us to delete your account. Sending a request deletes nothing by itself.",
+      "review": "We review each request and verify it through the email address of your account before anything is erased. You can withdraw the request until processing starts.",
+      "start": "Request account deletion"
+    },
+    "dialog": {
+      "title": "Request account deletion?",
+      "summary": "Nothing is deleted when you send this. Read what a deletion means first.",
+      "disappears": {
+        "title": "What is deleted",
+        "profile": "Your profile: name, photo, bio and playing preferences",
+        "photos": "Photos you uploaded",
+        "preferences": "Your notification and device settings",
+        "participation": "Your membership and participation as a player in communities and matches",
+        "notifications": "Your notifications and invitations"
+      },
+      "remains": {
+        "title": "What may remain",
+        "body": "Official scores, results and ratings of matches you played belong to the other players' history too. They are kept without your name or photo and appear as “{{placeholder}}”. People who were there may still recognize who played."
+      },
+      "access": {
+        "title": "Loss of access",
+        "body": "When processing starts, your access is frozen and you are signed out. Deleting the account is permanent and cannot be undone."
+      },
+      "cutoff": {
+        "title": "Until when you can withdraw",
+        "body": "You can withdraw the request until processing begins. After that it can no longer be stopped."
+      },
+      "confirm": "Send request",
+      "sending": "Sending…",
+      "cancel": "Keep my account"
+    },
+    "status": {
+      "heading": "Your deletion request",
+      "reference": "Reference",
+      "received": "Received",
+      "canWithdraw": "You can still withdraw this request.",
+      "cannotWithdraw": "This request can no longer be withdrawn.",
+      "withdraw": "Withdraw request",
+      "refresh": "Refresh status"
+    },
+    "withdrawDialog": {
+      "title": "Withdraw the request?",
+      "body": "Your account stays as it is and nothing is deleted. You can send a new request later.",
+      "confirm": "Withdraw request",
+      "withdrawing": "Withdrawing…",
+      "keep": "Keep the request"
+    },
+    "state": {
+      "received": "Received",
+      "verified": "Verified",
+      "ready": "Waiting to be processed",
+      "executing": "Processing",
+      "app_data_erased": "Removing your data",
+      "supabase_erased": "Closing your account",
+      "closed": "Completed",
+      "withdrawn": "Withdrawn",
+      "blocked": "Needs attention"
+    },
+    "detail": {
+      "received": "We received your request. We will review it and verify it through your account email before anything is erased.",
+      "verified": "Your request was verified through your account email. It still needs a final approval before processing.",
+      "ready": "Your request is approved and waiting to be processed. You can still withdraw it.",
+      "executing": "Processing has started. Your access is closed and this can no longer be withdrawn.",
+      "app_data_erased": "Your account data has been erased. The removal is being finished.",
+      "supabase_erased": "Your sign-in is being removed and your account is being closed.",
+      "closed": "Your request is complete.",
+      "withdrawn": "You withdrew this request. Nothing was deleted.",
+      "blocked": "Processing needs our attention before it can continue. We will follow up through your account email."
+    },
+    "notice": {
+      "existing": "You already have an open request. Its reference is {{reference}}."
+    },
+    "announce": {
+      "requested": "Request sent. Your reference is {{reference}}.",
+      "withdrawn": "Request withdrawn. Nothing was deleted.",
+      "statusUpdated": "Status updated: {{state}}. {{detail}}"
+    },
+    "errors": {
+      "unauthenticated": "Your session ended. Sign in again to continue.",
+      "account_required": "Finish setting up your account before requesting its deletion.",
+      "restricted": "This account cannot send this request right now.",
+      "rate_limited": "You sent too many requests recently. Try again later.",
+      "disabled": "Deletion requests are paused right now. Try again later or write to us by email.",
+      "not_found": "There is no open request to withdraw.",
+      "not_withdrawable": "Processing has already started, so this request can no longer be withdrawn.",
+      "unavailable": "We couldn't complete this. Check your connection and try again.",
+      "loadFailed": "We couldn't load your request status."
+    },
+    "fallback": {
+      "title": "Can't sign in, or never had an account?",
+      "body": "If you cannot sign in, or you were only invited to a match or community, write to us at the address below. You do not need an account to exercise your privacy rights.",
+      "mailLabel": "Email the privacy contact at {{address}}"
+    }
+  },
   "privacy": {
     "title": "Privacy Policy",
     "backHome": "Back to home",
     "updated": "Last updated: {{date}}",
-    "reviewNotice": "Draft: this policy is awaiting final confirmation by the service owner and legal review, and may change before it is final.",
+    "reviewNotice": "This policy describes how Padel Friends works today. It has not yet had an external legal review, and it may change after one.",
     "who": {
       "title": "About this policy",
       "p1": "Padel Friends is run by Thiago Mendonça, an individual based in Spain, who decides how the personal data described here is used (the data controller). This policy explains what personal data the app handles, why, and what rights you have."
@@ -3605,8 +3707,8 @@
     "retention": {
       "title": "How long we keep it",
       "p1": "We keep your account, profile and activity data for as long as your account exists, and until we have handled a deletion request from you. We do not currently delete inactive accounts automatically.",
-      "p2": "We have not set other fixed retention periods. Cloudflare keeps request logs for a short period set by Cloudflare (currently 3 days on our plan, which may change). We do not currently keep separate scheduled backups of the database. Other providers, such as email delivery, keep their own records under their own retention practices.",
-      "p3": "Where the law requires or allows us to keep certain data, for example to handle a legal claim or to keep records of privacy requests, we keep it only for as long as that need lasts."
+      "p2": "We have not set other fixed retention periods. Hosting logs and caches at Cloudflare follow settings and periods that Cloudflare controls and that we have not verified; we handle them by hand when you ask. We do not run automated backups of the production database. Other providers, such as email delivery, keep their own records under their own retention practices.",
+      "p3": "Where the law requires or allows us to keep certain data, for example to handle a legal claim, we keep it only for as long as that need lasts. Our record of a privacy request (the case, the outcome of the verification and our reply) is kept for 90 days after we send our final response; after that only anonymous outcome counts remain."
     },
     "security": {
       "title": "Security",
@@ -3614,9 +3716,25 @@
     },
     "requests": {
       "title": "Your requests",
-      "p1": "To exercise any of your rights, including to ask us to access, correct or delete your personal data, email us at the address in the Contact section.",
-      "p2": "As an internal aim, we review privacy requests received by email about once every 24 hours. This does not replace the time limits set by law: we respond within one month of receiving your request, which the law allows to be extended in some cases.",
-      "p3": "Your right to erasure is subject to the conditions and exceptions in data protection law. If we cannot fully act on a request, we will tell you why."
+      "p1": "If you have an account and are signed in, you can ask for your account to be deleted from your own profile (Account deletion). Before you send anything you see what is deleted, what may remain, how your access ends, and that you can withdraw the request until processing starts.",
+      "p2": "Every request is reviewed and verified before anything is erased. We send a single-use code to the verified email address of the account, and nothing is erased on the request alone.",
+      "p3": "If you cannot sign in, if you were only invited and have no account, or for any other right (access, correction, restriction, objection or portability), email us at the address in the Contact section. You do not need an account, and you do not need to sign up or claim one, to exercise your rights.",
+      "p4": "We acknowledge requests and handle them without undue delay and in any case within one month of receiving them. Where needed because of complexity or the number of requests, the law allows that period to be extended by up to two further months; if we do, we tell you within the first month, with the reasons. Verifying your identity does not restart the period. If we cannot fully act on a request, we tell you why. Your right to erasure is subject to the conditions and exceptions in data protection law."
+    },
+    "deletion": {
+      "title": "When your account is deleted",
+      "p1": "After a request has been verified and approved, this is what happens:",
+      "i1": "Deleted: your profile, photos you uploaded, notification and push settings, notifications and invitations, your membership and participation as a player, and your sign-in (the authentication account and its sessions). Your access is frozen as soon as processing starts.",
+      "i2": "Kept in anonymized form: official scores, results and ratings of matches you played stay in the other players' history. Your identity in those records is replaced by a random internal identifier that has no link to your account and is not stored anywhere alongside it. Other people see it only as a generic “Former player”, with no name or photo.",
+      "i3": "Free text you wrote on records that are kept, such as notes and reasons, is removed or replaced.",
+      "i4": "Communities, leagues and matches you ran are handed to a member who agrees. If nobody agrees, the community is archived without an owner, future activity that cannot continue is cancelled, and official results stay.",
+      "i5": "People who played with you may still remember you, and in a very small group the results kept for other players could still let them infer who you were. We assess this for each request."
+    },
+    "residual": {
+      "title": "What we cannot fully remove",
+      "p1": "Our database, authentication and file storage are erased automatically. Records held by other providers are handled by hand on request, and what can be removed depends on each provider: hosting logs and caches at Cloudflare, email delivery records at Resend, the access you granted in your Google account (you can disconnect the app in your Google account settings; we cannot remove Google's own records), and push messages already delivered by your browser's push service.",
+      "p2": "Our authentication provider also keeps some technical records that we cannot erase ourselves, such as refresh-token and audit entries. We minimize them and review them with the provider.",
+      "p3": "At the date above, we do not run automated backups of the production database."
     },
     "rights": {
       "title": "Your rights",

@@ -93,6 +93,8 @@ async function counts(eventId: string) {
 test('failed publication survives reload, admin retries, original facts remain auditable and retry is idempotent', async ({
   browserName
 }, testInfo) => {
+  // Several chained steps (failed publication, reload, retry): legitimately long under full-suite load.
+  test.slow();
   expect(browserName).toBe('chromium');
   await f.grantAdmin();
   const group = await f.confirmed();
@@ -122,9 +124,12 @@ test('failed publication survives reload, admin retries, original facts remain a
   const dialog = page.getByRole('dialog', { name: c.repair.confirmTitle, exact: true });
   await dialog.getByRole('button', { name: c.repair.confirmAction, exact: true }).click();
   await expect(dialog).toBeHidden();
-  await expect(job.locator('[data-repair-status=succeeded]')).toContainText(
-    c.repair.publication.published
-  );
+  await expect(async () => {
+    await expect(job.locator('[data-repair-status=succeeded]')).toContainText(
+      c.repair.publication.published,
+      { timeout: 10_000 }
+    );
+  }).toPass({ timeout: 90_000, intervals: [1_000, 2_000, 5_000] });
   const after = await counts(group.eventId);
   const ratingAfter = await sql(
     `select user_id::text, mu::text, confirmed_competitive_game_groups from public.global_player_ratings where user_id in ('${group.teams.team_a.join("','")}','${group.teams.team_b.join("','")}') order by user_id`

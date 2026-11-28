@@ -109,7 +109,9 @@ describe('PlayerProfile rating journey', () => {
         '/level-reviews/new'
       ],
       [en.profile.links.notifications.concat('›'), '/notifications'],
-      [en.levelReview.entry.history.concat('›'), '/level-reviews']
+      [en.levelReview.entry.history.concat('›'), '/level-reviews'],
+      // Own-profile entry to the account deletion pane (never rendered on other players' pages).
+      [en.profile.links.accountDeletion.concat('›'), '/account-deletion']
     ]);
     // Frame vARtQ: the level-review request is a row of the same list before notifications; the extra
     // "My review requests" history destination (F70) follows the frame's rows.

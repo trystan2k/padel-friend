@@ -1,3 +1,4 @@
+import { isParticipantRef } from '../../lib/participant-ref';
 import { LEAGUE_STATUSES } from './league-contracts';
 import {
   LEAGUE_STANDINGS_CAUSES,
@@ -20,6 +21,9 @@ function exactObject(value: unknown, keys: readonly string[]): ObjectValue {
   if (Object.keys(row).length !== keys.length || keys.some((key) => !Object.hasOwn(row, key)))
     return fail();
   return row;
+}
+function participantRef(value: unknown): string {
+  return isParticipantRef(value) ? value : fail();
 }
 function uuid(value: unknown): string {
   return typeof value === 'string' &&
@@ -66,7 +70,7 @@ const ENTRY_KEYS = [
 function decodeEntry(value: unknown, threshold: number): LeagueStandingEntry {
   const row = exactObject(value, ENTRY_KEYS);
   const entry: LeagueStandingEntry = {
-    user_id: uuid(row.user_id),
+    user_id: participantRef(row.user_id),
     display_name: displayName(row.display_name),
     is_provisional: boolean(row.is_provisional),
     position: positive(row.position),
@@ -256,7 +260,7 @@ function decodeAuditEvent(value: unknown): LeagueStandingsAuditEvent {
   const row = exactObject(value, ['action', 'actor_id', 'system_reason', 'occurred_at', 'details']);
   const action =
     row.action === 'closed' || row.action === 'standings_revised' ? row.action : fail();
-  const actorId = row.actor_id === null ? null : uuid(row.actor_id);
+  const actorId = row.actor_id === null ? null : participantRef(row.actor_id);
   const systemReason = row.system_reason === null ? null : text(row.system_reason);
   // Exactly one of a human actor or a system reason, mirroring the database invariant.
   if ((actorId === null) === (systemReason === null)) return fail();

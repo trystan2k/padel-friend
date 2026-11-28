@@ -622,6 +622,7 @@ describe('add match player by name and email', () => {
       { proname: 'claim_match_player_add_redrives', rolname: 'service_role' },
       { proname: 'dispatch_match_player_add', rolname: 'service_role' },
       { proname: 'get_match_player_add_invite_context', rolname: 'service_role' },
+      { proname: 'match_player_add_send_allowed', rolname: 'service_role' },
       { proname: 'settle_match_player_add', rolname: 'service_role' }
     ]);
   });

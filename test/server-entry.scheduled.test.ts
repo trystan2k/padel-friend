@@ -4,7 +4,8 @@ const mocks = vi.hoisted(() => ({
   sweep: vi.fn<() => Promise<void>>(),
   push: vi.fn<() => Promise<void>>(),
   diagnostics: vi.fn<() => Promise<unknown>>(),
-  alerts: vi.fn<() => Promise<unknown>>()
+  alerts: vi.fn<() => Promise<unknown>>(),
+  privacy: vi.fn<() => Promise<unknown>>()
 }));
 vi.mock('@tanstack/react-start/server-entry', () => ({ default: { fetch: mocks.fetch } }));
 vi.mock('../src/features/matches/match-add-player.server', () => ({
@@ -15,6 +16,9 @@ vi.mock('../src/features/notifications/push-dispatch.server', () => ({
 }));
 vi.mock('../src/features/notifications/operational-alerts.server', () => ({
   sweepOperationalAlertsOnSchedule: mocks.alerts
+}));
+vi.mock('../src/features/privacy-requests/privacy-processor.server', () => ({
+  sweepPrivacyRequestsOnSchedule: mocks.privacy
 }));
 vi.mock('../src/features/result-repairs/job-diagnostics.server', () => ({
   sweepJobDiagnosticsOnSchedule: mocks.diagnostics
@@ -31,6 +35,7 @@ describe('Worker entry', () => {
     mocks.push.mockReset().mockResolvedValue(undefined);
     mocks.diagnostics.mockReset().mockResolvedValue(undefined);
     mocks.alerts.mockReset().mockResolvedValue(undefined);
+    mocks.privacy.mockReset().mockResolvedValue(undefined);
   });
   it('delegates fetch to the TanStack Start handler', async () => {
     mocks.fetch.mockResolvedValue(new Response('ok'));
@@ -128,6 +133,7 @@ describe('Worker entry', () => {
     expect(mocks.push).toHaveBeenCalledTimes(1);
     expect(mocks.diagnostics).toHaveBeenCalledExactlyOnceWith();
     expect(mocks.alerts).toHaveBeenCalledExactlyOnceWith();
+    expect(mocks.privacy).toHaveBeenCalledExactlyOnceWith();
   });
   it.each(['sweep', 'push'] as const)(
     'surfaces %s failure without starving other sweep',
@@ -217,7 +223,13 @@ describe('Worker entry', () => {
       sweeps
         .map((event) => `${event['job']}:${event['outcome']}`)
         .sort((a, b) => a.localeCompare(b))
-    ).toEqual(['alerts:success', 'diagnostics:success', 'player-adds:failure', 'push:failure']);
+    ).toEqual([
+      'alerts:success',
+      'diagnostics:success',
+      'player-adds:failure',
+      'privacy:success',
+      'push:failure'
+    ]);
     expect(new Set(sweeps.map((event) => event['jobId'])).size).toBe(1);
     expect(JSON.stringify(events)).not.toContain('sensitive');
   });

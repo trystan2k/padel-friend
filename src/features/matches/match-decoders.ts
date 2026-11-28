@@ -37,6 +37,10 @@ function nonEmptyText(value: unknown): string {
 function nullableText(value: unknown): string | null {
   return value === null ? null : text(value);
 }
+/** Null is the no-photo contract: media detached from a departed account. */
+function nullableNonEmptyText(value: unknown): string | null {
+  return value === null ? null : nonEmptyText(value);
+}
 function boolean(value: unknown): boolean {
   return typeof value === 'boolean' ? value : fail();
 }
@@ -294,7 +298,7 @@ export function decodeMatchRpcDetail(value: unknown): MatchEventRpcDetail {
   const row = object(value);
   return {
     ...decodeProjection(row),
-    photo_path: required(row, 'photo_path', nonEmptyText),
+    photo_path: required(row, 'photo_path', nullableNonEmptyText),
     as_of: required(row, 'as_of', timestamp)
   };
 }
@@ -305,7 +309,7 @@ export function decodeMatchRpcListRows(value: unknown): MatchEventRpcListRow[] {
     const row = object(entry);
     return {
       ...decodeProjection(row),
-      photo_path: required(row, 'photo_path', nonEmptyText),
+      photo_path: required(row, 'photo_path', nullableNonEmptyText),
       as_of: required(row, 'as_of', timestamp),
       cursor: required(row, 'cursor', nonEmptyText)
     };

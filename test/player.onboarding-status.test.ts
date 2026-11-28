@@ -89,16 +89,24 @@ function clientWith(
   passwordSetup: { data: unknown; error: unknown } = {
     data: { pending: false, can_skip: false },
     error: null
-  }
+  },
+  live = true
 ) {
   return {
     auth: {
+      signOut: vi.fn<(options: { scope: string }) => Promise<{ error: null }>>(async () => ({
+        error: null
+      })),
       getClaims: async () =>
         claims ? { data: { claims }, error: null } : { data: null, error: new Error('JWT expired') }
     },
     from: (table: string) => rowResult(table === 'player_profiles' ? profile : rating),
     rpc: vi.fn<(name: string) => Promise<{ data: unknown; error: unknown }>>(async (name) =>
-      name === 'get_password_setup_state' ? passwordSetup : claimContext
+      name === 'is_actor_live'
+        ? { data: live, error: null }
+        : name === 'get_password_setup_state'
+          ? passwordSetup
+          : claimContext
     )
   };
 }
@@ -136,6 +144,61 @@ describe('getOnboardingStatus', () => {
   beforeEach(() => {
     tanstackServer.setResponseHeader.mockReset();
     supabaseServer.getServerClient.mockReset();
+  });
+
+  const SIGNED_OUT = {
+    authenticated: false,
+    userId: null,
+    complete: false,
+    needsPasswordSetup: false,
+    claim: null
+  };
+
+  it('resolves a signature-valid token of an erased or frozen account as signed out', async () => {
+    const client = clientWith(
+      { sub: 'sub-1' },
+      PROFILE_ROW,
+      RATING_ROW,
+      undefined,
+      undefined,
+      false
+    );
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(getOnboardingStatus()).resolves.toEqual(SIGNED_OUT);
+    // The live check is the only lookup: no profile, claim or password-setup read happens for a dead subject.
+    expect(client.rpc.mock.calls.map(([name]) => name)).toEqual(['is_actor_live']);
+    expect(client.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it('keeps the signed-out answer even when clearing the local session fails', async () => {
+    const client = clientWith({ sub: 'sub-1' }, null, null, undefined, undefined, false);
+    client.auth.signOut.mockRejectedValue(new Error('no session'));
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(getOnboardingStatus()).resolves.toEqual(SIGNED_OUT);
+  });
+
+  it('does not touch a live subject: one extra lookup, no sign-out, unchanged answer', async () => {
+    const client = clientWith({ sub: 'sub-1' }, PROFILE_ROW, RATING_ROW);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(getOnboardingStatus()).resolves.toEqual({
+      authenticated: true,
+      userId: 'sub-1',
+      complete: true,
+      needsPasswordSetup: false,
+      claim: null
+    });
+    expect(client.rpc.mock.calls.map(([name]) => name)).toEqual([
+      'is_actor_live',
+      'get_password_setup_state'
+    ]);
+    expect(client.auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('never reports a signed-out user as live: no claims, no live lookup', async () => {
+    const client = clientWith(null, null, null);
+    supabaseServer.getServerClient.mockReturnValue(client);
+    await expect(getOnboardingStatus()).resolves.toEqual(SIGNED_OUT);
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 
   it('reports unauthenticated and incomplete for a signed-in user without rows', async () => {

@@ -291,6 +291,7 @@
     "avatarConflictContinue": "Continuar con la foto actual"
   },
   "player": {
+    "formerPlayer": "Antiguo jugador",
     "provisional": {
       "badge": "Provisional",
       "reviewNote": "Aún sin registrar — no puede revisar resultados"
@@ -310,7 +311,8 @@
       "label": "Accesos del perfil",
       "statistics": "Estadísticas",
       "matchHistory": "Historial de partidos",
-      "notifications": "Notificaciones"
+      "notifications": "Notificaciones",
+      "accountDeletion": "Eliminación de cuenta"
     },
     "edit": "Editar perfil",
     "save": "Guardar cambios",
@@ -3517,11 +3519,111 @@
       "canceling": "Cancelando…"
     }
   },
+  "accountDeletion": {
+    "title": "Eliminar mi cuenta",
+    "back": "Volver al perfil",
+    "retry": "Intentar de nuevo",
+    "intro": {
+      "heading": "Eliminación de cuenta",
+      "sends": "Puedes pedirnos que eliminemos tu cuenta. Enviar la solicitud no elimina nada por sí solo.",
+      "review": "Revisamos cada solicitud y la verificamos a través del correo de tu cuenta antes de borrar nada. Puedes retirar la solicitud hasta que empiece el procesamiento.",
+      "start": "Solicitar la eliminación de la cuenta"
+    },
+    "dialog": {
+      "title": "¿Solicitar la eliminación de la cuenta?",
+      "summary": "No se elimina nada al enviarla. Lee antes lo que implica la eliminación.",
+      "disappears": {
+        "title": "Qué se elimina",
+        "profile": "Tu perfil: nombre, foto, biografía y preferencias de juego",
+        "photos": "Las fotos que subiste",
+        "preferences": "Tus ajustes de notificaciones y dispositivos",
+        "participation": "Tu pertenencia y participación como jugador en comunidades y partidos",
+        "notifications": "Tus notificaciones e invitaciones"
+      },
+      "remains": {
+        "title": "Qué puede permanecer",
+        "body": "Los marcadores, resultados y valoraciones oficiales de los partidos que jugaste también forman parte del historial de los demás jugadores. Se conservan sin tu nombre ni tu foto y aparecen como «{{placeholder}}». Quienes estuvieron presentes aún pueden reconocer quién jugó."
+      },
+      "access": {
+        "title": "Pérdida de acceso",
+        "body": "Cuando empiece el procesamiento, tu acceso se bloquea y se cierra tu sesión. Eliminar la cuenta es permanente y no se puede deshacer."
+      },
+      "cutoff": {
+        "title": "Hasta cuándo puedes retirarla",
+        "body": "Puedes retirar la solicitud hasta que comience el procesamiento. Después ya no se puede detener."
+      },
+      "confirm": "Enviar solicitud",
+      "sending": "Enviando…",
+      "cancel": "Mantener mi cuenta"
+    },
+    "status": {
+      "heading": "Tu solicitud de eliminación",
+      "reference": "Referencia",
+      "received": "Recibida el",
+      "canWithdraw": "Todavía puedes retirar esta solicitud.",
+      "cannotWithdraw": "Esta solicitud ya no se puede retirar.",
+      "withdraw": "Retirar solicitud",
+      "refresh": "Actualizar estado"
+    },
+    "withdrawDialog": {
+      "title": "¿Retirar la solicitud?",
+      "body": "Tu cuenta sigue como está y no se elimina nada. Puedes enviar una nueva solicitud más adelante.",
+      "confirm": "Retirar solicitud",
+      "withdrawing": "Retirando…",
+      "keep": "Mantener la solicitud"
+    },
+    "state": {
+      "received": "Recibida",
+      "verified": "Verificada",
+      "ready": "Pendiente de procesar",
+      "executing": "En proceso",
+      "app_data_erased": "Eliminando tus datos",
+      "supabase_erased": "Cerrando tu cuenta",
+      "closed": "Completada",
+      "withdrawn": "Retirada",
+      "blocked": "Requiere atención"
+    },
+    "detail": {
+      "received": "Hemos recibido tu solicitud. La revisaremos y la verificaremos a través del correo de tu cuenta antes de borrar nada.",
+      "verified": "Tu solicitud se verificó a través del correo de tu cuenta. Aún necesita una aprobación final antes de procesarse.",
+      "ready": "Tu solicitud está aprobada y pendiente de procesar. Todavía puedes retirarla.",
+      "executing": "El procesamiento ha empezado. Tu acceso está cerrado y ya no se puede retirar.",
+      "app_data_erased": "Los datos de tu cuenta se han borrado. Se está terminando la eliminación.",
+      "supabase_erased": "Se está eliminando tu inicio de sesión y cerrando tu cuenta.",
+      "closed": "Tu solicitud está completada.",
+      "withdrawn": "Retiraste esta solicitud. No se eliminó nada.",
+      "blocked": "El procesamiento necesita nuestra atención para continuar. Nos pondremos en contacto a través del correo de tu cuenta."
+    },
+    "notice": {
+      "existing": "Ya tienes una solicitud abierta. Su referencia es {{reference}}."
+    },
+    "announce": {
+      "requested": "Solicitud enviada. Tu referencia es {{reference}}.",
+      "withdrawn": "Solicitud retirada. No se eliminó nada.",
+      "statusUpdated": "Estado actualizado: {{state}}. {{detail}}"
+    },
+    "errors": {
+      "unauthenticated": "Tu sesión terminó. Inicia sesión de nuevo para continuar.",
+      "account_required": "Termina de configurar tu cuenta antes de pedir su eliminación.",
+      "restricted": "Esta cuenta no puede enviar esta solicitud ahora.",
+      "rate_limited": "Enviaste demasiadas solicitudes recientemente. Inténtalo más tarde.",
+      "disabled": "Las solicitudes de eliminación están en pausa ahora. Inténtalo más tarde o escríbenos por correo.",
+      "not_found": "No hay ninguna solicitud abierta que retirar.",
+      "not_withdrawable": "El procesamiento ya empezó, así que esta solicitud ya no se puede retirar.",
+      "unavailable": "No pudimos completarlo. Comprueba tu conexión e inténtalo de nuevo.",
+      "loadFailed": "No pudimos cargar el estado de tu solicitud."
+    },
+    "fallback": {
+      "title": "¿No puedes iniciar sesión o nunca tuviste cuenta?",
+      "body": "Si no puedes iniciar sesión, o solo te invitaron a un partido o comunidad, escríbenos a la dirección de abajo. No necesitas una cuenta para ejercer tus derechos de privacidad.",
+      "mailLabel": "Escribir al contacto de privacidad en {{address}}"
+    }
+  },
   "privacy": {
     "title": "Política de privacidad",
     "backHome": "Volver al inicio",
     "updated": "Última actualización: {{date}}",
-    "reviewNotice": "Borrador: esta política está pendiente de confirmación final por el titular del servicio y de revisión legal, y puede cambiar antes de ser definitiva.",
+    "reviewNotice": "Esta política describe cómo funciona Padel Friends hoy. Todavía no ha pasado por una revisión jurídica externa y puede cambiar después de una.",
     "who": {
       "title": "Sobre esta política",
       "p1": "Padel Friends está gestionado por Thiago Mendonça, una persona física con sede en España, que decide cómo se usan los datos personales descritos aquí (responsable del tratamiento). Esta política explica qué datos personales trata la aplicación, para qué y qué derechos tienes."
@@ -3605,8 +3707,8 @@
     "retention": {
       "title": "Cuánto tiempo los conservamos",
       "p1": "Conservamos los datos de tu cuenta, perfil y actividad mientras exista tu cuenta y hasta que hayamos tramitado una solicitud de eliminación tuya. Actualmente no eliminamos automáticamente las cuentas inactivas.",
-      "p2": "No hemos fijado otros plazos de conservación. Cloudflare conserva los registros de solicitudes durante un periodo breve fijado por Cloudflare (actualmente 3 días en nuestro plan, que puede cambiar). Actualmente no mantenemos copias de seguridad programadas independientes de la base de datos. Otros proveedores, como el de envío de correos, conservan sus propios registros según sus propias prácticas de conservación.",
-      "p3": "Cuando la ley exige o permite que conservemos ciertos datos, por ejemplo para atender una reclamación legal o conservar registros de solicitudes de privacidad, los conservamos solo mientras dure esa necesidad."
+      "p2": "No hemos fijado otros plazos de conservación. Los registros de alojamiento y las cachés de Cloudflare siguen ajustes y plazos que controla Cloudflare y que no hemos verificado; los tratamos manualmente cuando lo pides. No mantenemos copias de seguridad automáticas de la base de datos de producción. Otros proveedores, como el de envío de correos, conservan sus propios registros según sus propias prácticas de conservación.",
+      "p3": "Cuando la ley exige o permite que conservemos ciertos datos, por ejemplo para atender una reclamación legal, los conservamos solo mientras dure esa necesidad. Nuestro registro de una solicitud de privacidad (el caso, el resultado de la verificación y nuestra respuesta) se conserva durante 90 días tras enviar la respuesta final; después solo quedan recuentos anónimos de resultados."
     },
     "security": {
       "title": "Seguridad",
@@ -3614,9 +3716,25 @@
     },
     "requests": {
       "title": "Tus solicitudes",
-      "p1": "Para ejercer cualquiera de tus derechos, incluido pedirnos acceder a tus datos personales, corregirlos o eliminarlos, escríbenos a la dirección de la sección Contacto.",
-      "p2": "Como objetivo interno, revisamos las solicitudes de privacidad recibidas por correo aproximadamente cada 24 horas. Esto no sustituye los plazos fijados por la ley: respondemos en el plazo de un mes desde que recibimos tu solicitud, que la ley permite ampliar en algunos casos.",
-      "p3": "Tu derecho de supresión está sujeto a las condiciones y excepciones de la normativa de protección de datos. Si no podemos atender íntegramente una solicitud, te explicaremos por qué."
+      "p1": "Si tienes una cuenta y has iniciado sesión, puedes pedir que se elimine tu cuenta desde tu propio perfil (Eliminación de cuenta). Antes de enviar nada ves qué se elimina, qué puede permanecer, cómo termina tu acceso y que puedes retirar la solicitud hasta que empiece el procesamiento.",
+      "p2": "Toda solicitud se revisa y se verifica antes de borrar nada. Enviamos un código de un solo uso al correo verificado de la cuenta, y no se borra nada solo con la solicitud.",
+      "p3": "Si no puedes iniciar sesión, si solo te invitaron y no tienes cuenta, o para cualquier otro derecho (acceso, rectificación, limitación, oposición o portabilidad), escríbenos a la dirección de la sección Contacto. No necesitas una cuenta, ni registrarte ni reclamar una, para ejercer tus derechos.",
+      "p4": "Acusamos recibo de las solicitudes y las tramitamos sin dilación indebida y, en todo caso, en el plazo de un mes desde su recepción. Cuando sea necesario por la complejidad o el número de solicitudes, la ley permite prorrogar ese plazo hasta dos meses más; si lo hacemos, te lo comunicamos dentro del primer mes, con los motivos. Verificar tu identidad no reinicia el plazo. Si no podemos atender del todo una solicitud, te explicamos por qué. El derecho de supresión está sujeto a las condiciones y excepciones de la normativa de protección de datos."
+    },
+    "deletion": {
+      "title": "Cuando se elimina tu cuenta",
+      "p1": "Una vez que una solicitud se ha verificado y aprobado, ocurre lo siguiente:",
+      "i1": "Se eliminan: tu perfil, las fotos que subiste, los ajustes de notificaciones y push, notificaciones e invitaciones, tu pertenencia y participación como jugador y tu acceso (la cuenta de autenticación y sus sesiones). Tu acceso se bloquea en cuanto empieza el procesamiento.",
+      "i2": "Se conservan de forma anonimizada: los marcadores, resultados y valoraciones oficiales de los partidos que jugaste siguen en el historial de los demás jugadores. Tu identidad en esos registros se sustituye por un identificador interno aleatorio, sin vínculo con tu cuenta y que no se guarda junto a ella. Los demás solo lo ven como un genérico «Antiguo jugador», sin nombre ni foto.",
+      "i3": "Los textos libres que escribiste en registros que se conservan, como notas y motivos, se eliminan o se sustituyen.",
+      "i4": "Las comunidades, ligas y partidos que gestionabas pasan a un miembro que lo acepte. Si nadie lo acepta, la comunidad se archiva sin propietario, se cancela la actividad futura que no pueda continuar y los resultados oficiales permanecen.",
+      "i5": "Quienes jugaron contigo aún pueden recordarte y, en un grupo muy pequeño, los resultados conservados para otros jugadores podrían permitir inferir quién eras. Lo evaluamos en cada solicitud."
+    },
+    "residual": {
+      "title": "Lo que no podemos eliminar por completo",
+      "p1": "Nuestra base de datos, la autenticación y el almacenamiento de archivos se borran automáticamente. Los registros que conservan otros proveedores se tratan manualmente a petición, y lo que se puede eliminar depende de cada proveedor: registros y cachés de alojamiento en Cloudflare, registros de envío de correos en Resend, el acceso que concediste en tu cuenta de Google (puedes desconectar la aplicación en los ajustes de tu cuenta de Google; no podemos eliminar los registros del propio Google) y los mensajes push ya entregados por el servicio push de tu navegador.",
+      "p2": "Nuestro proveedor de autenticación también conserva algunos registros técnicos que no podemos borrar por nuestra cuenta, como entradas de tokens de actualización y de auditoría. Los minimizamos y los revisamos con el proveedor.",
+      "p3": "En la fecha indicada arriba, no mantenemos copias de seguridad automáticas de la base de datos de producción."
     },
     "rights": {
       "title": "Tus derechos",

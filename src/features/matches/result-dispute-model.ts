@@ -1,5 +1,5 @@
 import type { ResultAmendmentLifecycle } from './result-amendment-model';
-import { validateMatchUuid } from './matches.validators';
+import { validateMatchParticipantRef, validateMatchUuid } from './matches.validators';
 
 export const RESULT_DISPUTE_DECISIONS = ['uphold', 'replace', 'void'] as const;
 export type ResultDisputeDecision = (typeof RESULT_DISPUTE_DECISIONS)[number];
@@ -208,7 +208,7 @@ export function parseResultDisputeResolution(value: unknown): ResultDisputeResol
       candidate_version: value.candidate_version,
       decision,
       confirmation_id: confirmation,
-      actor_id: validateMatchUuid(value.actor_id),
+      actor_id: validateMatchParticipantRef(value.actor_id),
       justification: value.justification,
       evidence_review_id: evidence,
       decided_at: value.decided_at

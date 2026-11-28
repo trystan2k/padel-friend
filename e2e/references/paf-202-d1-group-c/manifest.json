@@ -149,6 +149,16 @@
       "DtbIE / tgXcg card and JYWDi / d9rkmE banner": "Text rasterization of the 16px body and the 15px red message; geometry is exact."
     }
   },
+  "liveHeightBaselines": {
+    "QqUGZ": {
+      "height": 9168,
+      "note": "Live /privacy page height (390px, light). The approved frame is 7232px; the page keeps the frame structure (head, about section, ordered sections) and grew vertically with the PAF-199 privacy request, account deletion and residual processing sections."
+    },
+    "pHgfV": {
+      "height": 9168,
+      "note": "Live /privacy page height (390px, dark): same page, same growth."
+    }
+  },
   "frames": {
     "QqUGZ": {
       "frameId": "QqUGZ",

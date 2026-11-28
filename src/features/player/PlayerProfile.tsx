@@ -23,7 +23,8 @@ const ICONS = {
   statistics: 'M3 3v16a2 2 0 0 0 2 2h16M18 17V9M13 17V5M8 17v-3',
   history: 'M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l4 2',
   scale: 'M12 3v18M7 21h10M5 7h14M5 7l-3 8a3 3 0 0 0 6 0L5 7zM19 7l-3 8a3 3 0 0 0 6 0l-3-8z',
-  bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0'
+  bell: 'M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.94 1.94 0 0 0 3.4 0',
+  trash: 'M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v5M14 11v5'
 } as const;
 
 function RowIcon({ d }: { d: string }) {
@@ -289,6 +290,17 @@ export function PlayerProfile({
             <Link to="/level-reviews" {...stylex.props(s.row)}>
               <RowIcon d={ICONS.history} />
               <span {...stylex.props(s.rowText, s.rowTitle)}>{t('levelReview.entry.history')}</span>
+              <span aria-hidden="true" {...stylex.props(s.chevron)}>
+                ›
+              </span>
+            </Link>
+          </li>
+          <li {...stylex.props(s.listItem)}>
+            <Link to="/account-deletion" {...stylex.props(s.row)}>
+              <RowIcon d={ICONS.trash} />
+              <span {...stylex.props(s.rowText, s.rowTitle)}>
+                {t('profile.links.accountDeletion')}
+              </span>
               <span aria-hidden="true" {...stylex.props(s.chevron)}>
                 ›
               </span>
