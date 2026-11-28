@@ -89,7 +89,7 @@ describe('match management visibility integration', () => {
     expect(
       (await f.rpc(player, 'list_match_event_audit', { p_match_event_id: event.id })).error?.code
     ).toBe('42501');
-    expect((await player.client.from('match_event_audit_log').select('*')).data).toEqual([]);
+    expect((await player.client.from('match_event_audit_log').select('id')).data).toEqual([]);
     const audit = await f.rpc(f.creator, 'list_match_event_audit', { p_match_event_id: event.id });
     expect(audit.data).toEqual([
       expect.objectContaining({ action: 'remove', reason: 'Private scheduling reason' })
